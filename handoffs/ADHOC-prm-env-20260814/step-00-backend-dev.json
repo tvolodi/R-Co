@@ -1,0 +1,25 @@
+{
+  "handoff_id": "ADHOC-prm-env-20260814-00-backend-dev",
+  "run_id": "ADHOC-prm-env-20260814",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "step": "00",
+  "created_at": "2026-08-14T19:36:58Z",
+  "started_at": "2026-08-14T19:37:32Z",
+  "completed_at": null,
+  "status": "COMPLETED",
+  "completed_at": "2026-08-14T14:39:42Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed 4 failing bench-env checks. db_test container restarted on correct port 5434, keycloak and all services started. clean_test_db.py ran successfully. No stale locks found. Git reset to origin/main. All 10 test-env-verify checks pass (C0-C9).",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "task": {
+    "description": "Fix 4 failing bench-env checks so WF-02 for PRM-02..05 can proceed.\n\nCURRENT STATE:\n- origin/main HEAD: 05be8706\n- local main is ahead 1 commit (a837cdb0 — stale FAIL commit from WF-01 Step 2)\n- 4 checks failing in `zig build test-env-verify`:\n  C1: db_test container unhealthy (wrong port: 5453 vs expected 5434)\n  C3: zig build migrate fails against test DB postgres://bpm:***@localhost:5434/bpm_test\n  C4: cleanup pre-step fails (clean_test_db.py OperationalError)\n  C6: stale locks query fails (OperationalError)\n\nTASK:\n1. Verify db_test container port: docker compose ps r-co-db_test-1 → should publish 5434\n   - If wrong port: docker compose up -d --force-recreate db_test\n2. Run: docker compose up -d db_test --wait\n   - Verify: docker compose exec db_test pg_isready\n3. Run: docker compose up -d keycloak\n4. Run: docker compose up -d\n5. Verify: zig build migrate (against test DB on 5434)\n6. Verify: python tools/clean_test_db.py (C4 fix)\n7. Verify: no stale locks in db_test (C6 fix)\n8. Verify: zig build test-env-verify exits 0\n9. Also handle the local main pollution:\n   - git checkout main\n   - git reset --hard origin/main   (discard stale ahead-1 commit a837cdb0)\n   - git status should show clean vs origin/main\n\nReturn PASS only when all 8 checks pass and zig build test-env-verify exits 0.",
+    "fn": "none",
+    "max_rework": 1
+  },
+  "handoff_type": "ADHOC",
+  "workflow_ref": "WF02-prm-batch2-20260814"
+}

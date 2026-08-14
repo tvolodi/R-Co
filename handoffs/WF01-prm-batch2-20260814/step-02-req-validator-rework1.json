@@ -1,0 +1,72 @@
+{
+  "handoff_id": "wf01-prm-batch2-20260814-02-req-validator-rework1",
+  "run_id": "WF01-prm-batch2-20260814",
+  "workflow_id": "WF-01",
+  "step": "02-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-VALIDATOR",
+  "file": "handoffs/WF01-prm-batch2-20260814/step-02-req-validator-rework1.json",
+  "created_at": "2026-08-14T09:19:23Z",
+  "started_at": "2026-08-14T09:20:53Z",
+  "completed_at": "2026-08-14T09:27:21Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf01-prm-batch2-20260814-01-req-analyst",
+      "wf01-prm-batch2-20260814-02-req-validator",
+      "wf01-prm-batch2-20260814-01-req-analyst-rework1"
+    ],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "docs/processes/system/definition-promotion.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "handoffs/WF01-prm-batch2-20260814/step-01-req-analyst-rework1.json",
+      "docs/design-validation/WF01-prm-batch2-20260814-step-02-req-validator-VALIDATION-REPORT.yaml",
+      "docs/issue-reports/WF01-prm-batch2-20260814-step-01-req-analyst-rework1-INNER-REPORT.yaml"
+    ],
+    "previous_step_result": "PASS",
+    "previous_step_summary": "REQ-ANALYST applied three substantive fixes (PRM-04 edge set, PRM-03 entry shape, PRM-05 NEEDS_REVIEW package), mirrored in process doc and Glossary. Inner report at docs/issue-reports/WF01-prm-batch2-20260814-step-01-req-analyst-rework1-INNER-REPORT.yaml."
+  },
+  "task": {
+    "description": "WF-01 Step 2 REWORK ITERATION 1 \u2014 REQ-VALIDATOR re-validate PRM-02..05 after REQ-ANALYST's rework. The previous validation (FAIL with 1 BLOCKER + 2 MAJOR + 3 MINOR) is at `docs/design-validation/WF01-prm-batch2-20260814-step-02-req-validator-VALIDATION-REPORT.yaml`. The REQ-ANALYST inner report for the rework is at `docs/issue-reports/WF01-prm-batch2-20260814-step-01-req-analyst-rework1-INNER-REPORT.yaml`. Read both in full before starting.\n\n## What REQ-ANALYST claims to have fixed (verify, do NOT trust without verification)\n\n1. **PRM-04 BLOCKER fix**: added `applied \u2192 superseded` as seventh permitted edge; clarified AC5 (CHECK constrains value domain, application enforces edge set); added rollback AC; added PRM-01 to **See:**. Verify by reading PRM-04 in `docs/requirements.yaml`.\n\n2. **PRM-03 MAJOR fix**: entry shape changed to `{type, id, change_kind, before, after}` matching RELEASED PRM-01. Verify by reading PRM-03 body.\n\n3. **PRM-05 MAJOR fix**: `NEEDS_REVIEW` package defined with concrete JSON shape `{marker: \"NEEDS_REVIEW\", assertions: [...]}` inline in PRM-05 body; Glossary entry added in `docs/BPM_Platform_Functional_Requirements.md`. Verify by reading PRM-05 body and the Glossary.\n\n4. **Process doc mirror**: `docs/processes/system/definition-promotion.md` lines 55, 57, 59, 89 updated to match. Verify by reading the doc.\n\n5. **MINOR (See: lists)**: PRM-04 and PRM-05 both have PRM-01 in **See:**. Verify.\n\n## What to verify\n\nRun the same five checks as the previous validation pass:\n\n1. **TESTABILITY**: Each AC clause is definitive. The new AC clauses (rollback AC in PRM-04, NEEDS_REVIEW shape in PRM-05 AC5) must be testable. Look for vague words.\n2. **CONSISTENCY**: \n   - PRM-04 edge set now matches PRM-08 AC4 (applied \u2192 superseded).\n   - PRM-03 entry shape now matches PRM-01.\n   - PRM-05's NEEDS_REVIEW package shape \u2014 does it match anything else in the codebase? (The previous pass mentioned AGT-06's `needs_review` state \u2014 different concept; verify the new shape is in a different namespace and not conflicting.)\n   - Any new conflicts introduced by the rework?\n3. **COMPLETENESS**: All terms defined. The new `NEEDS_REVIEW` package definition is concrete \u2014 verify it references a Glossary entry. Verify the package shape uses defined field names (marker, assertions, id, description, severity, rule, sources, file, line).\n4. **TRACEABILITY**: PRM-04 and PRM-05 now include PRM-01 in **See:**. Verify. PRM-03 already had PRM-01.\n5. **STAGE FIT**: No regression. Promotion module only.\n\nAlso run:\n- `python tools/reqctl.py validate PRM-02 PRM-03 PRM-04 PRM-05` \u2014 must be clean (or only pre-existing issues).\n- `tools/lint_handoffs.py` \u2014 exit 0 required.\n\nIf the rework is clean \u2192 PASS.\nIf new defects are introduced \u2192 FAIL with the new issues.\nIf rework is partial (some fixes applied but not all) \u2192 FAIL with the residual issues.\n\n## Output\n\nWrite your result into the handoff file (this file, `step-02-req-validator-rework1.json`):\n- `status: COMPLETED`\n- `result.status: PASS` or `FAIL`\n- `result.summary`: rework verification result, residual issues (if any), tool output\n- `result.artifacts_out`: validation report path + inner report path\n- `result.issues`: validation report (REQUIRED \u2014 same structure as before)\n- `result.next_action`: \n  - PASS: `Route to DOC-UPDATER (WF-01 Step 3)`\n  - FAIL: `Rework \u2014 see issues`\n- `completed_at`: current ISO8601 UTC timestamp\n- Call `fn:register-inner-report` BEFORE `fn:complete-handoff`\n\nValidation report goes to `docs/design-validation/WF01-prm-batch2-20260814-step-02-req-validator-rework1-VALIDATION-REPORT.yaml`.\nInner report goes to `docs/issue-reports/WF01-prm-batch2-20260814-step-02-req-validator-rework1-INNER-REPORT.yaml`.\n\nAppend log entry:\n```bash\npython scratch/orch_log_route.py \"<completed_at>\" \"COMPLETED\" \"WF01-prm-batch2-20260814\" \"wf01-prm-batch2-20260814-02-req-validator-rework1\" \"REQ-VALIDATOR \u2192 ORCH\" \"PASS|FAIL \u2014 <one-line summary>\"\n```\n\nReturn:\n- **PASS**: 'PASS - <verification summary>'\n- **FAIL**: 'FAIL - <residual issues>'\n\n## Reference files\n\n- `handoffs/WF01-prm-batch2-20260814/step-02-req-validator-rework1.json` \u2014 handoff to write results into\n- `docs/requirements.yaml` \u2014 canonical requirements (PRM-02..05 around lines 12386-12555)\n- `docs/processes/system/definition-promotion.md` \u2014 process doc with mirrored changes\n- `docs/BPM_Platform_Functional_Requirements.md` \u2014 Glossary with new NEEDS_REVIEW package entry\n- `docs/design-validation/WF01-prm-batch2-20260814-step-02-req-validator-VALIDATION-REPORT.yaml` \u2014 previous (failed) validation report\n- `docs/issue-reports/WF01-prm-batch2-20260814-step-01-req-analyst-rework1-INNER-REPORT.yaml` \u2014 REQ-ANALYST rework inner report\n- `tools/reqctl.py` \u2014 CLI\n- `tools/lint_handoffs.py` \u2014 schema integrity\n\n## Constraints\n\n- Do NOT edit requirements yourself \u2014 your job is to flag issues. REQ-ANALYST will fix them in the next rework loop.\n- Do NOT transition status to VALIDATED \u2014 that's DOC-UPDATER (Step 3).\n- Do NOT edit git branches or open PRs.\n- The rework_count for this Step 2 is 1. The orchestrator's max_rework is 2. If you FAIL again, there is one more rework iteration before escalation.",
+    "acceptance_criteria": [
+      "All previously-flagged defects (BLOCKER PRM-04 edge, MAJOR PRM-03 entry shape, MAJOR PRM-05 NEEDS_REVIEW) are verified fixed",
+      "No new defects introduced by the rework",
+      "TESTABILITY check: new AC clauses (rollback AC, NEEDS_REVIEW shape) are testable",
+      "CONSISTENCY check: PRM-04 edge set matches PRM-08 AC4, PRM-03 shape matches PRM-01, PRM-05 NEEDS_REVIEW shape is in its own namespace (not conflicting with AGT-06)",
+      "COMPLETENESS check: NEEDS_REVIEW package has a Glossary entry and uses defined field names",
+      "TRACEABILITY check: PRM-04 and PRM-05 both reference PRM-01 in **See:**",
+      "STAGE FIT check: no regression",
+      "tools/reqctl.py validate PRM-02..05 is clean (or only pre-existing issues)",
+      "tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:check-requirement-completeness",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validated PRM-02..05 after REQ-ANALYST rework. All three substantive defects (1 BLOCKER + 2 MAJOR) and all three MINOR traceability gaps verified fixed. PRM-04: seventh edge applied->superseded present; CHECK vs application-layer enforcement clarified; rollback AC added; PRM-01 in See: list. PRM-03: entry shape reconciled with RELEASED PRM-01 emitted {type, id, change_kind, before, after}; PRM-01 cross-ref added in body. PRM-05: NEEDS_REVIEW package defined inline + Glossary entry added; PRM-01 in See: list. Process doc mirrors present at lines 55, 57, 59, 91. tools/reqctl.py validate: zero findings on PRM-02..05 (same baseline as prior runs). tools/lint_handoffs.py: 0 BLOCKER / 0 MAJOR / 1 MINOR (H010 registry, pre-existing) / 291 ACKNOWLEDGED. 22/22 cross-refs resolve. No new defects introduced. Priority MUST / stage 16 / status DRAFT preserved. Routing to DOC-UPDATER (WF-01 Step 3) to set status VALIDATED.",
+    "artifacts_out": [
+      "docs/design-validation/WF01-prm-batch2-20260814-step-02-req-validator-rework1-VALIDATION-REPORT.yaml",
+      "docs/issue-reports/WF01-prm-batch2-20260814-step-02-req-validator-rework1-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (WF-01 Step 3) to set status VALIDATED on PRM-02..05"
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "rework_reason": "REQ-ANALYST applied three substantive fixes (PRM-04 edge set, PRM-03 entry shape, PRM-05 NEEDS_REVIEW package) plus 3 MINOR See-list fixes. Re-validate to confirm."
+}

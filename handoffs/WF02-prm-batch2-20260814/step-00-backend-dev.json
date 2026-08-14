@@ -6,12 +6,12 @@
   "step": "00",
   "created_at": "2026-08-14T19:40:29Z",
   "started_at": "2026-08-14T19:40:29Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-14T14:42:36Z",
+  "status": "COMPLETED",
   "result": {
-    "status": null,
-    "summary": null,
-    "artifacts_out": [],
+    "status": "PASS",
+    "summary": "Branch feature/WF02-prm-batch2-20260814 created from origin/main (05be8706), pushed, and draft PR opened: https://github.com/tvolodi/R-Co/pull/784",
+    "artifacts_out": ["https://github.com/tvolodi/R-Co/pull/784"],
     "issues": []
   },
   "task": {

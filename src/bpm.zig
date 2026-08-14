@@ -112,7 +112,12 @@ pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definit
 pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 promotion HTTP handler
 pub const promotion_plan_mod = @import("definition/promotion_plan.zig"); // PRM-01 promotion plan and diff report
 pub const promotions_routes = @import("api/routes/promotions.zig"); // PRM-01 promotion plan HTTP handler
-// PRM-06 / PRM-07 / PRM-08 / PRM-09 — Stage 16 batch
+// PRM-02 / PRM-03 / PRM-04 / PRM-05 — Stage 16 batch 2
+pub const promotion_conflict_mod = @import("definition/promotion_conflict.zig"); // PRM-02 conflict pre-flight rejection
+pub const promotion_digest_mod = @import("definition/promotion_digest.zig"); // PRM-03 plan digest
+pub const promotion_review_mod = @import("definition/promotion_review.zig"); // PRM-04 promotion review state machine
+pub const promotion_review_routes = @import("api/routes/promotion_review.zig"); // PRM-04/05 promotion review HTTP handlers
+// PRM-06 / PRM-07 / PRM-08 / PRM-09 — Stage 16 batch 1
 pub const promotion_assertion_rerun = @import("definition/assertion_rerun.zig"); // PRM-06/07 assertion re-run domain
 pub const promotion_assertion_routes = @import("api/routes/promotion_assertion.zig"); // PRM-06/07 assertion re-run HTTP handler
 pub const promotion_read_routes = @import("api/routes/promotion_read.zig"); // PRM-07 AC3 GET promotion read handler

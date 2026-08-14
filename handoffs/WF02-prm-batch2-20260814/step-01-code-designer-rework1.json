@@ -1,0 +1,26 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-01-code-designer-rework1",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "CODE-DESIGNER",
+  "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+  "step": "01",
+  "created_at": "2026-08-14T20:02:49Z",
+  "started_at": "2026-08-14T20:03:12Z",
+  "completed_at": null,
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Rework PASS. Migration number changed from 58 to 59 in templates/specs/prm04-promotion-reviews.migration.yaml — resolves collision with existing migrations/058_repo_artifacts_tenant_activation.sql. codegen --dry-run passes; lint_migration_schema passes with 0 violations.",
+    "artifacts_out": ["templates/specs/prm04-promotion-reviews.migration.yaml"],
+    "issues": []
+  },
+  "completed_at": "2026-08-14T20:08:00Z",
+  "task": {
+    "description": "REWORK ITERATION 1 for CODE-DESIGNER Step 01.\n\nBLOCKER from CODE-DESIGN-VALIDATOR:\n- Migration number 058 collides with existing migrations/058_repo_artifacts_tenant_activation.sql\n- Fix: change migration_number from 58 to 59 in templates/specs/prm04-promotion-reviews.migration.yaml\n\nTASK:\n1. Edit templates/specs/prm04-promotion-reviews.migration.yaml — change migration_number from 58 to 59\n2. Re-run codegen --dry-run to confirm still passes\n3. Re-run lint on the artefact\n4. Return PASS with result.summary noting the fix",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "stage": "stage16"
+}

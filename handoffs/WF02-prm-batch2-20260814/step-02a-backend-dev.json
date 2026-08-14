@@ -1,0 +1,25 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-02a-backend-dev",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "step": "02a",
+  "created_at": "2026-08-14T20:15:36Z",
+  "started_at": "2026-08-14T20:16:20Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": []
+  },
+  "task": {
+    "description": "Implement PRM-02, PRM-03, PRM-04, PRM-05 (Stage 16 MUST, VALIDATED) per design artefacts.\n\nBRANCH: feature/WF02-prm-batch2-20260814 (base: origin/main 05be8706)\nDESIGN ARTEFACTS:\n- src/design/prm-02-conflict-preflight-rejection.md\n- src/design/prm-03-plan-digest.md\n- src/design/prm-04-promotion-review-state-machine.md\n- templates/specs/prm04-promotion-reviews.migration.yaml (migration_number: 96)\n- src/design/prm-05-non-skippable-approval-gate.md\n\nEXISTING CODE TO EXTEND:\n- src/definition/promotion.zig (existing promotion pipeline)\n- src/definition/rollback.zig (state machine patterns)\n- src/promotion/routes.zig (existing promotion API routes)\n- src/auth/identity.zig (TENANT_CONTEXT extraction)\n\nMIGRATION:\n- Run: python tools/codegen_migration.py templates/specs/prm04-promotion-reviews.migration.yaml\n- Apply: zig build migrate\n- Verify: zig build migrate exits 0\n\nIMPLEMENTATION TASKS:\n\nPRM-02: Conflict pre-flight rejection\n- Add rejectIfConflicts() function — runs BEFORE any transaction opens\n- SELECT MAX(version) from target tenant's active definitions for each process_key in the plan\n- Conflict: target_version > base_version → return HTTP 409 PROMOTION_CONFLICT\n- Append DEFINITION_PROMOTION_REJECTED event in independent transaction\n- Move promotion to FAILED state\n\nPRM-03: Plan digest binds approval to a diff\n- Implement computePlanDigest() — SHA-256 lowercase hex over canonical JSON (lexicographic key sort, no insignificant whitespace, null included)\n- Canonical entry shape: {type, id, change_kind, before, after}\n- verifyDigest() with constant-time comparison\n- Store digest + serialised plan on promotion_reviews row at submit time\n- Validate digest on Approve and Apply requests → HTTP 409 PlanDigestMismatch\n\nPRM-04: Promotion review state machine\n- Create promotion_reviews table (migration 096)\n- CHECK constraint over 6 statuses: pending_review, approved, rejected, applied, failed, superseded\n- 7 permitted edges: pending_review→approved/rejected/superseded, approved→applied/failed/superseded, applied/failed/rejected→superseded\n- Partial unique index (tenant_id, plan_digest) WHERE status IN (pending_review, approved)\n- row_version for optimistic locking\n- superseded_by tracking\n\nPRM-05: Non-skippable approval gate\n- No bypass: apply request body has only { plan_digest }, any extra field → HTTP 422\n- Self-approval: requested_by == approved_by → HTTP 403\n- GET /api/v1/promotions/{id}/context returns: stored plan, artifact assertions, NEEDS_REVIEW package, plan_digest\n- GET /api/v1/promotions/{id}/review returns promotion_reviews row\n\nReturn PASS when:\n- All new/modified Zig source compiles (zig build)\n- Migration applies cleanly (zig build migrate)\n- zig build test exits 0 (existing tests still pass)\n- Git status shows all changes on feature branch",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "stage": "stage16"
+}

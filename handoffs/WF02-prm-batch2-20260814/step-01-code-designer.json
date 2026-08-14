@@ -1,0 +1,36 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-01-code-designer",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "CODE-DESIGNER",
+  "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+  "step": "01",
+  "created_at": "2026-08-14T19:44:07Z",
+  "started_at": "2026-08-14T19:45:17Z",
+  "completed_at": "2026-08-14T19:58:00Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Design for PRM-02, PRM-03, PRM-04, PRM-05 — stage16 MUST VALIDATED. Four Type E prose artefacts + one Type C migration parameter file. PRM-02: ConflictRejection type, rejectIfConflicts() pre-flight function, runs before any transaction. PRM-03: computePlanDigest() with canonical JSON rules (lexicographic keys, no whitespace), SHA-256 hex, verifyDigest(). PRM-04: Type C migration 058_promotion_reviews (codegen --dry-run passed) + Type E state machine (7 edges including rejected->superseded NEW), ReviewStatus enum, approve/reject/apply/fail/supersede transitions. PRM-05: non-skippable gate, self-approval prevention, getPromotionContext() serving stored plan. All Type E artefacts lint-clean; migration YAML validated with codegen --dry-run.",
+    "artifacts_out": [
+      "src/design/prm-02-conflict-preflight-rejection.md",
+      "src/design/prm-03-plan-digest.md",
+      "src/design/prm-04-promotion-review-state-machine.md",
+      "templates/specs/prm04-promotion-reviews.migration.yaml",
+      "src/design/prm-05-non-skippable-approval-gate.md"
+    ],
+    "issues": []
+  },
+  "task": {
+    "description": "Produce design artefacts for PRM-02, PRM-03, PRM-04, PRM-05 (Stage 16 MUST, VALIDATED) on branch feature/WF02-prm-batch2-20260814.\n\nBRANCH: feature/WF02-prm-batch2-20260814 (base: origin/main 05be8706)\n\nREQUIREMENTS SUMMARY:\n\nPRM-02: Conflict pre-flight rejection\n  - Run conflict detection as first step of promotion pipeline, before any transaction opens\n  - Conflict condition: target tenant active version of process_key > base_version source branched from\n  - On conflict: return typed ConflictRejection naming each conflicting definition with source/target change\n  - Append exactly one DEFINITION_PROMOTION_REJECTED event in its own transaction\n  - Move to FAILED state\n\nPRM-03: Plan digest binds approval to a diff\n  - SHA-256 digest (lowercase hex) over canonical JSON of promotion plan\n  - Canonical = object keys sorted lexicographically, no insignificant whitespace\n  - Entry shape: {type, id, change_kind, before, after} — NOTE: previously {type,id,changes} was flagged as conflict with RELEASED PRM-01, fixed to match\n  - Digest + full serialised plan stored on promotion_reviews row at submit time\n  - Approve and apply both require digest in request body; mismatch = HTTP 409 PlanDigestMismatch\n\nPRM-04: Promotion review state machine\n  - Table: promotion_reviews (id, tenant_id, plan_digest, def_type, def_id, serialised_plan, status, requested_by, approved_by, approved_at, superseded_by, row_version, created_at, updated_at)\n  - Status CHECK: pending_review, approved, rejected, applied, failed, superseded\n  - Permitted edges (7):\n    pending_review -> approved\n    pending_review -> rejected\n    approved -> applied\n    approved -> failed\n    applied -> superseded\n    failed -> superseded\n    rejected -> superseded (NEW — added to fix BLOCKER vs RELEASED PRM-08)\n\nPRM-05: Non-skippable human approval gate\n  - No bypass parameter/header/flag/config\n  - requested_by principal cannot approve its own review\n  - GET /api/v1/promotions/{id}/context returns: stored plan, artifact assertions, NEEDS_REVIEW package, plan_digest\n  - NEEDS_REVIEW package is defined (per PRM-05 body: a structured set of rules/criteria that require human review)\n\nEXISTING CODE TO LEVERAGE:\n- src/definition/promotion.zig (existing promotion pipeline)\n- src/definition/rollback.zig (rollback state machine — pattern to follow)\n- src/promotion/store.zig or src/promotion/*.zig (promotion data access)\n- src/promotion/routes.zig (existing promotion API routes)\n- src/auth/identity.zig (TENANT_CONTEXT extraction)\n- docs/processes/system/definition-promotion.md (process doc with state machine diagram)\n- docs/BPM_Platform_Backend_Architecture.md (existing patterns)\n\nDESIGN ARTEFACTS TO PRODUCE (write to src/design/):\n1. prm-02-conflict-preflight-design.md — describe conflict detection logic, the pre-flight check, ConflictRejection type, event appending\n2. prm-03-plan-digest-design.md — describe SHA-256 digest computation, canonical JSON rules, storage on promotion_reviews, digest validation in Approve/Apply\n3. prm-04-promotion-review-sm-design.md — describe the promotion_reviews table schema, status CHECK constraint, 7-edge state machine, superseded_by logic, row_version\n4. prm-05-needs-review-gate-design.md — describe the non-skippable gate, self-approval prevention, GET /context endpoint\n\nEach design file must:\n- Define all new/modified interfaces, types, and function signatures\n- Describe data flow for the feature\n- Reference existing code that will be extended\n- Include acceptance criteria mapping to the requirement's AC\n- Have no implementation code\n\nReturn PASS with list of created artefact files in result.artifacts_out.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": [
+    "PRM-02",
+    "PRM-03",
+    "PRM-04",
+    "PRM-05"
+  ],
+  "stage": "stage16"
+}
