@@ -1,0 +1,145 @@
+report_id: WF01-prm-batch2-20260814-step-01-req-analyst-rework1
+run_id: WF01-prm-batch2-20260814
+workflow_id: WF-01
+step: '01-rework1'
+agent_id: REQ-ANALYST
+handoff_id: wf01-prm-batch2-20260814-01-req-analyst-rework1
+status: PASS
+created_at: '2026-08-14T09:13:00Z'
+summary: >-
+  WF-01 Step 1 rework iteration 1 — REQ-ANALYST fixed all three substantive defects
+  the REQ-VALIDATOR flagged at step-02 (1 BLOCKER + 2 MAJOR) and absorbed the 3 MINOR
+  TRACEABILITY gaps into the same edits.
+
+  BLOCKER (PRM-04): added the seventh permitted edge `applied → superseded` to the
+  review state machine (now exactly seven edges, all enumerated explicitly). Clarified
+  the relationship between the DB CHECK constraint (constrains the value domain of
+  `status`) and the application-layer edge enforcement (rejects out-of-edge transitions
+  with HTTP 400 `InvalidReviewTransition`), and noted the optional `BEFORE UPDATE`
+  trigger path. Added the missing AC covering the rollback path: "GIVEN a review in
+  `applied`, WHEN a rollback event moves the active version pointer off the applied
+  version (PRM-08), THEN `status` moves `applied` to `superseded` with `superseded_by`
+  naming the rollback event." Updated **See:** list to include PRM-01 (the RELEASED
+  requirement that produces the plan whose digest PRM-04 persists). This now aligns
+  PRM-04 with RELEASED PRM-08 AC4 and the shipped rollback implementation
+  (`src/definition/rollback.zig:289-291`).
+
+  MAJOR (PRM-03): reconciled the plan_digest input shape with RELEASED PRM-01's
+  emitted shape. Changed `{type, id, changes}` (undefined) to
+  `{type, id, change_kind, before, after}` (PRM-01's emitted shape) and added the
+  cross-reference "(the entry shape emitted by RELEASED PRM-01 and persisted verbatim
+  on the review row)". Added PRM-01 to **See:** list (it was already present, but the
+  rework explicitly preserves it for traceability).
+
+  MAJOR (PRM-05): defined the `NEEDS_REVIEW` package as a concrete JSON object
+  `{marker: "NEEDS_REVIEW", assertions: [ {id, description, severity, rule, sources:
+  [{file, line}]} ]}`. `marker` is the constant string `"NEEDS_REVIEW"`; `assertions`
+  is the array of `HumanReviewAssertion` records the source-side authoring agent
+  attached at submit time. AC5 now states the shape, the literal marker value, and
+  the empty-array convention. Added the Glossary entry to
+  docs/BPM_Platform_Functional_Requirements.md (row 37) explicitly distinguishing the
+  promotion `NEEDS_REVIEW` package from AGT-06's `needs_review` artifact STATE (a row
+  state in a different subsystem). Added PRM-01 and PRM-02 to **See:** list (TRACEABILITY
+  MINORs absorbed).
+
+  Cross-doc mirrors in docs/processes/system/definition-promotion.md:
+    - Step 3 row (line 55): entry shape `{type, id, change_kind, before, after}`.
+    - Step 5 row (line 57): digest input shape `{type, id, change_kind, before, after}`.
+    - Step 7 row (line 59): `NEEDS_REVIEW` package shape documented inline.
+    - Business Rules table row (line 89): seventh edge `applied -> superseded` added.
+  All four mirrors carry a `<!-- REWORK-WF01-prm-batch2-20260814: ... -->` annotation
+  so the process doc reads as a consistent restatement of the corrected requirements.
+
+  Priority (MUST), stage (16) and status (DRAFT) preserved for all four — DOC-UPDATER
+  will set VALIDATED at WF-01 Step 3. No edits made to PRM-01, PRM-08 or any other
+  RELEASED requirement. No git branches opened, no PRs created.
+
+  Validation evidence:
+    - tools/reqctl.py selftest: PASS (all checks).
+    - tools/reqctl.py validate (global): 472 requirements, BLOCKER 0 / MAJOR 4 / MINOR 8;
+      none of the 12 findings is attributed to PRM-02, PRM-03, PRM-04 or PRM-05
+      (pre-existing MAJORs are on OIDC-F-06, TD-UI-01, TD-UI-02, WH-UI-03; MINORs on
+      SPT-01, TM-01..03, UAT-TM-01..04; all unrelated to this rework).
+    - tools/lint_handoffs.py: 2821 handoffs checked — 0 BLOCKER, 1 MAJOR
+      (H009 on step-01-req-analyst-rework1.json — this handoff is in-flight; will
+      resolve to 0 once status flips to COMPLETED below), 1 MINOR (H010 registry,
+      pre-existing 49-of-2821 absence), 291 ACKNOWLEDGED. No new findings introduced
+      by the rework.
+    - Cross-reference audit: all 26 cross-references in PRM-02..05 resolve to existing
+      IDs; no dangling references.
+    - Body content audit: all bodies retain the original GIVEN/WHEN/THEN structure
+      (5 AC clauses each), no vague-language triggers, no schema regressions.
+
+  Constraints respected: priority/stage/status unchanged, no edits to RELEASED
+  requirements, no git branch work, no new requirements created.
+artifacts_out:
+  - docs/requirements.yaml
+  - docs/processes/system/definition-promotion.md
+  - docs/BPM_Platform_Functional_Requirements.md
+files_created: []
+files_modified:
+  - docs/requirements.yaml
+  - docs/processes/system/definition-promotion.md
+  - docs/BPM_Platform_Functional_Requirements.md
+  - handoffs/WF01-prm-batch2-20260814/step-01-req-analyst-rework1.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: 'tools/reqctl.py selftest'
+    status: pass
+    detail: 'all checks passed'
+  - name: 'tools/reqctl.py validate (global, 472 requirements)'
+    status: pass
+    detail: 'BLOCKER 0 / MAJOR 4 / MINOR 8 — zero findings attributed to PRM-02..05;
+      all pre-existing findings are on unrelated requirements (OIDC-F-06, TD-UI-01,
+      TD-UI-02, WH-UI-03, SPT-01, TM-01..03, UAT-TM-01..04)'
+  - name: 'tools/lint_handoffs.py (2821 handoffs)'
+    status: pass
+    detail: 'BLOCKER 0, MAJOR 1 (H009 on this in-flight handoff — will resolve on
+      COMPLETED status), MINOR 1 (H010 registry, pre-existing), ACKNOWLEDGED 291.
+      No new findings introduced.'
+  - name: 'cross-reference audit (PRM-02..05)'
+    status: pass
+    detail: 'all 26 cross-references resolve to existing IDs'
+  - name: 'body content audit (PRM-02..05)'
+    status: pass
+    detail: 'all bodies retain GIVEN/WHEN/THEN structure (5 AC each), no
+      vague-language triggers, no schema regressions'
+  - name: 'reqctl show PRM-02..05'
+    status: pass
+    detail: 'priority=MUST, stage=16, status=DRAFT, last_updated=2026-08-14T09:12:56Z
+      (current shell clock) for PRM-03/04/05; PRM-02 last_updated=2026-08-07
+      (untouched as intended); body_source=backlog-migration-20260807 preserved
+      for all four; alt_sources includes rework-20260814-prm-batch2 on the three
+      touched requirements'
+issues_found: []
+issues_fixed:
+  - severity: BLOCKER
+    requirement_id: PRM-04
+    description: 'Added `applied → superseded` as the seventh permitted edge;
+      clarified AC5 (CHECK vs application-layer enforcement); added AC for the
+      rollback path; added PRM-01 to **See:** list.'
+  - severity: MAJOR
+    requirement_id: PRM-03
+    description: 'Reconciled plan_digest entry shape with RELEASED PRM-01's emitted
+      `{type, id, change_kind, before, after}`.'
+  - severity: MAJOR
+    requirement_id: PRM-05
+    description: 'Defined `NEEDS_REVIEW` package as concrete JSON object with
+      `{marker, assertions}` shape; added Glossary entry to
+      docs/BPM_Platform_Functional_Requirements.md; added PRM-01 and PRM-02 to
+      **See:** list.'
+  - severity: MINOR
+    requirement_id: PRM-04
+    description: 'Added PRM-01 to **See:** list (TRACEABILITY).'
+  - severity: MINOR
+    requirement_id: PRM-05
+    description: 'Added PRM-01 and PRM-02 to **See:** list (TRACEABILITY).'
+  - severity: MINOR
+    requirement_id: 'cross-cutting'
+    description: 'Added `NEEDS_REVIEW package` Glossary entry to
+      docs/BPM_Platform_Functional_Requirements.md; mirrored the three substantive
+      fixes into docs/processes/system/definition-promotion.md lines 55, 57, 59, 89.'
+next_steps:
+  - 'Route to REQ-VALIDATOR (WF-01 Step 2, rework 1) for re-validation of PRM-02..05.'
+  - 'DOC-UPDATER (WF-01 Step 3) MUST NOT run until the validator returns PASS.'
+blockers: []

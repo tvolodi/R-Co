@@ -1,0 +1,52 @@
+run_id: WF01-prm-batch2-20260814
+workflow_id: WF-01
+step: '01'
+agent: REQ-ANALYST
+handoff_id: wf01-prm-batch2-20260814-01-req-analyst
+status: PASS
+created_at: '2026-08-14T08:46:19Z'
+summary: >-
+  Verified PRM-02..PRM-05 (Stage 16, MUST, DRAFT, source:
+  backlog-migration-20260807). All four are present and well-formed in
+  docs/requirements.yaml with 4 substantive GIVEN/WHEN/THEN acceptance
+  criteria each. All 20 cross-reference targets resolve; sister refs
+  (PRM-01, PRM-06, PRM-08, SOL-02, IDN-05, ENV-03) are RELEASED as expected.
+  Internal consistency audit found no contradictions: (a) PRM-02's
+  conflict-before-digest-before-review ordering is compatible with
+  PRM-03/04 (both are silent on ordering, neither asserts an opposite
+  order); (b) the plan_digest chain is consistent — PRM-03 binds the
+  digest at submit, PRM-04 stores plan_digest + serialised plan on
+  promotion_reviews, PRM-05 requires the review to be approved (which
+  the apply path enforces via PRM-03's digest-mismatch gate); (c)
+  PRM-02's no-pointer-move-on-conflict and PRM-04's same-tx pointer
+  + status + event move on apply are complementary invariants on
+  opposite branches. tools/reqctl.py validate reports zero issues
+  for PRM-02..05. No body edits made; last_updated (2026-08-07) and
+  body_source (backlog-migration-20260807) preserved as instructed.
+artifacts_out: []
+files_created: []
+files_modified: []
+tests_run:
+  - name: 'tools/reqctl.py show PRM-02..05 (existence + body)'
+    status: pass
+    detail: 'all four present, 4 GIVEN/WHEN/THEN AC clauses each, body_source=backlog-migration-20260807, last_updated=2026-08-07'
+  - name: 'cross-reference audit (20 references)'
+    status: pass
+    detail: 'all targets resolve; sister refs (PRM-01, PRM-06, PRM-08, SOL-02, IDN-05, ENV-03) are RELEASED'
+  - name: 'internal consistency check (ordering / plan_digest chain / version pointer)'
+    status: pass
+    detail: 'no contradictions found between PRM-02..05'
+  - name: 'vague language scan'
+    status: pass
+    detail: 'no occurrence of reasonably/as needed/appropriately in any of the four bodies'
+  - name: 'tools/reqctl.py validate (filtered to PRM-02..05)'
+    status: pass
+    detail: 'CLEAN — no PRM-02..05 issues reported by canonical store validator'
+  - name: 'docs/status/requirement_status.yaml status check'
+    status: pass
+    detail: 'PRM-02..05 all status=DRAFT, stage=16, priority=MUST (matches handoff context)'
+issues_found: []
+next_steps:
+  - 'Route to REQ-VALIDATOR (WF-01 Step 2) — bodies are ready for validation'
+  - 'DOC-UPDATER will set status=VALIDATED in WF-01 Step 3'
+blockers: []
