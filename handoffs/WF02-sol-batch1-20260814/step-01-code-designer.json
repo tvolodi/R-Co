@@ -1,0 +1,54 @@
+{
+  "handoff_id": "wf02-sol-batch1-20260814-01-code-designer",
+  "run_id": "WF02-sol-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-sol-batch1-20260814/step-01-code-designer.json",
+  "created_at": "2026-08-14T03:48:27Z",
+  "started_at": "2026-08-14T03:48:27Z",
+  "completed_at": "2026-08-14T03:52:43Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "15",
+    "requirement_ids": ["SOL-01", "SOL-02", "SOL-03"],
+    "related_handoff_ids": [
+      "wf02-sol-batch1-20260814-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/requirements.yaml (SOL-01, SOL-02, SOL-03 sections)",
+      "src/definition/promotion.zig (ENV-03 — promoteDefinition, depends on this)",
+      "src/api/routes/ (existing route handlers for pattern reference)",
+      "migrations/ (existing migration files for DDL pattern reference)"
+    ],
+    "branch_name": "feature/WF02-sol-batch1-20260814",
+    "base_commit": "c0ee96dd"
+  },
+  "task": {
+    "description": "WF-02 Step 01 (CODE-DESIGNER) for SOL-01/02/03 — solution pack manifest, installation, and role-mapping gate.\n\nProduce a Type-E prose design artefact at: src/design/sol-batch1-solution-pack.md\n\nThe design must cover ALL acceptance criteria for SOL-01, SOL-02, and SOL-03.\n\n## SOL-01 — Solution pack manifest export\n\nDesign the export endpoint and data structure:\n- HTTP endpoint: `POST /api/v1/tenants/{tenant_id}/solution-packs/export` (or similar)\n- Input: list of definition IDs to include\n- Output: a JSON document containing:\n  - pack_id (generated UUID)\n  - version (semver, default '1.0.0')\n  - bpm_export_schema_version\n  - definitions: array of full process definition graphs\n  - service_catalog_entries: all SERVICE_TASK referenced catalog entries\n  - variable_schemas: all variable schemas referenced by variable keys\n  - manifest: { required_roles: string[] } — flat list of distinct ROLE names from all HUMAN_TASK assignee_ref with assignee_type=ROLE across all definitions in the pack\n- Dependencies: PD-09 (process definition export), REPO-07 (service catalog), PLC-01 (module_ref — inline non-exportable modules OR error on blocked export)\n\n## SOL-02 — Solution pack installation\n\nDesign the installation endpoint:\n- HTTP endpoint: `POST /api/v1/tenants/{tenant_id}/solution-packs/install`\n- Input: solution pack JSON body\n- Authorization: PLATFORM_ADMIN or PROCESS_DESIGNER with install rights on target tenant\n- Steps:\n  1. Parse and validate the pack structure\n  2. For each definition in the pack: create as DRAFT (call existing definition creation logic)\n  3. For each service catalog entry: upsert by name — if identical schema exists, reuse; if same name but different schema, reject with HTTP 409 identifying the conflict\n  4. For each variable schema: register or match by name/schema\n  5. Return: { installed_definitions: [], role_mapping_checklist: [{ role_name, bound: bool }] }\n- For role_mapping_checklist: query the target tenant's IDN-05 role registry for each manifest ROLE name\n\n## SOL-03 — Role-mapping gate on activation\n\nDesign the activation gate:\n- Extends `PATCH /api/v1/definitions/{id}/activate` (REPO-08 path)\n- Before activating, if the definition was installed via SOL-02 (track this via a flag or metadata):\n  - Query the manifest roles for this pack\n  - Query IDN-05 registry for each manifest role\n  - If any role has no binding: return HTTP 422 with { unbound_roles: string[] }\n- If all roles are bound: proceed with normal REPO-08 activation\n\n## Design requirements\n- Type-E prose design (no Zig code)\n- Must specify all new DB tables/migrations needed (if any)\n- Must specify all new HTTP routes and their handlers\n- Must cover all ACs for SOL-01, SOL-02, SOL-03\n- Must include an Error taxonomy section\n- Must list files to create and files NOT to change\n- Must include a Data flow diagram section\n\nReference existing patterns:\n- PD-09 for process definition export format\n- ENV-03 (src/definition/promotion.zig) for tenant context patterns\n- REPO-07 for service catalog patterns\n- IDN-05 for role registry patterns",
+    "acceptance_criteria": [
+      "src/design/sol-batch1-solution-pack.md created",
+      "Design covers SOL-01 all ACs (pack structure, export endpoint, role manifest)",
+      "Design covers SOL-02 all ACs (installation, upsert logic, conflict rejection, role checklist)",
+      "Design covers SOL-03 all ACs (activation gate, 422 response, unbound role listing)",
+      "Error taxonomy section present",
+      "Files to create and not-to-change listed",
+      "No Zig code in the document",
+      "python tools/lint_design_artefact.py src/design/sol-batch1-solution-pack.md exits 0"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for sol-batch1-solution-pack — type: E (prose). Covers all ACs for SOL-01/02/03: export endpoint + dependency-closure algorithm, installation transactional pipeline with upsert conflict semantics, SOL-03 activation gate injected into REPO-08, three new migrations (1158/1159/1160), full error taxonomy, files-to-create and files-not-to-change lists. lint_design_artefact.py exits 0.",
+    "artifacts_out": [
+      "src/design/sol-batch1-solution-pack.md"
+    ],
+    "issues": [],
+    "next_action": "After PASS: ORCH dispatches step-01b-code-design-validator. After FAIL: rework."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
