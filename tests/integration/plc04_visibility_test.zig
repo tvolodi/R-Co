@@ -103,7 +103,7 @@ test "TC-PLC-04-01: tenant A's module is invisible to tenant B without a grant" 
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -146,7 +146,7 @@ test "TC-PLC-04-02: grant makes module visible to receiving tenant" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -206,7 +206,7 @@ test "TC-PLC-04-03: grantModuleVisibility creates a share grant row" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -271,7 +271,7 @@ test "TC-PLC-04-04: duplicate grant returns SharingGrantAlreadyExists" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -319,7 +319,7 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -389,7 +389,7 @@ test "TC-PLC-04-06: revokeModuleVisibility returns error for unknown grant" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -406,7 +406,7 @@ test "TC-PLC-04-07: listVisibleModules shows only owned and shared ACTIVE module
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -474,7 +474,7 @@ test "TC-PLC-04-08: grant does not allow B to see A's other modules" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);

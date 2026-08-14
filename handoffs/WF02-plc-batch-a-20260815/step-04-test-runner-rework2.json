@@ -1,0 +1,55 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework2",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "TEST-RUNNER",
+  "agent_name": "BPM Test Runner (TEST-RUNNER)",
+  "step": "04",
+  "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+  "created_at": "2026-08-15T03:37:13Z",
+  "started_at": "2026-08-15T03:37:38Z",
+  "completed_at": "2026-08-14T22:38:38Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "All 4 PLC integration tests fail to compile — 33 total errors. Root cause: makePool(&alloc) passes **Allocator where Allocator expected (all 4 files).",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-15T223838Z-WF02-plc-batch-a-20260815-04-test-runner-rework2.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "plc01_module_catalog_test.zig: 9 errors — makePool(&alloc) expected mem.Allocator, found pointer",
+        "file": "tests/integration/plc01_module_catalog_test.zig",
+        "lines": "108,149,196,219,242,291,333,382"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "plc02_publication_test.zig: 7 errors — makePool(&alloc) expected mem.Allocator, found pointer",
+        "file": "tests/integration/plc02_publication_test.zig",
+        "lines": "101,142,183,219,254,291"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "plc03_compatibility_test.zig: 6 errors — makePool(&alloc) expected mem.Allocator, found pointer",
+        "file": "tests/integration/plc03_compatibility_test.zig",
+        "lines": "101,142,199,253,313"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "plc04_visibility_test.zig: 11 errors — makePool(&alloc) expected mem.Allocator, found pointer",
+        "file": "tests/integration/plc04_visibility_test.zig",
+        "lines": "106,149,209,274,322,392,409,477"
+      }
+    ],
+    "next_action": "ORCH must dispatch BACKEND-DEV to fix makePool(&alloc) → makePool(alloc) in all 4 PLC test files, then redispatch TEST-RUNNER"
+  },
+  "task": {
+    "description": "RETRY 2 — Run PLC-01..04 integration tests. Keycloak was down (now fixed).\n\nBRANCH: feature/WF02-plc-batch-a-20260815\nENV:\n- BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test\n- BPM_TEST_URL=http://127.0.0.1:8080\n- BPM_IDP_BASE_URL=http://localhost:8081\n\nRun: zig build test-integration-plc\nExpected: all 4 PLC tests pass\n\nReturn PASS if tests pass, FAIL with issue list if not.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15",
+  "current_commit": "35145847"
+}

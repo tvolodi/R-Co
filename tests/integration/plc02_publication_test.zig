@@ -98,7 +98,7 @@ test "TC-PLC-02-01: publish succeeds when interface schema declares inputs" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -139,7 +139,7 @@ test "TC-PLC-02-02: publish succeeds when interface schema declares outputs" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -180,7 +180,7 @@ test "TC-PLC-02-03: publish fails when interface schema is empty object" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -216,7 +216,7 @@ test "TC-PLC-02-04: publish fails when interface schema is absent (empty string)
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -251,7 +251,7 @@ test "TC-PLC-02-05: publish fails when module is already ACTIVE" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -288,7 +288,7 @@ test "TC-PLC-02-06: publish fails when module does not exist" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);

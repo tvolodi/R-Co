@@ -105,7 +105,7 @@ test "TC-PLC-01-01: register a new module version in DRAFT status" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -146,7 +146,7 @@ test "TC-PLC-01-02: registerModule rejects duplicate (module_id, version)" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -193,7 +193,7 @@ test "TC-PLC-01-03: registerModule rejects empty module_id" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -216,7 +216,7 @@ test "TC-PLC-01-04: registerModule rejects empty version" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -239,7 +239,7 @@ test "TC-PLC-01-05: resolveModuleRef resolves own tenant's ACTIVE module" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -288,7 +288,7 @@ test "TC-PLC-01-06: resolveModuleRef returns unresolved when no version satisfie
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -330,7 +330,7 @@ test "TC-PLC-01-07: resolveModuleRef prefers highest semver when multiple ACTIVE
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
@@ -379,7 +379,7 @@ test "TC-PLC-01-08: module_id is globally unique (not per-tenant)" {
     defer h.deinit();
 
     var alloc = std.testing.allocator;
-    var pool = try makePool(&alloc);
+    var pool = try makePool(alloc);
     defer pool.deinit();
 
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
