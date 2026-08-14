@@ -1,0 +1,41 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-02b-frontend-dev",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "FRONTEND-DEV",
+  "agent_name": "BPM Frontend Dev (FRONTEND-DEV)",
+  "step": "02b",
+  "created_at": "2026-08-14T20:15:36Z",
+  "started_at": "2026-08-14T20:16:20Z",
+  "completed_at": "2026-08-14T20:25:00Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented PRM-02, PRM-03, PRM-04, PRM-05 UI components: ConflictRejectionAlert, PlanDigestView, PromotionReviewStateMachine, NonSkippableApprovalGate; promotions API client and query key factory; usePromotionContext, useApprovePromotion, useRejectPromotion, useApplyPromotion hooks.",
+    "artifacts_out": [
+      "web/src/api/promotions.ts",
+      "web/src/api/queryKeys.ts",
+      "web/src/hooks/usePromotions.ts",
+      "web/src/components/promotions/ConflictRejectionAlert.tsx",
+      "web/src/components/promotions/PlanDigestView.tsx",
+      "web/src/components/promotions/PromotionReviewStateMachine.tsx",
+      "web/src/components/promotions/NonSkippableApprovalGate.tsx",
+      "web/src/components/promotions/index.ts"
+    ],
+    "issues": []
+  },
+  "task": {
+    "description": "Implement PRM-02, PRM-03, PRM-04, PRM-05 UI components (Stage 16 MUST, VALIDATED) per design artefacts.\n\nBRANCH: feature/WF02-prm-batch2-20260814 (base: origin/main 05be8706)\nDESIGN ARTEFACTS:\n- src/design/prm-02-conflict-preflight-rejection.md\n- src/design/prm-03-plan-digest.md\n- src/design/prm-04-promotion-review-state-machine.md\n- src/design/prm-05-non-skippable-approval-gate.md\n\nEXISTING FRONTEND CODE:\n- web/src/ (React/TypeScript UI components)\n- web/src/api/ (API client)\n\nIMPLEMENTATION TASKS:\n\nPRM-02: Conflict pre-flight rejection UI\n- Display ConflictRejection details when promotion returns HTTP 409 PROMOTION_CONFLICT\n- Show conflicting definitions with source change vs target change\n- Clear error state in promotion workflow UI\n\nPRM-03: Plan digest UI\n- Display plan_digest in promotion review UI\n- Show digest verification status (matched/mismatched)\n- Display the canonical JSON being digested (formatted, human-readable)\n\nPRM-04: Promotion review state machine UI\n- Display promotion_reviews status: pending_review / approved / rejected / applied / failed / superseded\n- Show state machine edges visually (current state highlighted)\n- Display approved_by, approved_at, superseded_by, row_version\n- Show plan_digest and serialised plan\n\nPRM-05: Non-skippable approval gate UI\n- GET /api/v1/promotions/{id}/context \u2192 display NEEDS_REVIEW package, stored plan, plan_digest, artifact assertions\n- Reject/Approve buttons: confirm requested_by != approved_by\n- If self-approval attempt \u2192 show HTTP 403 error inline\n- Apply button disabled unless plan_digest present in context\n- Show HTTP 422 error if extra fields sent on apply\n\nReturn PASS when:\n- TypeScript compiles cleanly (web/ tsc --noEmit)\n- No new lint errors\n- All new components have proper TypeScript types\n- Git status shows all changes on feature branch",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": [
+    "PRM-02",
+    "PRM-03",
+    "PRM-04",
+    "PRM-05"
+  ],
+  "stage": "stage16",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV"
+}
