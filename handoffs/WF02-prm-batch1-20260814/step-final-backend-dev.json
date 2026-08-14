@@ -1,0 +1,48 @@
+{
+  "handoff_id": "wf02-prm-batch1-20260814-final-backend-dev",
+  "run_id": "WF02-prm-batch1-20260814",
+  "workflow_id": "WF-02",
+  "schema_version": 1,
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-prm-batch1-20260814/step-final-backend-dev.json",
+  "created_at": "2026-08-14T03:14:35Z",
+  "started_at": "2026-08-14T03:14:35Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": ["PRM-06", "PRM-07", "PRM-08", "PRM-09"],
+    "related_handoff_ids": [
+      "wf02-prm-batch1-20260814-06-doc-updater"
+    ],
+    "branch_name": "feature/WF02-prm-batch1-20260814",
+    "current_commit": "adb6b5d6"
+  },
+  "task": {
+    "description": "WF-02 Step Final (BACKEND-DEV git-merge) for WF02-prm-batch1-20260814.\n\nExecute fn:git-merge:\n1. Ensure on branch feature/WF02-prm-batch1-20260814 and working tree clean\n2. `git push origin feature/WF02-prm-batch1-20260814` (ensure all changes pushed)\n3. Create PR: `gh pr create --title 'feat(stage16): PRM-06/07/08/09 promotion assertion re-run, sandbox teardown, rollback, pack update (#WF02-prm-batch1)' --body 'Implements PRM-06 (MUST): pre-promotion assertion re-run with idempotency and non-deterministic field stripping. PRM-07 (MUST): sandbox teardown on all exit paths. PRM-08 (SHOULD): definition version rollback. PRM-09 (SHOULD): solution pack update 3-way diff. Closes #239 #240 #241 #242. Release decision: docs/status/release-decision-WF02-prm-batch1-20260814.yaml' --base main`\n4. Squash-merge to main: use `gh pr merge <PR_NUMBER> --squash --auto` or similar\n5. Switch to main, pull\n6. Delete feature branch: `git push origin --delete feature/WF02-prm-batch1-20260814` and `git branch -d feature/WF02-prm-batch1-20260814`\n7. Update task/current.json to release the task lock if it still holds WF02-prm-batch1\n8. `python tools/lint_handoffs.py` — verify exit 0 after final commit\n\nRecord in result: PR_URL, merged_commit_sha, branch deletion status.",
+    "acceptance_criteria": [
+      "PR created and squash-merged to main",
+      "Feature branch deleted from origin and local",
+      "Working tree on main, clean",
+      "lint_handoffs.py exits 0"
+    ]
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-prm-batch1-20260814",
+      "pr_url": null,
+      "merged_commit_sha": null,
+      "push_status": null
+    },
+    "next_action": "After PASS: ORCH marks WF02-prm-batch1-20260814 COMPLETE. PRM-06/07/08/09 RELEASED on main."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
