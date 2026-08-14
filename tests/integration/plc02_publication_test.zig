@@ -42,6 +42,7 @@ fn fillRandom(buf: []u8) void {
 }
 
 fn randomUuid(allocator: std.mem.Allocator) ![16]u8 {
+    _ = allocator;
     var raw: [16]u8 = undefined;
     fillRandom(&raw);
     raw[6] = (raw[6] & 0x0f) | 0x40;
@@ -77,7 +78,7 @@ fn makePool(allocator: std.mem.Allocator) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 3 });
 }
 
-fn insertTenant(conn: *pg.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
+fn insertTenant(conn: *bpm.pool.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
     const id_str = try uuidToString(allocator, tenant_id);
     defer allocator.free(id_str);
     try conn.exec(
@@ -109,7 +110,8 @@ test "TC-PLC-02-01: publish succeeds when interface schema declares inputs" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc2-01");
     }
@@ -150,7 +152,8 @@ test "TC-PLC-02-02: publish succeeds when interface schema declares outputs" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc2-02");
     }
@@ -191,7 +194,8 @@ test "TC-PLC-02-03: publish fails when interface schema is empty object" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc2-03");
     }
@@ -227,7 +231,8 @@ test "TC-PLC-02-04: publish fails when interface schema is absent (empty string)
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc2-04");
     }
@@ -262,7 +267,8 @@ test "TC-PLC-02-05: publish fails when module is already ACTIVE" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc2-05");
     }
@@ -287,7 +293,7 @@ test "TC-PLC-02-06: publish fails when module does not exist" {
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
 
-    var alloc = std.testing.allocator;
+    const alloc = std.testing.allocator;
     var pool = try makePool(alloc);
     defer pool.deinit();
 

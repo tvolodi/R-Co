@@ -42,6 +42,7 @@ fn fillRandom(buf: []u8) void {
 }
 
 fn randomUuid(allocator: std.mem.Allocator) ![16]u8 {
+    _ = allocator;
     var raw: [16]u8 = undefined;
     fillRandom(&raw);
     raw[6] = (raw[6] & 0x0f) | 0x40;
@@ -77,7 +78,7 @@ fn makePool(allocator: std.mem.Allocator) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 3 });
 }
 
-fn insertTenant(conn: *pg.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
+fn insertTenant(conn: *bpm.pool.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
     const id_str = try uuidToString(allocator, tenant_id);
     defer allocator.free(id_str);
     try conn.exec(
@@ -109,7 +110,8 @@ test "TC-PLC-03-01: first publish produces no compatibility warning" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc3-01");
     }
@@ -150,7 +152,8 @@ test "TC-PLC-03-02: publish new version with prior ACTIVE returns compatibility_
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc3-02");
     }
@@ -207,7 +210,8 @@ test "TC-PLC-03-03: compatibility_warning does not block publication" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc3-03");
     }
@@ -261,7 +265,8 @@ test "TC-PLC-03-04: predecessor is immediately prior semver (highest ACTIVE belo
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc3-04");
     }
@@ -321,7 +326,8 @@ test "TC-PLC-03-05: both absent interface schemas produces no warning" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-plc3-05");
     }

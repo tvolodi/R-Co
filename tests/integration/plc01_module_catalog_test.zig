@@ -46,6 +46,7 @@ fn fillRandom(buf: []u8) void {
 }
 
 fn randomUuid(allocator: std.mem.Allocator) ![16]u8 {
+    _ = allocator;
     var raw: [16]u8 = undefined;
     fillRandom(&raw);
     raw[6] = (raw[6] & 0x0f) | 0x40;
@@ -84,7 +85,7 @@ fn makePool(allocator: std.mem.Allocator) !Pool {
 /// Insert a fixture tenant into `public.tenant` via `conn` (committed immediately).
 /// This is needed for foreign-key checks and for pool connections that look up
 /// tenant existence.
-fn insertTenant(conn: *pg.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
+fn insertTenant(conn: *bpm.pool.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
     const id_str = try uuidToString(allocator, tenant_id);
     defer allocator.free(id_str);
     try conn.exec(
@@ -115,7 +116,8 @@ test "TC-PLC-01-01: register a new module version in DRAFT status" {
 
     // Insert the owning tenant via pool connection (committed so catalog sees it).
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-a");
     }
@@ -157,7 +159,8 @@ test "TC-PLC-01-02: registerModule rejects duplicate (module_id, version)" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-dup");
     }
@@ -192,7 +195,7 @@ test "TC-PLC-01-03: registerModule rejects empty module_id" {
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
 
-    var alloc = std.testing.allocator;
+    const alloc = std.testing.allocator;
     var pool = try makePool(alloc);
     defer pool.deinit();
 
@@ -215,7 +218,7 @@ test "TC-PLC-01-04: registerModule rejects empty version" {
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
 
-    var alloc = std.testing.allocator;
+    const alloc = std.testing.allocator;
     var pool = try makePool(alloc);
     defer pool.deinit();
 
@@ -250,7 +253,8 @@ test "TC-PLC-01-05: resolveModuleRef resolves own tenant's ACTIVE module" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-resolve");
     }
@@ -299,7 +303,8 @@ test "TC-PLC-01-06: resolveModuleRef returns unresolved when no version satisfie
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-unres");
     }
@@ -341,7 +346,8 @@ test "TC-PLC-01-07: resolveModuleRef prefers highest semver when multiple ACTIVE
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_uuid, "tenant-semver");
     }
@@ -392,7 +398,8 @@ test "TC-PLC-01-08: module_id is globally unique (not per-tenant)" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-ga");
         try insertTenant(conn, alloc, tenant_b, "tenant-gb");

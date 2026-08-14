@@ -47,6 +47,7 @@ fn fillRandom(buf: []u8) void {
 }
 
 fn randomUuid(allocator: std.mem.Allocator) ![16]u8 {
+    _ = allocator;
     var raw: [16]u8 = undefined;
     fillRandom(&raw);
     raw[6] = (raw[6] & 0x0f) | 0x40;
@@ -82,7 +83,7 @@ fn makePool(allocator: std.mem.Allocator) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 3 });
 }
 
-fn insertTenant(conn: *pg.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
+fn insertTenant(conn: *bpm.pool.Conn, allocator: std.mem.Allocator, tenant_id: [16]u8, label: []const u8) !void {
     const id_str = try uuidToString(allocator, tenant_id);
     defer allocator.free(id_str);
     try conn.exec(
@@ -115,7 +116,8 @@ test "TC-PLC-04-01: tenant A's module is invisible to tenant B without a grant" 
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-plc4-a");
         try insertTenant(conn, alloc, tenant_b, "tenant-plc4-b");
@@ -159,7 +161,8 @@ test "TC-PLC-04-02: grant makes module visible to receiving tenant" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-plc4-ga");
         try insertTenant(conn, alloc, tenant_b, "tenant-plc4-gb");
@@ -219,7 +222,8 @@ test "TC-PLC-04-03: grantModuleVisibility creates a share grant row" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-plc4-03a");
         try insertTenant(conn, alloc, tenant_b, "tenant-plc4-03b");
@@ -245,7 +249,8 @@ test "TC-PLC-04-03: grantModuleVisibility creates a share grant row" {
     try catalog.grantModuleVisibility(alloc, grant);
 
     // Verify grant row exists via direct SQL.
-    const conn = try pool.acquire();
+    var conn = try pool.acquire();
+    _ = &conn;
     defer pool.release(conn);
 
     const id_str = try uuidToString(alloc, tenant_a);
@@ -284,7 +289,8 @@ test "TC-PLC-04-04: duplicate grant returns SharingGrantAlreadyExists" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-plc4-04a");
         try insertTenant(conn, alloc, tenant_b, "tenant-plc4-04b");
@@ -332,7 +338,8 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
     defer alloc.free(module_id);
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-plc4-05a");
         try insertTenant(conn, alloc, tenant_b, "tenant-plc4-05b");
@@ -363,7 +370,7 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
     const recv_str = try uuidToString(alloc, tenant_b);
     defer alloc.free(recv_str);
 
-    var rows = try pool.acquire().?.query(
+    const rows = try pool.acquire().?.query(
         alloc,
         \\SELECT grant_id FROM public.process_module_catalog_share
         \\WHERE granting_tenant_id = $1::uuid AND module_id = $2 AND receiving_tenant_id = $3::uuid
@@ -388,7 +395,7 @@ test "TC-PLC-04-06: revokeModuleVisibility returns error for unknown grant" {
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
 
-    var alloc = std.testing.allocator;
+    const alloc = std.testing.allocator;
     var pool = try makePool(alloc);
     defer pool.deinit();
 
@@ -412,7 +419,7 @@ test "TC-PLC-04-07: listVisibleModules shows only owned and shared ACTIVE module
     const catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid_a = try randomUuid(alloc);
-    const def_uuid_b = try randomUuid(alloc);
+    _ = try randomUuid(alloc);
     const tenant_a = try randomUuid(alloc);
     const tenant_b = try randomUuid(alloc);
     const actor_id = try randomUuid(alloc);
@@ -424,7 +431,8 @@ test "TC-PLC-04-07: listVisibleModules shows only owned and shared ACTIVE module
     }
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-plc4-07a");
         try insertTenant(conn, alloc, tenant_b, "tenant-plc4-07b");
@@ -491,7 +499,8 @@ test "TC-PLC-04-08: grant does not allow B to see A's other modules" {
     }
 
     {
-        const conn = try pool.acquire();
+        var conn = try pool.acquire();
+        _ = &conn;
         defer pool.release(conn);
         try insertTenant(conn, alloc, tenant_a, "tenant-plc4-08a");
         try insertTenant(conn, alloc, tenant_b, "tenant-plc4-08b");
