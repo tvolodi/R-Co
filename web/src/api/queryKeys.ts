@@ -115,4 +115,9 @@ export const queryKeys = {
     status: (id: string) => ['onboarding', 'status', id] as const,
     hostname: (h: string) => ['onboarding', 'hostname', h] as const,
   },
+
+  promotions: {
+    all: ['promotions'] as const,
+    context: (reviewId: string) => [...queryKeys.promotions.all, 'context', reviewId] as const,
+  },
 }
