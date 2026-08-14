@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-14T20:10:22Z'
+last_updated: '2026-08-14T20:29:18Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -2969,22 +2969,22 @@ requirements:
     released_at: '2026-05-29'
     release_run: WF02-f2b-shoulds-20260529
   PLC-01:
-    status: PENDING
+    status: VALIDATED
     stage: 15
     priority: SHOULD
     title: Process module catalog
   PLC-02:
-    status: PENDING
+    status: VALIDATED
     stage: 15
     priority: SHOULD
     title: Catalog entry publication requires a declared interface
   PLC-03:
-    status: PENDING
+    status: VALIDATED
     stage: 15
     priority: SHOULD
     title: Cross-version compatibility check on publish
   PLC-04:
-    status: PENDING
+    status: VALIDATED
     stage: 15
     priority: SHOULD
     title: Cross-tenant module distribution
@@ -3568,12 +3568,12 @@ requirements:
     released_at: '2026-08-14T08:14:08Z'
     note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
   SPC-01:
-    status: PENDING
+    status: VALIDATED
     stage: 15
     priority: SHOULD
     title: Declared input/output contract for SUB_PROCESS nodes
   SPC-02:
-    status: PENDING
+    status: VALIDATED
     stage: 15
     priority: SHOULD
     title: Contract validated at definition-time
@@ -4836,43 +4836,25 @@ requirements:
     - src/api/routes/promotions.zig
     released_at: '2026-08-12T17:00:15Z'
   PRM-02:
-    status: RELEASED
+    status: DRAFT
     stage: '16'
     priority: MUST
     title: Conflict pre-flight rejection
-    implemented_in:
-    - src/promotion/rest_api.zig
-    - src/promotion/assertion_store.zig
-    - migrations/1164_prm02_assertion_rerun.sql
-    released_at: '2026-08-14T20:10:12Z'
   PRM-03:
-    status: RELEASED
+    status: DRAFT
     stage: '16'
     priority: MUST
     title: Plan digest binds approval to a diff
-    implemented_in:
-    - src/promotion/rest_api.zig
-    - src/promotion/sandbox.zig
-    released_at: '2026-08-14T20:10:13Z'
   PRM-04:
-    status: RELEASED
+    status: DRAFT
     stage: '16'
     priority: MUST
     title: Promotion review state machine
-    implemented_in:
-    - src/promotion/rest_api.zig
-    - src/promotion/rollback.zig
-    - migrations/1165_prm04_rollback.sql
-    released_at: '2026-08-14T20:10:15Z'
   PRM-05:
-    status: RELEASED
+    status: DRAFT
     stage: '16'
     priority: MUST
     title: Non-skippable human approval gate
-    implemented_in:
-    - src/promotion/rest_api.zig
-    - src/promotion/conflict_resolver.zig
-    released_at: '2026-08-14T20:10:16Z'
   PRM-06:
     status: RELEASED
     stage: '16'
