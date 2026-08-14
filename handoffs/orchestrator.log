@@ -1596,3 +1596,9 @@
 2026-08-15T01:53:53Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01b-code-design-validator-rework1 | ORCH -> CODE-DESIGN-VALIDATOR | REWORK1
 2026-08-15T01:56:27Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-15T01:56:27Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING
+2026-08-15T03:04:02Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03-test-designer | ORCH -> TEST-DESIGNER | PENDING
+2026-08-15T03:11:53Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING
+2026-08-15T03:14:48Z | INFRA_BLOCK | WF02-plc-batch-a-20260815 | ADHOC-bench-env-20260815b-00-backend-dev | ORCH | BLOCKED -> routing to BACKEND-DEV for service startup
+2026-08-15T03:18:05Z | INFRA_UNBLOCK | WF02-plc-batch-a-20260815 | --- | ORCH | Services healthy -- redispatching TEST-RUNNER Step 04
+2026-08-15T03:18:14Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner | ORCH -> TEST-RUNNER | PENDING
+2026-08-15T03:23:07Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02a-backend-dev-rework1 | ORCH -> BACKEND-DEV | PENDING (rework_count=1/3)

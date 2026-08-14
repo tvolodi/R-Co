@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-15T01:56:27Z",
+  "last_updated": "2026-08-15T03:23:07Z",
   "entries": [
     {
       "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
@@ -30896,6 +30896,77 @@
       "run_id": "WF02-plc-batch-a-20260815",
       "agent_id": "FRONTEND-DEV",
       "step": "02b",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-03-test-designer",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-DESIGNER",
+      "step": "03",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-03b-test-design-validator",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "step": "03b",
+      "status": "COMPLETED",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "ADHOC-bench-env-20260815b-00-backend-dev",
+      "run_id": "ADHOC-bench-env-20260815b",
+      "agent_id": "BACKEND-DEV",
+      "step": "00",
+      "status": "PENDING",
+      "requirements": [],
+      "workflow_ref": "ADHOC-bench-env-20260815b",
+      "stage": null
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-02a-backend-dev-rework1",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "BACKEND-DEV",
+      "step": "02a",
+      "rework_of": "WF02-plc-batch-a-20260815-02a-backend-dev",
       "status": "PENDING",
       "requirements": [
         "PLC-01",

@@ -1844,6 +1844,47 @@ pub fn build(b: *std.Build) void {
     });
     const run_tm_integration_tests = addIntegrationRun(b, tm_integration_tests, migrations_dir, clean_test_db);
 
+    // PLC-01..04: Publication Lifecycle integration tests.
+    const plc01_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/plc01_module_catalog_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_plc01_integration_tests = addIntegrationRun(b, plc01_integration_tests, migrations_dir, clean_test_db);
+
+    const plc02_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/plc02_publication_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_plc02_integration_tests = addIntegrationRun(b, plc02_integration_tests, migrations_dir, clean_test_db);
+
+    const plc03_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/plc03_compatibility_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_plc03_integration_tests = addIntegrationRun(b, plc03_integration_tests, migrations_dir, clean_test_db);
+
+    const plc04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/plc04_visibility_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_plc04_integration_tests = addIntegrationRun(b, plc04_integration_tests, migrations_dir, clean_test_db);
+
     const exp_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/entity_subsystem_test.zig"),
@@ -3252,6 +3293,13 @@ pub fn build(b: *std.Build) void {
     const test_integration_tm_step = b.step("test-integration-tm", "Run TM integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_tm_step.dependOn(&clean_test_db.step);
     test_integration_tm_step.dependOn(&run_tm_integration_tests.step);
+
+    const test_integration_plc_step = b.step("test-integration-plc", "Run PLC-01..04 Publication Lifecycle integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_plc_step.dependOn(&clean_test_db.step);
+    test_integration_plc_step.dependOn(&run_plc01_integration_tests.step);
+    test_integration_plc_step.dependOn(&run_plc02_integration_tests.step);
+    test_integration_plc_step.dependOn(&run_plc03_integration_tests.step);
+    test_integration_plc_step.dependOn(&run_plc04_integration_tests.step);
 
     const test_integration_iss502_step = b.step("test-integration-iss502", "Run ISS-502 SPT cutover integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_iss502_step.dependOn(&clean_test_db.step);

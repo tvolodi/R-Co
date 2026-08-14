@@ -1,0 +1,25 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-03b-test-design-validator",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+  "step": "03b",
+  "created_at": "2026-08-15T03:11:53Z",
+  "started_at": "2026-08-15T03:12:15Z",
+  "completed_at": "2026-08-14T22:13:34Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for PLC-01..04 validated — all [SHOULD] requirements have integration tests with isolated fixtures; lint_test_isolation.py exits 0; no deferred/skipped tests for MUST ACs (N/A: PLC-01..04 are SHOULD).",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER output for PLC-01, PLC-02, PLC-03, PLC-04.\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 0d175a32)\n\nHARD GATE — tests cannot execute until this returns PASS.\n\nCHECKS (all must pass):\n1. Every MUST acceptance criterion has a corresponding integration test\n2. No test marked deferred or skipped for MUST requirements\n3. Fixtures are isolated (no shared state between tests)\n4. Tests are self-sufficient (no external deps beyond test services)\n5. Test isolation lint (python tools/lint_test_isolation.py) exits 0\n\nVALIDATE:\n- tests/specs/plc-01-module-catalog.md + tests/integration/plc01_module_catalog_test.zig\n- tests/specs/plc-02-publication-requires-interface.md + tests/integration/plc02_publication_test.zig\n- tests/specs/plc-03-cross-version-compatibility.md + tests/integration/plc03_compatibility_test.zig\n- tests/specs/plc-04-cross-tenant-distribution.md + tests/integration/plc04_visibility_test.zig\n\nReturn PASS if all gates clear. Return FAIL with issue list if any gate fails.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15"
+}
