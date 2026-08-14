@@ -674,7 +674,7 @@ test "TC-PRM-07-01: a successful assertion run whose sandbox release fails recor
         const conn = try pool.acquire();
         defer pool.release(conn);
         try conn.exec(
-            \\INSERT INTO promotion_assertion_runs
+            \\INSERT INTO public.promotion_assertion_runs
             \\    (tenant_id, review_id, idempotency_key, status, plan_digest,
             \\     assertions_total, assertions_passed, assertions_failed, started_at, completed_at)
             \\VALUES ($1::uuid, $2::uuid, $3, 'passed', $4, 1, 1, 0, NOW(), NOW())
@@ -974,11 +974,13 @@ test "TC-PRM-07-04: reclaimLeakedSandboxes sets reaper_claimed_at on a teardown_
     try insertTestTenant(&pool, tenant_id, tenant_id);
 
     // Insert a teardown_failed row; reaper_claimed_at is NULL (column omitted).
+    // promotion_assertion_runs is platform-wide — the reaper qualifies with
+    // `public.`, so we must do the same here for the rows to be visible.
     {
         const conn = try pool.acquire();
         defer pool.release(conn);
         try conn.exec(
-            \\INSERT INTO promotion_assertion_runs
+            \\INSERT INTO public.promotion_assertion_runs
             \\    (tenant_id, review_id, idempotency_key, status, plan_digest,
             \\     assertions_total, assertions_passed, assertions_failed,
             \\     sandbox_id, teardown_error, started_at, completed_at)
@@ -996,7 +998,7 @@ test "TC-PRM-07-04: reclaimLeakedSandboxes sets reaper_claimed_at on a teardown_
         defer pool.release(conn);
         const row = try conn.queryRow(
             alloc,
-            \\SELECT reaper_claimed_at IS NULL FROM promotion_assertion_runs
+            \\SELECT reaper_claimed_at IS NULL FROM public.promotion_assertion_runs
             \\WHERE tenant_id = $1::uuid AND idempotency_key = $2 LIMIT 1
         ,
             &[_][]const u8{ tenant_id, idem_key },
@@ -1022,7 +1024,7 @@ test "TC-PRM-07-04: reclaimLeakedSandboxes sets reaper_claimed_at on a teardown_
         defer pool.release(conn);
         const row = try conn.queryRow(
             alloc,
-            \\SELECT reaper_claimed_at IS NOT NULL FROM promotion_assertion_runs
+            \\SELECT reaper_claimed_at IS NOT NULL FROM public.promotion_assertion_runs
             \\WHERE tenant_id = $1::uuid AND idempotency_key = $2 LIMIT 1
         ,
             &[_][]const u8{ tenant_id, idem_key },
@@ -1035,4 +1037,3 @@ test "TC-PRM-07-04: reclaimLeakedSandboxes sets reaper_claimed_at on a teardown_
         try testing.expectEqualStrings("t", row.?[0] orelse "f");
     }
 }
-

@@ -41,7 +41,11 @@ pub fn set(tenant_id: []const u8) void {
     }
     // Always clear storage mode resolution when tenant changes
     _storage_mode_resolved = false;
-    @memcpy(_current[0..], tenant_id);
+    // Copy via stack buffer to avoid @memcpy alias panic when the caller
+    // passes the slice returned by `get()` (which aliases _current).
+    var tmp: [36]u8 = undefined;
+    @memcpy(tmp[0..], tenant_id);
+    @memcpy(_current[0..], tmp[0..]);
     _has_value = true;
 }
 

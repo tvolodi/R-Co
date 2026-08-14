@@ -186,22 +186,23 @@ pub const SandboxPool = struct {
         allocator: std.mem.Allocator,
         tenant_id: []const u8,
     ) void {
+        _ = tenant_id; // platform-wide table; not used to switch search_path
+
         var arena = std.heap.ArenaAllocator.init(allocator);
         defer arena.deinit();
         const aa = arena.allocator();
 
-        // Set per-tenant search_path so the query resolves the per-tenant table.
-        const saved_ctx = tenant_context_mod.get();
-        const saved_len = saved_ctx.len;
-        tenant_context_mod.set(tenant_id);
-        defer if (saved_len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
-
         // Phase 1: collect up to 20 leaked run ids and sandbox ids.
+        // promotion_assertion_runs is a platform-wide table — always qualify
+        // with `public.` so the query resolves regardless of the calling
+        // connection's search_path (SCHEMA mode would otherwise route to
+        // tenant_default.promotion_assertion_runs, missing rows written by
+        // LEGACY_RLS callers and vice versa).
         const conn1 = self.pool.acquire() catch return;
         var query_result = conn1.query(
             aa,
             \\SELECT id::text, sandbox_id::text
-            \\  FROM promotion_assertion_runs
+            \\  FROM public.promotion_assertion_runs
             \\ WHERE status = 'teardown_failed'
             \\   AND reaper_claimed_at IS NULL
             \\   AND sandbox_id IS NOT NULL
@@ -222,7 +223,7 @@ pub const SandboxPool = struct {
 
             // schema_name is always derivable from sandbox_id (see claim()).
             const schema_name = std.fmt.allocPrint(aa, "sandbox_{s}", .{sandbox_id}) catch continue;
-            const drop_ddl = std.fmt.allocPrint(aa, "DROP SCHEMA IF EXISTS {s} CASCADE", .{schema_name}) catch continue;
+            const drop_ddl = std.fmt.allocPrint(aa, "DROP SCHEMA IF EXISTS \"{s}\" CASCADE", .{schema_name}) catch continue;
 
             // Use a labeled block so break exits cleanly and defer fires.
             blk: {
@@ -231,15 +232,19 @@ pub const SandboxPool = struct {
 
                 conn2.simpleQuery(drop_ddl) catch break :blk;
 
-                _ = conn2.queryRow(
+                const update_row = conn2.queryRow(
                     aa,
-                    \\UPDATE promotion_assertion_runs
+                    \\UPDATE public.promotion_assertion_runs
                     \\   SET reaper_claimed_at = NOW()
                     \\ WHERE id = $1::uuid
                     \\RETURNING id::text
                 ,
                     &[_][]const u8{run_id},
-                ) catch {};
+                ) catch null;
+                if (update_row) |r| {
+                    for (r) |col| if (col) |v| aa.free(v);
+                    aa.free(r);
+                }
             }
         }
     }

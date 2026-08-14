@@ -320,7 +320,7 @@ pub fn applyPromotionAssertionRerun(
             return AssertionRerunError.OutOfMemory;
         };
 
-        _ = conn.queryRow(
+        const upd_row = conn.queryRow(
             allocator,
             \\UPDATE promotion_assertion_runs SET
             \\    status = $2,
@@ -354,6 +354,10 @@ pub fn applyPromotionAssertionRerun(
                 else => AssertionRerunError.TransactionFailed,
             };
         };
+        if (upd_row) |r| {
+            for (r) |col| if (col) |v| allocator.free(v);
+            allocator.free(r);
+        }
 
         if (failed_json.ptr != @as([]const u8, "[]").ptr) allocator.free(failed_json);
         allocator.free(total_buf);
@@ -613,7 +617,7 @@ fn recordTeardownFailure(
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
 
-    _ = conn.queryRow(
+    const teardown_row = conn.queryRow(
         allocator,
         \\UPDATE promotion_assertion_runs SET
         \\    status = CASE
@@ -626,6 +630,10 @@ fn recordTeardownFailure(
     ,
         &[_][]const u8{ run_id, error_msg },
     ) catch return;
+    if (teardown_row) |r| {
+        for (r) |col| if (col) |v| allocator.free(v);
+        allocator.free(r);
+    }
     // (No PROMOTION_ASSERTION_TEARDOWN_FAILED event is appended here; the
     // caller (the route handler) is responsible for that side-effect after
     // observing the run row's status.)
