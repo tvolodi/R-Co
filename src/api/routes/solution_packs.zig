@@ -124,7 +124,14 @@ pub fn handleInstall(
     const result = store.installPack(allocator, doc_parsed, user_id) catch |err| {
         return switch (err) {
             sol.SolutionPackError.InvalidPackDocument => errorResult(allocator, 422, "INVALID_PACK_DOCUMENT"),
-            sol.SolutionPackError.TenantInactive => errorResult(allocator, 409, "TENANT_INACTIVE"),
+            sol.SolutionPackError.TenantInactive => .{
+                .status_code = 409,
+                .body = std.fmt.allocPrint(
+                    allocator,
+                    "{{\"error\":\"TenantInactive\",\"message\":\"Target tenant is not in ACTIVE status\"}}",
+                    .{},
+                ) catch "{\"error\":\"TenantInactive\"}",
+            },
             sol.SolutionPackError.CatalogConflict => errorResult(allocator, 409, "CATALOG_CONFLICT"),
             sol.SolutionPackError.VariableSchemaConflict => errorResult(allocator, 409, "VARIABLE_SCHEMA_CONFLICT"),
             sol.SolutionPackError.PoolExhausted => errorResult(allocator, 503, "service_unavailable"),

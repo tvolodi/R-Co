@@ -6,6 +6,7 @@ const db = @import("pool");
 const types = @import("types.zig");
 const builder = @import("pack_builder.zig");
 const uuid_util = @import("../util/uuid.zig");
+const tenant_context = @import("tenant_context");
 
 pub const SolutionPackError = types.SolutionPackError;
 pub const SolutionPackDocument = types.SolutionPackDocument;
@@ -297,6 +298,25 @@ pub const SolutionPackStore = struct {
         var arena = std.heap.ArenaAllocator.init(allocator);
         defer arena.deinit();
         const a = arena.allocator();
+
+        // AC5: Reject install when target tenant is not ACTIVE.
+        const tid = tenant_context.get();
+        const tenant_status_row = conn.queryRow(
+            a,
+            \\SELECT status FROM public.tenant WHERE id = $1::uuid LIMIT 1
+        ,
+            &.{tid},
+        ) catch return SolutionPackError.PersistenceFailed;
+        if (tenant_status_row) |tsr| {
+            defer {
+                for (tsr) |c| if (c) |v| a.free(v);
+                a.free(tsr);
+            }
+            const status = tsr[0] orelse "";
+            if (!std.mem.eql(u8, status, "ACTIVE")) return SolutionPackError.TenantInactive;
+        } else {
+            return SolutionPackError.TenantInactive;
+        }
 
         // Idempotency check: (pack_id, pack_version) already installed?
         const exist_row = conn.queryRow(
