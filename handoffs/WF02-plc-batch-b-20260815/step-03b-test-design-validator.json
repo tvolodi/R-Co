@@ -1,0 +1,25 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-03b-test-design-validator",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+  "step": "03b",
+  "created_at": "2026-08-15T17:17:20Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "result": null,
+  "task": {
+    "description": "Validate the TEST-DESIGNER output for SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nARTEFACTS UNDER REVIEW (Step 03, commit 6c3aa6c5):\n- tests/specs/SPC-01.md, tests/specs/SPC-02.md\n- tests/integration/spc01_sub_process_interface_test.zig\n- build.zig wiring (spc01_integration_tests artifact, test-integration-spc01 step)\n\nREQUIREMENTS: SPC-01, SPC-02 (SHOULD, Stage 15, VALIDATED)\n\nCHECKLIST (hard gate):\n1. Every acceptance criterion of SPC-01 (AC1..AC6 + empty-inputs edge) and SPC-02 (AC1..AC2) has an integration test?\n2. No test coverage deferred (no error.SkipZigTest on requirement-covering tests)?\n3. Fixtures isolated (per-test UUID-derived, unconditional defer cleanup)?\n4. Tests self-sufficient (real DB connection, no mocks/fakes that mask behaviour)?\n5. Tests wired into build.zig (reachable from an addTest root, lint_test_wiring passes)?\n\nReturn PASS with summary, or FAIL with specific criteria that failed so TEST-DESIGNER can rework (max 3).",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR"
+}
