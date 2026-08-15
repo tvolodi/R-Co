@@ -46,10 +46,16 @@ CHECKS = [
      re.compile(r"""^\s*import\s+[^;]*\bfrom\s+['"]axios['"]""", re.MULTILINE), "api/client", True),
     ("F020", "BLOCKER", "MSW / mock-service-worker reference",
      ("web/src/**/*.ts", "web/src/**/*.tsx", "web/tests/**/*.ts", "web/package.json"),
-     re.compile(r"\b(msw|mock-service-worker|setupServer)\b"), None, True),
+     re.compile(r"\b(msw|mock-service-worker|setupServer)\b"),
+     # The forbidlist meta-definition file legitimately contains the regex source
+     # for this rule; guardReporter unit tests use pattern names like 'msw-import'
+     # as test data — both must be excluded from scanning to avoid false positives.
+     "forbidlist.ts|guardReporter.test.ts", True),
     ("F020", "BLOCKER", "axios-mock-adapter reference",
      ("web/src/**/*.ts", "web/src/**/*.tsx", "web/tests/**/*.ts", "web/package.json"),
-     re.compile(r"\baxios-mock-adapter\b"), None, True),
+     re.compile(r"\baxios-mock-adapter\b"),
+     # Same exclusion rationale as the MSW rule above.
+     "forbidlist.ts|guardReporter.test.ts", True),
     ("F030", "MAJOR", "inline query key array passed to useQuery/useMutation/useInfiniteQuery",
      ("web/src/**/*.ts", "web/src/**/*.tsx"),
      re.compile(r"use(Query|Mutation|InfiniteQuery)\s*\(\s*\{\s*queryKey\s*:\s*\["), None, True),
@@ -107,10 +113,21 @@ def _line_at(text: str, pos: int) -> str:
 
 
 def run_check(root: Path, report: Report, code, severity, message, globs, regex, ignore_sub, skip_in_comment) -> None:
+    # Compile ignore_sub to a regex once if it looks like a regex pattern
+    # (contains regex metacharacters or alternation). Otherwise treat as a
+    # plain substring match against the path. Keeps existing substring use
+    # (e.g. "api/client") backwards-compatible.
+    ignore_pat: re.Pattern[str] | None = None
+    if ignore_sub:
+        if any(c in ignore_sub for c in r".*+?^$()[]{}|"):
+            ignore_pat = re.compile(ignore_sub)
+        else:
+            ignore_pat = re.compile(re.escape(ignore_sub))
+
     for path in iter_files(root, globs):
         rel = str(path.relative_to(root))
         rel_posix = rel.replace("\\", "/")
-        if ignore_sub and ignore_sub in rel_posix:
+        if ignore_pat and ignore_pat.search(rel_posix):
             continue
         # api/client.ts is allowed to use fetch/axios
         if rel_posix == API_CLIENT_PATH:
