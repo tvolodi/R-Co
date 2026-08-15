@@ -17,7 +17,7 @@
 -- file can also run before PRM-04 in development environments — a NOTICE is
 -- emitted when the FK is omitted and the column stays NOT NULL.
 --
--- Scope: tenant_only.
+-- scope: tenant_only.
 
 CREATE TABLE IF NOT EXISTS promotion_assertion_runs (
     id                    UUID         PRIMARY KEY DEFAULT gen_random_uuid(),

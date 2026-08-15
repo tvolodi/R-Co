@@ -17,7 +17,7 @@
 -- apply pipeline can enforce PRM-09 AC6 (any conflict without a resolution
 -- blocks apply).
 --
--- Scope: public.
+-- scope: public.
 
 CREATE TABLE IF NOT EXISTS solution_pack_installs (
     id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
