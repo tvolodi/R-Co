@@ -20,6 +20,7 @@ import type { DefinitionGraph } from '@/types/api'
 import type { CanvasNodeData, CanvasEdgeData } from '@/utils/canvas/graphToFlow'
 import { graphToFlow } from '@/utils/canvas/graphToFlow'
 import { flowToGraph } from '@/utils/canvas/flowToGraph'
+import { validateSubProcessInterface } from '@/utils/canvas/interfaceValidation'
 import { useCanvasHistoryStore } from '@/stores/canvasHistoryStore'
 import { ConfirmPromoteModal } from '@/components/ui/ConfirmPromoteModal'
 import { QueryStateBoundary } from '@/components/ui/QueryStateBoundary'
@@ -45,6 +46,25 @@ const EMPTY_GRAPH: DefinitionGraph = {
     { id: 'end', node_type: 'END', label: null, attributes: null },
   ],
   edges: [{ id: 'e1', source: 'start', target: 'end' }],
+}
+
+/**
+ * SPC-02 — collect client-side SUB_PROCESS interface validation issues per
+ * node. Returns a map of node id -> combined human-readable message for every
+ * SUB_PROCESS node whose `interface` attribute fails the structural contract
+ * (shape, entry shape, JSON Schema well-formedness, duplicate names). Nodes
+ * without an `interface` are skipped (EXT-05 no-contract path is valid).
+ */
+function collectSubProcessInterfaceErrors(nodes: Node<CanvasNodeData>[]): Map<string, string> {
+  const byNode = new Map<string, string>()
+  for (const node of nodes) {
+    if (node.data.nodeType !== 'SUB_PROCESS') continue
+    const issues = validateSubProcessInterface(node.data.attributes?.interface)
+    if (issues.length > 0) {
+      byNode.set(node.id, issues.map((i) => i.message).join('; '))
+    }
+  }
+  return byNode
 }
 
 // ── Page component ────────────────────────────────────────────────────────────
@@ -258,6 +278,18 @@ export default function DefinitionEditorPage() {
     try {
       const nodes: Node<CanvasNodeData>[] = JSON.parse(state.nodesJSON)
       const edges: Edge<CanvasEdgeData>[] = JSON.parse(state.edgesJSON)
+
+      // SPC-02 / PD-UI-14 — block save until every SUB_PROCESS `interface`
+      // contract is clean. Re-read from the live canvas state (not the
+      // possibly-stale validationErrors render value) so an in-flight edit
+      // cannot slip through to the backend's HTTP 422.
+      const ifaceErrors = collectSubProcessInterfaceErrors(nodes)
+      if (ifaceErrors.size > 0) {
+        const first = [...ifaceErrors.entries()][0]
+        setError(`Fix validation errors before saving: SUB_PROCESS "${first[0]}" interface — ${first[1]}`)
+        return
+      }
+
       const graph = flowToGraph(nodes, edges)
 
       if (isNew) {
@@ -339,6 +371,33 @@ export default function DefinitionEditorPage() {
             })
           }
         }
+      }
+
+      // SPC-02 — client-side SUB_PROCESS interface contract validation
+      // (mirrors the backend 422 rule). Issues are error-severity: they surface
+      // in the validation summary bar (PD-UI-13) and block save (PD-UI-14).
+      const interfaceErrors = collectSubProcessInterfaceErrors(nodes)
+      for (const [nodeId, message] of interfaceErrors) {
+        errors.push({
+          nodeId,
+          message: `SUB_PROCESS "${nodeId}" interface: ${message}`,
+          severity: 'error',
+        })
+      }
+
+      // Surface interface issues inline on the offending nodes (PD-UI-13) via
+      // the dedicated validation trigger. Only dispatch when the computed
+      // error differs from the node's current `validationError`, so the update
+      // loop converges instead of re-dispatching forever.
+      const validationUpdates: Record<string, string | null> = {}
+      for (const node of nodes) {
+        if (node.data.nodeType !== 'SUB_PROCESS') continue
+        const target = interfaceErrors.get(node.id) ?? null
+        const current = (node.data.validationError as string | undefined) ?? null
+        if (target !== current) validationUpdates[node.id] = target
+      }
+      if (Object.keys(validationUpdates).length > 0) {
+        dispatchNodeValidation(validationUpdates)
       }
 
       setValidationErrors(errors)
@@ -429,6 +488,21 @@ export default function DefinitionEditorPage() {
     counter: number
   } | null>(null)
   const nodeUpdateCounterRef = useRef(0)
+
+  // ── Node validation-error trigger (SPC-02 SUB_PROCESS interface) ─────────
+  // Separate from nodeUpdateTrigger so inline validation annotations never
+  // pollute the undo snapshot stack (they are derived, not user actions).
+
+  const [nodeValidationTrigger, setNodeValidationTrigger] = useState<{
+    updates: Record<string, string | null>
+    counter: number
+  } | null>(null)
+  const nodeValidationCounterRef = useRef(0)
+
+  const dispatchNodeValidation = useCallback((updates: Record<string, string | null>) => {
+    nodeValidationCounterRef.current += 1
+    setNodeValidationTrigger({ updates, counter: nodeValidationCounterRef.current })
+  }, [])
 
   // ── Property panel callbacks ────────────────────────────────────────────────
 
@@ -564,7 +638,12 @@ export default function DefinitionEditorPage() {
               <button
                 data-testid="btn-save-definition"
                 onClick={handleSave}
-                disabled={create.isPending}
+                disabled={create.isPending || validationErrors.some((e) => e.severity === 'error')}
+                title={
+                  validationErrors.some((e) => e.severity === 'error')
+                    ? 'Fix validation errors before saving.'
+                    : undefined
+                }
                 style={{
                   ...toolbarButtonStyle('var(--interactive-primary, #228be6)'),
                   color: '#fff',
@@ -746,6 +825,7 @@ export default function DefinitionEditorPage() {
               onSelectedEdgeChange={setSelectedEdgeId}
               paletteAddTrigger={paletteAddTrigger}
               nodeUpdateTrigger={nodeUpdateTrigger}
+              nodeValidationTrigger={nodeValidationTrigger}
               autoLayoutTrigger={autoLayoutTrigger}
               undoTrigger={undoTrigger}
               redoTrigger={redoTrigger}

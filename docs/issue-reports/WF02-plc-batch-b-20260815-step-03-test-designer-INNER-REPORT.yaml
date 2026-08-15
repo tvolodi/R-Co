@@ -1,0 +1,121 @@
+# Inner Report — WF02-plc-batch-b-20260815 Step 03 — TEST-DESIGNER
+
+| Field | Value |
+|---|---|
+| report_id | WF02-plc-batch-b-20260815-step-03-test-designer |
+| agent_id | TEST-DESIGNER |
+| run_id | WF02-plc-batch-b-20260815 |
+| workflow_id | WF-02 (Batch B) |
+| step | 03 (TEST-DESIGNER) |
+| branch | feature/WF02-plc-batch-b-20260815 |
+| handoff_in | handoffs/WF02-plc-batch-b-20260815/step-03-test-designer.json |
+| created_at | 2026-08-15T17:15:43Z |
+| next_action | Route to TEST-DESIGN-VALIDATOR (Step 3b) |
+
+## Summary
+
+TEST-DESIGNER wrote the test specifications and integration test code for
+SPC-01 and SPC-02 (WF-02 Batch B, Stage 15, SHOULD). Two new specs
+(`tests/specs/SPC-01.md`, `tests/specs/SPC-02.md`) and one new integration test
+binary (`tests/integration/spc01_sub_process_interface_test.zig`, 10 test
+blocks) were added. The integration binary is wired into
+`tests/integration/main_test.zig` (the `test-integration-main` aggregate root)
+and into `zig build test-integration` via a dedicated artifact + the
+`test-integration-spc01` narrow step in `build.zig`.
+
+Coverage delivered:
+- SPC-01 AC1 (filtered copy-in, only named vars visible to child), AC2 (missing
+  required input → parent ERROR + `SUB_PROCESS_MISSING_REQUIRED_INPUT`, no
+  child), AC3 (input schema violation → parent ERROR, no orphaned child), AC4
+  (filtered merge-back, unlisted child vars discarded), AC5 (missing required
+  output → parent ERROR, merge not applied), AC6 (no interface → EXT-05 full
+  copy/merge unchanged), plus the empty-inputs edge and the present-but-invalid
+  output edge (output schema violation → parent ERROR, no partial merge).
+- SPC-02 AC1 (definition create with malformed `json_schema` → 422 via
+  `GraphValidationFailed` + `SUB_PROCESS_INTERFACE_SCHEMA_INVALID` naming the
+  node) and AC2 (well-formed interface → create succeeds, interface persisted in
+  the SUB_PROCESS node attributes, verified via `getById`).
+
+Verification (all from this session):
+- `zig build test-integration-spc01` → 10/10 tests passed (real PostgreSQL,
+  `BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test`).
+- `zig build` → 4/4 steps succeeded (build.zig edits compile).
+- `zig build test` → unit suite green (includes the pre-existing SPC-01/02 unit
+  coverage in `src/definition/sub_process_interface.zig`,
+  `src/tools/json_schema.zig`, `tests/unit/graph_node_attributes_test.zig`).
+- `web/src/utils/canvas/interfaceValidation.test.ts` → 31/31 passed (frontend
+  SPC-02 client mirror, from Step 02b).
+- `python tools/lint_test_isolation.py tests/integration` → exit 0, 176 files
+  checked, no isolation issues; the new file individually passes T010/T020/T030.
+- `python tools/lint_test_wiring.py` → PASS, 324/324 test-bearing files
+  reachable (new file reachable via main_test.zig and its own addTest root).
+- `python tools/lint_handoffs.py handoffs/WF02-plc-batch-b-20260815/` → exit 0
+  (0 BLOCKER / 0 MAJOR / 0 MINOR on this run's files; the repo-wide exit 1 is
+  pre-existing historical debt on other runs, not this run).
+
+## Acceptance criteria (from handoff task)
+
+| # | Criterion | Status | Evidence |
+|---|---|---|---|
+| 1 | Integration tests covering SPC-01 AC1..AC6 + empty-inputs edge | MET | 8 runtime test blocks in `tests/integration/spc01_sub_process_interface_test.zig`; `zig build test-integration-spc01` = 10/10 |
+| 2 | Filtered copy-in of named inputs on activation (only named vars visible to child) | MET | `sub_process_declared_inputs_are_filtered_test` asserts child initial map has `customer_id`/`amount`, NOT `secret` |
+| 3 | Missing required input → parent ERROR (EE-10), no child created | MET | `sub_process_missing_required_input_errors_parent_no_child_test` asserts `InstanceInError`, parent `ERROR`, 0 `subprocess_links`, reason `SUB_PROCESS_MISSING_REQUIRED_INPUT` |
+| 4 | Input failing json_schema → parent ERROR, no orphaned child | MET | `sub_process_input_schema_violation_no_orphan_child_test` asserts parent `ERROR`, 0 child, reason `SUB_PROCESS_INPUT_SCHEMA_VIOLATION` |
+| 5 | Filtered merge-back of named outputs on completion; unlisted child vars discarded | MET | `sub_process_declared_outputs_filter_merge_test` asserts parent `COMPLETED` with `order_id`, NOT `internal` |
+| 6 | Missing required output → parent ERROR | MET | `sub_process_missing_required_output_errors_parent_test` asserts parent `ERROR`, no partial merge, reason `SUB_PROCESS_MISSING_REQUIRED_OUTPUT` |
+| 7 | No-interface node → EXT-05 unchanged (full map copy/merge) | MET | `sub_process_no_interface_ext05_unchanged_test` asserts full child copy (`x`, `parent_only`) and full merge (`child_only`); pre-existing ext05 suite unchanged |
+| 8 | Empty-inputs edge | MET | `sub_process_empty_inputs_yields_empty_child_map_test` asserts child initial map `{}` despite non-empty parent |
+| 9 | Definition-time tests for SPC-02 AC1..AC2 | MET | `definition_create_with_bad_interface_returns_422_test` + `definition_interface_persisted_in_node_attributes_test` |
+| 10 | Malformed json_schema in inputs/outputs → HTTP 422 identifying schema + node | MET | Store-level `GraphValidationFailed` + `SUB_PROCESS_INTERFACE_SCHEMA_INVALID` + message names `SUB01` node (store is the delegated path the API maps to 422) |
+| 11 | Well-formed interface → validation passes, interface persisted | MET | `definition_interface_persisted_in_node_attributes_test` re-fetches via `getById` and asserts `interface`/`customer_id`/`order_id` in node attributes |
+| 12 | Backend unit + frontend unit tests wired (lint_test_wiring) | MET | `lint_test_wiring` PASS (324/324 reachable); `zig build test` green; `interfaceValidation.test.ts` 31/31 |
+| 13 | Fixture isolation per tests/integration conventions | MET | Per-test UUID-derived names via `bpm.uuid.generateUuidV4BytesInto`; unconditional `defer cleanupByName`/`defer cleanupInstance`; `lint_test_isolation` exit 0 |
+| 14 | Spec/implementation case-count match | MET | SPC-01.md lists 8 integration cases, SPC-02.md lists 2 integration cases = the 10 test blocks in the new binary; unit cases map to pre-existing unit blocks |
+| 15 | `lint_test_isolation.py tests/integration` exit 0 | MET | exit 0, 176 files checked, no isolation issues |
+| 16 | `lint_handoffs.py` exit 0 (run-scoped) | MET | exit 0 on `handoffs/WF02-plc-batch-b-20260815/` (0 BLOCKER / 0 MAJOR / 0 MINOR) |
+| 17 | Pipeline test responsibility (§11.10) | N/A | SPC-01/02 are runtime + definition-time contract semantics with no user-visible sequential UI journey beyond the existing process-designer flow; no pipeline file exists for this area and no new journey is started by these two requirements (single-requirement addition to a non-journey). The client-side mirror is unit-covered (`interfaceValidation.test.ts`). |
+
+## Files created
+
+- `tests/specs/SPC-01.md`
+- `tests/specs/SPC-02.md`
+- `tests/integration/spc01_sub_process_interface_test.zig`
+- `docs/issue-reports/WF02-plc-batch-b-20260815-step-03-test-designer-INNER-REPORT.yaml`
+
+## Files modified
+
+- `tests/integration/main_test.zig` (import + comptime ref for the new binary)
+- `build.zig` (new `spc01_integration_tests` artifact, `run_spc01_integration_tests`, umbrella `dependOn`, narrow `test-integration-spc01` step)
+- `handoffs/WF02-plc-batch-b-20260815/step-03-test-designer.json` (IN_PROGRESS → COMPLETED)
+- `handoffs/registry.json` (entry status → COMPLETED)
+- `handoffs/orchestrator.log` (append-only completion line)
+
+## Tests run
+
+| Name | Status | Detail |
+|---|---|---|
+| `zig build test-integration-spc01` | pass | 10/10 tests passed (real PostgreSQL) |
+| `zig build` | pass | 4/4 steps succeeded |
+| `zig build test` | pass | full unit suite green (SPC-01/02 unit coverage included) |
+| `npx vitest run src/utils/canvas/interfaceValidation.test.ts` | pass | 31/31 (frontend SPC-02 client mirror) |
+| `python tools/lint_test_isolation.py tests/integration` | pass | exit 0, 176 files, no isolation issues |
+| `python tools/lint_test_wiring.py` | pass | 324/324 reachable, all Run artifacts attached |
+| `python tools/lint_handoffs.py handoffs/WF02-plc-batch-b-20260815/` | pass | exit 0 on this run's files |
+
+## Issues found
+
+- (none BLOCKER / MAJOR / MINOR from this step's work)
+
+## Next steps
+
+- Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b) to gate the specs + test code.
+- After Step 3b PASS, route to TEST-RUNNER (WF-02 Step 4) to execute the full
+  integration suite (including `test-integration-main`, which now aggregates
+  `spc01_sub_process_interface_test.zig`).
+- REQ-ANALYST to confirm design OQ-3 (module_ref vs node interface precedence)
+  and OQ-4 (runtime validation of present outputs) before release validation
+  (SHOULD-priority, non-blocking).
+
+## Blockers
+
+- none

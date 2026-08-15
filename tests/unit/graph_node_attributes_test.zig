@@ -422,6 +422,159 @@ test "TC-PD-05-21: SUB_PROCESS without child_definition_id -> violation" {
     try std.testing.expect(hasCode(result.violations, "SUB_PROCESS_MISSING_CHILD_DEFINITION_ID"));
 }
 
+// ---------------------------------------------------------------------------
+// SPC-02 — SUB_PROCESS `interface` attribute validation (WF02-plc-batch-b)
+// ---------------------------------------------------------------------------
+
+test "TC-PD-05-22: SUB_PROCESS with a well-formed interface -> valid (SPC-02 AC2)" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{
+            .id = "sp1",
+            .node_type = .SUB_PROCESS,
+            .label = null,
+            .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\",\"interface\":{\"inputs\":[{\"name\":\"customer_id\",\"json_schema\":{\"type\":\"string\"},\"required\":true}],\"outputs\":[{\"name\":\"order_id\",\"json_schema\":{\"type\":\"string\"},\"required\":true}]}}",
+        },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
+test "TC-PD-05-23: SUB_PROCESS with a malformed json_schema -> SUB_PROCESS_INTERFACE_SCHEMA_INVALID naming the node (SPC-02 AC1)" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{
+            .id = "sp1",
+            .node_type = .SUB_PROCESS,
+            .label = null,
+            .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\",\"interface\":{\"inputs\":[{\"name\":\"amount\",\"json_schema\":{\"type\":42}}]}}",
+        },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SUB_PROCESS_INTERFACE_SCHEMA_INVALID"));
+    // The message must identify the offending node.
+    try std.testing.expect(std.mem.indexOf(u8, result.violations[0].message, "sp1") != null);
+}
+
+test "TC-PD-05-24: SUB_PROCESS with interface not a JSON object -> SUB_PROCESS_INTERFACE_NOT_OBJECT" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{
+            .id = "sp1",
+            .node_type = .SUB_PROCESS,
+            .label = null,
+            .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\",\"interface\":\"nope\"}",
+        },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SUB_PROCESS_INTERFACE_NOT_OBJECT"));
+}
+
+test "TC-PD-05-25: SUB_PROCESS with duplicate interface names -> SUB_PROCESS_INTERFACE_DUPLICATE_NAME" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{
+            .id = "sp1",
+            .node_type = .SUB_PROCESS,
+            .label = null,
+            .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\",\"interface\":{\"inputs\":[{\"name\":\"a\",\"json_schema\":{}},{\"name\":\"a\",\"json_schema\":{}}]}}",
+        },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SUB_PROCESS_INTERFACE_DUPLICATE_NAME"));
+}
+
+test "TC-PD-05-26: SUB_PROCESS interface reports EVERY offending entry (schema + array shape)" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{
+            .id = "sp1",
+            .node_type = .SUB_PROCESS,
+            .label = null,
+            .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\",\"interface\":{\"inputs\":[{\"name\":\"a\",\"json_schema\":{\"minimum\":\"low\"}}],\"outputs\":42}}",
+        },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SUB_PROCESS_INTERFACE_SCHEMA_INVALID"));
+    try std.testing.expect(hasCode(result.violations, "SUB_PROCESS_INTERFACE_OUTPUTS_NOT_ARRAY"));
+    // Both violations collected — not just the first.
+    try std.testing.expectEqual(@as(usize, 2), result.violations.len);
+}
+
+test "TC-PD-05-27: SUB_PROCESS with interface: null is treated as absent (EXT-05 unchanged)" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{
+            .id = "sp1",
+            .node_type = .SUB_PROCESS,
+            .label = null,
+            .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\",\"interface\":null}",
+        },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
 test "TC-PD-05-11: TIMER with duration_iso8601 = P0D -> valid (zero duration permitted)" {
     const nodes = [_]gm.GraphNode{
         .{ .id = "start", .node_type = .START, .label = null },

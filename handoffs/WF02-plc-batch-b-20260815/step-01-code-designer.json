@@ -1,0 +1,42 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-01-code-designer",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "CODE-DESIGNER",
+  "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+  "step": "01",
+  "created_at": "2026-08-15T15:55:25Z",
+  "started_at": null,
+  "completed_at": "2026-08-15T16:01:04Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Type E prose design for SPC-01 (SUB_PROCESS interface runtime semantics: filtered copy-in on activation, filtered merge-back on completion, EE-10 error transitions) and SPC-02 (definition-time JSON Schema well-formedness validation -> HTTP 422). Single artefact src/design/spc-01-sub-process-interface-contract.md; tools/lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=0).",
+    "artifacts_out": [
+      "src/design/spc-01-sub-process-interface-contract.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "OQ-3 (module_ref + node-level interface precedence) and OQ-4 (runtime enforcement of present output json_schema) recorded as open questions in the design artefact; REQ-ANALYST confirmation recommended before BACKEND-DEV implementation. Design takes explicit, documented decisions for both."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing lint_handoffs.py gate is red on the branch independent of this step: lint on clean committed HEAD reports 10 BLOCKER (H003/H013) + 31 MAJOR (H007/H009) + 1 MINOR (H010) all in historical runs WF02-prm-batch2-20260814, ADHOC-prm-env-20260814, WF02-plc-batch-a-20260815; identical counts before and after this step's changes (verified via git stash). This step's files (handoffs/WF02-plc-batch-b-20260815/step-01-code-designer.json, handoffs/registry.json, handoffs/orchestrator.log, src/design/spc-01-sub-process-interface-contract.md) produce zero new findings. Historical handoff audit debt, not fixed here to preserve the append-only audit trail."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "task": {
+    "description": "Produce a design artefact for SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nREQUIREMENTS:\n- SPC-01 (SHOULD, Stage 15, VALIDATED): Declared input/output contract for SUB_PROCESS nodes\n- SPC-02 (SHOULD, Stage 15, VALIDATED): Contract validated at definition-time\n\nCONTEXT:\n- Both requirements extend EXT-05 (full parent-variable-map copy semantics) and reference EE-09/EE-10 (variable merge / error state), PD-02/PD-05 (definition validation).\n- PLC-01..04 were released in Batch A (PR #787) \u2014 process module catalog. SPC-01/02 are the SUB_PROCESS interface contract layer that the catalog's interface_schema may consume (see PLC-01 AC).\n- The design should cover BOTH backend (Zig runtime semantics for SUB_PROCESS activation + definition-time validation) and, if applicable, any frontend schema-editing surface for the interface object.\n- Write the design artefact to src/design/ following the repo's existing naming convention (e.g. src/design/spc-01-sub-process-interface-contract.md).\n\nDELIVERABLES:\n- Interfaces/types for the `interface` object on SUB_PROCESS nodes (inputs/outputs: {name, json_schema, required})\n- Runtime semantics: filtered variable copy into child (SPC-01), filtered merge back on child completion (SPC-01), EE-10 error transitions for missing/invalid inputs and missing required outputs\n- Definition-time validation (SPC-02): json_schema well-formedness check -> HTTP 422\n- Data-flow diagram (text/ASCII) for SUB_PROCESS activation with a declared interface\n- Cross-reference to PLC-01 interface_schema and how the two fit together\n\nfn: none (prose design, no implementation code)",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER"
+}

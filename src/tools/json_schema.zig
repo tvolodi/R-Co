@@ -354,6 +354,145 @@ fn joinPointer(
 }
 
 // ---------------------------------------------------------------------------
+// SPC-02 — schema-of-schemas well-formedness check
+// ---------------------------------------------------------------------------
+
+/// Maximum nesting depth of `properties`/`items` sub-schemas accepted by
+/// `validateSchemaShape` (SPC-02). Deeper nesting is rejected as malformed —
+/// this bounds recursion and prevents stack exhaustion on adversarial input.
+pub const MAX_SCHEMA_DEPTH: usize = 32;
+
+/// Why a `json_schema` failed the SPC-02 well-formedness rule.
+pub const SchemaShapeError = error{
+    /// `schema` is not a JSON object, or a recognised keyword carries the
+    /// wrong value type (e.g. `type: 42`, `minimum: "low"`, `maxLength: -1`).
+    MalformedSchema,
+    /// `properties`/`items` nesting exceeds `MAX_SCHEMA_DEPTH`.
+    SchemaTooDeep,
+    OutOfMemory,
+};
+
+/// SPC-02 well-formedness rule (see
+/// `src/design/spc-01-sub-process-interface-contract.md`): a `json_schema` is
+/// well-formed iff it is a JSON object whose recognised keywords carry the
+/// correct value type, per the platform's supported keyword set.
+///
+/// - An **empty object** `{}` is a well-formed (fully permissive) schema.
+/// - **Unknown keywords** — including `$ref`, `allOf`/`anyOf`/`oneOf`/`not`,
+///   `patternProperties`, `pattern`, `format`, `dependencies`, `title`,
+///   `description` — are **permitted and inert**. The runtime validator
+///   ignores them, so SPC-02 never rejects a schema the runtime could not
+///   fully honour (matching the documented behaviour of `validate` /
+///   `validateCollect`).
+/// - `properties`/`items` nesting depth is capped at `MAX_SCHEMA_DEPTH`;
+///   deeper nesting is rejected as malformed.
+///
+/// Pure: no I/O. Recursion depth is bounded by the depth cap.
+pub fn validateSchemaShape(
+    allocator: std.mem.Allocator,
+    schema: std.json.Value,
+    depth: usize,
+) SchemaShapeError!void {
+    if (schema != .object) return error.MalformedSchema;
+    if (depth > MAX_SCHEMA_DEPTH) return error.SchemaTooDeep;
+    const s = schema.object;
+
+    // `type`: string in the supported set, or a non-empty array of such strings.
+    if (s.get("type")) |t| {
+        if (!typeKeywordWellFormed(t)) return error.MalformedSchema;
+    }
+
+    // `minimum` / `maximum`: JSON number.
+    if (s.get("minimum")) |v| {
+        if (!isJsonNumber(v)) return error.MalformedSchema;
+    }
+    if (s.get("maximum")) |v| {
+        if (!isJsonNumber(v)) return error.MalformedSchema;
+    }
+
+    // `minLength` / `maxLength`: non-negative JSON integer.
+    if (s.get("minLength")) |v| {
+        if (!isNonNegativeInteger(v)) return error.MalformedSchema;
+    }
+    if (s.get("maxLength")) |v| {
+        if (!isNonNegativeInteger(v)) return error.MalformedSchema;
+    }
+
+    // `enum`: JSON array.
+    if (s.get("enum")) |v| {
+        if (v != .array) return error.MalformedSchema;
+    }
+
+    // `required`: array of non-empty strings.
+    if (s.get("required")) |v| {
+        if (v != .array) return error.MalformedSchema;
+        for (v.array.items) |item| {
+            if (item != .string or item.string.len == 0) return error.MalformedSchema;
+        }
+    }
+
+    // `properties`: object whose values are themselves well-formed schemas.
+    if (s.get("properties")) |v| {
+        if (v != .object) return error.MalformedSchema;
+        var it = v.object.iterator();
+        while (it.next()) |entry| {
+            try validateSchemaShape(allocator, entry.value_ptr.*, depth + 1);
+        }
+    }
+
+    // `items`: a well-formed schema object.
+    if (s.get("items")) |v| {
+        try validateSchemaShape(allocator, v, depth + 1);
+    }
+
+    // `additionalProperties`: JSON boolean (only `false` is enforced at runtime).
+    if (s.get("additionalProperties")) |v| {
+        if (v != .bool) return error.MalformedSchema;
+    }
+}
+
+/// The seven type names the runtime validator can enforce.
+fn isSupportedTypeName(name: []const u8) bool {
+    const names = [_][]const u8{ "string", "number", "integer", "boolean", "object", "array", "null" };
+    for (names) |n| {
+        if (std.mem.eql(u8, name, n)) return true;
+    }
+    return false;
+}
+
+/// `type` keyword is well-formed iff it is a supported type-name string, or a
+/// non-empty array of supported type-name strings.
+fn typeKeywordWellFormed(type_val: std.json.Value) bool {
+    return switch (type_val) {
+        .string => isSupportedTypeName(type_val.string),
+        .array => blk: {
+            if (type_val.array.items.len == 0) break :blk false;
+            for (type_val.array.items) |t| {
+                if (t != .string or !isSupportedTypeName(t.string)) break :blk false;
+            }
+            break :blk true;
+        },
+        else => false,
+    };
+}
+
+/// JSON numbers parse to `.integer`, `.float`, or `.number_string` in this
+/// std.json version — all three are well-formed JSON numbers.
+fn isJsonNumber(v: std.json.Value) bool {
+    return switch (v) {
+        .integer, .float, .number_string => true,
+        else => false,
+    };
+}
+
+fn isNonNegativeInteger(v: std.json.Value) bool {
+    return switch (v) {
+        .integer => |i| i >= 0,
+        else => false,
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
 
@@ -713,4 +852,120 @@ test "validateCollect: the real ENTITY_RECORD_CREATED schema accepts and rejects
     try std.testing.expectEqualStrings("/entity_def_version", bad.violations[2].path);
     try std.testing.expectEqualStrings("minimum", bad.violations[2].constraint);
     try std.testing.expectEqualStrings("0", bad.violations[2].actual);
+}
+
+// ---------------------------------------------------------------------------
+// validateSchemaShape — SPC-02 well-formedness (ISS: SPC-02)
+// ---------------------------------------------------------------------------
+
+/// Parse `schema_text` and run `validateSchemaShape` at depth 0.
+fn shapeOk(schema_text: []const u8) !bool {
+    const parsed = try std.json.parseFromSlice(std.json.Value, talloc, schema_text, .{});
+    defer parsed.deinit();
+    validateSchemaShape(talloc, parsed.value, 0) catch |err| switch (err) {
+        error.OutOfMemory => return error.OutOfMemory,
+        error.MalformedSchema, error.SchemaTooDeep => return false,
+    };
+    return true;
+}
+
+test "SPC-02: empty object is a well-formed (fully permissive) schema" {
+    try std.testing.expect(try shapeOk("{}"));
+}
+
+test "SPC-02: supported keyword set with correct value types is well-formed" {
+    try std.testing.expect(try shapeOk(
+        \\{"type":"object","required":["a"],"properties":{"a":{"type":"integer","minimum":1,"maximum":99}},"additionalProperties":false}
+    ));
+    try std.testing.expect(try shapeOk(
+        \\{"type":"array","items":{"type":"string"},"minLength":0,"maxLength":10}
+    ));
+    // union type array is well-formed
+    try std.testing.expect(try shapeOk("{\"type\":[\"string\",\"null\"]}"));
+    // enum is an array
+    try std.testing.expect(try shapeOk("{\"enum\":[\"a\",1,true,null]}"));
+}
+
+test "SPC-02: non-object schema is malformed" {
+    try std.testing.expect(!(try shapeOk("true")));
+    try std.testing.expect(!(try shapeOk("\"string\"")));
+    try std.testing.expect(!(try shapeOk("42")));
+}
+
+test "SPC-02: recognised keywords with wrong value types are malformed" {
+    // type must be a supported string or array of such strings
+    try std.testing.expect(!(try shapeOk("{\"type\":42}")));
+    try std.testing.expect(!(try shapeOk("{\"type\":\"datetime\"}")));
+    try std.testing.expect(!(try shapeOk("{\"type\":[]}")));
+    try std.testing.expect(!(try shapeOk("{\"type\":[\"string\",42]}")));
+    // minimum/maximum must be numbers
+    try std.testing.expect(!(try shapeOk("{\"minimum\":\"low\"}")));
+    try std.testing.expect(!(try shapeOk("{\"maximum\":true}")));
+    // minLength/maxLength must be non-negative integers
+    try std.testing.expect(!(try shapeOk("{\"minLength\":-1}")));
+    try std.testing.expect(!(try shapeOk("{\"maxLength\":\"five\"}")));
+    // enum must be an array
+    try std.testing.expect(!(try shapeOk("{\"enum\":\"not-array\"}")));
+    // required must be an array of non-empty strings
+    try std.testing.expect(!(try shapeOk("{\"required\":\"a\"}")));
+    try std.testing.expect(!(try shapeOk("{\"required\":[\"\"]}")));
+    try std.testing.expect(!(try shapeOk("{\"required\":[42]}")));
+    // properties must be an object of well-formed schemas
+    try std.testing.expect(!(try shapeOk("{\"properties\":[]}")));
+    try std.testing.expect(!(try shapeOk("{\"properties\":{\"a\":42}}")));
+    // items must be a well-formed schema object
+    try std.testing.expect(!(try shapeOk("{\"items\":42}")));
+    // additionalProperties must be a boolean
+    try std.testing.expect(!(try shapeOk("{\"additionalProperties\":\"false\"}")));
+}
+
+test "SPC-02: unknown keywords are permitted and inert" {
+    try std.testing.expect(try shapeOk(
+        \\{"$ref":"#/defs/x","allOf":[{"type":"string"}],"pattern":"^a","format":"uuid","title":"t","description":"d","dependencies":{"a":["b"]}}
+    ));
+}
+
+test "SPC-02: nested properties/items recurse and validate" {
+    // deep-but-legal nesting is accepted
+    try std.testing.expect(try shapeOk(
+        \\{"type":"object","properties":{"l1":{"type":"object","properties":{"l2":{"type":"object","properties":{"l3":{"type":"string"}}}}}}}
+    ));
+    // a malformed schema nested two levels down is rejected
+    try std.testing.expect(!(try shapeOk(
+        \\{"type":"object","properties":{"l1":{"type":"object","properties":{"l2":{"type":"string","minimum":"bad"}}}}}
+    )));
+}
+
+test "SPC-02: recursion depth beyond 32 levels is rejected as malformed" {
+    // Build `{"type":"object","properties":{"a": <nested> }}` nested `levels`
+    // deep, ending in a plain `{"type":"object"}` leaf. Each level opens two
+    // objects (the level object + its properties object); the leaf is one
+    // object. The close pass appends `}}` per level to match.
+    const deepSchema = struct {
+        fn f(allocator: std.mem.Allocator, levels: usize) ![]const u8 {
+            var buf = std.ArrayList(u8).empty;
+            errdefer buf.deinit(allocator);
+            var i: usize = 0;
+            while (i < levels) : (i += 1) {
+                try buf.appendSlice(allocator, "{\"type\":\"object\",\"properties\":{\"a\":");
+            }
+            try buf.appendSlice(allocator, "{\"type\":\"object\"}");
+            var j: usize = 0;
+            while (j < levels) : (j += 1) {
+                try buf.appendSlice(allocator, "}}");
+            }
+            return buf.toOwnedSlice(allocator);
+        }
+    }.f;
+
+    // At exactly MAX_SCHEMA_DEPTH nested properties.a levels the deepest
+    // schema sits at depth == MAX_SCHEMA_DEPTH, which is still accepted.
+    const at_cap = try deepSchema(talloc, MAX_SCHEMA_DEPTH);
+    defer talloc.free(at_cap);
+    try std.testing.expect(try shapeOk(at_cap));
+
+    // One level beyond the cap is rejected as SchemaTooDeep.
+    const over_cap = try deepSchema(talloc, MAX_SCHEMA_DEPTH + 1);
+    defer talloc.free(over_cap);
+    try std.testing.expect(!(try shapeOk(over_cap)));
 }

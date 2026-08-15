@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import type { CanvasNodeData } from '@/utils/canvas/graphToFlow'
+import { validateSubProcessInterface } from '@/utils/canvas/interfaceValidation'
 
 interface PropertyPanelProps {
   selectedNodeId: string | null
@@ -133,6 +134,77 @@ function NodePropertyContent({
 }: NodePropertyContentProps) {
   const nodeType = nodeData?.nodeType
 
+  // ── SUB_PROCESS interface editor state (SPC-01/SPC-02) ────────────────────
+  // The textarea is the source of truth while the user is typing. It is synced
+  // from the node attributes only when the selection changes (nodeData is a
+  // snapshot taken at click time), so typing never resets the caret/text. A
+  // valid parse round-trips through attributes.interface as an object; invalid
+  // JSON text is stored as a raw string so the editor-page validator can flag
+  // it as `interface` not being a JSON object (SPC-02 NOT_OBJECT rule) and
+  // block save until clean. An empty textarea removes the interface entirely,
+  // preserving the EXT-05 no-contract path.
+  const [interfaceText, setInterfaceText] = useState('')
+
+  useEffect(() => {
+    const iface = nodeData?.attributes?.interface
+    if (iface === undefined || iface === null) {
+      setInterfaceText('')
+    } else if (typeof iface === 'string') {
+      // Raw text persisted from a previous invalid parse — show it as-is.
+      setInterfaceText(iface)
+    } else {
+      try {
+        setInterfaceText(JSON.stringify(iface, null, 2))
+      } catch {
+        setInterfaceText(String(iface))
+      }
+    }
+    // nodeData is a stale snapshot between re-clicks; syncing on the interface
+    // value alone keeps this from overwriting in-progress edits.
+  }, [nodeData?.attributes?.interface])
+
+  const handleInterfaceChange = useCallback(
+    (raw: string) => {
+      setInterfaceText(raw)
+      const attrs = (nodeData?.attributes ?? {}) as Record<string, unknown>
+      const trimmed = raw.trim()
+      if (trimmed === '') {
+        const next = { ...attrs }
+        delete next['interface']
+        onUpdate(nodeId, { attributes: next })
+        return
+      }
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(raw)
+      } catch {
+        // Store the raw text so the validator can surface the malformed state.
+        onUpdate(nodeId, { attributes: { ...attrs, interface: raw } })
+        return
+      }
+      onUpdate(nodeId, { attributes: { ...attrs, interface: parsed } })
+    },
+    [nodeData, nodeId, onUpdate],
+  )
+
+  const interfaceStatus = useMemo(() => {
+    const trimmed = interfaceText.trim()
+    if (trimmed === '') {
+      return { kind: 'empty' as const, message: 'No interface declared — EXT-05 behaviour (full map copy/merge).' }
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(interfaceText)
+    } catch {
+      return { kind: 'error' as const, message: 'Interface is not valid JSON.' }
+    }
+    const issues = validateSubProcessInterface(parsed)
+    if (issues.length > 0) {
+      return { kind: 'error' as const, message: issues[0].message }
+    }
+    return { kind: 'ok' as const, message: 'Interface is a well-formed JSON Schema contract.' }
+  }, [interfaceText])
+
   function renderTypeSpecificFields() {
     switch (nodeType) {
       case 'HUMAN_TASK':
@@ -214,8 +286,53 @@ function NodePropertyContent({
             </Field>
           </>
         )
+      case 'SUB_PROCESS':
+        return (
+          <>
+            <Field label="Interface (inputs/outputs contract)">
+              <textarea
+                data-testid="prop-sub-process-interface"
+                value={interfaceText}
+                onChange={(e) => handleInterfaceChange(e.target.value)}
+                disabled={isReadOnly}
+                placeholder={'{\n  "inputs": [\n    { "name": "customer_id", "json_schema": { "type": "string" }, "required": true }\n  ],\n  "outputs": []\n}'}
+                rows={8}
+                spellCheck={false}
+                aria-describedby="prop-sub-process-interface-status"
+                style={{
+                  ...inputStyle(isReadOnly),
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: 'var(--text-xs, 0.75rem)',
+                  whiteSpace: 'pre',
+                  resize: 'vertical',
+                }}
+              />
+            </Field>
+            <div
+              id="prop-sub-process-interface-status"
+              data-testid="prop-sub-process-interface-status"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 'var(--text-xs, 0.75rem)',
+                color:
+                  interfaceStatus.kind === 'error'
+                    ? 'var(--color-error-dark, #c92a2a)'
+                    : interfaceStatus.kind === 'ok'
+                      ? 'var(--color-success-dark, #2f9e44)'
+                      : 'var(--text-secondary, #6c757d)',
+              }}
+            >
+              <span aria-hidden="true">
+                {interfaceStatus.kind === 'error' ? '✗' : interfaceStatus.kind === 'ok' ? '✓' : '·'}
+              </span>
+              <span>{interfaceStatus.message}</span>
+            </div>
+          </>
+        )
       default:
-        // START, END, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY, SUB_PROCESS — no type-specific fields
+        // START, END, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY — no type-specific fields
         return null
     }
   }

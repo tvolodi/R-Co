@@ -1,0 +1,31 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-02c-security-reviewer",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "SECURITY-REVIEWER",
+  "agent_name": "BPM Security Reviewer (SECURITY-REVIEWER)",
+  "step": "02c",
+  "created_at": "2026-08-15T17:01:34Z",
+  "started_at": null,
+  "completed_at": "2026-08-15T17:03:29Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Security review for SPC-01/SPC-02 (commits b0f87569 backend, 515ade7c frontend). INV-1 APPLIES/PASS: no new tables/migrations (diff touches no migrations/), lint_migration_schema 0 violations, lint_sql_table_refs OK, variable-map copy-in/merge-back stays within the tenant-scoped instance's own variable map. INV-2 N/A (no new API routes/response structs - SPC-02 422 raised via existing checkSubProcess graph-violation path). INV-3 N/A (no Lua/Wasm host-API changes). INV-4 PASS: no secret material handled; the word \"secret\" in sub_process_interface.zig is unit-test data asserting filtered copy-in excludes it. INV-5 N/A (no new lookup-by-ID handlers). INV-7 PASS: lint_sql_param_types 0 violations, no new SQL string interpolation. INV-8 PASS: no catch unreachable in diff. INV-6 satisfied by this handoff.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  },
+  "task": {
+    "description": "Security review gate for SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nCHANGES UNDER REVIEW (Steps 02a + 02b):\nBACKEND (commit b0f87569):\n- src/definition/sub_process_interface.zig (new) — interface data model + SPC-01 runtime helpers\n- src/tools/json_schema.zig — added validateSchemaShape (SPC-02 well-formedness)\n- src/definition/graph.zig — SPC-02 hook in checkSubProcess (HTTP 422)\n- src/engine/instance.zig — SPC-01 activation/completion wiring (filtered variable copy-in/merge-back, EE-10 error transitions)\n- build.zig — json_schema import + test root\n\nFRONTEND (commit 515ade7c):\n- web/src/types/api.ts — SubProcessInterface types\n- web/src/utils/canvas/interfaceValidation.ts (new) — client-side SPC-02 validation mirror\n- web/src/components/canvas/PropertyPanel.tsx — SUB_PROCESS Interface editor\n- web/src/components/canvas/ProcessCanvas.tsx, web/src/pages/definitions/DefinitionEditorPage.tsx — validation wiring\n\nREVIEW AGAINST THE NUMBERED SECURITY INVARIANTS (docs/agents/instructions/security-invariants.md):\n1. Does this change touch tenant data paths, secrets, or sandbox host functions?\n2. Variable maps are tenant-scoped data — verify the filtered copy-in/merge-back does not introduce cross-tenant leakage or privilege escalation.\n3. Verify the JSON Schema validation (SPC-02) has no injection/DoS surface (recursion depth cap, size bounds).\n4. Confirm no tenant-isolation or RLS regression.\n\nIf the diff is out-of-scope for the security invariants, return automatic PASS.\n\nfn: none",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER"
+}

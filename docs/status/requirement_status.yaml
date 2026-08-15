@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-15T05:59:46Z'
+last_updated: '2026-08-15T17:40:11Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -3597,15 +3597,40 @@ requirements:
     released_at: '2026-08-14T08:14:08Z'
     note: 'Released via WF02-sol-batch1-20260814 (PR #783, commit 99ad43db)'
   SPC-01:
-    status: VALIDATED
+    status: RELEASED
     stage: 15
     priority: SHOULD
     title: Declared input/output contract for SUB_PROCESS nodes
+    implemented_in:
+    - src/definition/sub_process_interface.zig
+    - src/engine/instance.zig
+    - src/definition/graph.zig
+    - src/tools/json_schema.zig
+    - build.zig
+    - tests/unit/graph_node_attributes_test.zig
+    - tests/integration/spc01_sub_process_interface_test.zig
+    - tests/specs/SPC-01.md
+    released_at: '2026-08-15T17:40:01Z'
+    note: Released via WF02-plc-batch-b-20260815 (commit b0f87569). RELEASED in stage 15 (SPC-01).
   SPC-02:
-    status: VALIDATED
+    status: RELEASED
     stage: 15
     priority: SHOULD
     title: Contract validated at definition-time
+    implemented_in:
+    - src/definition/sub_process_interface.zig
+    - src/tools/json_schema.zig
+    - src/definition/graph.zig
+    - web/src/components/canvas/PropertyPanel.tsx
+    - web/src/components/canvas/ProcessCanvas.tsx
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
+    - web/src/types/api.ts
+    - web/src/utils/canvas/interfaceValidation.ts
+    - web/src/utils/canvas/interfaceValidation.test.ts
+    - tests/specs/SPC-02.md
+    - tests/integration/spc01_sub_process_interface_test.zig
+    released_at: '2026-08-15T17:40:06Z'
+    note: Released via WF02-plc-batch-b-20260815 (commit b0f87569). RELEASED in stage 15 (SPC-02).
   SPT-01:
     status: RELEASED
     stage: Schema-Per-Tenant Migration

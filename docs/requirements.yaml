@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-15T05:59:39Z'
+generated_at: '2026-08-15T17:40:06Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -8608,7 +8608,7 @@ requirements:
     title: Declared input/output contract for SUB_PROCESS nodes
     stage: 15
     priority: SHOULD
-    status: VALIDATED
+    status: RELEASED
     body: |-
       > **Extends:** EXT-05. **Preserves:** existing SUB_PROCESS behaviour (full parent variable map copied to child; full child variable map merged back) for any node that omits the contract — fully backward compatible.
 
@@ -8631,13 +8631,24 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
-    last_updated: '2026-08-14T20:29:13Z'
+    last_updated: '2026-08-15T17:40:01Z'
+    note: Released via WF02-plc-batch-b-20260815 (commit b0f87569). RELEASED in stage 15 (SPC-01).
+    implemented_in:
+    - src/definition/sub_process_interface.zig
+    - src/engine/instance.zig
+    - src/definition/graph.zig
+    - src/tools/json_schema.zig
+    - build.zig
+    - tests/unit/graph_node_attributes_test.zig
+    - tests/integration/spc01_sub_process_interface_test.zig
+    - tests/specs/SPC-01.md
+    released_at: '2026-08-15T17:40:01Z'
   SPC-02:
     id: SPC-02
     title: Contract validated at definition-time
     stage: 15
     priority: SHOULD
-    status: VALIDATED
+    status: RELEASED
     body: |-
       > On creation or update of a definition containing a SUB_PROCESS node with a declared `interface`, the platform SHALL validate that every `json_schema` under `inputs`/`outputs` is itself a well-formed JSON Schema, rejecting the definition with HTTP 422 otherwise. The platform does not validate at this point that the referenced child definition actually produces the declared outputs — parent and child may be authored and versioned independently; that cross-definition check is addressed by PLC-03.
 
@@ -8654,7 +8665,21 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
-    last_updated: '2026-08-14T20:29:13Z'
+    last_updated: '2026-08-15T17:40:06Z'
+    note: Released via WF02-plc-batch-b-20260815 (commit b0f87569). RELEASED in stage 15 (SPC-02).
+    implemented_in:
+    - src/definition/sub_process_interface.zig
+    - src/tools/json_schema.zig
+    - src/definition/graph.zig
+    - web/src/components/canvas/PropertyPanel.tsx
+    - web/src/components/canvas/ProcessCanvas.tsx
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
+    - web/src/types/api.ts
+    - web/src/utils/canvas/interfaceValidation.ts
+    - web/src/utils/canvas/interfaceValidation.test.ts
+    - tests/specs/SPC-02.md
+    - tests/integration/spc01_sub_process_interface_test.zig
+    released_at: '2026-08-15T17:40:06Z'
   SPT-01:
     id: SPT-01
     title: Schema-per-tenant provisioning infrastructure

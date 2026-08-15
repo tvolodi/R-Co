@@ -1,0 +1,44 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-03b-test-design-validator",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+  "step": "03b",
+  "created_at": "2026-08-15T17:17:20Z",
+  "started_at": null,
+  "completed_at": "2026-08-15T17:22:11Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "SPC-01/SPC-02 test design validated (WF-02 Batch B Step 03b). All acceptance criteria have implemented integration tests: SPC-01 AC1..AC6 + empty-inputs and output-schema-violation edges, and SPC-02 AC1..AC2 (10/10 integration cases in tests/integration/spc01_sub_process_interface_test.zig; spec case count == implemented test count). No deferred/skipped coverage: the only error.SkipZigTest is an unreachable branch in testDbUrl() because TestHarness.init() fails loudly with MissingTestDatabaseUrl when BPM_TEST_DB_URL is absent (empirically confirmed fail-loudly, not silent skip). Fixtures isolated: per-test CSPRNG UUID-derived definition names, unconditional defer cleanupByName/cleanupInstance, rollback-on-deinit harness, parameterised SQL, no hardcoded creds/URLs. Self-sufficient: real PostgreSQL via BPM_TEST_DB_URL, real DefinitionStore/InstanceStore/engine, no mocks. Wiring verified: spc01_integration_tests addTest root, run step attached to test-integration-spc01 and test_integration_others_step, reachable from tests/integration/main_test.zig, lint_test_wiring.py PASS (exit 0). Bonus: executed `zig build test-integration-spc01` against real Postgres (port 5434) and all 10/10 integration tests passed.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "tests/specs/SPC-01.md 'Runnable file mapping' lists test names (e.g. sub_process_declared_inputs_are_filtered_test) that do not match the actual test block names in tests/integration/spc01_sub_process_interface_test.zig (which use descriptive 'SPC-01 AC1: ...' titles). Case count and AC coverage map 1:1, but the mapping text is inaccurate for traceability."
+      },
+      {
+        "severity": "MINOR",
+        "description": "testDbUrl() in tests/integration/spc01_sub_process_interface_test.zig returns error.SkipZigTest on missing BPM_TEST_DB_URL, but this branch is unreachable because TestHarness.init() (called first in every test) fails loudly with MissingTestDatabaseUrl. Dead-code/latent-trap; matches repo convention (ext05 uses same pattern) but worth cleaning up."
+      },
+      {
+        "severity": "MINOR",
+        "description": "No e2e pipeline file under web/tests/e2e/pipelines/ references SPC-01/SPC-02. Not blocking: SPC-01/SPC-02 are SHOULD (not MUST) backend requirements, so pipeline criterion (6) does not trigger; noted for ORCH/TEST-RUNNER visibility regarding the SUB_PROCESS interface editor UI delivered in Step 02b."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "task": {
+    "description": "Validate the TEST-DESIGNER output for SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nARTEFACTS UNDER REVIEW (Step 03, commit 6c3aa6c5):\n- tests/specs/SPC-01.md, tests/specs/SPC-02.md\n- tests/integration/spc01_sub_process_interface_test.zig\n- build.zig wiring (spc01_integration_tests artifact, test-integration-spc01 step)\n\nREQUIREMENTS: SPC-01, SPC-02 (SHOULD, Stage 15, VALIDATED)\n\nCHECKLIST (hard gate):\n1. Every acceptance criterion of SPC-01 (AC1..AC6 + empty-inputs edge) and SPC-02 (AC1..AC2) has an integration test?\n2. No test coverage deferred (no error.SkipZigTest on requirement-covering tests)?\n3. Fixtures isolated (per-test UUID-derived, unconditional defer cleanup)?\n4. Tests self-sufficient (real DB connection, no mocks/fakes that mask behaviour)?\n5. Tests wired into build.zig (reachable from an addTest root, lint_test_wiring passes)?\n\nReturn PASS with summary, or FAIL with specific criteria that failed so TEST-DESIGNER can rework (max 3).",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR"
+}

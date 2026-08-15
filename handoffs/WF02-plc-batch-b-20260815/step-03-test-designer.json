@@ -1,0 +1,35 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-03-test-designer",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "TEST-DESIGNER",
+  "agent_name": "BPM Test Designer (TEST-DESIGNER)",
+  "step": "03",
+  "created_at": "2026-08-15T17:04:05Z",
+  "started_at": null,
+  "completed_at": "2026-08-15T17:15:43Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs (tests/specs/SPC-01.md, SPC-02.md) and integration test code (tests/integration/spc01_sub_process_interface_test.zig, 10 test blocks) for SPC-01 AC1..AC6 + empty-inputs edge and SPC-02 AC1..AC2. All 10 integration tests pass against real PostgreSQL; unit + frontend wiring verified; lint gates green.",
+    "artifacts_out": [
+      "tests/specs/SPC-01.md",
+      "tests/specs/SPC-02.md",
+      "tests/integration/spc01_sub_process_interface_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "task": {
+    "description": "Write test specifications and test code for SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nDESIGN: src/design/spc-01-sub-process-interface-contract.md (PASSED Step 01b gate)\n\nREQUIREMENTS (both SHOULD, Stage 15, VALIDATED):\n- SPC-01: Declared input/output contract for SUB_PROCESS nodes\n- SPC-02: Contract validated at definition-time\n\nIMPLEMENTATION ALREADY IN PLACE (Steps 02a/02b):\n- Backend: src/definition/sub_process_interface.zig (21 unit tests), src/tools/json_schema.zig (validateSchemaShape + 7 tests), src/definition/graph.zig (checkSubProcess SPC-02 hook), src/engine/instance.zig (activation/completion wiring), tests/unit/graph_node_attributes_test.zig (6 tests)\n- Frontend: web/src/utils/canvas/interfaceValidation.ts + 31 unit tests, PropertyPanel.tsx interface editor, ProcessCanvas.tsx + DefinitionEditorPage.tsx wiring\n\nTEST SCOPE (write test specs to tests/specs/ and any needed test source):\n1. Integration tests covering SPC-01 AC1..AC6 + empty-inputs edge:\n   - filtered copy-in of named inputs on activation (only named vars visible to child)\n   - missing required input -> parent ERROR (EE-10), no child created\n   - input failing json_schema -> parent ERROR, no orphaned child\n   - filtered merge-back of named outputs on completion; unlisted child vars discarded\n   - missing required output -> parent ERROR\n   - no-interface node -> EXT-05 unchanged (full map copy/merge)\n2. Definition-time tests for SPC-02 AC1..AC2:\n   - malformed json_schema in inputs/outputs -> HTTP 422 identifying schema + node\n   - well-formed interface -> validation passes, interface persisted\n3. Note: backend unit tests + frontend unit tests already exist; verify they are wired (lint_test_wiring) and add any missing integration-level coverage.\n\nFixtures must be isolated per tests/integration conventions.\n\nfn: none",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER"
+}

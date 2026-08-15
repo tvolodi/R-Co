@@ -86,6 +86,8 @@ interface ProcessCanvasProps {
   paletteAddTrigger?: { counter: number; nodeType: string }
   /** External node update trigger: from PropertyPanel */
   nodeUpdateTrigger?: { nodeId: string; data: Partial<CanvasNodeData>; counter: number } | null
+  /** External node validation-error trigger: nodeId -> validationError (or null to clear) */
+  nodeValidationTrigger?: { updates: Record<string, string | null>; counter: number } | null
   /** External auto-layout trigger: apply Dagre layout to all nodes */
   autoLayoutTrigger?: { counter: number }
   /** External undo/redo trigger */
@@ -107,6 +109,7 @@ export default function ProcessCanvas({
   onSelectedEdgeChange,
   paletteAddTrigger,
   nodeUpdateTrigger,
+  nodeValidationTrigger,
   autoLayoutTrigger,
   undoTrigger,
   redoTrigger,
@@ -303,6 +306,7 @@ export default function ProcessCanvas({
 
   const prevCounterRef = useRef(0)
   const prevUpdateCounterRef = useRef(0)
+  const prevValidationCounterRef = useRef(0)
   const lastSnapshottedNodeRef = useRef<string | null>(null)
 
   // Handle node data updates from PropertyPanel
@@ -327,6 +331,26 @@ export default function ProcessCanvas({
       ),
     )
   }, [nodeUpdateTrigger, isReadOnly, setNodes, takeSnapshot])
+
+  // Apply client-side SPC-02 interface validation errors inline on SUB_PROCESS
+  // nodes. This is a derived, non-undoable annotation: it only touches
+  // `data.validationError` (never persisted by flowToGraph) and intentionally
+  // takes no undo snapshot. The parent dispatches only when the computed
+  // errors differ from the nodes' current `validationError`, so this effect
+  // does not re-dispatch itself.
+  useEffect(() => {
+    if (!nodeValidationTrigger || nodeValidationTrigger.counter === prevValidationCounterRef.current) return
+    prevValidationCounterRef.current = nodeValidationTrigger.counter
+    const updates = nodeValidationTrigger.updates
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.data.nodeType !== 'SUB_PROCESS') return n
+        if (!(n.id in updates)) return n
+        const err = updates[n.id]
+        return { ...n, data: { ...n.data, validationError: err ?? undefined } }
+      }),
+    )
+  }, [nodeValidationTrigger, setNodes])
   useEffect(() => {
     if (!paletteAddTrigger || paletteAddTrigger.counter === prevCounterRef.current) return
     prevCounterRef.current = paletteAddTrigger.counter
