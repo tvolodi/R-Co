@@ -92,6 +92,12 @@ TABLES = [
     "audit_entries",
     "dead_letter_items",
     "webhook_subscriptions",
+    # PLC-01..04 cross-tenant catalog (WF02-plc-batch-a-20260815): cleanup so
+    # retry runs start from a known-empty catalog. Without this, sqlstate=23505
+    # unique_violation on (module_id) fires on every retry because module_id
+    # is globally unique and tests reuse the prior run's data.
+    "process_module_catalog_share",
+    "process_module_catalog",
 ]
 
 # Mandatory system roles seeded across identity migrations. Integration cleanup

@@ -130,6 +130,7 @@ test "TC-PLC-01-01: register a new module version in DRAFT status" {
         .interface_schema_json = "{}",
         .exportable = true,
     };
+    defer alloc.free(params.module_id);
 
     const entry = try catalog.registerModule(alloc, params);
     defer {
@@ -233,6 +234,7 @@ test "TC-PLC-01-04: registerModule rejects empty version" {
         .interface_schema_json = "{}",
         .exportable = true,
     };
+    defer alloc.free(params.module_id);
 
     const result = catalog.registerModule(alloc, params);
     try std.testing.expectError(bpm.process_module_catalog.ModuleCatalogError.InvalidVersionConstraint, result);
@@ -317,7 +319,12 @@ test "TC-PLC-01-06: resolveModuleRef returns unresolved when no version satisfie
         .version = "1.0.0",
         .owning_tenant_id = tenant_uuid,
         .owning_definition_id = def_uuid,
-        .interface_schema_json = "{}",
+        // TC-PLC-01-06: a version that no constraint can satisfy. Per PLC-02
+        // (publishModule), "{}" is not a declared interface — must have at
+        // least one of inputs/outputs to publish. Use a valid empty-inputs
+        // schema so the module can be published; the assertion below only
+        // cares about constraint non-satisfaction, not the schema shape.
+        .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
     const reg_entry = try catalog.registerModule(alloc, params);
@@ -357,7 +364,9 @@ test "TC-PLC-01-07: resolveModuleRef prefers highest semver when multiple ACTIVE
         try insertTenant(conn, alloc, tenant_uuid, "tenant-semver");
     }
 
-    // Register three versions.
+    // TC-PLC-01-07: per PLC-01 spec, module_id is unique per publishing tenant,
+    // so multiple ACTIVE versions of the same module_id may coexist. This
+    // migration (1162) relaxed the (incorrect) global uniqueness constraint.
     inline for (&.{ "1.0.0", "1.1.0", "2.0.0" }) |ver| {
         const p = RegisterModuleParams{
             .module_id = module_id,

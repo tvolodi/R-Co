@@ -159,7 +159,16 @@ pub const ProcessModuleCatalog = struct {
 
         const tenant_hex = try uuidToHex(a, params.owning_tenant_id);
         const def_hex = try uuidToHex(a, params.owning_definition_id);
-        const schema_json = params.interface_schema_json;
+        // TC-PLC-02-04 (rework 4): an empty interface_schema_json ("") is
+        // legal at registration time — the JSONB column would otherwise reject
+        // it with sqlstate 22P02 BEFORE publish-time validation can fire.
+        // Coerce "" -> "{}" here so publishModule's InterfaceNotDeclared gate
+        // gets to make the actual decision. The empty-string check lives in
+        // interfaceDeclared(); non-empty but unparseable JSON still hits 22P02.
+        const schema_json: []const u8 = if (params.interface_schema_json.len == 0)
+            "{}"
+        else
+            params.interface_schema_json;
         const exportable_str: []const u8 = if (params.exportable) "t" else "f";
 
         const rows = conn.query(
@@ -453,9 +462,10 @@ pub const ProcessModuleCatalog = struct {
                 break :blk conn.query(
                     allocator,
                     base_sql ++
-                    \\WHERE pmc.module_id || '/' || pmc.version > $2
-                    \\ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
-                    \\LIMIT $3
+                    \\
+                    \\ WHERE pmc.module_id || '/' || pmc.version > $2
+                    \\ ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
+                    \\ LIMIT $3
                 ,
                     &.{ tid_hex, cursor, lim_str },
                 ) catch return ModuleCatalogError.TransactionFailed;
@@ -463,8 +473,9 @@ pub const ProcessModuleCatalog = struct {
                 break :blk conn.query(
                     allocator,
                     base_sql ++
-                    \\ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
-                    \\LIMIT $2
+                    \\
+                    \\ ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
+                    \\ LIMIT $2
                 ,
                     &.{ tid_hex, lim_str },
                 ) catch return ModuleCatalogError.TransactionFailed;

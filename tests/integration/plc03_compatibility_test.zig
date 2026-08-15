@@ -347,7 +347,13 @@ test "TC-PLC-03-05: both absent interface schemas produces no warning" {
         .version = "1.0.0",
         .owning_tenant_id = tenant_uuid,
         .owning_definition_id = def_uuid,
-        .interface_schema_json = "{}",
+        // Per PLC-02: a published module must have a declared interface
+        // (at least one of "inputs"/"outputs"). The intent of TC-PLC-03-05
+        // is to verify "no breaking changes" — both 1.0.0 and 1.1.0 have
+        // identical empty-input schemas, so the compatibility warning must
+        // be null. Use `{"inputs": []}` for both versions to satisfy the
+        // publish gate while keeping the schemas identical.
+        .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
     const reg_e1 = try catalog.registerModule(alloc, p1);
@@ -360,7 +366,7 @@ test "TC-PLC-03-05: both absent interface schemas produces no warning" {
         .version = "1.1.0",
         .owning_tenant_id = tenant_uuid,
         .owning_definition_id = def_uuid,
-        .interface_schema_json = "{}",
+        .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
     const reg_e2 = try catalog.registerModule(alloc, p2);

@@ -382,16 +382,27 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
 
     var conn = try pool.acquire();
     defer pool.release(conn);
-    const rows = try conn.query(
+    var rows = try conn.query(
         alloc,
         \\SELECT grant_id FROM public.process_module_catalog_share
         \\WHERE granting_tenant_id = $1::uuid AND module_id = $2 AND receiving_tenant_id = $3::uuid
     ,
         &.{ id_str, module_id, recv_str },
     );
+    defer rows.deinit();
+    // Postgres returns UUIDs in canonical 8-4-4-4-12 dashed form (36 chars),
+    // not 32-char hex — strip the dashes before decoding.
     const grant_id_row = rows.rows[0][0].?;
+    var grant_id_hex_no_dash: [32]u8 = undefined;
+    var gi: usize = 0;
+    for (grant_id_row) |c| {
+        if (c == '-') continue;
+        if (gi >= 32) break;
+        grant_id_hex_no_dash[gi] = c;
+        gi += 1;
+    }
     var grant_id_bytes: [16]u8 = undefined;
-    _ = try std.fmt.hexToBytes(&grant_id_bytes, grant_id_row[0..32]);
+    _ = try std.fmt.hexToBytes(&grant_id_bytes, &grant_id_hex_no_dash);
 
     // Revoke.
     try catalog.revokeModuleVisibility(alloc, grant_id_bytes, actor_id);
