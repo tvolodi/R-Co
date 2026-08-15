@@ -1,0 +1,53 @@
+{
+  "handoff_id": "WF03-GH785-20260815-2-code-designer",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "2",
+  "agent_id": "CODE-DESIGNER",
+  "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T20:40:18Z",
+  "started_at": "2026-08-15T20:40:18Z",
+  "completed_at": "2026-08-15T20:42:53Z",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "iss_id": "ISS-0703",
+    "fix_already_applied": true,
+    "fix_files": [
+      "migrations/1156_prm06_promotion_assertion_runs.sql",
+      "migrations/1157_prm09_solution_pack_update.sql"
+    ],
+    "fix_line": 20,
+    "fix_diff": "-- Scope: -> -- scope:  (lowercase S)"
+  },
+  "task": {
+    "description": "Step 2 — Solution Design. Produce a Type E prose design artefact at `src/design/fix-GH-785.md` documenting the fix. The fix is a 1-character lowercase change in two files (line 20 of 1156 and 1157). The design must: (a) describe what the parser expects, (b) cite the exact SCOPE_PUBLIC_HEADER / SCOPE_TENANT_ONLY_HEADER constants at src/db/migrations.zig:604-613 and the docstring at lines 52 / 622, (c) confirm the parser is unchanged, (d) document the post-fix verification path (TEST-RUNNER full PLC integration suite green). Per templates/lego-catalog.md: this is a fix isolated to two SQL header lines with no API contract change — Type E prose is appropriate.",
+    "expected_outputs": [
+      "src/design/fix-GH-785.md (Type E prose design)"
+    ],
+    "acceptance_criteria": [
+      "Design addresses the diagnosed root_cause (case-sensitive header match in src/db/migrations.zig)",
+      "Public function signatures before/after are documented (no signature changes — the parser is unchanged)",
+      "No implementation code is present (prose only; the diff is '-- Scope: -> -- scope:' on line 20 of two files)",
+      "Error taxonomy is unchanged (no new error variants)",
+      "Callers impacted: the migration harness (zig build migrate) and the PLC integration suite — both listed",
+      "Fix scope is exactly 2 files (≤ 5 OK)",
+      "Verification path: TEST-RUNNER retry 6 — full PLC integration suite green"
+    ],
+    "design_template": "src/design/fix-GH-785.md should follow backend_developer_guide.md §6 (Type E prose) and include the sections: Context, Root cause, Fix, Why no parser change, Files changed, Verification plan, Risk assessment, Rollback."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E prose design produced at src/design/fix-GH-785.md. Documents root cause (case-sensitive std.mem.indexOf on -- scope: header in src/db/migrations.zig, citing SCOPE_PUBLIC_HEADER / SCOPE_ALL_HEADER / SCOPE_TENANT_ONLY_HEADER at lines 604-613 and docstrings at lines 52 and 622), parser-contract justification (parser is correct by design; data-only fix), files changed (2 files, 1 line each: 1156 line 20 and 1157 line 20), verification plan (TEST-RUNNER retry 6 — full PLC integration suite green, enumerating tests/integration/prm-06-07-promotion-assertion.test.zig and tests/integration/prm-09-pack-update.test.zig as direct beneficiaries), risk assessment (very low), rollback (1-character re-uppercase per file). ~1573 words.",
+    "artifacts_out": [
+      "src/design/fix-GH-785.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR Step 2b"
+  }
+}
