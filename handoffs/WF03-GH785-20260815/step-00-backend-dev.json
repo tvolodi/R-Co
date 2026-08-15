@@ -1,0 +1,45 @@
+{
+  "handoff_id": "WF03-GH785-20260815-00-backend-dev",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "00",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T20:34:24Z",
+  "started_at": "2026-08-15T20:34:24Z",
+  "completed_at": "2026-08-15T20:35:14Z",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "iss_id": "ISS-0703",
+    "issue_summary": "migrations 1156/1157: case-sensitive -- scope: header misclassified",
+    "fix_already_on_main": true,
+    "fix_commits_on_main": [
+      "51170eed",
+      "47d4c7c9"
+    ],
+    "verification_remaining": "TEST-RUNNER retry 6 — full PLC integration suite green (the only unchecked acceptance criterion)"
+  },
+  "task": {
+    "description": "Run fn:git-setup per docs/agents/protocols/GIT_SETUP.md to create the feature branch for this WF-03 run. Branch: feature/WF03-GH785-20260815. Note: the actual fix (lowercased `-- Scope:` → `-- scope:` on line 20 of migrations/1156 and 1157) is already merged to main via commits 51170eed (PR #787) and 47d4c7c9 (PR #782), so the branch will be created from a clean main and downstream steps will largely confirm the existing state rather than introduce new changes.",
+    "expected_outputs": [
+      "Branch feature/WF03-GH785-20260815 created and pushed to origin",
+      "git pull --ff-only exited 0 (main is in sync with origin/main)",
+      "git branch --show-current outputs feature/WF03-GH785-20260815"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created branch feature/WF03-GH785-20260815 from origin/main at commit e9baade3 (Already up to date). Pushed to origin (coordination signal). Branch contains the lowercase -- scope: header fix on line 20 of migrations/1156_prm06_promotion_assertion_runs.sql and migrations/1157_prm09_solution_pack_update.sql (carried from main via PR #787 commit 51170eed and PR #782 commit 47d4c7c9). No source files modified — pure git-setup protocol.",
+    "artifacts_out": [
+      "branch: feature/WF03-GH785-20260815"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to Step 0.5 ISSUE-FIXER"
+  },
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
+}

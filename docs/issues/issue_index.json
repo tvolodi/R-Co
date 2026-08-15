@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-15T18:51:13Z",
-  "next_issue_id": 707,
+  "last_updated": "2026-08-15T21:11:11Z",
+  "next_issue_id": 709,
   "issues": [
     {
       "id": "ISS-0702",
@@ -2554,14 +2554,14 @@
       "severity": "BLOCKER",
       "status": "RESOLVED",
       "title": "migrations 1156/1157: '-- Scope:' (uppercase S) silently misclassified by case-sensitive migrationScope parser",
-      "run_id": "WF02-plc-batch-a-20260815",
-      "workflow_id": "WF02-plc-batch-a-20260815",
-      "resolution_commit": "ae0840b3",
+      "run_id": "WF03-GH785-20260815",
+      "workflow_id": "WF03-GH785-20260815",
+      "resolution_commit": "51170eed,47d4c7c9 (merge commit back-filled by Step Final DOC-UPDATER SQUASH merge)",
       "created_at": "2026-08-15T05:53:00Z",
       "github_issue_confirmed": true,
-      "branch": "feature/WF02-plc-batch-a-20260815",
-      "resolved_at": "2026-08-15T05:56:00Z",
-      "resolved_by": "ISSUE-FIXER (WF02-plc-batch-a-20260815 step-04)",
+      "branch": "feature/WF03-GH785-20260815",
+      "resolved_at": "2026-08-15T21:11:11Z",
+      "resolved_by": "DOC-UPDATER (WF03-GH785-20260815 step-7)",
       "labels": [
         "bug"
       ],
@@ -2569,7 +2569,11 @@
         "migrations/1156_prm06_promotion_assertion_runs.sql",
         "migrations/1157_prm09_solution_pack_update.sql",
         "src/db/migrations.zig"
-      ]
+      ],
+      "reopened_at": "2026-08-15T20:36:27Z",
+      "reopened_by": "ISSUE-FIXER (WF03-GH785-20260815 step-0.5)",
+      "latest_run_id": "WF03-GH785-20260815",
+      "latest_handoff_id": "WF03-GH785-20260815-7-doc-updater"
     },
     {
       "id": "ISS-0705",
@@ -2613,6 +2617,49 @@
       "run_id": "WF03-GH791-20260815",
       "workflow_id": "WF03-GH791-20260815",
       "branch": "feature/WF03-GH791-20260815"
+    },
+    {
+      "id": "ISS-0707",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "title": "tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs — sqlstate 42703 (INC-001)",
+      "run_id": "WF03-GH785-20260815",
+      "workflow_id": "WF03-GH785-20260815",
+      "created_at": "2026-08-15T21:11:11Z",
+      "github_issue_confirmed": true,
+      "branch": "feature/WF03-GH785-20260815",
+      "labels": [
+        "bug",
+        "issue"
+      ],
+      "category": "integration-test-failure/unqualified-table-ref",
+      "affected_areas": [
+        "tests/integration/prm-09-pack-update.test.zig",
+        "migrations/1157_prm09_solution_pack_update.sql",
+        "migrations/1158_sol02_solution_pack_installs.sql"
+      ]
+    },
+    {
+      "id": "ISS-0708",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/793",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "title": "tests/integration PRM-06/07: three test failures — NOT NULL / FK / sandbox-teardown (INC-002)",
+      "run_id": "WF03-GH785-20260815",
+      "workflow_id": "WF03-GH785-20260815",
+      "created_at": "2026-08-15T21:11:11Z",
+      "github_issue_confirmed": true,
+      "branch": "feature/WF03-GH785-20260815",
+      "labels": [
+        "bug",
+        "issue"
+      ],
+      "category": "integration-test-failure/test-fixture-bugs",
+      "affected_areas": [
+        "tests/integration/prm-06-promotion-assertion.test.zig",
+        "tests/integration/prm-07-assertion-rerun.test.zig"
+      ]
     }
   ]
 }

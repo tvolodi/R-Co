@@ -1,0 +1,57 @@
+{
+  "handoff_id": "WF03-GH785-20260815-1-issue-fixer",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "1",
+  "agent_id": "ISSUE-FIXER",
+  "agent_name": "BPM Issue Fixer (ISSUE-FIXER)",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T20:39:14Z",
+  "started_at": "2026-08-15T20:39:14Z",
+  "completed_at": "2026-08-15T20:40:00Z",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "iss_id": "ISS-0703",
+    "iss_status_at_step_start": "REOPENED"
+  },
+  "task": {
+    "description": "Step 1 — Diagnose the recurring issue. Read the reopened ISS-0703 (which already contains the full root_cause, category, files_to_change, severity, requirement_ids from the previous WF02-plc-batch-a-20260815 step-04-issue-fixer occurrence). The diagnosis is already complete — confirm and re-state it for this run, then verify the fix is intact on `feature/WF03-GH785-20260815` (which was branched from current main, so it should be). Update ISS-0703 with the current run's diagnosis confirmation entry.",
+    "expected_outputs": [
+      "Confirmation that root_cause is unchanged (case-sensitive std.mem.indexOf on '-- scope:' header; offending files had '-- Scope:' with capital S; fix is the lowercase two-character change).",
+      "Confirmation that fix is on the branch feature/WF03-GH785-20260815 (it was branched from main at commit e9baade3 which carries 51170eed and 47d4c7c9).",
+      "Verification that migrations/1156_prm06_promotion_assertion_runs.sql line 20 is now '-- scope:' (lowercase).",
+      "Verification that migrations/1157_prm09_solution_pack_update.sql line 20 is now '-- scope:' (lowercase).",
+      "ISS-0703 updated with this run's diagnosis confirmation in handoff_history."
+    ],
+    "acceptance_criteria": [
+      "ISS-0703 contains the prior diagnosis (root_cause: case-sensitive header match) and confirms it remains accurate.",
+      "Both migration files at line 20 contain '-- scope:' (lowercase s) on the current branch.",
+      "Grep returns 0 matches for '^-- Scope:' across migrations/ (uppercase S).",
+      "ISS-0703's files_to_change field is accurate (still points at 1156 and 1157 line 20; not at src/db/migrations.zig — the parser is correct as documented)."
+    ],
+    "diagnostic_steps": [
+      "1. Read docs/issues/ISS-0703.json to confirm prior root_cause and resolution.",
+      "2. Read migrations/1156_prm06_promotion_assertion_runs.sql around line 20 (header line).",
+      "3. Read migrations/1157_prm09_solution_pack_update.sql around line 20 (header line).",
+      "4. Run: grep -rn '^-- Scope:' migrations/   (expect: 0 matches).",
+      "5. Run: grep -rn '^-- scope:' migrations/   (expect: all migration files use lowercase).",
+      "6. Read src/db/migrations.zig around lines 604-613 (SCOPE_PUBLIC_HEADER / SCOPE_TENANT_ONLY_HEADER constants) and line 52 / 622 (docstring) to confirm the parser expects lowercase by design.",
+      "7. Update ISS-0703.json with this run's diagnosis confirmation in handoff_history."
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosis confirmed unchanged from WF02-plc-batch-a-20260815 step-04. Root cause is a case-sensitive std.mem.indexOf on the -- scope: header in src/db/migrations.zig; offending files 1156 and 1157 had -- Scope: (capital S) on line 20. Verified on current branch feature/WF03-GH785-20260815: both files now carry -- scope: (lowercase), Select-String across migrations/ returns 0 matches for uppercase and 30 for lowercase (parser expects lowercase by design, so this is data-only). Fix is on main via 51170eed and 47d4c7c9; commit 90ce75fa records this run. ISS-0703 updated with handoff_history entry and an occurrences entry; lint clean.",
+    "artifacts_out": [
+      "docs/issues/ISS-0703.json",
+      "90ce75fa"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER Step 2"
+  }
+}

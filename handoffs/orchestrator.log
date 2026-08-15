@@ -1683,3 +1683,23 @@
 2026-08-15T20:05:00Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: git-merge finalization + clean state verification on main)
 2026-08-15T20:15:00Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-final-backend-dev | BACKEND-DEV -> ORCH | PASS | clean state verification: working tree clean, on main, HEAD at 8477abcd (pushed to origin), branch deleted (local + remote), GH-791 CLOSED, 11 step entries all COMPLETED in workflow-level registry, 0 violations on WF03-GH791-20260815 chain in lint_handoffs.py
 2026-08-15T20:15:00Z | WF_COMPLETE | WF03-GH791-20260815 | --- | ORCH | RESOLVED | issue GH-791 / ISS-0706 fixed and closed; squash commit 5ce43dad on main; feature branch deleted; final commits 8477abcd + 6f9af4f8 pushed to origin/main
+2026-08-15T20:23:38Z | ROUTE | WF-03 | GH-785 | ORCH → ISSUE-FIXER | PENDING
+2026-08-15T20:24:43Z | INFRA_BLOCK | WF03-GH785-20260815 | --- | ORCH | test-env-verify C6 FAIL (6 ungranted advisory ExclusiveLock on db_test) → routing to BACKEND-DEV ADHOC for repair
+2026-08-15T20:24:43Z | ROUTE | ADHOC-test-env-stale-locks-20260815 | ADHOC-test-env-stale-locks-20260815-00-backend-dev | ORCH → BACKEND-DEV | PENDING
+2026-08-15T20:32:30Z | INFRA_UNBLOCK | WF03-GH785-20260815 | --- | ORCH | test-env-verify now CLEARED (C6 PASS, all 10 checks green, exit 0). Orphaned zig build test-integration (PID 4228) + 6 test.exe workers terminated. Migration ledger intact. Dispatching WF03-GH785 pipeline.
+2026-08-15T20:32:30Z | BENCH_ENV_CHECK | CLEARED | ORCH | dispatching TEST-RUNNER for GH-785 once pipeline reaches Step 5
+2026-08-15T20:34:24Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-00-backend-dev | ORCH → BACKEND-DEV | PENDING
+2026-08-15T20:35:14Z | COMPLETE | WF03-GH785-20260815 | WF03-GH785-20260815-00-backend-dev | PASS | branch feature/WF03-GH785-20260815 created at e9baade3 and pushed to origin
+2026-08-15T20:35:45Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-05-issue-fixer | ORCH → ISSUE-FIXER | PENDING
+2026-08-15T20:38:20Z | COMPLETE | WF03-GH785-20260815 | WF03-GH785-20260815-05-issue-fixer | ISSUE-FIXER -> ORCH | PASS | ISS-0703 REOPENED; commit daac4133
+2026-08-15T20:39:14Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-1-issue-fixer | ORCH → ISSUE-FIXER | PENDING
+2026-08-15T20:40:18Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-2-code-designer | ORCH → CODE-DESIGNER | PENDING
+2026-08-15T20:42:53Z | COMPLETE | WF03-GH785-20260815 | step-2-code-designer | CODE-DESIGNER | PASS -- Type E prose design at src/design/fix-GH-785.md (1573 words). Root cause: case-sensitive -- scope: header match in src/db/migrations.zig::migrationScope (SCOPE_PUBLIC_HEADER / SCOPE_ALL_HEADER / SCOPE_TENANT_ONLY_HEADER constants at lines 604-613; docstrings at 52, 622). Fix: 1-char lowercase S -> s on line 20 of 1156 and 1157 (carried on main via 51170eed + 47d4c7c9). Parser intentionally unmodified. Verification: TEST-RUNNER retry 6 -- full PLC integration suite green. next_action = Route to CODE-DESIGN-VALIDATOR Step 2b.
+2026-08-15T20:45:11Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-2b-code-design-validator | ORCH → CODE-DESIGN-VALIDATOR | PENDING
+2026-08-15T20:46:39Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-3-backend-dev | ORCH → BACKEND-DEV | PENDING
+2026-08-15T20:48:04Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-3-backend-dev | BACKEND-DEV -> ORCH | COMPLETED PASS
+2026-08-15T20:49:12Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-5-test-runner | ORCH → TEST-RUNNER | PENDING
+2026-08-15T21:04:56Z | STEP_COMPLETE | WF03-GH785-20260815-5-test-runner | TEST-RUNNER | COMPLETED PASS | result.status=PASS, 27/27 PLC tests green, next_action=Route to DOC-UPDATER Step 7
+2026-08-15T21:05:37Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-7-doc-updater | ORCH → DOC-UPDATER | PENDING
+2026-08-15T21:11:11Z | COMPLETE | WF03-GH785-20260815 | step-7 | DOC-UPDATER | status=COMPLETED result=PASS gh_closed=785 gh_filed=792,793 new_iss_files=ISS-0707,ISS-0708 resolved=ISS-0703 next_action=Route_to_BACKEND-DEV_Step_Final
+2026-08-15T21:13:40Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-final-backend-dev | ORCH → BACKEND-DEV | PENDING

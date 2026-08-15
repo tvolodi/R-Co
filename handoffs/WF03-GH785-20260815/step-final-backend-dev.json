@@ -1,0 +1,43 @@
+{
+  "handoff_id": "WF03-GH785-20260815-final-backend-dev",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "final",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "status": "PENDING",
+  "created_at": "2026-08-15T21:13:40Z",
+  "started_at": "2026-08-15T21:13:40Z",
+  "completed_at": null,
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "iss_id": "ISS-0703",
+    "gh_issue_state": "CLOSED",
+    "iss_status": "RESOLVED",
+    "test_step5_passed": true,
+    "incidental_findings_filed": ["GH-792 / ISS-0707", "GH-793 / ISS-0708"]
+  },
+  "task": {
+    "description": "Step Final — Git Merge. Per docs/agents/protocols/GIT_MERGE.md: rebase feature/WF03-GH785-20260815 onto main, push, create PR `feature/WF03-GH785-20260815 → main`, run final verification (re-run zig build, zig build test, lint_handoffs.py), squash-merge via `gh pr merge --squash --delete-branch`, update project board for GH-785 to `done`, back-fill merge SHA into ISS-0703.resolution_commit, and verify clean main (git checkout main, git pull --ff-only, git status clean).",
+    "expected_outputs": [
+      "PR created and merged: feature/WF03-GH785-20260815 → main",
+      "Branch deleted on origin after squash-merge",
+      "Project board: GH-785 → done",
+      "ISS-0703.resolution_commit back-filled with the merge SHA",
+      "Working tree clean on main after Step Final"
+    ],
+    "acceptance_criteria": [
+      "gh pr merge --squash --delete-branch exits 0",
+      "git branch -r no longer shows feature/WF03-GH785-20260815 (deleted on origin)",
+      "gh project board list / project view shows GH-785 in the done column (or similar status)",
+      "ISS-0703.resolution_commit = <merge SHA>",
+      "git checkout main && git pull --ff-only && git status --porcelain=v1 -uno returns empty"
+    ]
+  },
+  "result": null
+}

@@ -1,0 +1,83 @@
+{
+  "handoff_id": "WF03-GH785-20260815-7-doc-updater",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "7",
+  "agent_id": "DOC-UPDATER",
+  "agent_name": "BPM Doc Updater (DOC-UPDATER)",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T21:05:37Z",
+  "started_at": "2026-08-15T21:05:37Z",
+  "completed_at": "2026-08-15T21:11:11Z",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "iss_id": "ISS-0703",
+    "test_step5_passed": true,
+    "plc_suite_green": true,
+    "incidental_findings": [
+      "INC-001: tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs — pre-existing test-code bug, NOT a GH-785 regression",
+      "INC-002: Three PRM-06/07 test failures (TC-PRM-06-03, TC-PRM-07-01, TC-PRM-07-03) — pre-existing test-code bugs, NOT GH-785 regressions"
+    ]
+  },
+  "task": {
+    "description": "Step 7 — Doc Update. Close out GH-785 by: (1) adding a CHANGELOG.md entry noting the WF-03 verification run; (2) updating ISS-0703 status to RESOLVED with this run's resolution details (the verification is the resolution); (3) updating docs/issues/issue_index.json; (4) closing GH-785 on GitHub via `gh issue close 785 --reason completed` (or with a closing comment); (5) commit + push to feature/WF03-GH785-20260815. Per the WF-03 §Step 7 procedure, set ISS file status to RESOLVED, fill resolved_at, resolution, prevention.",
+    "expected_outputs": [
+      "CHANGELOG.md updated with a one-line entry under the current version: 'WF-03 GH-785: Verified lowercase -- scope: header fix on migrations 1156/1157; full PLC integration suite green (27/27 tests).'",
+      "docs/issues/ISS-0703.json updated: status RESOLVED, resolved_at = current ISO8601, resolution = 'TEST-RUNNER retry 6 — full PLC integration suite green (2026-08-15T21:03:33Z); 27/27 PLC tests pass; fix at migrations/1156/1157 line 20 (lowercase -- scope: header) verified on feature/WF03-GH785-20260815 branched from main at e9baade3.'",
+      "docs/issues/issue_index.json updated: ISS-0703 entry status = RESOLVED, resolved_at = current ISO8601.",
+      "gh issue close 785 --reason 'completed' --comment '<one-line summary>' (closes the GitHub tracker).",
+      "All changes committed to feature/WF03-GH785-20260815 and pushed."
+    ],
+    "acceptance_criteria": [
+      "CHANGELOG.md has a new entry under the current version (verify which version is current by reading CHANGELOG.md head).",
+      "ISS-0703 status is RESOLVED.",
+      "ISS-0703 resolved_at is set.",
+      "ISS-0703 handoff_history has a new entry for step-7-doc-updater.",
+      "ISS-0703 prevention field has at least one entry: 'Add a regression test that grep '^-- Scope:' migrations/ returns 0 in the test suite' or 'Add lint rule in tools/lint_test_isolation.py or similar to enforce lowercase -- scope: header'.",
+      "issue_index.json reflects the RESOLVED status.",
+      "GitHub issue #785 is CLOSED (verify via `gh issue view 785 --json state` returns 'CLOSED').",
+      "All changes are committed and pushed to feature/WF03-GH785-20260815."
+    ],
+    "incidental_findings_handling": [
+      "INC-001 (tests/integration/prm-09-pack-update.test.zig): file as a new GitHub issue via `gh issue create --title 'tests/integration/prm-09-pack-update.test.zig: unqualified solution_pack_installs' --body '...'` AND register as a new ISS file at docs/issues/ISS-<next_id>.json. Forward to global queue. DO NOT fix in this run.",
+      "INC-002 (three PRM-06/07 test failures): file as a single GitHub issue listing all three with their root causes AND register as a new ISS file. Forward to global queue. DO NOT fix in this run."
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Closed GH-785 via WF-03 verification. CHANGELOG.md received a one-paragraph ## fix(db): GH-785/ISS-0703 -- migrations 1156/1157 -- scope: header case-sensitivity verified RESOLVED ## entry under [Unreleased] 2026-08-15, citing TEST-RUNNER retry 6's 27/27 PLC suite green at 2026-08-15T21:03:33Z and the on-main fix commits 51170eed + 47d4c7c9 carried from feature/WF02-plc-batch-a-20260815 step-04 commit ae0840b3. ISS-0703.json advanced to RESOLVED with populated resolution + prevention blocks and step-7 / step-5 entries appended to handoff_history. docs/issues/issue_index.json reflects ISS-0703 RESOLVED (resolved_at = this stamp). GitHub issue #785 closed via gh issue close 785 --reason completed (state now CLOSED, verified). INC-001 (prm-09-pack-update unqualified solution_pack_installs) filed as GH-792 + docs/issues/ISS-0707.json; INC-002 (PRM-06/07 test-code bugs: NOT NULL requested_by, FK promotion_reviews, sandbox-teardown simulation) filed as GH-793 + docs/issues/ISS-0708.json. Both INC ISS files are pre-existing test-code bugs, NOT GH-785 regressions; both forwarded per docs/agents/protocols/ISSUE_QUEUE.md (GitHub-filed is sufficient under 2026-08-13 protocol revision -- separate queue_add.py call no longer required). next_issue_id bumped 707 -> 709 to accommodate ISS-0707 and ISS-0708. All five changed files commit and push to feature/WF03-GH785-20260815; Step Final (git-merge to main) is BACKEND-DEV's responsibility per the run's next_action route -- this run does not perform the squash-merge.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0703.json",
+      "docs/issues/issue_index.json",
+      "docs/issues/ISS-0707.json",
+      "docs/issues/ISS-0708.json",
+      "handoffs/WF03-GH785-20260815/step-7-doc-updater.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step Final (git-merge: create PR, ensure checks pass, squash-merge with --delete-branch, run project-board update for GH-785, return repo to clean main, back-fill merge SHA into ISS-0703 resolution_commit field).",
+    "gh_issues_closed": [
+      785
+    ],
+    "gh_issues_filed": [
+      792,
+      793
+    ],
+    "iss_files_created": [
+      "ISS-0707",
+      "ISS-0708"
+    ],
+    "iss_files_resolved": [
+      "ISS-0703"
+    ],
+    "commit_sha_pending": true,
+    "merge_commit_pending": true
+  }
+}

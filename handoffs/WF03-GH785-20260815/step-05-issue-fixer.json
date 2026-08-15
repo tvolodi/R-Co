@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF03-GH785-20260815-05-issue-fixer",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "0.5",
+  "agent_id": "ISSUE-FIXER",
+  "agent_name": "BPM Issue Fixer (ISSUE-FIXER)",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T20:35:45Z",
+  "started_at": "2026-08-15T20:35:45Z",
+  "completed_at": "2026-08-15T20:38:20Z",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "existing_iss_file": "docs/issues/ISS-0703.json",
+    "existing_iss_status": "RESOLVED",
+    "github_issue_state": "OPEN",
+    "existing_resolution_commit": "ae0840b3 (now part of main via 51170eed, 47d4c7c9)"
+  },
+  "task": {
+    "description": "Step 0.5 — Issue Registry for WF-03 GH-785 run. The corresponding local ISS file is docs/issues/ISS-0703.json (rco-sync-ref in GH-785 confirms this), currently marked RESOLVED with the fix commit ae0840b3 applied on branch feature/WF02-plc-batch-a-20260815 (later merged to main). The GitHub issue GH-785 is still OPEN because the only unchecked acceptance criterion — 'TEST-RUNNER retry 6 — full PLC integration suite green (TEST-RUNNER will run)' — has not been confirmed yet. Per WF-03 Step 0.5 protocol, this counts as a recurrence of an existing issue: do NOT create a new ISS file. Instead: append a new occurrence to ISS-0703's handoff_history, update ISS-0703.status to REOPENED, and re-run fn:register-issue against the GitHub issue (which should now mark GH-785 as the corresponding tracking issue with a comment linking to this run).",
+    "expected_outputs": [
+      "docs/issues/ISS-0703.json updated with new occurrence entry pointing at this run (WF03-GH785-20260815 / step-05-issue-fixer)",
+      "ISS-0703.status set to REOPENED with reopened_at timestamp",
+      "ISS-0703.occurrences (or handoff_history) has one new entry recording the WF-03 re-trigger",
+      "GitHub issue #785 updated with a comment via gh issue comment noting the verification run (optional — see note below)"
+    ],
+    "acceptance_criteria": [
+      "ISS-0703.status is now 'REOPENED'",
+      "A new occurrence entry exists with run_id = 'WF03-GH785-20260815'",
+      "No new ISS file is created (this is a recurrence, not a new issue)",
+      "gh issue view 785 returns the issue body unchanged (no body rewrite; only a comment is acceptable)"
+    ],
+    "note": "Per 'No Issue Left Local-Only' directive: if you find any NEW defect while doing this work, file it (ISS file + gh issue create). For GH-785 itself, no fresh defect is being filed — it's already on GitHub as #785. The Step 0.5 action is purely to keep the local registry aligned with the GitHub tracker."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Reopened ISS-0703 for the WF-03 verification run on GH-785: the fix is on main via commits 51170eed and 47d4c7c9, but the unchecked acceptance criterion ('TEST-RUNNER retry 6 - full PLC integration suite green') keeps GH-785 OPEN. Per WF-03 Step 0.5 protocol this is a recurrence of an existing tracked issue, so no new ISS file was created. ISS-0703 and the issue index were updated to REOPENED with a new handoff_history entry recording run_id=WF03-GH785-20260815. GH-785 received a brief verification-run comment; its body was left untouched. Changes committed as daac4133 on branch feature/WF03-GH785-20260815 and pushed to origin.",
+    "artifacts_out": [
+      "docs/issues/ISS-0703.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-GH785-20260815/step-05-issue-fixer.json",
+      "commit:daac4133"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER Step 1 (Diagnose)"
+  },
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER"
+}
