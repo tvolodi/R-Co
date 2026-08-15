@@ -354,9 +354,7 @@ export default function ProcessModulesPage() {
       )}
 
       <QueryStateBoundary
-        rendererState={rendererState}
-        isLoading={false}
-        error={error}
+        state={rendererState}
         onRetry={refetch}
       >
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
