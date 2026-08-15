@@ -120,4 +120,11 @@ export const queryKeys = {
     all: ['promotions'] as const,
     context: (reviewId: string) => [...queryKeys.promotions.all, 'context', reviewId] as const,
   },
+
+  modules: {
+    all: ['modules'] as const,
+    list: (filters?: { cursor?: string; page_size?: number }) => [...queryKeys.modules.all, 'list', filters ?? {}] as const,
+    detail: (moduleId: string, version: string) => [...queryKeys.modules.all, 'detail', moduleId, version] as const,
+    shares: (moduleId: string) => [...queryKeys.modules.all, 'shares', moduleId] as const,
+  },
 }

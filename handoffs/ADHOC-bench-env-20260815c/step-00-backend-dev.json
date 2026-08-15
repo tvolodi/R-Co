@@ -1,0 +1,27 @@
+{
+  "handoff_id": "ADHOC-bench-env-20260815c-00-backend-dev",
+  "run_id": "ADHOC-bench-env-20260815c",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "step": "00",
+  "created_at": "2026-08-15T03:28:02Z",
+  "started_at": "2026-08-15T03:28:27Z",
+  "completed_at": "2026-08-15T03:36:28Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Restored full test environment. keycloak_gateway was not running - started it. All 10/10 verify_test_env.py checks pass.",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "task": {
+    "description": "Restore full test environment. Keycloak is DOWN on port 8081. Also verify/fix db_test.\n\nRun:\n- docker compose up -d db db_test keycloak --wait\n- Verify keycloak: GET http://localhost:8081/health/ready\n- Verify db_test: psql $BPM_TEST_DB_URL -c \"SELECT 1\"\n- Verify: python tools/verify_test_env.py exits 0\n\nReturn PASS only when verify_test_env.py shows 10/10 PASS.",
+    "fn": "none",
+    "max_rework": 1
+  },
+  "workflow_ref": "ADHOC-bench-env-20260815c",
+  "requirements": [],
+  "stage": null,
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
+}

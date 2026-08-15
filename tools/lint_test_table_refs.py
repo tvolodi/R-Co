@@ -40,6 +40,11 @@ EXTRA_ALLOWED_TABLES = {
     "service_catalog",
     "instance_definition_snapshots",  # migrations/004_definitions.sql
     "variable_schemas",  # migrations/012_event_retention.sql
+    # PLC-01..04 (WF02-plc-batch-a-20260815): public catalog tables cleaned
+    # between integration runs so module_id's global uniqueness does not
+    # collide with prior-run data.
+    "process_module_catalog",
+    "process_module_catalog_share",
 }
 
 KNOWN_TABLES = set(BUSINESS_TABLES) | EXTRA_ALLOWED_TABLES

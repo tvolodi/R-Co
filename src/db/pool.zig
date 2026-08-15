@@ -435,6 +435,32 @@ fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {
     );
 }
 
+/// Diagnostic: emit a single-line stderr record whenever exec()/query()/queryRow()
+/// collapses a PgError.ServerError into PoolError.QueryFailed. Includes the SQLSTATE
+/// captured by pg.zig and a 120-char preview of the SQL. This is the only path
+/// callers have to distinguish, e.g., a foreign-key violation from a generic
+/// parse error — keeping PoolError itself narrow by design. Intentionally stderr
+/// (not logger) so it survives log suppression in test contexts.
+fn logQueryFailed(
+    op: []const u8,
+    sql: []const u8,
+    params: []const []const u8,
+    sqlstate: ?[]const u8,
+) void {
+    const sql_preview_len = @min(sql.len, 120);
+    const sqlstate_str = sqlstate orelse "<none>";
+    std.debug.print(
+        "[pool] {s} failed; sqlstate={s} params={d} sql={s}{s}\n",
+        .{
+            op,
+            sqlstate_str,
+            params.len,
+            sql[0..sql_preview_len],
+            if (sql.len > sql_preview_len) "..." else "",
+        },
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Public error set
 // ---------------------------------------------------------------------------
@@ -523,6 +549,7 @@ pub const Conn = struct {
                 self._is_valid = false;
                 return PoolError.StaleConnection;
             }
+            logQueryFailed("exec", sql, params, self._pg.lastSqlState());
             return PoolError.QueryFailed;
         };
     }
@@ -561,6 +588,7 @@ pub const Conn = struct {
                 self._is_valid = false;
                 return PoolError.StaleConnection;
             }
+            logQueryFailed("query", sql, params, self._pg.lastSqlState());
             return PoolError.QueryFailed;
         };
         return QueryResult{ .rows = result.rows, .result = result };
@@ -588,6 +616,7 @@ pub const Conn = struct {
                 self._is_valid = false;
                 return PoolError.StaleConnection;
             }
+            logQueryFailed("queryRow", sql, params, self._pg.lastSqlState());
             return PoolError.QueryFailed;
         };
         defer result.deinit();

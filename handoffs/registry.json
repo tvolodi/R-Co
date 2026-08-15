@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-15T01:09:13Z",
+  "last_updated": "2026-08-15T05:56:50Z",
   "entries": [
     {
       "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
@@ -30749,6 +30749,358 @@
       ],
       "workflow_ref": "WF02-prm-batch2-20260814",
       "stage": "stage16"
+    },
+    {
+      "handoff_id": "WF01-plc-spc-batch1-20260815-01-req-analyst",
+      "run_id": "WF01-plc-spc-batch1-20260815",
+      "agent_id": "REQ-ANALYST",
+      "step": "01",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04",
+        "SPC-01",
+        "SPC-02"
+      ],
+      "workflow_ref": "WF01-plc-spc-batch1-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF01-plc-spc-batch1-20260815-02-req-validator",
+      "run_id": "WF01-plc-spc-batch1-20260815",
+      "agent_id": "REQ-VALIDATOR",
+      "step": "02",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04",
+        "SPC-01",
+        "SPC-02"
+      ],
+      "workflow_ref": "WF01-plc-spc-batch1-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF01-plc-spc-batch1-20260815-03-doc-updater",
+      "run_id": "WF01-plc-spc-batch1-20260815",
+      "agent_id": "DOC-UPDATER",
+      "step": "03",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04",
+        "SPC-01",
+        "SPC-02"
+      ],
+      "workflow_ref": "WF01-plc-spc-batch1-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-00-backend-dev",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "BACKEND-DEV",
+      "step": "00",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-01-code-designer",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "CODE-DESIGNER",
+      "step": "01",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-01b-code-design-validator",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "CODE-DESIGN-VALIDATOR",
+      "step": "01b",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-01-code-designer-rework1",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "CODE-DESIGNER",
+      "step": "01",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-01b-code-design-validator-rework1",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "CODE-DESIGN-VALIDATOR",
+      "step": "01b",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-02b-frontend-dev",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "FRONTEND-DEV",
+      "step": "02b",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-03-test-designer",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-DESIGNER",
+      "step": "03",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "ADHOC-bench-env-20260815b-00-backend-dev",
+      "run_id": "ADHOC-bench-env-20260815b",
+      "agent_id": "BACKEND-DEV",
+      "step": "00",
+      "status": "PENDING",
+      "requirements": [],
+      "workflow_ref": "ADHOC-bench-env-20260815b",
+      "stage": null
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-02a-backend-dev-rework1",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "BACKEND-DEV",
+      "step": "02a",
+      "rework_of": "WF02-plc-batch-a-20260815-02a-backend-dev",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "ADHOC-bench-env-20260815c-00-backend-dev",
+      "run_id": "ADHOC-bench-env-20260815c",
+      "agent_id": "BACKEND-DEV",
+      "step": "00",
+      "status": "PENDING",
+      "requirements": [],
+      "workflow_ref": "ADHOC-bench-env-20260815c",
+      "stage": null
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework2",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework3",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "BACKEND-DEV",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-03-test-designer-rework1",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-DESIGNER",
+      "step": "03",
+      "rework_of": "WF02-plc-batch-a-20260815-03-test-designer",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-03-test-designer-rework2",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-DESIGNER",
+      "step": "03",
+      "rework_of": "WF02-plc-batch-a-20260815-03-test-designer",
+      "status": "PENDING",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework5",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+      "rework_index": 5,
+      "status": "PENDING",
+      "created_at": "2026-08-15T05:40:24Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework5.json"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework6",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner-rework5",
+      "rework_index": 6,
+      "status": "FAIL",
+      "created_at": "2026-08-15T06:03:50Z",
+      "started_at": "2026-08-15T06:04:16Z",
+      "completed_at": "2026-08-15T09:33:35Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework6.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-issue-fixer",
+      "result": {
+        "status": "FAIL",
+        "pass": 4,
+        "fail": 23,
+        "total": 27,
+        "issues": [
+          "ISS-0704 (GH #786): process_module_catalog.zig:170 SQL literal syntax error"
+        ]
+      }
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer-2",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "ISSUE-FIXER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-issue-fixer",
+      "status": "PENDING",
+      "created_at": "2026-08-15T04:36:09Z",
+      "started_at": "2026-08-15T09:36:23Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer-2.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-test-runner-rework6"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer-3",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "ISSUE-FIXER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-issue-fixer-2",
+      "status": "PENDING",
+      "created_at": "2026-08-15T04:43:03Z",
+      "started_at": "2026-08-15T04:43:13Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer-3.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-test-runner-rework7"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer-4",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "ISSUE-FIXER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-issue-fixer-3",
+      "status": "PENDING",
+      "created_at": "2026-08-15T05:12:31Z",
+      "started_at": "2026-08-15T05:12:48Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer-4.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-test-runner-rework8"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-06-doc-updater",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "DOC-UPDATER",
+      "step": "06",
+      "status": "PENDING",
+      "created_at": "2026-08-15T05:56:47Z",
+      "started_at": "2026-08-15T05:56:50Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-06-doc-updater.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-05-release-validator"
     }
   ]
 }

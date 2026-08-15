@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-prm-batch2-20260814-03b-test-design-validator",
+  "run_id": "WF02-prm-batch2-20260814",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+  "step": "03b",
+  "created_at": "2026-08-15T00:48:02Z",
+  "started_at": "2026-08-15T00:48:37Z",
+  "completed_at": "2026-08-15T00:50:03Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Validated TEST-DESIGNER output for PRM-02, PRM-03, PRM-04, PRM-05 — all MUST requirements have integration tests, fixtures use per-test UUIDs, no SkipZigTest on MUSTs, tests self-sufficient with BPM_TEST_DB_URL enforcement.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "req_id": null,
+        "description": "H003: completed_at precedes started_at. Pre-existing timestamp inversion in this run: earlier steps used local time labelled Z, producing UTC-4/5 offsets. This handoff is first to trigger H003 on this run_id."
+      }
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER output for PRM-02, PRM-03, PRM-04, PRM-05.\n\nBRANCH: feature/WF02-prm-batch2-20260814 (commit fd64a5f8)\n\nHARD GATE — tests cannot execute until this returns PASS.\n\nCHECKS (all must pass):\n1. Every MUST acceptance criterion has a corresponding integration test\n2. No test marked deferred or skipped for MUST requirements\n3. Fixtures are isolated (no shared state between tests)\n4. Tests are self-sufficient (no external deps beyond test services)\n5. Test isolation lint (python tools/lint_test_isolation.py) exits 0\n6. Pipeline test chains are wired correctly\n\nVALIDATE:\n- tests/specs/prm-02-conflict-preflight.req.md — covers all MUST ACs\n- tests/specs/prm-03-plan-digest.req.md — covers all MUST ACs\n- tests/specs/prm-04-promotion-review-sm.req.md — covers all MUST ACs\n- tests/specs/prm-05-needs-review-gate.req.md — covers all MUST ACs\n- tests/integration/prm02_conflict_test.zig\n- tests/integration/prm03_digest_test.zig\n- tests/integration/prm04_review_sm_test.zig\n- tests/integration/prm05_review_gate_test.zig\n\nReturn PASS if all gates clear. Return FAIL with BLOCKER/MAJOR/MINOR issues if any gate fails.\nReturn the issue list in result.issues as JSON array of {severity, req_id, description} objects.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-prm-batch2-20260814",
+  "requirements": [
+    "PRM-02",
+    "PRM-03",
+    "PRM-04",
+    "PRM-05"
+  ],
+  "stage": "stage16",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR"
+}

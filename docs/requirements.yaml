@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-14T08:14:08Z'
+generated_at: '2026-08-15T05:59:39Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -7247,7 +7247,7 @@ requirements:
     title: Process module catalog
     stage: 15
     priority: SHOULD
-    status: PENDING
+    status: RELEASED
     body: |-
       > **Extends:** the REPO-07 service catalog pattern, applied to reusable sub-process definitions instead of external services.
 
@@ -7265,12 +7265,21 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    last_updated: '2026-08-15T05:59:33Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-01).
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - migrations/1162_plc01_module_id_unique_per_tenant.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:33Z'
   PLC-02:
     id: PLC-02
     title: Catalog entry publication requires a declared interface
     stage: 15
     priority: SHOULD
-    status: PENDING
+    status: RELEASED
     body: |-
       > A process module MAY be published to the catalog (status DRAFT → ACTIVE) only if the SUB_PROCESS entry point it exposes has a fully declared SPC-01 interface. A module without a declared interface cannot be published as a catalog entry; it remains usable only as an ordinary tenant-local sub-process via direct `child_definition_id`.
 
@@ -7283,12 +7292,20 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    last_updated: '2026-08-15T05:59:35Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-02).
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:35Z'
   PLC-03:
     id: PLC-03
     title: Cross-version compatibility check on publish
     stage: 15
     priority: SHOULD
-    status: PENDING
+    status: RELEASED
     body: |-
       > When a new version of an already-cataloged module is published, the platform SHOULD compare its declared interface against the immediately preceding ACTIVE version and flag — without blocking — breaking changes: an input that was optional and is now required, or an output that was previously required and has been removed.
 
@@ -7301,12 +7318,20 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    last_updated: '2026-08-15T05:59:37Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-03).
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:37Z'
   PLC-04:
     id: PLC-04
     title: Cross-tenant module distribution
     stage: 15
     priority: SHOULD
-    status: PENDING
+    status: RELEASED
     body: |-
       > A process module published to the catalog by one tenant (the "publishing tenant") MAY be shared to other tenants ("subscribing tenants") via an explicit platform-admin-authorised sharing grant. A subscribing tenant sees only modules explicitly granted to it; by default, no tenant's catalog is visible to any other tenant. `module_ref` resolution (PLC-01) only considers versions visible to the resolving tenant.
 
@@ -7324,6 +7349,14 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    last_updated: '2026-08-15T05:59:39Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-04).
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:39Z'
   REPO-01:
     id: REPO-01
     title: Content addressing
@@ -8575,7 +8608,7 @@ requirements:
     title: Declared input/output contract for SUB_PROCESS nodes
     stage: 15
     priority: SHOULD
-    status: PENDING
+    status: VALIDATED
     body: |-
       > **Extends:** EXT-05. **Preserves:** existing SUB_PROCESS behaviour (full parent variable map copied to child; full child variable map merged back) for any node that omits the contract — fully backward compatible.
 
@@ -8598,12 +8631,13 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    last_updated: '2026-08-14T20:29:13Z'
   SPC-02:
     id: SPC-02
     title: Contract validated at definition-time
     stage: 15
     priority: SHOULD
-    status: PENDING
+    status: VALIDATED
     body: |-
       > On creation or update of a definition containing a SUB_PROCESS node with a declared `interface`, the platform SHALL validate that every `json_schema` under `inputs`/`outputs` is itself a well-formed JSON Schema, rejecting the definition with HTTP 422 otherwise. The platform does not validate at this point that the referenced child definition actually produces the declared outputs — parent and child may be authored and versioned independently; that cross-definition check is addressed by PLC-03.
 
@@ -8620,6 +8654,7 @@ requirements:
     alt_sources:
     - individual-file
     type: requirement
+    last_updated: '2026-08-14T20:29:13Z'
   SPT-01:
     id: SPT-01
     title: Schema-per-tenant provisioning infrastructure

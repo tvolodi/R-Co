@@ -1586,3 +1586,47 @@
 2026-08-14T20:15:36Z | ROUTE | WF02-prm-batch2-20260814 | WF02-prm-batch2-20260814-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-14T20:15:36Z | ROUTE | WF02-prm-batch2-20260814 | WF02-prm-batch2-20260814-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING
 2026-08-15T09:31:25Z | ROUTE | ADHOC-ci-unblock-20260815 | step-final-fix | ORCH -> BACKEND-DEV | PENDING | (Fix branch pushed: fix/PosixBlock-global-20260815; PR #789 open; waiting for main CI to go green before merging PR #787)
+2026-08-15T01:22:05Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-01-req-analyst | ORCH -> REQ-ANALYST | PENDING
+2026-08-15T01:25:29Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-02-req-validator | ORCH -> REQ-VALIDATOR | PENDING
+2026-08-15T01:28:14Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-03-doc-updater | ORCH -> DOC-UPDATER | PENDING
+2026-08-15T01:30:39Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-15T01:33:38Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01-code-designer | ORCH -> CODE-DESIGNER | PENDING
+2026-08-15T01:39:20Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-08-15T01:39:20Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01-code-designer-rework1 | ORCH -> CODE-DESIGNER | REWORK1
+2026-08-15T01:53:53Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-01b-code-design-validator-rework1 | ORCH -> CODE-DESIGN-VALIDATOR | REWORK1
+2026-08-15T01:56:27Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-15T01:56:27Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING
+2026-08-15T03:04:02Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03-test-designer | ORCH -> TEST-DESIGNER | PENDING
+2026-08-15T03:11:53Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING
+2026-08-15T03:14:48Z | INFRA_BLOCK | WF02-plc-batch-a-20260815 | ADHOC-bench-env-20260815b-00-backend-dev | ORCH | BLOCKED -> routing to BACKEND-DEV for service startup
+2026-08-15T03:18:05Z | INFRA_UNBLOCK | WF02-plc-batch-a-20260815 | --- | ORCH | Services healthy -- redispatching TEST-RUNNER Step 04
+2026-08-15T03:18:14Z | ROUTE | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner | ORCH -> TEST-RUNNER | PENDING
+2026-08-15T03:23:07Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-02a-backend-dev-rework1 | ORCH -> BACKEND-DEV | PENDING (rework_count=1/3)
+2026-08-15T03:25:39Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING (rework_count=1/3)
+2026-08-15T03:28:02Z | INFRA_BLOCK | WF02-plc-batch-a-20260815 | ADHOC-bench-env-20260815c-00-backend-dev | ORCH | BLOCKED -> routing to BACKEND-DEV (keycloak DOWN)
+2026-08-15T03:37:03Z | INFRA_UNBLOCK | WF02-plc-batch-a-20260815 | --- | ORCH | Services healthy -- redispatching TEST-RUNNER Step 04 rework2
+2026-08-15T03:37:13Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner-rework2 | ORCH -> TEST-RUNNER | PENDING (rework_count=2/3)
+2026-08-15T03:40:06Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner-rework3 | ORCH -> BACKEND-DEV | PENDING (rework_count=3/3)
+2026-08-15T03:43:29Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03-test-designer-rework1 | ORCH -> TEST-DESIGNER | PENDING (compile errors in test files)
+2026-08-15T03:58:30Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner-rework4 | ORCH -> TEST-RUNNER | PENDING (rework_count=4/3)
+2026-08-15T05:26:20Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03-test-designer-rework2 | ORCH -> TEST-DESIGNER | PENDING (const catalog -> var catalog)
+2026-08-15T05:40:24Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | dispatched (retry 5 - const→var fix verify)
+2026-08-15T05:41:39Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | started
+2026-08-15T00:48:25Z | complete | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | result=FAIL - compile fix landed (plc04:373); 27 tests still fail at migration step due to pre-existing scope-header casing bug in migrations/1157 (and 1156). Issue list includes F-PLC-MIGRATION-1157-scope-header for ISSUE-FIXER.
+2026-08-15T05:51:55Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH -> ISSUE-FIXER | dispatched (TEST-RUNNER FAIL - scope header casing bug in migrations 1156/1157)
+2026-08-15T05:52:15Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH -> ISSUE-FIXER | started
+2026-08-15T06:02:25Z | complete | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH <- ISSUE-FIXER | PASS (commit ae0840b3 - lowercase scope header in migrations 1156/1157)
+2026-08-15T06:03:50Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework6 | ORCH -> TEST-RUNNER | dispatched (retry 6 - verify scope-casing fix ae0840b3)
+2026-08-15T06:04:16Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework6 | ORCH -> TEST-RUNNER | started
+2026-08-15T09:36:23Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-issue-fixer-2 | ORCH -> ISSUE-FIXER | PENDING | (SQL literal bug at process_module_catalog.zig:170 after TEST-RUNNER retry 6 FAIL)
+2026-08-15T04:39:38Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework7 | ORCH -> TEST-RUNNER | PENDING | (After ISSUE-FIXER commit 8b7cd18a — 8 SQL literal defects fixed in process_module_catalog.zig)
+2026-08-15T04:42:17Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework7 | TEST-RUNNER -> ORCH | FAIL | 17/27 pass; 10/27 fail on memory leaks in process_module_catalog.zig:rowToEntry (SQL parse unblocked; leak class remains). Next: ISSUE-FIXER for leak fix.\n2026-08-15T04:43:13Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-issue-fixer-3 | ORCH -> ISSUE-FIXER | PENDING | (Memory leak in process_module_catalog.zig::rowToEntry — TEST-RUNNER rework 7 found 17/27 pass; leaked allocations in 10 tests)
+2026-08-15T04:57:42Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework8 | ORCH -> TEST-RUNNER | PENDING | (After ISSUE-FIXER commit 2f7e4080 — memory leak fixed in 4 internal sites + 41 test sites)
+2026-08-15T05:11:34Z | COMPLETE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework8 | TEST-RUNNER -> ORCH | FAIL | 17/27 pass, 10/27 fail (4 clusters). Filed ISS-0705. Needs WF-03 dispatch.
+2026-08-15T05:12:48Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-issue-fixer-4 | ORCH -> ISSUE-FIXER | PENDING | (After TEST-RUNNER rework 8: 17/27 pass; 10 logic failures — pool diagnostic gap blocks 7 of them; TC-PLC-04-05 UUID slice; TC-PLC-03-05 interface schema seed)
+2026-08-15T05:32:03Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework9 | ORCH -> TEST-RUNNER | PENDING | (Final verification after ISSUE-FIXER commit 590a6624 — 8 defects fixed; smoke shows 27/27 passing)
+2026-08-15T05:39:55Z | COMPLETE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework9 | TEST-RUNNER | PASS | 27/27 PLC tests pass (8+6+5+8); commit 590a6624
+2026-08-15T05:41:49Z | ROUTE | WF02-plc-batch-a-20260815 | step-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING | (TEST-RUNNER PASS — 27/27 PLC tests; advance to Step 5 release decision)
+2026-08-15T05:55:21Z | COMPLETE | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-05-release-validator | RELEASE-VALIDATOR | PASS — APPROVED for PLC-01..04 (stage 15). Artifacts: docs/status/release-decision-WF02-plc-batch-a-20260815.yaml + INNER-REPORT.json
+2026-08-15T05:56:50Z | ROUTE | WF02-plc-batch-a-20260815 | step-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | (RELEASE-VALIDATOR APPROVED — advance to Step 6 to mark PLC-01..04 RELEASED)
+2026-08-15T06:01:07Z | COMPLETE | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-06-doc-updater | DOC-UPDATER | PASS — PLC-01..04 marked RELEASED in docs/requirements.yaml; CHANGELOG.md entry added; docs commit ahead of step-final squash-merge. Artifacts: CHANGELOG.md, docs/requirements.yaml, docs/status/requirement_status.yaml, docs/issue-reports/WF02-plc-batch-a-20260815-step-06-doc-updater-INNER-REPORT.json, handoffs/WF02-plc-batch-a-20260815/registry.json

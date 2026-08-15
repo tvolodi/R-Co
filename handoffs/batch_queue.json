@@ -107,13 +107,13 @@
         "PRM-04",
         "PRM-05"
       ],
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "lock": {
         "workspace_id": "r-co-1-loop",
         "locked_at": "2026-08-12T18:04:57Z"
       },
       "claimed_at": "2026-08-12T18:04:57Z",
-      "completed_at": null,
+      "completed_at": "2026-08-15T01:15:50Z",
       "run_id": null
     }
   ]

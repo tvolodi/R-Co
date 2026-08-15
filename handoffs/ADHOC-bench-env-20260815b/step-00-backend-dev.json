@@ -1,0 +1,27 @@
+{
+  "handoff_id": "ADHOC-bench-env-20260815b-00-backend-dev",
+  "run_id": "ADHOC-bench-env-20260815b",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "00",
+  "created_at": "2026-08-15T03:14:48Z",
+  "started_at": "2026-08-15T03:15:10Z",
+  "completed_at": "2026-08-15T03:16:52Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Restored test environment to full health (10/10 PASS)",
+    "artifacts_out": [],
+    "issues": []
+  },
+  "task": {
+    "description": "Restore test environment to full health. Failing checks: C1 (db_test container), C3 (zig build migrate), C4 (cleanup), C6 (pg_locks).\n\nRun:\n- docker compose up -d db_test --wait\n- python tools/clean_test_db.py\n- zig build migrate\n- Verify: python tools/verify_test_env.py exits 0\n\nReturn PASS only when verify_test_env.py shows 10/10 PASS.",
+    "fn": "none",
+    "max_rework": 1
+  },
+  "workflow_ref": "ADHOC-bench-env-20260815b",
+  "requirements": [],
+  "stage": null
+}

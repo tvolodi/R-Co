@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-01-code-designer",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "CODE-DESIGNER",
+  "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+  "step": "01",
+  "created_at": "2026-08-15T01:33:38Z",
+  "started_at": "2026-08-15T01:34:04Z",
+  "completed_at": "2026-08-15T01:38:04Z",
+  "status": "COMPLETED",
+  "rework_count": 1,
+  "result": {
+    "status": "PASS",
+    "summary": "Design for PLC-01..04 (Stage 15). All four Type E artefacts produced, linted clean, committed to feature/WF02-plc-batch-a-20260815. plc-01 covers catalog data model + module_ref resolution + share table. plc-02 covers publication gate (SPC-01 interface required). plc-03 covers cross-version breaking-change detection. plc-04 covers cross-tenant distribution via explicit grants with non-retroactive revocation semantics.",
+    "artifacts_out": [
+      "src/design/plc-01-process-module-catalog.md",
+      "src/design/plc-02-catalog-publication-requires-interface.md",
+      "src/design/plc-03-cross-version-compatibility.md",
+      "src/design/plc-04-cross-tenant-distribution.md"
+    ],
+    "issues": []
+  },
+  "task": {
+    "description": "REWORK 1 — Fix design gaps for PLC-01, PLC-02, PLC-03, PLC-04 (Stage 15, MUST/should).\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 8c5b3fc0)\n\nOPEN QUESTIONS — RESOLVED BY ORCH (resolve these in the design):\n1. PLC-01 OQ-2: module_id is GLOBALLY UNIQUE across all tenants. This affects primary key of process_module_catalog table and the share-table join semantics.\n2. PLC-03 OQ-1: \"immediately preceding ACTIVE version\" = highest ACTIVE version with semver < new version (full semver comparison, not same-major-only). Document this in the algorithm.\n3. PLC-04 OQ-3: YES — grantModuleVisibility and revokeModuleVisibility MUST emit structured audit_log events. Add this to the API contract and data model.\n\nPREVIOUS ISSUES TO FIX:\n4. PLC-01-AC-MISSING: Add validation to PLC-01 design: SUB_PROCESS nodes with BOTH child_definition_id AND module_ref present must be rejected with HTTP 422. Update the error taxonomy to include this case.\n5. PLC-01-PUBLISH-ALREADY-ACTIVE: Add ModuleAlreadyActive error variant to PLC-01's ModuleCatalogError enum. Define HTTP status (409 Conflict).\n6. PLC-03-OQ-2: Algorithm must explicitly handle null predecessor (first ACTIVE version has no comparison needed — return no warnings).\n7. PLC-03-OQ-3-ALGORITHM-BUG: Fix algorithm: when prev.required is absent (treated as false) and new.required is true (explicit), this IS a breaking change (optional→required). The comparison should be: if new.required == true AND prev.required in [false, absent] -> breaking. Document this explicitly.\n\nUpdate the 4 existing design files on the branch. Git add + git commit on feature/WF02-plc-batch-a-20260815.\n\nReturn PASS with updated design artefacts.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER"
+}

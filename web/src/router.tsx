@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import OidcCallbackPage from '@/pages/OidcCallbackPage'
 import { AppShell } from '@/components/layout/AppShell'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
+import ProcessModulesPage from '@/pages/admin/modules/ProcessModulesPage'
 import TenantDashboardPage from '@/pages/dashboard/TenantDashboardPage'
 import DefinitionListPage from '@/pages/definitions/DefinitionListPage'
 import DefinitionEditorPage from '@/pages/definitions/DefinitionEditorPage'
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'admin/tenants', element: <TenantsPage /> },
       { path: 'admin/tenants/:slug/edit', element: <EditTenantPage /> },
       { path: 'admin/services', element: <ServicesPage /> },
+      { path: 'admin/modules', element: <ProcessModulesPage /> },
       { path: 'dlq', element: <DlqPage /> },
       { path: 'webhooks', element: <WebhooksPage /> },
     ],

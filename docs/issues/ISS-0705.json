@@ -1,0 +1,51 @@
+{
+  "iss_id": "ISS-0705",
+  "id": "ISS-0705",
+  "title": "PLC-01..04 integration tests: 10/27 still fail after rework7 memory-leak fix (commit 2f7e4080)",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "F_RUNTIME_ERROR",
+  "workflow_id": "WF02-plc-batch-a-20260815",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "created_at": "2026-08-15T05:08:20Z",
+  "registered_at": "2026-08-15T05:08:20Z",
+  "created_by": "TEST-RUNNER (WF02-plc-batch-a-20260815 step-04 rework 8)",
+  "registered_by": "TEST-RUNNER (WF02-plc-batch-a-20260815 step-04 rework 8)",
+  "branch": "feature/WF02-plc-batch-a-20260815",
+  "branch_base_sha": "2f7e4080",
+  "labels": [
+    "bug",
+    "issue"
+  ],
+  "scope": "PLC-01..04 integration tests still produce 10 runtime failures despite the rowToEntry-allocation memory-leak fix in commit 2f7e4080",
+  "affected_areas": [
+    "src/repository/process_module_catalog.zig",
+    "src/db/pool.zig",
+    "tests/integration/plc01_module_catalog_test.zig",
+    "tests/integration/plc02_publication_test.zig",
+    "tests/integration/plc03_compatibility_test.zig",
+    "tests/integration/plc04_visibility_test.zig"
+  ],
+  "description": "After rework 7 (commit 2f7e4080) fixed the rowToEntry allocation leaks in 4 internal registerModule/publishModule paths and 41 test sites across 5 files, the PLC-01..04 integration test suite still has 10 of 27 tests failing. The 17 passing tests prove the harness, pool, and core registerModule path are sound for the successful subset, so the failures are cluster-specific rather than a single root cause. The failure clusters are: (1) PLC-01 TransactionFailed on insert parameters, (2) PLC-03-05 InterfaceNotDeclared mismatch, (3) PLC-04-05 hexToBytes InvalidCharacter slice, (4) PLC-04-07/08 TransactionFailed on listVisibleModules. Crucially, src/db/pool.zig:564 wraps every non-ConnectionFailed PgError as PoolError.QueryFailed with no message, so the actual Postgres SQLSTATE and message are swallowed — the Zig-side stack only shows TransactionFailed. This makes diagnosis impossible without either instrumenting the pool or reproducing the SQL directly via psql. The first step of any fix must surface the underlying Postgres error; the rest of the failure causes can then be triaged against the revealed SQLSTATE.",
+  "symptom": "10 of 27 PLC integration tests fail at runtime. Per-file: plc01 6 pass / 2 fail / 2 leaks; plc02 5 pass / 1 fail / 0 leaks; plc03 1 pass / 4 fail / 0 leaks; plc04 5 pass / 3 fail / 3 leaks. All failures show ModuleCatalogError.TransactionFailed in the Zig stack (pool QueryFailed wrapper) except TC-PLC-03-05 (InterfaceNotDeclared) and TC-PLC-04-05 (InvalidCharacter in hexToBytes). Direct psql reproduction of the SQL fragments (INSERT INTO public.process_module_catalog, listVisibleModules) executes successfully with the same parameter values, so the underlying Postgres error is parameter-sensitive (e.g. NULL vs empty string, a specific UUID pattern, or a CHECK constraint not satisfied by the test's specific row).",
+  "discovered_at": "2026-08-15T05:08:00Z",
+  "discovered_by": "TEST-RUNNER (WF02-plc-batch-a-20260815 step-04 rework 8)",
+  "investigation_notes": "1. Environment PASS: backend /health/ready → 200, keycloak /health/ready → 200, db_test healthy on :5434, 145/145 migrations applied. 2. zig build test-integration-plc compiles cleanly (4 PLC test files compile; commit 2f7e4080 did not break the build). 3. 17 passing tests include the happy-path registerModule (TC-PLC-01-05, 08) and most publishModule paths (TC-PLC-02-01, 02, 03, 05, 06, 07), so the Smoke check from rework 7 is valid for the passing subset. 4. The 10 failures cluster into 4 defect classes: (a) PLC-01-01, 04, 06, 07: registerModule TransactionFailed; (b) PLC-02-04: publishModule TransactionFailed; (c) PLC-03-02, 03, 04: registerModule TransactionFailed on second insert in same test; (d) PLC-03-05: InterfaceNotDeclared on publishModule with empty prior interface_schema; (e) PLC-04-05: InvalidCharacter in hexToBytes grant_id_row[0..32] (slice length mismatch — UUID column returns 36 chars including dashes); (f) PLC-04-07, 08: listVisibleModules TransactionFailed. 5. Direct psql reproduction of the INSERT INTO public.process_module_catalog with quoted 'DRAFT' (no backslashes, matching the bytes-after-fix in 8b7cd18a) succeeds and returns 1 row. 6. The pool layer (src/db/pool.zig:564) maps any non-ConnectionFailed PgError to PoolError.QueryFailed WITHOUT surfacing the SQLSTATE or message text — the actual Postgres error is invisible to the test runner. 7. Information_schema confirms the table has 9 columns, no FK constraints, only a CHECK constraint on status and a UNIQUE index on (module_id, version). 8. The leak count dropped from prior runs (down 5: 2 in plc01, 3 in plc04) — the rework7 fix is partially effective but five allocations still leak.",
+  "reproduction": "Step 1: `cd c:\\\\Users\\\\tvolo\\\\dev\\\\ai-dala\\\\R-Co && git checkout feature/WF02-plc-batch-a-20260815` (HEAD = 2f7e4080). Step 2: Confirm services: backend `/health/ready` → 200, keycloak `/health/ready` → 200, db_test healthy. Step 3: `docker-compose exec -T db_test psql -U bpm -d bpm_test -c \"INSERT INTO public.process_module_catalog (module_id, version, owning_tenant_id, owning_definition_id, interface_schema, exportable, status) VALUES ('repro-01', '1.0.0', '11111111-1111-1111-1111-111111111111'::uuid, '22222222-2222-2222-2222-222222222222'::uuid, '{}', 't', 'DRAFT') ON CONFLICT (module_id, version) DO NOTHING RETURNING module_id;\"` — returns 1 row (success). Step 4: `$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://localhost:8081'; zig build test-integration-plc 2>&1 | tee tests/reports/plc-retry9-output.log` — 17/27 pass, 10/27 fail. Step 5: Read `tests/reports/report-2026-08-15-WF02-plc-batch-a-20260815-rework8.yaml` for the full per-file breakdown. The 10 failing tests are listed under per_file.fail in that report.",
+  "fix_file": "src/db/pool.zig (diagnostic) + tests/integration/plc04_visibility_test.zig (TC-PLC-04-05 slice)",
+  "fix_line": "564 (instrument) + tests/integration/plc04_visibility_test.zig:394 (slice [0..36])",
+  "fix_diff": "Primary diagnostic: at src/db/pool.zig:564, replace the bare `return PoolError.QueryFailed;` with a gated std.debug.print that surfaces the underlying PgError SQLSTATE and message (e.g. `std.debug.print(\"PoolError.QueryFailed: SQLSTATE={s} msg={s}\\\\n\", .{pg_err.sql_state, pg_err.message})`). Make this no-op in ReleaseFast. Then rerun the failing tests and read the actual Postgres error from the test output. For TC-PLC-04-05, change `grant_id_row[0..32]` to `grant_id_row[0..36]` and strip dashes before hexToBytes (or pull the raw 16-byte UUID via bytea). For TC-PLC-03-05, decide whether the test seed should populate a sentinel interface_schema on the prior module, or whether publishModule should treat InterfaceNotDeclared as absence-of-warning when the new module also has no interface_schema. Apply the same investigation to the 7 remaining TransactionFailed cases once the pool layer surfaces the real SQLSTATE.",
+  "pr_url": null,
+  "pr_merged_at": null,
+  "pr_merge_commit": null,
+  "handoff_history": [
+    {
+      "step": "step-04-test-runner-rework8",
+      "agent": "TEST-RUNNER",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "status": "FAIL",
+      "completed_at": "2026-08-15T05:08:20Z",
+      "summary": "Ran zig build test-integration-plc on commit 2f7e4080 (post memory-leak fix). Environment PASS (backend /health/ready → 200, keycloak /health/ready → 200, db_test healthy, 145/145 migrations applied). 17/27 PLC tests pass, 10/27 fail with 4 distinct failure clusters. Per-file: plc01 6/2/2 (pass/fail/leaks), plc02 5/1/0, plc03 1/4/0, plc04 5/3/3. Most failures are ModuleCatalogError.TransactionFailed; TC-PLC-03-05 is InterfaceNotDeclared; TC-PLC-04-05 is InvalidCharacter in hexToBytes (slice length mismatch). Filed this issue ISS-0705. Handoff set to FAIL; ORCH must dispatch WF-03 ISSUE-FIXER to instrument pool.zig:564 to surface the swallowed Postgres error (unblocks 7 of 10 failures), fix the PLC-04-05 test slice, and align the PLC-03-05 test seed with the production semantics, then redispatch TEST-RUNNER for rework 9."
+    }
+  ]
+}

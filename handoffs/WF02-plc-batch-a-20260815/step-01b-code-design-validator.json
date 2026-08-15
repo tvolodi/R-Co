@@ -1,0 +1,75 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-01b-code-design-validator",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+  "step": "01b",
+  "created_at": "2026-08-15T01:39:20Z",
+  "started_at": "2026-08-15T01:39:42Z",
+  "completed_at": "2026-08-15T01:40:00Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "Design validation for PLC-01..04 failed: 3 BLOCKER open questions unresolved (OQ-2, OQ-1, OQ-3), 4 MAJOR gaps in acceptance-criterion coverage.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "source": "plc-01-process-module-catalog.md",
+        "code": "PLC-01 OQ-2",
+        "description": "Open question PLC-01 OQ-2 unresolved: module_id scope - globally unique or per-tenant? The design primary key is (module_id, version) but module_id repetition across tenants would make module_id alone non-unique globally. This affects the share-table join condition in PLC-04 resolveModuleRef and the grant uniqueness semantics. Confirm the scope before BACKEND-DEV implements."
+      },
+      {
+        "severity": "BLOCKER",
+        "source": "plc-03-cross-version-compatibility.md",
+        "code": "PLC-03 OQ-1",
+        "description": "Open question PLC-03 OQ-1 unresolved: immediately preceding ACTIVE version - is it the highest semver below the new version (e.g. 2.0.1 for 3.0.0), or the highest within the same major? The design algorithm does ORDER BY semver_sort(version) DESC LIMIT 1 which selects the global highest below the new version. Confirm which interpretation is correct."
+      },
+      {
+        "severity": "BLOCKER",
+        "source": "plc-04-cross-tenant-distribution.md",
+        "code": "PLC-04 OQ-3",
+        "description": "Open question PLC-04 OQ-3 unresolved: Should grantModuleVisibility and revokeModuleVisibility emit structured audit_log events? The design only says recommend yes with no firm decision. Audit log is an important NFR requirement for administrative actions in a multi-tenant system. ORCH or PRODUCT_OWNER must decide."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "plc-01-process-module-catalog.md",
+        "code": "PLC-01-AC-MISSING",
+        "description": "PLC-01 AC not covered: GIVEN both child_definition_id and module_ref are present on the same node, WHEN the definition is created or updated, THEN it is rejected with HTTP 422. The design never mentions this dual-presence validation. graph.zig existing checkSubProcess only validates child_definition_id is present - it would not catch this case. BACKEND-DEV needs explicit guidance to add this check."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "plc-01-process-module-catalog.md",
+        "code": "PLC-01-PUBLISH-ALREADY-ACTIVE",
+        "description": "PLC-01 error taxonomy gap: what happens when publishModule is called on a module version already in ACTIVE status? PLC-02 edge-case table mentions ModuleAlreadyActive but PLC-01 ModuleCatalogError enum does not include it and no HTTP response is specified. Implementor would not know whether to return 409, 422, or something else."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "plc-03-cross-version-compatibility.md",
+        "code": "PLC-03-OQ-2",
+        "description": "PLC-03 OQ-2: What if new version is the first ACTIVE (no predecessor)? The design says produces no warning (null) but the algorithm pseudocode always calls computeCompatibilityWarning(newEntry, previousEntry) assuming previousEntry exists. The null-handling case needs explicit description in the algorithm."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "plc-03-cross-version-compatibility.md",
+        "code": "PLC-03-OQ-3-ALGORITHM-BUG",
+        "description": "PLC-03 OQ-3: absent required defaults to false is stated as confirmed but the algorithm has a bug handling it. When prev.required is absent (null) it equals false so the check prev.required == false and input.required == true does not fire for the case where a previously-absent (optional) input is now required=true. The algorithm needs explicit null/absent handling: treat absent required as false at the point of comparison."
+      }
+    ]
+  },
+  "task": {
+    "description": "Validate CODE-DESIGNER output for PLC-01, PLC-02, PLC-03, PLC-04.\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 8c5b3fc0)\n\nHARD GATE - implementation cannot proceed until this returns PASS.\n\nCHECKS:\n1. Every acceptance criterion in each requirement has a corresponding design element\n2. No implementation code in design artefacts (data model, API, state machine only)\n3. Design is complete enough for BACKEND-DEV to implement without ambiguity\n4. No open questions that require ORCH or user input before implementation\n5. Data model is consistent (no conflicting field names/types)\n6. API endpoints are well-formed (method, path, request/response)\n\nVALIDATE:\n- src/design/plc-01-process-module-catalog.md\n- src/design/plc-02-catalog-publication-requires-interface.md\n- src/design/plc-03-cross-version-compatibility.md\n- src/design/plc-04-cross-tenant-distribution.md\n\nOPEN QUESTIONS TO RESOLVE (per CODE-DESIGNER):\n- PLC-01 OQ-2: module_id globally unique or per-tenant?\n- PLC-03 OQ-1: immediately preceding version - highest semver below new, or same major?\n- PLC-03 OQ-2: What if new version is first ACTIVE (no predecessor)?\n- PLC-03 OQ-3: required absent defaults to false - confirm\n- PLC-04 OQ-3: Should grant/revoke emit audit log events?\n\nReturn PASS if all gates clear. Return FAIL with BLOCKER/MAJOR/MINOR issue list.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
+  "stage": "stage15",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "CODE-DESIGN-VALIDATOR"
+}
