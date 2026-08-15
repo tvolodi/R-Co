@@ -50,6 +50,24 @@ export interface DefinitionGraph {
   edges: GraphEdge[]
 }
 
+// ── SUB_PROCESS interface contract (SPC-01 / SPC-02) ────────────────────────
+
+/** One declared input or output of a SUB_PROCESS `interface` (SPC-01). */
+export interface SubProcessInterfaceEntry {
+  /** Variable key. Non-empty, unique within its direction. */
+  name: string
+  /** Well-formed JSON Schema object (SPC-02). Constraints applied at runtime. */
+  json_schema: Record<string, unknown>
+  /** Absent `required` is treated as `false` (PLC-03 OQ-3). */
+  required?: boolean
+}
+
+/** Optional `interface` attribute on a SUB_PROCESS node (SPC-01/SPC-02). */
+export interface SubProcessInterface {
+  inputs: SubProcessInterfaceEntry[]
+  outputs: SubProcessInterfaceEntry[]
+}
+
 export interface ProcessDefinition {
   id: string
   name: string
