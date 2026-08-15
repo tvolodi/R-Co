@@ -56,8 +56,7 @@ fn randomUuid(allocator: std.mem.Allocator) ![16]u8 {
 }
 
 fn uuidToString(allocator: std.mem.Allocator, uuid: [16]u8) ![]const u8 {
-    return std.fmt.allocPrint(allocator,
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++

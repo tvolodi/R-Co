@@ -25,7 +25,10 @@ pub fn handleListModules(
     }
     const eff_limit: u32 = limit orelse 50;
     const result = catalog.listVisibleModules(
-        allocator, caller_tenant_id.?, after_module_version, eff_limit,
+        allocator,
+        caller_tenant_id.?,
+        after_module_version,
+        eff_limit,
     ) catch |err| switch (err) {
         pmc.ModuleCatalogError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
         else => return errorResult(allocator, 500, "internal_error"),
@@ -49,7 +52,10 @@ pub fn handleRegisterModule(
     if (actor.role != .PROCESS_DESIGNER and !actor.is_bootstrap)
         return errorResult(allocator, 403, "forbidden");
     const parsed = std.json.parseFromSlice(
-        std.json.Value, allocator, body_bytes, .{ .allocate = .alloc_always },
+        std.json.Value,
+        allocator,
+        body_bytes,
+        .{ .allocate = .alloc_always },
     ) catch return errorResult(allocator, 400, "malformed_json");
     defer parsed.deinit();
     if (parsed.value != .object) return errorResult(allocator, 422, "invalid_body");
@@ -147,7 +153,10 @@ pub fn handleGrantShare(
     if (actor.role != .PLATFORM_ADMIN and !actor.is_bootstrap)
         return errorResult(allocator, 403, "forbidden");
     const parsed = std.json.parseFromSlice(
-        std.json.Value, allocator, body_bytes, .{ .allocate = .alloc_always },
+        std.json.Value,
+        allocator,
+        body_bytes,
+        .{ .allocate = .alloc_always },
     ) catch return errorResult(allocator, 400, "malformed_json");
     defer parsed.deinit();
     if (parsed.value != .object) return errorResult(allocator, 422, "invalid_body");
@@ -296,8 +305,12 @@ fn jsonString(obj: std.json.ObjectMap, key: []const u8) ?[]const u8 {
     return v.string;
 }
 
-fn parseUuid36(s: []const u8) ![16]u8 { return hexToUuid(s); }
-fn parseUuid36String(s: []const u8) ![16]u8 { return hexToUuid(s); }
+fn parseUuid36(s: []const u8) ![16]u8 {
+    return hexToUuid(s);
+}
+fn parseUuid36String(s: []const u8) ![16]u8 {
+    return hexToUuid(s);
+}
 
 fn hexToUuid(s: []const u8) ![16]u8 {
     var uuid: [16]u8 = undefined;
@@ -329,7 +342,7 @@ fn hexChar(c: u8) u8 {
 fn uuidToHexStr(allocator: std.mem.Allocator, uuid: [16]u8) ![]u8 {
     var buf: [36]u8 = undefined;
     _ = std.fmt.bufPrint(&buf, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
-        uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7],
+        uuid[0], uuid[1], uuid[2],  uuid[3],  uuid[4],  uuid[5],  uuid[6],  uuid[7],
         uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15],
     }) catch return error.InvalidUuid;
     return try allocator.dupe(u8, &buf);

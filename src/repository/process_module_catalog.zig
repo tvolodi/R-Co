@@ -185,7 +185,10 @@ pub const ProcessModuleCatalog = struct {
         ,
             &.{ params.module_id, params.version, tenant_hex, def_hex, schema_json, exportable_str },
         ) catch return ModuleCatalogError.TransactionFailed;
-        defer { var r = rows; r.deinit(); }
+        defer {
+            var r = rows;
+            r.deinit();
+        }
 
         if (rows.rows.len == 0) return ModuleCatalogError.DuplicateModuleVersion;
         return rowToEntry(allocator, rows.rows[0]) catch ModuleCatalogError.TransactionFailed;
@@ -221,7 +224,10 @@ pub const ProcessModuleCatalog = struct {
         ,
             &.{ module_id, version },
         ) catch return ModuleCatalogError.TransactionFailed;
-        defer { var r = rows; r.deinit(); }
+        defer {
+            var r = rows;
+            r.deinit();
+        }
 
         if (rows.rows.len == 0) return ModuleCatalogError.ModuleNotFound;
 
@@ -260,7 +266,10 @@ pub const ProcessModuleCatalog = struct {
         ,
             &.{ module_id, version },
         ) catch return ModuleCatalogError.TransactionFailed;
-        defer { var r = upd_rows; r.deinit(); }
+        defer {
+            var r = upd_rows;
+            r.deinit();
+        }
 
         const upd_entry = rowToEntry(allocator, upd_rows.rows[0]) catch
             return ModuleCatalogError.TransactionFailed;
@@ -301,7 +310,10 @@ pub const ProcessModuleCatalog = struct {
         ,
             &.{ module_ref.module_id, tid_hex },
         ) catch return ModuleCatalogError.TransactionFailed;
-        defer { var r = own_rows; r.deinit(); }
+        defer {
+            var r = own_rows;
+            r.deinit();
+        }
 
         if (own_rows.rows.len > 0) {
             const entry = rowToEntry(allocator, own_rows.rows[0]) catch
@@ -331,7 +343,10 @@ pub const ProcessModuleCatalog = struct {
         ,
             &.{ module_ref.module_id, tid_hex },
         ) catch return ModuleCatalogError.TransactionFailed;
-        defer { var r = shared_rows; r.deinit(); }
+        defer {
+            var r = shared_rows;
+            r.deinit();
+        }
 
         if (shared_rows.rows.len > 0) {
             const entry = rowToEntry(allocator, shared_rows.rows[0]) catch
@@ -376,7 +391,10 @@ pub const ProcessModuleCatalog = struct {
         ,
             &.{ granting_hex, params.module_id, receiving_hex, granted_by_hex },
         ) catch return ModuleCatalogError.TransactionFailed;
-        defer { var r = rows; r.deinit(); }
+        defer {
+            var r = rows;
+            r.deinit();
+        }
 
         if (rows.rows.len == 0) return ModuleCatalogError.SharingGrantAlreadyExists;
     }
@@ -409,7 +427,10 @@ pub const ProcessModuleCatalog = struct {
         ,
             &.{grant_hex},
         ) catch return ModuleCatalogError.TransactionFailed;
-        defer { var r = rows; r.deinit(); }
+        defer {
+            var r = rows;
+            r.deinit();
+        }
 
         if (rows.rows.len == 0) return ModuleCatalogError.SharingGrantNotFound;
     }
@@ -462,26 +483,29 @@ pub const ProcessModuleCatalog = struct {
                 break :blk conn.query(
                     allocator,
                     base_sql ++
-                    \\
-                    \\ WHERE pmc.module_id || '/' || pmc.version > $2
-                    \\ ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
-                    \\ LIMIT $3
-                ,
+                        \\
+                        \\ WHERE pmc.module_id || '/' || pmc.version > $2
+                        \\ ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
+                        \\ LIMIT $3
+                    ,
                     &.{ tid_hex, cursor, lim_str },
                 ) catch return ModuleCatalogError.TransactionFailed;
             } else {
                 break :blk conn.query(
                     allocator,
                     base_sql ++
-                    \\
-                    \\ ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
-                    \\ LIMIT $2
-                ,
+                        \\
+                        \\ ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
+                        \\ LIMIT $2
+                    ,
                     &.{ tid_hex, lim_str },
                 ) catch return ModuleCatalogError.TransactionFailed;
             }
         };
-        defer { var r = rows; r.deinit(); }
+        defer {
+            var r = rows;
+            r.deinit();
+        }
 
         const records = allocator.alloc(ProcessModuleCatalogEntry, rows.rows.len) catch
             return ModuleCatalogError.OutOfMemory;
@@ -537,7 +561,10 @@ fn findPredecessorActive(
     ,
         &.{ module_id, current_version },
     ) catch return error.TransactionFailed;
-    defer { var r = rows; r.deinit(); }
+    defer {
+        var r = rows;
+        r.deinit();
+    }
     if (rows.rows.len == 0) return null;
     return rowToEntry(allocator, rows.rows[0]) catch error.TransactionFailed;
 }
