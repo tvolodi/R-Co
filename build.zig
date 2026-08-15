@@ -2365,6 +2365,19 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss0602_cross_integration_tests = addIntegrationRun(b, iss0602_cross_integration_tests, migrations_dir, clean_test_db);
 
+    // SPC-01 / SPC-02: SUB_PROCESS `interface` contract integration tests
+    // (filtered copy-in/merge-back, EE-10 activation/completion gates,
+    // definition-time 422). Also reachable via main_test.zig.
+    const spc01_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/spc01_sub_process_interface_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_spc01_integration_tests = addIntegrationRun(b, spc01_integration_tests, migrations_dir, clean_test_db);
+
     // ISS-0123: DLQ rename (Cluster B) + obs05 audit-trigger isolation (Cluster A) regression tests.
     const iss0123_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -2504,6 +2517,8 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_startup_assertions_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
+    // SPC-01 / SPC-02: SUB_PROCESS `interface` contract (filtered copy/merge, EE-10, definition-time 422).
+    test_integration_others_step.dependOn(&run_spc01_integration_tests.step);
     // ISS-0150 / GH #466: entity_subsystem_test.zig's Run artifact was created
     // and fully configured but attached to no step reachable from
     // `test-integration` — only to the narrow `test-integration-exp` step, which
@@ -3457,6 +3472,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss0602_cross_step = b.step("test-integration-iss0602-cross", "Run ISS-0602 cross-process owner-tag isolation contract tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0602_cross_step.dependOn(&clean_test_db.step);
     test_integration_iss0602_cross_step.dependOn(&run_iss0602_cross_integration_tests.step);
+
+    const test_integration_spc01_step = b.step("test-integration-spc01", "Run SPC-01/SPC-02 SUB_PROCESS interface contract integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_spc01_step.dependOn(&clean_test_db.step);
+    test_integration_spc01_step.dependOn(&run_spc01_integration_tests.step);
 
     const test_integration_iss205_step = b.step("test-integration-iss205", "Run ISS-205 webhook transactional outbox integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss205_step.dependOn(&clean_test_db.step);

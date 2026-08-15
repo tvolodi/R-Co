@@ -57,6 +57,8 @@ const ext03_plugin_integration = @import("ext03_plugin_integration_test.zig");
 const ext04_variable_transformer_integration = @import("ext04_variable_transformer_test.zig");
 // Stage 6 — Sub-process support (EXT-05)
 const ext05_sub_process_support_integration = @import("ext05_sub_process_support_test.zig");
+// Stage 15 — SUB_PROCESS interface contract (SPC-01, SPC-02)
+const spc01_sub_process_interface_integration = @import("spc01_sub_process_interface_test.zig");
 // Stage 3 — Concurrent instance safety (EE-12)
 const ee12_concurrent = @import("concurrent_instances_test.zig");
 // Stage 5 — Durable timer creation (SCH-01)
@@ -246,6 +248,7 @@ comptime {
     _ = ext03_plugin_integration;
     _ = ext04_variable_transformer_integration;
     _ = ext05_sub_process_support_integration;
+    _ = spc01_sub_process_interface_integration;
     _ = ee12_concurrent;
     _ = sch01_timer_creation_integration;
     _ = sch02_timer_polling_integration;
