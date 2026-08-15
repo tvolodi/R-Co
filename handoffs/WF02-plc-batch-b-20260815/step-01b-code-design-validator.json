@@ -1,0 +1,25 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-01b-code-design-validator",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+  "step": "01b",
+  "created_at": "2026-08-15T16:04:11Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "result": null,
+  "task": {
+    "description": "Validate the CODE-DESIGNER artefact for SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nARTEFACT UNDER REVIEW:\n- src/design/spc-01-sub-process-interface-contract.md (commit 3a173a5d)\n\nREQUIREMENTS:\n- SPC-01 (SHOULD, Stage 15, VALIDATED): Declared input/output contract for SUB_PROCESS nodes\n- SPC-02 (SHOULD, Stage 15, VALIDATED): Contract validated at definition-time\n\nCHECKLIST (hard gate):\n1. Does the design cover ALL acceptance criteria of SPC-01 and SPC-02?\n2. Is there NO implementation code in the artefact (design-only)?\n3. Is the design complete enough for BACKEND-DEV (Step 02a) and FRONTEND-DEV (Step 02b) to implement without ambiguity — interfaces, types, data-flow, error taxonomy, validation rules?\n4. Are the referenced requirements (EXT-05, EE-09, EE-10, PD-02, PD-05, PLC-01) correctly reflected?\n\nReturn PASS with a summary, or FAIL with specific criteria that failed so CODE-DESIGNER can rework (max 3).\n\nNote: The CODE-DESIGNER handoff recorded 2 MINOR open questions (OQ-3/OQ-4) for REQ-ANALYST. Verify whether these block implementation or can proceed (SHOULD-priority requirements; if ambiguous, they should be resolved or explicitly deferred).",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR"
+}
