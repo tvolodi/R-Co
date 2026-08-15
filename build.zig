@@ -2,7 +2,6 @@ const std = @import("std");
 // ISS-0161 / GH #485: LuaJIT static build (LUA-01). See vendor/luajit/build.zig
 // for the three-stage bootstrap and the two toolchain workarounds it needs.
 const luajit_build = @import("vendor/luajit/build.zig");
-
 /// ISS-0148 (GitHub #477): construct a run artifact for an integration/regression
 /// test binary with the test-database cleanup sweep attached as a true ordering
 /// PREDECESSOR.
@@ -2390,12 +2389,7 @@ pub fn build(b: *std.Build) void {
     // configured cap as part of the integration-test step's diagnostic
     // metadata). The build-time value is consumed by the `_ = ` assignment
     // below; the wrapper scripts apply the cap at invocation time.
-    const test_integration_jobs = b.option(u32, "test-integration-jobs", "Max parallel integration-test binaries (overrides BPM_TEST_INTEGRATION_JOB_CAP when unset)") orelse blk: {
-        const environ = std.process.Environ{ .block = .global };
-        const cap_str = environ.getAlloc(b.allocator, "BPM_TEST_INTEGRATION_JOB_CAP") catch "8";
-        const cap = std.fmt.parseInt(u32, std.mem.trim(u8, cap_str, " \t"), 10) catch 8;
-        break :blk cap;
-    };
+    const test_integration_jobs = b.option(u32, "test-integration-jobs", "Max parallel integration-test binaries (overrides BPM_TEST_INTEGRATION_JOB_CAP when unset)") orelse 8;
     _ = test_integration_jobs; // surfaced for diagnostics; cap is applied at invocation time via the wrapper script.
 
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL; scaled by -Dtest-integration-jobs or BPM_TEST_INTEGRATION_JOB_CAP)");
