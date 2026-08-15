@@ -1,0 +1,44 @@
+{
+  "report_id": "WF02-plc-batch-b-20260815-step-01b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "step": "01b",
+  "created_at": "2026-08-15T16:06:25Z",
+  "summary": "Validated Type E design artefact src/design/spc-01-sub-process-interface-contract.md for SPC-01/SPC-02. VERDICT PASS: all acceptance criteria covered (SPC-01 AC1-AC6 + empty-inputs edge; SPC-02 AC1-AC2), no implementation code, complete and unambiguous for BACKEND-DEV (Step 02a) and FRONTEND-DEV (Step 02b), referenced requirements (EXT-05, EE-09, EE-10, PD-02, PD-05, PLC-01) correctly reflected, Type E classification correct, lint_design_artefact.py exit 0 (0 BLOCKER / 0 MAJOR / 0 MINOR). OQ-3/OQ-4 are MINOR, explicitly decided in the artefact, non-blocking for SHOULD-priority SPC-01/02; deferred to REQ-ANALYST confirmation before release.",
+  "files_created": [
+    "docs/issue-reports/WF02-plc-batch-b-20260815-step-01b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-plc-batch-b-20260815/step-01b-code-design-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/spc-01-sub-process-interface-contract.md",
+      "status": "pass",
+      "detail": "exit 0; BLOCKER=0 MAJOR=0 MINOR=0"
+    },
+    {
+      "name": "tools/lint_handoffs.py (post-completion hard gate)",
+      "status": "pass",
+      "detail": "exit 0 on this step's files (historical audit debt may pre-exist on branch)"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "OQ-3 (module_ref + node-level interface precedence) recorded as open question for REQ-ANALYST; design takes an explicit documented default (node-declared interface wins for the parent-side contract). Non-blocking."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-4 (runtime enforcement of present output json_schema) recorded as open question for REQ-ANALYST; design validates present outputs pre-merge, consistent with EE-09 and SPC-01 AC3. Non-blocking."
+    }
+  ],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 02a) — implement src/definition/sub_process_interface.zig, graph.zig checkSubProcess SPC-02 branch, engine SPC-01 gates.",
+    "Route to FRONTEND-DEV (Step 02b) — PropertyPanel interface section, interfaceValidation.ts, DefinitionEditorPage wiring, web/src/types/api.ts types.",
+    "REQ-ANALYST to confirm OQ-3 and OQ-4 before release validation (SHOULD-priority, non-blocking for implementation)."
+  ],
+  "blockers": []
+}

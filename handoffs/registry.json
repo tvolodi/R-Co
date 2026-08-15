@@ -31129,7 +31129,7 @@
       "run_id": "WF02-plc-batch-b-20260815",
       "agent_id": "CODE-DESIGN-VALIDATOR",
       "step": "01b",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "created_at": "2026-08-15T16:04:11Z",
       "started_at": null,
       "file": "handoffs/WF02-plc-batch-b-20260815/step-01b-code-design-validator.json",
