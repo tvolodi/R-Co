@@ -1,0 +1,105 @@
+report_id: WF02-prm02-05-20260816-step-02c-security-reviewer
+agent_id: SECURITY-REVIEWER
+run_id: WF02-prm02-05-20260816
+step: "02c"
+created_at: "2026-08-15T21:05:58Z"
+summary: >-
+  Security HARD GATE (WF-02 Step 2c) for PRM-02..05 (promotion pipeline) on
+  branch feature/WF02-prm02-05-20260816. Verdict FAIL (BLOCKER). Reviewed the
+  in-scope diff (src/api/routes/promotion_review.zig, src/definition/
+  promotion_digest.zig, promotion_conflict.zig, promotion_review.zig,
+  src/bpm.zig) against INV-1..INV-8. INV-7 and INV-8 are satisfied (all SQL
+  parameterised via $N; no catch unreachable in the diff; lint_sql_param_types
+  clean). INV-3 and INV-4 do not apply (no Lua/Wasm/secret changes). The gate
+  fails on INV-1 with an empirically confirmed BLOCKER: the promotion_reviews
+  business table is not tenant-isolated — in the test DB (bpm_test) it exists
+  ONLY in public, with zero RLS policies and no per-tenant copies; migration
+  096 is a numeric migration with no scope guard (applied in the public pass,
+  per schema_migrations), and promotion_reviews is absent from the
+  lint_migration_schema.py BUSINESS_TABLES list so the linter is blind to it.
+  A second BLOCKER: the approve gate takes the approver identity from the
+  request body (approved_by) and discards the authenticated principal
+  (_ = actor), so the PRM-05 self-approval / separation-of-duties gate is
+  trivially bypassable by supplying any approved_by != requested_by. A MAJOR
+  finding: inconsistent per-tenant event placement (DEFINITION_PROMOTION_REJECTED
+  is written under the target-tenant search_path by rejectIfConflicts, while
+  DEFINITION_PROMOTION_APPROVED/_APPLIED are written under the request
+  principal's context by appendPromotionEvent), plus the review row's physical
+  placement (caller's schema) vs its tenant_id column (target tenant) mismatch.
+  Grounding performed: zig build exit 0; lint_migration_schema, lint_sql_table_refs,
+  lint_sql_param_types all exit 0; direct pg queries against bpm_dev and bpm_test.
+  TEST-DESIGNER must NOT start until the BLOCKER findings are resolved and this
+  gate re-passes.
+files_created:
+  - docs/issue-reports/WF02-prm02-05-20260816-step-02c-security-reviewer-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: zig build
+    status: pass
+    detail: "Exit 0 — in-scope modules compile (BENCH_MIGRATE_URL_INFO line is stderr noise, not a failure)."
+  - name: python tools/lint_migration_schema.py
+    status: pass
+    detail: "Exit 0 — but note: promotion_reviews is NOT in BUSINESS_TABLES, so an unqualified public-pass creation is invisible to it."
+  - name: python tools/lint_sql_table_refs.py
+    status: pass
+    detail: "Exit 0 — no legacy table-name references."
+  - name: python tools/lint_sql_param_types.py src tests
+    status: pass
+    detail: "Exit 0 — 0 BLOCKER, 0 MAJOR, 0 MINOR (INV-7)."
+  - name: DB probe (scratch/sec_review_prm05_db_check.py)
+    status: pass
+    detail: "Empirically confirmed in bpm_test: promotion_reviews copies=['public'], public RLS policies=0, no per-tenant copies; schema_migrations shows 096 applied in public pass only; events is correctly per-tenant (par05_* + tenant_default)."
+issues_found:
+  - severity: BLOCKER
+    description: >-
+      INV-1 — promotion_reviews is not tenant-isolated. Migration
+      096_promotion_reviews.sql is a numeric migration with no -- scope header
+      and no public-guard, so it runs in the public pass (confirmed: bpm_test
+      schema_migrations has ('public','096_promotion_reviews.sql') only). The
+      resulting table exists ONLY in public with zero RLS policies and no
+      per-tenant copies (pg query against bpm_test). The PRM-02..05 review
+      read/write paths (submit/context/approve/reject/apply) therefore operate
+      on a shared, un-scoped table whenever the request resolves via
+      search_path=public (LEGACY_RLS-mode tenants, no-tenant/bootstrap
+      requests) — cross-tenant read/write of serialised_plan promotion diffs
+      and review metadata. This is exactly the INV-1 class of defect
+      ('business table under public = cross-tenant leak regardless of SQL
+      text'). The linter is blind to it because promotion_reviews is missing
+      from tools/lint_migration_schema.py BUSINESS_TABLES.
+  - severity: BLOCKER
+    description: >-
+      INV-2 / PRM-05 no-bypass integrity — approver identity is client-supplied.
+      handleApproveReview discards the authenticated principal (_ = actor) and
+      takes approved_by from the request body; the self-approval gate compares
+      two client-supplied values (approved_by vs requested_by). Any
+      authenticated caller who can read a review_id can approve it by supplying
+      any approved_by UUID different from requested_by — including a fabricated
+      UUID — so the separation-of-duties gate is trivially bypassable. The
+      newly added DEFINITION_PROMOTION_APPROVED event records that client-
+      supplied identity as actor_id in the audit trail. Combined with the
+      public-table exposure above, one authenticated tenant principal can
+      read/approve/apply any promotion review.
+  - severity: MAJOR
+    description: >-
+      INV-1/INV-6 consistency — per-tenant event placement is inconsistent.
+      rejectIfConflicts explicitly switches tenant context to the target tenant
+      before appending DEFINITION_PROMOTION_REJECTED, while
+      approveReview/markReviewApplied append DEFINITION_PROMOTION_APPROVED /
+      DEFINITION_PROMOTION_APPLIED under the request principal's tenant context
+      (no switch to the review row's tenant_id). The same promotion's audit
+      trail is therefore split across tenant schemas depending on the pipeline
+      step. Additionally submitReview inserts the review row under the caller's
+      tenant context while stamping tenant_id = target_tenant_id, creating a
+      logical/physical ownership mismatch. The batch needs an explicit
+      decision on which tenant schema owns promotion review rows and promotion
+      events, enforced consistently on every path.
+next_steps:
+  - ORCH routes the BLOCKER findings to BACKEND-DEV (fix) and ISSUE-FIXER Step 0.5 (file GitHub issues).
+  - Fix required: (1) make promotion_reviews per-tenant (scope migration to tenant schemas only + add public-drop guard) and add it to lint_migration_schema.py BUSINESS_TABLES; (2) derive approver identity from the authenticated actor, not the request body; (3) make event placement consistent (single owner tenant per promotion).
+  - Re-route to SECURITY-REVIEWER (Step 2c) after fix; TEST-DESIGNER (Step 3) must not start until this gate re-passes.
+blockers:
+  - INV-1 BLOCKER (promotion_reviews in public, no RLS, no per-tenant copies) — HARD GATE FAIL.
+  - INV-2 BLOCKER (client-supplied approver identity bypasses PRM-05 separation of duties).

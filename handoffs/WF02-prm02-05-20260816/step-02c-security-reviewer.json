@@ -1,0 +1,77 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-02c-security-reviewer",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer.json",
+  "created_at": "2026-08-15T20:58:01Z",
+  "started_at": "2026-08-15T20:58:15Z",
+  "completed_at": "2026-08-15T21:05:58Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev",
+      "wf02-prm02-05-20260816-01-code-designer",
+      "wf02-prm02-05-20260816-01b-code-design-validator",
+      "wf02-prm02-05-20260816-02a-backend-dev"
+    ],
+    "artifacts_in": [
+      "src/design/prm02-05-promotion-approval-pipeline.md",
+      "docs/agents/instructions/security-invariants.md"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "Perform the security review HARD GATE for WF-02 run WF02-prm02-05-20260816 (requirements PRM-02..05, promotion pipeline). The Step 2a implementation changes tenant-data paths (promotion_reviews table with tenant_id, per-tenant events emission of DEFINITION_PROMOTION_REJECTED/_APPROVED/_APPLIED, GET /api/v1/promotions/{id}/context serving stored plan + assertions + NEEDS_REVIEW package, no-bypass approval gate), so this review is IN-SCOPE. Review the changes on branch feature/WF02-prm02-05-20260816 against the numbered security invariants in docs/agents/instructions/security-invariants.md (tenant data isolation, field authorisation, secrets by reference, SQL parameterisation, no probe-indistinguishable rejection, no catch unreachable on realistic failures). Run the lints/tests/git diff needed to ground your verdict. Return PASS only if the implementation satisfies the invariants for the in-scope diff.",
+    "acceptance_criteria": [
+      "Every in-scope change assessed against the numbered security invariants",
+      "Tenant data isolation preserved (promotion_reviews scoped by tenant_id, per-tenant events)",
+      "Field authorisation correct for the promotion approve/apply/context endpoints",
+      "No SQL parameterisation violations",
+      "No bypass path in the approval gate",
+      "Verdict PASS or FAIL with specific invariant citations",
+      "HARD GATE: TEST-DESIGNER must not start until this returns PASS"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Security HARD GATE (Step 2c) for PRM-02..05 promotion pipeline: FAIL (BLOCKER). INV-1 BLOCKER empirically confirmed: promotion_reviews exists ONLY in public in bpm_test (0 RLS policies, no per-tenant copies; migration 096 applied in the public pass only), so the submit/context/approve/reject/apply paths operate on a shared un-scoped table. INV-2 BLOCKER: approve takes approved_by from the request body and discards the authenticated actor (_ = actor), so the PRM-05 separation-of-duties/self-approval gate is bypassable. MAJOR: inconsistent per-tenant event placement (REJECTED under target-tenant search_path vs APPROVED/APPLIED under request-principal context). INV-7/INV-8 clean (all SQL parameterised; no catch unreachable in the diff); zig build and all static lints exit 0. TEST-DESIGNER must not start until the BLOCKER findings are resolved and this gate re-passes.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-prm02-05-20260816-step-02c-security-reviewer-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "invariant": "INV-1",
+        "description": "promotion_reviews is not tenant-isolated: migration 096 (numeric, no scope guard) ran in the public pass; in bpm_test the table exists ONLY in public, 0 RLS policies, no per-tenant copies. The PRM-02..05 review read/write paths operate on this shared un-scoped table when the request resolves via search_path=public (LEGACY_RLS / no-tenant path) — cross-tenant read/write of serialised_plan promotion diffs and review metadata. promotion_reviews is also missing from tools/lint_migration_schema.py BUSINESS_TABLES, so the linter is blind to it."
+      },
+      {
+        "severity": "BLOCKER",
+        "invariant": "INV-2",
+        "description": "Approver identity is client-supplied: handleApproveReview discards the authenticated principal (_ = actor) and takes approved_by from the request body; the self-approval gate compares two client-supplied values, so any authenticated caller who can read a review_id can approve it by supplying any approved_by != requested_by (fabricated UUID). This bypasses the PRM-05 separation-of-duties gate; the new DEFINITION_PROMOTION_APPROVED event records the client-supplied identity as actor_id."
+      },
+      {
+        "severity": "MAJOR",
+        "invariant": "INV-1/INV-6",
+        "description": "Inconsistent per-tenant event placement: rejectIfConflicts writes DEFINITION_PROMOTION_REJECTED under the target-tenant search_path, while approveReview/markReviewApplied write DEFINITION_PROMOTION_APPROVED/_APPLIED under the request-principal context (no switch to the review row's tenant_id). Also submitReview inserts the review row under the caller's context while stamping tenant_id = target_tenant_id — logical/physical ownership mismatch. The batch needs one explicit owner-tenant decision for review rows and promotion events, enforced on every path."
+      }
+    ],
+    "next_action": "ORCH routes BLOCKER findings to BACKEND-DEV (fix) and ISSUE-FIXER Step 0.5 (file GitHub issues); re-route to SECURITY-REVIEWER (Step 2c) after fix. TEST-DESIGNER (Step 3) must not start until this gate returns PASS."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
