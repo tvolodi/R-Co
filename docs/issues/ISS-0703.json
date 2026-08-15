@@ -69,6 +69,14 @@
       "status": "PASS",
       "completed_at": "2026-08-15T20:39:42Z",
       "summary": "Diagnosis confirmed unchanged from WF02-plc-batch-a-20260815 step-04. Root cause: case-sensitive std.mem.indexOf on '-- scope:' header in src/db/migrations.zig; offending files 1156 and 1157 had '-- Scope:' (capital S) on line 20. Fix: lowercase S -> s in both files; carried on main via commits 51170eed and 47d4c7c9. Branch feature/WF03-GH785-20260815 (cut from main at e9baade3) contains the fix. Remaining work: TEST-RUNNER retry 6 -- full PLC integration suite green."
+    },
+    {
+      "step": "step-3-backend-dev",
+      "agent": "BACKEND-DEV",
+      "run_id": "WF03-GH785-20260815",
+      "status": "PASS",
+      "completed_at": "2026-08-15T20:48:04Z",
+      "summary": "Step 3 confirmation-only. Fix was already on branch feature/WF03-GH785-20260815 (carried from main at e9baade3 via 51170eed and 47d4c7c9). zig build exits 0; zig build test exits 0. Pure regression fix — skipping Step 4/4b and routing directly to TEST-RUNNER Step 5."
     }
   ],
   "occurrences": [
