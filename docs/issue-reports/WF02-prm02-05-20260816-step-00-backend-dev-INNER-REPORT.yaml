@@ -1,0 +1,47 @@
+report_id: WF02-prm02-05-20260816-step-00-backend-dev
+agent_id: BACKEND-DEV
+run_id: WF02-prm02-05-20260816
+step: "00"
+created_at: "2026-08-15T20:09:09Z"
+summary: >-
+  Executed fn:git-setup for WF02-prm02-05-20260816 (PRM-02/03/04/05). origin/main
+  had advanced to 5ce43dad while ORCH's uncommitted bookkeeping (orchestrator.log,
+  registry.json, handoff dir) sat in the working tree, so the plain ff-only pull was
+  blocked. Committed the ORCH bookkeeping on main (344ef60f), then rebased it onto
+  the fresh origin/main resolving the two append-only-file conflicts as a union
+  (final main 1f4e953b; restored 4 GH-780 audit lines 5ce43dad had lost). Created and
+  pushed feature/WF02-prm02-05-20260816 from main @ 1f4e953b; local tip == remote
+  tip == 1f4e953b4a00981ff0fa0d8c2cd53237e8548cdf and origin/main is an ancestor of
+  the branch. All four acceptance criteria met; result.status PASS.
+files_created:
+  - docs/issue-reports/WF02-prm02-05-20260816-step-00-backend-dev-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF02-prm02-05-20260816/step-00-backend-dev.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: git pull --ff-only origin main (after bookkeeping commit + rebase)
+    status: pass
+    detail: >-
+      Pulled 60e5fc5b..5ce43dad; rebased local bookkeeping commit onto 5ce43dad;
+      main tip 1f4e953b contains all origin/main content (merge-base --is-ancestor exit 0)
+  - name: git branch --show-current
+    status: pass
+    detail: outputs feature/WF02-prm02-05-20260816
+  - name: git push -u origin feature/WF02-prm02-05-20260816
+    status: pass
+    detail: "[new branch] feature/WF02-prm02-05-20260816 -> origin; upstream tracking set"
+  - name: remote tip verification
+    status: pass
+    detail: origin/feature/WF02-prm02-05-20260816 == 1f4e953b4a00981ff0fa0d8c2cd53237e8548cdf == local HEAD
+issues_found:
+  - severity: MINOR
+    description: >-
+      Pre-existing: origin/main 5ce43dad dropped 4 GH-780 audit-trail lines
+      (2026-08-14T04:49:04Z RESOLVE, 04:49:49Z DONE, 04:50:00Z GIT,
+      04:50:00Z LOCAL_BOOKKEEPING) that were present in 60e5fc5b — an append-only
+      violation upstream. Restored locally by the union merge; flag for ORCH to
+      verify upstream history did not intentionally rewrite the log.
+next_steps:
+  - ORCH routes to CODE-DESIGNER (Step 1) once Step 00 returns PASS
+blockers: []

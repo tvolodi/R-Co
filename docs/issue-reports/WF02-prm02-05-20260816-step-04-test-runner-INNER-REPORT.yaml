@@ -1,0 +1,65 @@
+report_id: WF02-prm02-05-20260816-step-04-test-runner
+agent_id: TEST-RUNNER
+run_id: WF02-prm02-05-20260816
+step: "04"
+created_at: "2026-08-15T23:18:40Z"
+
+summary: >
+  Executed the WF-02 Step 4 test run for PRM-02..05 on branch
+  feature/WF02-prm02-05-20260816 against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test.
+  zig build check exits 0 (check_fmt_scope PASSED). All PRM-02..05 integration binaries
+  pass: test-integration-prm02 8/8, test-integration-prm03 11/11, test-integration-prm04
+  (promotion_reviews umbrella) 7/7, test-integration-prm04-review-sm 13/13,
+  test-integration-prm05-review-gate 13/13, and the regression-relevant tenant-isolation
+  suite test-integration-tnt 34/34. One branch-introduced BLOCKER was discovered and fixed
+  under Unblock-Everything: TC-PRM-02-05 in prm02_conflict_test.zig self-deadlocked by
+  calling helpers.acquireIntegrationLock() (holds the bpm_test_migrations_public advisory
+  lock for the test's lifetime on a dedicated connection) followed by
+  helpers.ensureSchemaReady() (separate connection blocks forever on the same lock).
+  Diagnosed live via pg_stat_activity/pg_locks, terminated the stuck run, and reordered
+  ensureSchemaReady() before acquireIntegrationLock(). Post-fix re-run 8/8 PASS. Verdict: PASS.
+
+files_created:
+  - tests/reports/report-20260816-WF02-prm02-05-20260816.yaml
+  - docs/issue-reports/WF02-prm02-05-20260816-step-04-test-runner-INNER-REPORT.yaml
+
+files_modified:
+  - tests/integration/prm02_conflict_test.zig
+
+tests_run:
+  - name: "zig build check"
+    status: pass
+    detail: "exit 0; check_fmt_scope PASSED (11 changed .zig files)."
+  - name: "zig build test-integration-prm02"
+    status: pass
+    detail: "8/8 tests passed (after deadlock fix; first attempt hung in TC-PRM-02-05)."
+  - name: "zig build test-integration-prm03"
+    status: pass
+    detail: "11/11 tests passed."
+  - name: "zig build test-integration-prm04"
+    status: pass
+    detail: "7/7 tests passed (promotion_reviews umbrella)."
+  - name: "zig build test-integration-prm04-review-sm"
+    status: pass
+    detail: "13/13 tests passed."
+  - name: "zig build test-integration-prm05-review-gate"
+    status: pass
+    detail: "13/13 tests passed."
+  - name: "zig build test-integration-tnt"
+    status: pass
+    detail: "34/34 tests passed (tenant isolation regression)."
+
+issues_found:
+  - severity: MAJOR
+    description: >
+      Branch-introduced deterministic self-deadlock in tests/integration/prm02_conflict_test.zig
+      TC-PRM-02-05 (acquireIntegrationLock then ensureSchemaReady on the same advisory
+      lock across two connections). Fixed under Unblock-Everything by reordering
+      ensureSchemaReady() before acquireIntegrationLock(). Verify at the Final gate
+      (BACKEND-DEV) that the reorder preserves the test's serialization intent.
+
+next_steps:
+  - "ORCH routes to RELEASE-VALIDATOR (Step 5) on this PASS."
+  - "Final gate (BACKEND-DEV/FRONTEND-DEV) to note the TEST-RUNNER deadlock fix and the earlier TEST-DESIGNER production compile fixes when committing."
+
+blockers: []

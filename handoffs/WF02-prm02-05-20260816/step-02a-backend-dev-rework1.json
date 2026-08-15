@@ -1,0 +1,84 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-02a-backend-dev-rework1",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "02a-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-prm02-05-20260816/step-02a-backend-dev-rework1.json",
+  "created_at": "2026-08-15T21:08:08Z",
+  "started_at": "2026-08-15T21:08:25Z",
+  "completed_at": "2026-08-15T21:20:13Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev",
+      "wf02-prm02-05-20260816-01-code-designer",
+      "wf02-prm02-05-20260816-01b-code-design-validator",
+      "wf02-prm02-05-20260816-02a-backend-dev",
+      "wf02-prm02-05-20260816-02c-security-reviewer"
+    ],
+    "artifacts_in": [
+      "src/design/prm02-05-promotion-approval-pipeline.md",
+      "handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer.json",
+      "docs/agents/instructions/security-invariants.md"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Previous Step 2a attempt failed the SECURITY-REVIEWER hard gate (Step 2c) with two BLOCKERs and one MAJOR. Fix the following on branch feature/WF02-prm02-05-20260816, then re-apply your original Step 2a acceptance criteria (zig build check exit 0; migration applies; PRM-02..05 ACs).\n\nBLOCKER 1 (INV-1 \u2014 tenant data isolation): migration 096_promotion_reviews.sql creates promotion_reviews with no scope guard and the table is absent from BUSINESS_TABLES in tools/lint_migration_schema.py; the table exists only in public with 0 RLS policies and no per-tenant copies. The submit/context/approve/reject/apply paths operate on a shared un-scoped table under LEGACY_RLS-mode tenants / no-tenant path \u2014 cross-tenant read/write of promotion diffs and review metadata. Fix: make promotion_reviews tenant-isolated per the repo's per-tenant migration pattern (tenant-scoped migration + per-tenant table provisioning), and add it to BUSINESS_TABLES so lint_migration_schema.py tracks it.\n\nBLOCKER 2 (INV-2 \u2014 server-side field authorisation): handleApproveReview/handleApplyReview/handleGetPromotionContext discard the authenticated principal (_ = actor) and take approved_by from the request body; the self-approval gate compares two client-supplied values, so any authenticated caller who can read a review_id can approve it by supplying any approved_by != requested_by (even a fabricated UUID), and the DEFINITION_PROMOTION_APPROVED event records that client-supplied identity. Fix: derive approved_by (and the event actor_id) from the authenticated actor server-side; never trust request-body identity.\n\nMAJOR (INV-1/INV-6 \u2014 consistency): DEFINITION_PROMOTION_REJECTED is written under the target-tenant search_path while DEFINITION_PROMOTION_APPROVED/_APPLIED are written under the request principal's context; submitReview inserts the row under the caller's schema while stamping tenant_id = target_tenant_id. Fix: make one explicit owner-tenant decision, enforced identically on every promotion path.\n\nRead the Step 2c handoff result and the security invariants doc for full citations. After fixing, run zig build check, re-apply migrations to the test DB, and confirm the security findings are resolved.",
+    "acceptance_criteria": [
+      "promotion_reviews tenant-isolated (per-tenant provisioning + added to BUSINESS_TABLES in tools/lint_migration_schema.py)",
+      "Approver identity derived from authenticated actor server-side; no client-supplied approved_by",
+      "Single owner-tenant decision enforced on every promotion event path",
+      "zig build check exits 0",
+      "Migration applies cleanly to the test DB",
+      "Original PRM-02..05 acceptance criteria still met"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:apply-migrations",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1 cleared the Step 2c security gate findings on PRM-02..05. INV-1 BLOCKER: promotion_reviews is now tenant-isolated \u2014 migration 096 is -- scope: tenant_only (per-tenant provisioning only), GBL-143 drops the historical public shadow, and promotion_reviews was added to BUSINESS_TABLES in tools/lint_migration_schema.py and to the TNT runtime isolation list (21->22). INV-2 BLOCKER: handleApproveReview no longer accepts approved_by from the request body; the approver and the DEFINITION_PROMOTION_APPROVED event actor are the authenticated actor (actor.user_id); any extra body field returns 422 UNKNOWN_FIELD. MAJOR: single owner-tenant decision (the review row's tenant_id = target tenant) enforced on every promotion path \u2014 submitReview inserts under the target schema, and approve/reject/apply/fail/supersede switch to the review's owner tenant before DB work, so DEFINITION_PROMOTION_REJECTED/_APPROVED/_APPLIED all land under the same owner; markReviewApplied records the applying principal as event actor. Verified: zig build check exit 0, lint_migration_schema 0 violations, lint_sql_table_refs/lint_sql_param_types clean, migrations applied to bpm_test (public shadow dropped; 096 applied to tenant_default), test-integration-tnt exit 0 with the 22-table isolation list.",
+    "artifacts_out": [
+      "migrations/096_promotion_reviews.sql",
+      "migrations/GBL-143_prm04_drop_public_promotion_reviews_shadow.sql",
+      "tools/lint_migration_schema.py",
+      "tests/integration/tnt_schema_isolation_test.zig",
+      "src/definition/promotion_review.zig",
+      "src/api/routes/promotion_review.zig",
+      "docs/issue-reports/WF02-prm02-05-20260816-step-02a-backend-dev-rework1-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Design drift: src/design/prm02-05-promotion-approval-pipeline.md PRM-05 documents approve body {plan_digest, approved_by}; INV-2 requires the approver be the authenticated actor, so the implementation accepts {plan_digest} only and rejects approved_by with 422 UNKNOWN_FIELD. CODE-DESIGNER to reconcile the design doc."
+      },
+      {
+        "severity": "MINOR",
+        "description": "TEST-DESIGNER: review transition signatures changed \u2014 approveReview/rejectReview/markReviewApplied/markReviewFailed/supersedeReview now take the review's owner tenant_id (markReviewApplied also actor_id) before expected_row_version. The acknowledged-broken PRM-02..05 integration tests must be rewritten against the new contracts."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing, out of scope: promotion_assertion_runs (1156) conditional FK to promotion_reviews was skipped at its apply time (096 absent); the FK is now missing in tenant_default despite 096 being present. Both tables are co-located in the tenant schema \u2014 no isolation impact; PRM-06 wiring may want to re-apply the FK."
+      }
+    ],
+    "next_action": "ORCH re-routes the fixed diff to SECURITY-REVIEWER (Step 2c rework) for the hard gate re-pass"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

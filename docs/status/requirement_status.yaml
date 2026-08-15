@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-15T17:40:11Z'
+last_updated: '2026-08-15T23:28:31Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4890,25 +4890,57 @@ requirements:
     - src/api/routes/promotions.zig
     released_at: '2026-08-12T17:00:15Z'
   PRM-02:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Conflict pre-flight rejection
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:26Z'
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
   PRM-03:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Plan digest binds approval to a diff
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:27Z'
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
   PRM-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Promotion review state machine
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:28Z'
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
   PRM-05:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Non-skippable human approval gate
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:29Z'
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
   PRM-06:
     status: RELEASED
     stage: '16'

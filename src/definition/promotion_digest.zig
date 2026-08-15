@@ -18,91 +18,111 @@ const plan_mod = @import("promotion_plan.zig");
 
 // ── Public API ─────────────────────────────────────────────────────────────────
 
+/// Canonical JSON serialisation of a PromotionPlan.
+///
+/// Canonical form (requirement PRM-03 entry shape `{type, id, changes}`):
+/// a compact JSON array of plan-entry objects, one per entry, each with keys
+/// sorted lexicographically by Unicode code point (`changes`, `id`, `type`):
+///
+///   {"changes":{"after":...,"before":...,"change_kind":"added"},"id":"node-1","type":"graph_node"}
+///
+/// where `changes` is itself a compact object with keys sorted
+/// lexicographically (`after`, `before`, `change_kind`). No insignificant
+/// whitespace anywhere; UTF-8 encoded; `null` values are emitted as the
+/// literal `null`, never omitted. `before`/`after` carry the JSON-serialised
+/// prior/new state as a JSON string (`null` for `added` / `removed`
+/// respectively).
+///
+/// The returned slice is allocated with the caller-provided allocator and is
+/// owned by the caller.
+pub fn serialisePlanCanonical(
+    allocator: std.mem.Allocator,
+    plan: plan_mod.PromotionPlan,
+) ![]const u8 {
+    var buf = std.ArrayList(u8).empty;
+    defer buf.deinit(allocator);
+
+    try buf.append(allocator, '[');
+    for (plan.entries, 0..) |entry, i| {
+        if (i > 0) try buf.append(allocator, ',');
+        try serialiseEntryCanonical(allocator, &buf, entry);
+    }
+    try buf.append(allocator, ']');
+    return buf.toOwnedSlice(allocator);
+}
+
 /// Computes the canonical SHA-256 digest of a PromotionPlan.
 /// Returns lowercase hexadecimal string (64 characters). The returned slice
 /// is allocated with the caller-provided allocator and is owned by the caller.
-/// Canonical form: keys sorted lexicographically, no insignificant whitespace.
+/// Canonical form: keys sorted lexicographically, no insignificant whitespace,
+/// over the requirement entry shape `{type, id, changes}`.
 pub fn computePlanDigest(allocator: std.mem.Allocator, plan: plan_mod.PromotionPlan) []const u8 {
-    // Build a canonical JSON representation of the plan entries.
-    // Each entry is serialized as:
-    // {"after":null,"before":null,"change_kind":"added","id":"node-1","type":"graph_node"}
-    // with keys sorted lexicographically: after, before, change_kind, id, type.
-
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-
-    buf.appendSlice(allocator, "[") catch return "";
-    for (plan.entries, 0..) |entry, i| {
-        if (i > 0) buf.append(allocator, ',') catch return "";
-
-        // Build sorted-entry canonical JSON manually.
-        // Keys in lexicographic order: after, before, change_kind, id, type.
-        const type_str = planEntryTypeStr(entry.type);
-        const change_kind_str = changeKindStr(entry.change_kind);
-
-        // "after" value
-        if (entry.after) |af| {
-            // String value — JSON-escaped
-            const escaped = jsonEscape(allocator, af);
-            defer allocator.free(escaped);
-            buf.appendSlice(allocator, "{\"after\":") catch return "";
-            buf.appendSlice(allocator, escaped) catch return "";
-        } else {
-            buf.appendSlice(allocator, "{\"after\":null") catch return "";
-        }
-
-        // "before" value
-        if (entry.before) |bf| {
-            const escaped = jsonEscape(allocator, bf);
-            defer allocator.free(escaped);
-            buf.appendSlice(allocator, ",\"before\":") catch return "";
-            buf.appendSlice(allocator, escaped) catch return "";
-        } else {
-            buf.appendSlice(allocator, ",\"before\":null") catch return "";
-        }
-
-        // "change_kind"
-        buf.appendSlice(allocator, ",\"change_kind\":\"") catch return "";
-        buf.appendSlice(allocator, change_kind_str) catch return "";
-        buf.appendSlice(allocator, "\"") catch return "";
-
-        // "id"
-        buf.appendSlice(allocator, ",\"id\":") catch return "";
-        const id_escaped = jsonEscape(allocator, entry.id);
-        defer allocator.free(id_escaped);
-        buf.appendSlice(allocator, id_escaped) catch return "";
-
-        // "type"
-        buf.appendSlice(allocator, ",\"type\":") catch return "";
-        const type_escaped = jsonEscape(allocator, type_str);
-        defer allocator.free(type_escaped);
-        buf.appendSlice(allocator, type_escaped) catch return "";
-
-        buf.append(allocator, '}') catch return "";
-    }
-
-    buf.append(allocator, ']') catch return "";
+    const canonical = serialisePlanCanonical(allocator, plan) catch return "";
 
     // Compute SHA-256 of the canonical bytes.
     var digest: [32]u8 = undefined;
-    sha2.Sha256.hash(buf.items, &digest);
+    sha2.Sha256.hash(canonical, &digest, .{});
+    allocator.free(canonical);
 
-    // Convert to lowercase hex string.
-    const hex = std.fmt.allocPrint(allocator, "{s}", .{
-        std.fmt.fmtSliceHexLower(&digest),
-    }) catch return "";
-    return hex;
+    // Convert to lowercase hex string (no std.fmt.fmtSliceHexLower in this Zig).
+    const hex_chars = "0123456789abcdef";
+    const out = allocator.alloc(u8, 64) catch return "";
+    for (digest, 0..) |b, i| {
+        out[i * 2] = hex_chars[b >> 4];
+        out[i * 2 + 1] = hex_chars[b & 0xf];
+    }
+    return out;
 }
 
 /// Verifies that a request-body digest matches the stored digest.
 /// Returns true if equal, false otherwise.
-/// Uses constant-time comparison to avoid timing attacks on the digest value.
+/// Uses constant-time comparison (std.crypto.timing_safe.compare) to avoid
+/// timing attacks on the digest value.
 pub fn verifyDigest(stored: []const u8, provided: []const u8) bool {
     if (stored.len != 64 or provided.len != 64) return false;
-    return std.crypto.utils.constantTimeCompare(u8, stored, provided) == .eq;
+    return std.crypto.timing_safe.compare(u8, stored, provided, .little) == .eq;
 }
 
 // ── Internal helpers ────────────────────────────────────────────────────────────
+
+/// Emits one plan entry in canonical form:
+///   {"changes":{"after":...,"before":...,"change_kind":"..."},"id":...,"type":...}
+/// with entry keys sorted lexicographically (`changes` < `id` < `type`) and the
+/// `changes` sub-object keys sorted lexicographically (`after` < `before` <
+/// `change_kind`).
+fn serialiseEntryCanonical(
+    allocator: std.mem.Allocator,
+    buf: *std.ArrayList(u8),
+    entry: plan_mod.PlanEntry,
+) !void {
+    try buf.appendSlice(allocator, "{\"changes\":{\"after\":");
+    if (entry.after) |af| {
+        const escaped = try jsonEscape(allocator, af);
+        defer allocator.free(escaped);
+        try buf.appendSlice(allocator, escaped);
+    } else {
+        try buf.appendSlice(allocator, "null");
+    }
+    try buf.appendSlice(allocator, ",\"before\":");
+    if (entry.before) |bf| {
+        const escaped = try jsonEscape(allocator, bf);
+        defer allocator.free(escaped);
+        try buf.appendSlice(allocator, escaped);
+    } else {
+        try buf.appendSlice(allocator, "null");
+    }
+    try buf.appendSlice(allocator, ",\"change_kind\":\"");
+    try buf.appendSlice(allocator, changeKindStr(entry.change_kind));
+    try buf.appendSlice(allocator, "\"},\"id\":");
+    const id_escaped = try jsonEscape(allocator, entry.id);
+    defer allocator.free(id_escaped);
+    try buf.appendSlice(allocator, id_escaped);
+    try buf.appendSlice(allocator, ",\"type\":");
+    const type_escaped = try jsonEscape(allocator, planEntryTypeStr(entry.type));
+    defer allocator.free(type_escaped);
+    try buf.appendSlice(allocator, type_escaped);
+    try buf.append(allocator, '}');
+}
 
 fn planEntryTypeStr(t: plan_mod.PlanEntryType) []const u8 {
     return switch (t) {
@@ -124,21 +144,21 @@ fn changeKindStr(k: plan_mod.ChangeKind) []const u8 {
 }
 
 /// Escapes a string for JSON. Returns an allocated string owned by the caller.
-fn jsonEscape(allocator: std.mem.Allocator, s: []const u8) []const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
+fn jsonEscape(allocator: std.mem.Allocator, s: []const u8) ![]const u8 {
+    var buf = std.ArrayList(u8).empty;
+    defer buf.deinit(allocator);
 
-    buf.append(allocator, '"') catch return "";
+    try buf.append(allocator, '"');
     for (s) |c| {
         switch (c) {
-            '"' => buf.appendSlice(allocator, "\\\"") catch return "",
-            '\\' => buf.appendSlice(allocator, "\\\\") catch return "",
-            '\n' => buf.appendSlice(allocator, "\\n") catch return "",
-            '\r' => buf.appendSlice(allocator, "\\r") catch return "",
-            '\t' => buf.appendSlice(allocator, "\\t") catch return "",
-            else => buf.append(allocator, c) catch return "",
+            '"' => try buf.appendSlice(allocator, "\\\""),
+            '\\' => try buf.appendSlice(allocator, "\\\\"),
+            '\n' => try buf.appendSlice(allocator, "\\n"),
+            '\r' => try buf.appendSlice(allocator, "\\r"),
+            '\t' => try buf.appendSlice(allocator, "\\t"),
+            else => try buf.append(allocator, c),
         }
     }
-    buf.append(allocator, '"') catch return "";
-    return buf.toOwnedSlice(allocator) catch return "";
+    try buf.append(allocator, '"');
+    return buf.toOwnedSlice(allocator);
 }

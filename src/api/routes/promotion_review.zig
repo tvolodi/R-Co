@@ -12,6 +12,7 @@
 //!   src/design/prm-05-non-skippable-approval-gate.md
 
 const std = @import("std");
+const builtin = @import("builtin");
 const pool_mod = @import("pool");
 const auth = @import("../middleware/auth.zig");
 const plan_mod = @import("../../definition/promotion_plan.zig");
@@ -262,17 +263,32 @@ pub fn handleGetPromotionContext(
         .superseded => "superseded",
     };
 
+    // timestampToIso returns a compile-time constant string literal, so it must
+    // NOT be freed — allocator.free on a literal is a segmentation fault.
     const created_at_iso = timestampToIso(r.created_at);
-    defer allocator.free(created_at_iso);
+
+    // PRM-05 AC5: the context response carries the stored plan, `assertions[]`,
+    // the `NEEDS_REVIEW` package and `plan_digest` in one document. The
+    // assertions are derived from the stored plan (design OQ-2 — the artifact
+    // store is not wired in this batch), so the reviewer decides on exactly the
+    // diff the digest binds.
+    const built = buildContextAssertionsAndPackage(allocator, r.serialised_plan, r.def_type, r.def_id) catch
+        return errorResult(allocator, 500, "INTERNAL_ERROR", "Failed to build context assertions");
+    defer {
+        allocator.free(built.assertions);
+        allocator.free(built.package);
+    }
 
     const response_body = std.fmt.allocPrint(
         allocator,
-        \\{{"review_id":"{s}","plan_digest":"{s}","serialised_plan":{s},"status":"{s}","requested_by":"{s}","def_type":"{s}","def_id":"{s}","created_at":"{s}","row_version":{d}}}
+        \\{{"review_id":"{s}","plan_digest":"{s}","serialised_plan":{s},"assertions":{s},"needs_review_package":{s},"status":"{s}","requested_by":"{s}","def_type":"{s}","def_id":"{s}","created_at":"{s}","row_version":{d}}}
     ,
         .{
             r.id,
             r.plan_digest,
             r.serialised_plan,
+            built.assertions,
+            built.package,
             status_str,
             r.requested_by,
             r.def_type,
@@ -289,14 +305,18 @@ pub fn handleGetPromotionContext(
 
 const ApproveBody = struct {
     plan_digest: []const u8,
-    approved_by: []const u8,
 };
 
 /// POST /api/v1/promotions/{id}/approve
 ///
-/// Request body: { "plan_digest": "<64-hex>", "approved_by": "<uuid>" }
+/// Request body: { "plan_digest": "<64-hex>" } — exactly one field.
 ///
-/// PRM-05 gates: (1) approved_by != requested_by → 403 SelfApprovalForbidden,
+/// INV-2 (server-side field authorisation): the approver identity is NOT
+/// accepted from the request body. It is derived from the authenticated
+/// principal (`actor.user_id`) server-side, so no caller can fabricate a
+/// different `approved_by` to bypass the PRM-05 separation-of-duties gate.
+///
+/// PRM-05 gates: (1) actor.user_id != requested_by → 403 SelfApprovalForbidden,
 /// (2) status == pending_review → 400, (3) digest match → 409.
 ///
 /// Success — HTTP 200: { "review_id": "<uuid>", "status": "approved" }
@@ -306,6 +326,7 @@ const ApproveBody = struct {
 ///   404  REVIEW_NOT_FOUND
 ///   409  PLAN_DIGEST_MISMATCH
 ///   409  DUPLICATE_REVIEW
+///   422  UNKNOWN_FIELD  (approved_by or any other extra field → 422)
 ///   503  SERVICE_UNAVAILABLE
 ///   500  INTERNAL_ERROR
 pub fn handleApproveReview(
@@ -315,8 +336,6 @@ pub fn handleApproveReview(
     review_id: []const u8,
     body: []const u8,
 ) HandlerResult {
-    _ = actor;
-
     var parse_arena = std.heap.ArenaAllocator.init(allocator);
     defer parse_arena.deinit();
     const pa = parse_arena.allocator();
@@ -337,20 +356,12 @@ pub fn handleApproveReview(
         else => return errorResult(allocator, 422, "INVALID_INPUT", "plan_digest must be a string"),
     };
 
-    // Extract approved_by.
-    const ab_val = obj.get("approved_by") orelse
-        return errorResult(allocator, 422, "INVALID_INPUT", "approved_by is required");
-    const approved_by_str: []const u8 = switch (ab_val) {
-        .string => |s| s,
-        else => return errorResult(allocator, 422, "INVALID_INPUT", "approved_by must be a string"),
-    };
-
     // Check for extra fields (PRM-05 AC3 — no bypass fields allowed).
-    inline for (.{ "plan_digest", "approved_by" }) |allowed| {
-        _ = allowed;
-    }
+    // INV-2: `approved_by` is deliberately NOT a legal body field here — the
+    // approver is the authenticated actor, so any supplied identity field is
+    // rejected with 422 UNKNOWN_FIELD rather than silently ignored.
     for (obj.keys()) |key| {
-        if (!std.mem.eql(u8, key, "plan_digest") and !std.mem.eql(u8, key, "approved_by")) {
+        if (!std.mem.eql(u8, key, "plan_digest")) {
             return errorResult(allocator, 422, "UNKNOWN_FIELD", "Unknown field in request body");
         }
     }
@@ -367,7 +378,7 @@ pub fn handleApproveReview(
         return errorResult(allocator, 404, "REVIEW_NOT_FOUND", "No review found with the given id");
     }
 
-    const r = review.*;
+    const r = review.?;
     defer {
         allocator.free(r.id);
         allocator.free(r.tenant_id);
@@ -381,7 +392,10 @@ pub fn handleApproveReview(
     }
 
     // Gate 1: self-approval prevention (PRM-05 AC1).
-    if (std.mem.eql(u8, r.requested_by, approved_by_str)) {
+    // INV-2: the approver is the authenticated actor, so the gate compares
+    // two server-side values (actor.user_id vs the stored requested_by) — a
+    // caller cannot pick a fabricated approved_by to dodge it.
+    if (std.mem.eql(u8, r.requested_by, actor.user_id)) {
         return errorResult(allocator, 403, "SELF_APPROVAL_FORBIDDEN", "A reviewer cannot approve their own promotion request");
     }
 
@@ -395,8 +409,9 @@ pub fn handleApproveReview(
         return errorResult(allocator, 409, "PLAN_DIGEST_MISMATCH", "The provided plan_digest does not match the stored digest");
     }
 
-    // Perform the transition.
-    review_mod.approveReview(allocator, pool, review_id, approved_by_str, r.row_version) catch |err| switch (err) {
+    // Perform the transition under the review's owner tenant, recording the
+    // authenticated actor as the approver (INV-2 + INV-1/INV-6).
+    review_mod.approveReview(allocator, pool, review_id, r.tenant_id, actor.user_id, r.row_version) catch |err| switch (err) {
         review_mod.ReviewTransitionError.InvalidReviewTransition => return errorResult(allocator, 400, "INVALID_REVIEW_TRANSITION", "Review transition failed — possible concurrent update"),
         review_mod.ReviewTransitionError.DuplicateReview => return errorResult(allocator, 409, "DUPLICATE_REVIEW", "A live review for this plan digest already exists"),
         review_mod.ReviewTransitionError.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
@@ -467,7 +482,7 @@ pub fn handleRejectReview(
         return errorResult(allocator, 404, "REVIEW_NOT_FOUND", "No review found with the given id");
     }
 
-    const r = review.*;
+    const r = review.?;
     defer {
         allocator.free(r.id);
         allocator.free(r.tenant_id);
@@ -486,8 +501,8 @@ pub fn handleRejectReview(
     }
 
     // No self-approval check for rejection (PRM-05: only approval requires separation of duties).
-
-    review_mod.rejectReview(allocator, pool, review_id, r.row_version) catch |err| switch (err) {
+    // The transition runs under the review's owner tenant (INV-1/INV-6).
+    review_mod.rejectReview(allocator, pool, review_id, r.tenant_id, r.row_version) catch |err| switch (err) {
         review_mod.ReviewTransitionError.InvalidReviewTransition => return errorResult(allocator, 400, "INVALID_REVIEW_TRANSITION", "Review transition failed"),
         review_mod.ReviewTransitionError.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
         review_mod.ReviewTransitionError.TransactionFailed => return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error"),
@@ -530,8 +545,6 @@ pub fn handleApplyReview(
     review_id: []const u8,
     body: []const u8,
 ) HandlerResult {
-    _ = actor;
-
     var parse_arena = std.heap.ArenaAllocator.init(allocator);
     defer parse_arena.deinit();
     const pa = parse_arena.allocator();
@@ -570,7 +583,7 @@ pub fn handleApplyReview(
         return errorResult(allocator, 404, "REVIEW_NOT_FOUND", "No review found with the given id");
     }
 
-    const r = review.*;
+    const r = review.?;
     defer {
         allocator.free(r.id);
         allocator.free(r.tenant_id);
@@ -593,7 +606,9 @@ pub fn handleApplyReview(
         return errorResult(allocator, 409, "PLAN_DIGEST_MISMATCH", "The provided plan_digest does not match the stored digest");
     }
 
-    review_mod.markReviewApplied(allocator, pool, review_id, r.row_version) catch |err| switch (err) {
+    // Transition under the review's owner tenant; the DEFINITION_PROMOTION_APPLIED
+    // event actor is the authenticated applying principal (INV-1/INV-2).
+    review_mod.markReviewApplied(allocator, pool, review_id, r.tenant_id, actor.user_id, r.row_version) catch |err| switch (err) {
         review_mod.ReviewTransitionError.InvalidReviewTransition => return errorResult(allocator, 400, "INVALID_REVIEW_TRANSITION", "Review transition failed"),
         review_mod.ReviewTransitionError.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
         review_mod.ReviewTransitionError.TransactionFailed => return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error"),
@@ -611,56 +626,136 @@ pub fn handleApplyReview(
 
 // ── Internal helpers ────────────────────────────────────────────────────────────
 
-fn serialisePlanForStorage(allocator: std.mem.Allocator, plan: plan_mod.PromotionPlan) ![]const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
+const ContextAssertions = struct {
+    assertions: []const u8, // JSON array fragment — the context `assertions[]` field
+    package: []const u8, // JSON object fragment — the `needs_review_package` field
+};
 
-    buf.appendSlice(allocator, "[") catch return error.OutOfMemory;
-    for (plan.entries, 0..) |e, i| {
-        if (i > 0) buf.append(allocator, ',') catch return error.OutOfMemory;
-        buf.appendSlice(allocator, "{\"type\":\"") catch return error.OutOfMemory;
-        buf.appendSlice(allocator, planEntryTypeStr(e.type)) catch return error.OutOfMemory;
-        buf.appendSlice(allocator, "\",\"id\":") catch return error.OutOfMemory;
-        try appendJsonStr(allocator, &buf, e.id);
-        buf.appendSlice(allocator, ",\"change_kind\":\"") catch return error.OutOfMemory;
-        buf.appendSlice(allocator, changeKindStr(e.change_kind)) catch return error.OutOfMemory;
-        buf.appendSlice(allocator, "\",\"before\":") catch return error.OutOfMemory;
-        if (e.before) |b| {
-            try appendJsonStr(allocator, &buf, b);
-        } else {
-            buf.appendSlice(allocator, "null") catch return error.OutOfMemory;
+/// Derives the `assertions[]` and `needs_review_package` fields of the context
+/// response from the STORED plan (PRM-05 AC5): each plan entry becomes a human
+/// review assertion naming exactly the change the digest binds. This resolves
+/// design Open question 2 ("or whether the artifact is resolved another way"):
+/// the promotion artifact store is not yet wired in this batch, so the
+/// assertions are derived deterministically from the stored plan rather than an
+/// artifact lookup. Both returned slices are caller-owned.
+fn buildContextAssertionsAndPackage(
+    allocator: std.mem.Allocator,
+    serialised_plan: []const u8,
+    def_type: []const u8,
+    def_id: []const u8,
+) !ContextAssertions {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const aa = arena.allocator();
+
+    var assertions_buf = std.ArrayList(u8).empty;
+    defer assertions_buf.deinit(allocator);
+    var package_buf = std.ArrayList(u8).empty;
+    defer package_buf.deinit(allocator);
+
+    try assertions_buf.append(allocator, '[');
+    try package_buf.appendSlice(allocator, "{\"marker\":\"NEEDS_REVIEW\",\"assertions\":[");
+
+    // The stored plan is canonical JSON: an array of {changes,id,type} objects.
+    // A malformed stored plan must not fail the context read — the reviewer
+    // still needs the digest + raw plan; return empty assertions in that case.
+    const parsed = std.json.parseFromSlice(std.json.Value, aa, serialised_plan, .{ .allocate = .alloc_always }) catch {
+        try package_buf.append(allocator, ']');
+        try package_buf.append(allocator, '}');
+        try assertions_buf.append(allocator, ']');
+        return .{
+            .assertions = try assertions_buf.toOwnedSlice(allocator),
+            .package = try package_buf.toOwnedSlice(allocator),
+        };
+    };
+    const arr: []const std.json.Value = switch (parsed.value) {
+        // Zig 0.16: std.json.Value.array is std.json.Array (unmanaged ArrayList).
+        .array => |a| a.items,
+        else => &.{},
+    };
+
+    var first = true;
+    for (arr) |item| {
+        const obj = switch (item) {
+            .object => |o| o,
+            else => continue,
+        };
+        const id_val = obj.get("id") orelse continue;
+        const type_val = obj.get("type") orelse continue;
+        const id_str = switch (id_val) {
+            .string => |s| s,
+            else => continue,
+        };
+        const type_str = switch (type_val) {
+            .string => |s| s,
+            else => continue,
+        };
+        const kind_str: []const u8 = blk: {
+            const changes = obj.get("changes") orelse break :blk "unknown";
+            const changes_obj = switch (changes) {
+                .object => |o| o,
+                else => break :blk "unknown",
+            };
+            const ck = changes_obj.get("change_kind") orelse break :blk "unknown";
+            break :blk switch (ck) {
+                .string => |s| s,
+                else => "unknown",
+            };
+        };
+
+        if (!first) {
+            try assertions_buf.append(allocator, ',');
+            try package_buf.append(allocator, ',');
         }
-        buf.appendSlice(allocator, ",\"after\":") catch return error.OutOfMemory;
-        if (e.after) |a| {
-            try appendJsonStr(allocator, &buf, a);
-        } else {
-            buf.appendSlice(allocator, "null") catch return error.OutOfMemory;
-        }
-        buf.append(allocator, '}') catch return error.OutOfMemory;
+        first = false;
+
+        // assertions[i] = {"id": ..., "type": ..., "change_kind": ...}
+        try assertions_buf.appendSlice(allocator, "{\"id\":");
+        try appendJsonStr(allocator, &assertions_buf, id_str);
+        try assertions_buf.appendSlice(allocator, ",\"type\":");
+        try appendJsonStr(allocator, &assertions_buf, type_str);
+        try assertions_buf.appendSlice(allocator, ",\"change_kind\":");
+        try appendJsonStr(allocator, &assertions_buf, kind_str);
+        try assertions_buf.append(allocator, '}');
+
+        // NEEDS_REVIEW package assertion — HumanReviewAssertion shape
+        // {id, description, severity, rule, sources: [{file, line}]}
+        try package_buf.appendSlice(allocator, "{\"id\":");
+        try appendJsonStr(allocator, &package_buf, id_str);
+        try package_buf.appendSlice(allocator, ",\"description\":\"Review ");
+        try package_buf.appendSlice(allocator, kind_str);
+        try package_buf.appendSlice(allocator, " of ");
+        try package_buf.appendSlice(allocator, type_str);
+        try package_buf.appendSlice(allocator, " ");
+        try appendJsonStr(allocator, &package_buf, id_str);
+        try package_buf.appendSlice(allocator, "\",\"severity\":\"required\",\"rule\":\"human_review_of_promotion_diff\",\"sources\":[{\"file\":");
+        // file = "<def_type>/<def_id>"
+        var file_buf = std.ArrayList(u8).empty;
+        defer file_buf.deinit(allocator);
+        try file_buf.appendSlice(allocator, def_type);
+        try file_buf.append(allocator, '/');
+        try file_buf.appendSlice(allocator, def_id);
+        try appendJsonStr(allocator, &package_buf, file_buf.items);
+        try package_buf.appendSlice(allocator, ",\"line\":0}]}");
     }
-    buf.append(allocator, ']') catch return error.OutOfMemory;
-    return buf.toOwnedSlice(allocator);
-}
 
-fn planEntryTypeStr(t: plan_mod.PlanEntryType) []const u8 {
-    return switch (t) {
-        .graph_node => "graph_node",
-        .graph_edge => "graph_edge",
-        .variable_schema => "variable_schema",
-        .service_binding => "service_binding",
-        .module_ref => "module_ref",
-        .permission_rule => "permission_rule",
+    try assertions_buf.append(allocator, ']');
+    try package_buf.appendSlice(allocator, "]}");
+    return .{
+        .assertions = try assertions_buf.toOwnedSlice(allocator),
+        .package = try package_buf.toOwnedSlice(allocator),
     };
 }
 
-fn changeKindStr(k: plan_mod.ChangeKind) []const u8 {
-    return switch (k) {
-        .added => "added",
-        .modified => "modified",
-        .removed => "removed",
-    };
+fn serialisePlanForStorage(allocator: std.mem.Allocator, plan: plan_mod.PromotionPlan) ![]const u8 {
+    // The stored plan is the canonical serialisation over which the digest is
+    // computed (PRM-03), so a reviewer can recompute the digest over the stored
+    // plan to confirm binding (PRM-03 AC5). No separate 5-key shape: digest and
+    // stored plan are one and the same canonical JSON.
+    return digest_mod.serialisePlanCanonical(allocator, plan);
 }
 
+/// Escapes a string for JSON. Returns an allocated string owned by the caller.
 fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []const u8) !void {
     try buf.append(allocator, '"');
     for (s) |c| {
@@ -676,11 +771,29 @@ fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []con
     try buf.append(allocator, '"');
 }
 
+/// Fill buf with cryptographically secure random bytes (platform-aware,
+/// thread-safe). Replaces std.crypto.random, which was removed in Zig 0.16
+/// (mirrors src/api/routes/onboarding.zig's fillRandom).
+fn fillRandom(buf: []u8) void {
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS — add a platform branch"),
+    }
+}
+
 /// Generate a synthetic UUID string for a promotion_id.
 /// Uses a simple format: a random UUID v4 string.
 fn genUuidStr(buf: *[36]u8) []const u8 {
     const hex_chars = "0123456789abcdef";
-    const uuid_bytes = std.crypto.random.bytes(16);
+    var uuid_bytes: [16]u8 = undefined;
+    fillRandom(&uuid_bytes);
     var j: usize = 0;
     for (uuid_bytes, 0..) |b, i| {
         buf[j] = hex_chars[b >> 4];
@@ -700,15 +813,10 @@ fn genUuidStr(buf: *[36]u8) []const u8 {
 
 /// Convert a Unix timestamp (seconds) to ISO 8601 string.
 fn timestampToIso(ts: i64) []const u8 {
+    _ = ts;
     // This is a simplified version; in production use std.time.Tm for full formatting.
-    // Return an approximate ISO string; caller must free.
-    // For now, return "1970-01-01T00:00:00Z" placeholder — the real implementation
-    // would use std.time.Tm but requires a more complex approach in this context.
-    // We use a thread-local buffer approach similar to other codebase patterns.
-    var buf: [30]u8 = undefined;
-    const len = std.fmt.formatIntBuf(buf[0..], ts, 10, false, .{});
-    // Format as Unix epoch — actual ISO conversion needs std.time.
-    // Return the raw number as string for now (caller sees this is a rough implementation).
-    _ = len;
+    // For now, return a fixed ISO placeholder — the real implementation would use
+    // std.time.Tm but requires a more complex approach in this context.
+    // (std.fmt.formatIntBuf was removed in Zig 0.16 and the value was unused.)
     return "1970-01-01T00:00:00Z"; // TODO: proper ISO formatting
 }

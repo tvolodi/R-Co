@@ -1,0 +1,28 @@
+{
+  "report_id": "WF02-prm02-05-20260816-step-01b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF02-prm02-05-20260816",
+  "step": "01b",
+  "created_at": "2026-08-15T20:22:10Z",
+  "summary": "Validated src/design/prm02-05-promotion-approval-pipeline.md against the WF-02 Step 1b hard-gate criteria for PRM-02..05 (all MUST, stage 16, promotion pipeline). All 8 gate checks PASS: (a) every acceptance criterion maps to a design element - 20/20 ACs (5 per requirement) across PRM-02..05 have explicit design elements; (b) no TBD/deferred criteria - the six Open questions are implementation-reconciliation notes with design elements already specified, none deferring an AC; (c) public signatures fully specified (names, inputs, outputs, error sets e.g. ConflictCheckError, ReviewTransitionError); (d) consolidated 16-entry error taxonomy present with HTTP + code; (e) cross-module dependencies listed with Depends-on / Must-NOT-depend-on and no circular deps (strict PRM-02 -> PRM-03 -> PRM-04 -> PRM-05 consumer chain); (f) security validation rules present for all user-input-handling functions (no-bypass structural enforcement on apply, self-approval prohibition, constant-time digest comparison, strict request-schema UNKNOWN_FIELD validation, optimistic locking); (g) no zig/sql/ts implementation code blocks - only a json HTTP-contract example and a mermaid sequence diagram. Sequence/data-flow diagram present covering the full multi-step promotion operation including the conflict branch. Verdict: PASS - BACKEND-DEV may start (Step 2a).",
+  "files_created": [
+    "docs/issue-reports/WF02-prm02-05-20260816-step-01b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-prm02-05-20260816/step-01b-code-design-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "code-design gate criteria (a)-(g) + sequence diagram",
+      "status": "pass",
+      "detail": "Verified each of the 8 gate checks against the design artefact and docs/requirements.yaml PRM-02..05 acceptance criteria (5 ACs each, 20 total)."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH routes to BACKEND-DEV (Step 2a) for implementation once Step 1b returns PASS."
+  ],
+  "blockers": []
+}

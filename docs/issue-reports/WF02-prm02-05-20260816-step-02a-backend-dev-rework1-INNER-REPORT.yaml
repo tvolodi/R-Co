@@ -1,0 +1,95 @@
+report_id: WF02-prm02-05-20260816-step-02a-backend-dev-rework1
+agent_id: BACKEND-DEV
+run_id: WF02-prm02-05-20260816
+step: "02a-rework1"
+created_at: "2026-08-15T21:20:13Z"
+summary: >-
+  Rework 1 on Step 2a to clear the SECURITY-REVIEWER Step 2c hard gate for
+  PRM-02..05 (promotion pipeline). Fixed all three findings. BLOCKER 1
+  (INV-1): promotion_reviews is now tenant-isolated — migration 096 is marked
+  `-- scope: tenant_only` (per-tenant provisioning only, never public),
+  GBL-143 drops the historical public shadow, and promotion_reviews was added
+  to BUSINESS_TABLES in both tools/lint_migration_schema.py and the
+  tnt_schema_isolation_test.zig runtime-isolation list (21 -> 22 tables).
+  BLOCKER 2 (INV-2): handleApproveReview no longer accepts approved_by from
+  the request body — the approver and the DEFINITION_PROMOTION_APPROVED event
+  actor are derived from the authenticated actor (actor.user_id) server-side,
+  and the self-approval gate now compares two server-side values; any extra
+  body field (including approved_by) returns 422 UNKNOWN_FIELD. MAJOR
+  (INV-1/INV-6): a single owner-tenant decision (the review row's tenant_id =
+  target tenant) is now enforced on every promotion path — submitReview inserts
+  under the target tenant's schema, and approveReview/rejectReview/
+  markReviewApplied/markReviewFailed/supersedeReview switch to the review's
+  owner tenant before their DB work, so DEFINITION_PROMOTION_REJECTED/
+  _APPROVED/_APPLIED are all written under the same owner tenant.
+  markReviewApplied now records the authenticated applying principal as the
+  DEFINITION_PROMOTION_APPLIED event actor. Verified: zig build check exit 0
+  (compile + scoped fmt), lint_migration_schema 0 violations,
+  lint_sql_table_refs OK, lint_sql_param_types 0 issues, migrations applied to
+  bpm_test (GBL-143 in public pass; 096 applied to tenant_default), and
+  test-integration-tnt exit 0 with the updated 22-table isolation list.
+files_created:
+  - migrations/GBL-143_prm04_drop_public_promotion_reviews_shadow.sql
+  - docs/issue-reports/WF02-prm02-05-20260816-step-02a-backend-dev-rework1-INNER-REPORT.yaml
+files_modified:
+  - migrations/096_promotion_reviews.sql
+  - tools/lint_migration_schema.py
+  - tests/integration/tnt_schema_isolation_test.zig
+  - src/definition/promotion_review.zig
+  - src/api/routes/promotion_review.zig
+  - handoffs/WF02-prm02-05-20260816/step-02a-backend-dev-rework1.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: zig build check
+    status: pass
+    detail: "Exit 0 — compile (error-set gate) + tools/check_fmt_scope.py (6 changed .zig files, all formatted)."
+  - name: python tools/lint_migration_schema.py
+    status: pass
+    detail: "Exit 0 — 147 files scanned, 0 violations; promotion_reviews now tracked in BUSINESS_TABLES."
+  - name: python tools/lint_sql_table_refs.py
+    status: pass
+    detail: "Exit 0 — 445 Zig files scanned, no legacy table-name references."
+  - name: python tools/lint_sql_param_types.py src tests
+    status: pass
+    detail: "Exit 0 — 0 BLOCKER, 0 MAJOR, 0 MINOR (INV-7)."
+  - name: zig build migrate (BPM_DB_URL=bpm_test)
+    status: pass
+    detail: "Exit 0 — applied GBL-143 (dropped public.promotion_reviews shadow); 096 skipped in public pass (tenant_only)."
+  - name: zig build test-integration-tnt
+    status: pass
+    detail: "Exit 0 — harness applied 096 to tenant_default; TC-TNT-01-01/02/04 pass with the updated 22-business-table list (promotion_reviews in tenant schema, absent from public)."
+  - name: DB probe (bpm_test)
+    status: pass
+    detail: "promotion_reviews exists ONLY in tenant_default; 0 rows in public; tenant_default has chk_promotion_reviews_status CHECK + promotion_reviews_plan_digest_active_uniq partial unique index + supporting indexes."
+issues_found:
+  - severity: MINOR
+    description: >-
+      Design drift (src/design/prm02-05-promotion-approval-pipeline.md PRM-05
+      approve contract): the design documents the approve request body as
+      {plan_digest, approved_by}. INV-2 requires the approver be the
+      authenticated actor, so the implementation now accepts {plan_digest}
+      only and rejects approved_by with 422 UNKNOWN_FIELD. CODE-DESIGNER should
+      reconcile the design doc to the security-required contract.
+  - severity: MINOR
+    description: >-
+      TEST-DESIGNER (Step 3/4): the promotion review transition function
+      signatures changed in this rework — approveReview/rejectReview/
+      markReviewApplied/markReviewFailed/supersedeReview now take the review's
+      owner tenant_id (and markReviewApplied also takes actor_id) before
+      expected_row_version. The acknowledged-broken PRM-02..05 integration test
+      files (prm03_digest_test.zig, prm04_review_sm_test.zig,
+      prm05_review_gate_test.zig, promotion_reviews_test.zig) call the old
+      signatures and must be rewritten against the new contracts.
+  - severity: MINOR
+    description: >-
+      Pre-existing, out of scope: promotion_assertion_runs (1156) is all_schemas
+      (runs in public + tenant schemas) and its conditional FK to
+      promotion_reviews(id) was skipped when 096 was absent at apply time; the
+      FK is now missing in tenant_default despite 096 being present. Both tables
+      are co-located in the tenant schema, so no isolation impact; PRM-06 wiring
+      may want to re-apply the FK.
+next_steps:
+  - ORCH re-routes the fixed diff to SECURITY-REVIEWER (Step 2c rework) for the hard gate re-pass.
+  - After Step 2c PASS, TEST-DESIGNER (Step 3) rewrites the PRM-02..05 integration tests against the new review-transition signatures.
+blockers: []

@@ -1,0 +1,74 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-02c-security-reviewer-rework2",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "02c-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer-rework2.json",
+  "created_at": "2026-08-15T22:57:51Z",
+  "started_at": "2026-08-15T22:58:07Z",
+  "completed_at": "2026-08-15T23:00:43Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev",
+      "wf02-prm02-05-20260816-01-code-designer",
+      "wf02-prm02-05-20260816-01b-code-design-validator",
+      "wf02-prm02-05-20260816-02a-backend-dev",
+      "wf02-prm02-05-20260816-02c-security-reviewer",
+      "wf02-prm02-05-20260816-02a-backend-dev-rework1",
+      "wf02-prm02-05-20260816-02c-security-reviewer-rework1",
+      "wf02-prm02-05-20260816-03-test-designer"
+    ],
+    "artifacts_in": [
+      "docs/agents/instructions/security-invariants.md",
+      "handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer-rework1.json",
+      "handoffs/WF02-prm02-05-20260816/step-03-test-designer.json"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "SECURITY RE-REVIEW of the diff accumulated since your Step 2c rework1 PASS. TEST-DESIGNER (Step 3) subsequently modified PRODUCTION code under Unblock-Everything while repairing/rewriting the integration tests: compile fixes in src/definition/promotion_review.zig and src/definition/promotion_conflict.zig, plus genuine bug fixes (a segfault from freeing a string literal, a getReview off-by-one column index, 5x fmtInt leaks, a memory leak in rejectIfConflicts) and source-status guards added to all five transition UPDATEs (design-required, exposed by the new tests). Because these touch the same tenant-data-path files you already reviewed, re-review the diff since your rework1 PASS (git diff against the rework1 commit) against the numbered security invariants (INV-1..INV-8). Confirm the source-status guards and bug fixes introduce no new invariant violations (tenant isolation, field authorisation, SQL parameterisation, no catch unreachable, etc.). Return PASS only if the new diff satisfies the invariants; otherwise FAIL with citations.",
+    "acceptance_criteria": [
+      "Diff since rework1 reviewed against INV-1..INV-8",
+      "Source-status guards on transition UPDATEs introduce no new violations",
+      "Bug fixes introduce no new tenant-isolation or authorisation violations",
+      "Verdict PASS or FAIL with specific invariant citations"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Security HARD GATE re-review (Step 2c rework 2) for PRM-02..05 promotion pipeline: PASS. Re-reviewed the full production diff since the rework1 PASS commit (3be9639b) — TEST-DESIGNER's Step 3 changes: Zig 0.16 compile fixes (std.json .items, ArrayList API migration, fillRandom replacing removed std.crypto.random), genuine bug fixes (segfault from freeing a string literal on the timestampToIso path, getReview off-by-one column indices, 5x fmtInt leaks, errdefer->defer leak in rejectIfConflicts), and design-required source-status guards on all five transition UPDATEs. INV-1: guards run under the single owner-tenant search_path (rework1 decision unchanged), promotion_reviews still per-tenant only (no migration/BUSINESS_TABLES change in diff). INV-2: guards fail-closed on 0 rows (InvalidReviewTransition); no client-supplied identity path added. INV-7: all SQL parameterised ($N); status literals are server-side constants; lint_sql_param_types exit 0; no allocPrint SQL interpolation in diff. INV-8: no catch unreachable in diff. INV-3/INV-4/INV-5 not applicable. getReview column fix verified correct for the 14-column SELECT (indices 0-13); rejectIfConflicts defer-frees verified not to double-free (ConflictRejection return does not alias payload/idem_key). Verified: zig build check exit 0, lint_migration_schema exit 0, lint_sql_table_refs exit 0. Two MINOR non-invariant observations (timestampToIso now returns a fixed epoch placeholder — functional regression, not a security issue; fillRandom ignores getrandom return — robustness nit mirroring onboarding.zig). TEST-RUNNER (Step 4) may start.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-prm02-05-20260816-step-02c-security-reviewer-rework2-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "invariant": "none (functional, not a security invariant)",
+        "description": "timestampToIso now returns a fixed '1970-01-01T00:00:00Z' placeholder, so `created_at` in the promotion-context response (handleGetPromotionContext) is no longer the review's creation time. Pre-existing code was equally broken (dangling stack-buffer pointer + free-on-string-literal segfault); the fix removes the crash but leaves the field constant. Not an INV-1..INV-8 violation (server-populated field, no unauthorised data, no authorisation signal). Recommend a follow-up for real ISO formatting (code comment already carries the TODO)."
+      },
+      {
+        "severity": "MINOR",
+        "invariant": "none (robustness, not a security invariant)",
+        "description": "fillRandom ignores the return value of std.os.linux.getrandom; on Linux a failure would leave uuid_bytes undefined. Impact bounded: bytes only feed a synthetic `promotion_id` used as an event idempotency key, not an access-control token; getrandom(2) for 16 bytes blocks rather than fails on entropy starvation; all platforms use a CSPRNG (getrandom / RtlGenRandom / arc4random_buf); mirrors the pre-existing onboarding.zig fillRandom pattern. Not a security-invariant violation."
+      }
+    ],
+    "next_action": "ORCH runs BENCH_ENV_CHECK (zig build test-env-verify) then routes to TEST-RUNNER (Step 4) — HARD GATE re-passed."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

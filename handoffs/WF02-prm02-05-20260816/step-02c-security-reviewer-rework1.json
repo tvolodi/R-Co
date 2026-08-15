@@ -1,0 +1,74 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-02c-security-reviewer-rework1",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "02c-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer-rework1.json",
+  "created_at": "2026-08-15T21:22:34Z",
+  "started_at": "2026-08-15T21:22:50Z",
+  "completed_at": "2026-08-15T21:29:34Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev",
+      "wf02-prm02-05-20260816-01-code-designer",
+      "wf02-prm02-05-20260816-01b-code-design-validator",
+      "wf02-prm02-05-20260816-02a-backend-dev",
+      "wf02-prm02-05-20260816-02c-security-reviewer",
+      "wf02-prm02-05-20260816-02a-backend-dev-rework1"
+    ],
+    "artifacts_in": [
+      "src/design/prm02-05-promotion-approval-pipeline.md",
+      "handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer.json",
+      "handoffs/WF02-prm02-05-20260816/step-02a-backend-dev-rework1.json",
+      "docs/agents/instructions/security-invariants.md"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "REWORK RE-REVIEW: You previously returned FAIL on the Step 2c security gate for WF-02 run WF02-prm02-05-20260816 (PRM-02..05 promotion pipeline) with two BLOCKERs (INV-1 promotion_reviews not tenant-isolated; INV-2 approval gate bypassable via client-supplied approved_by) and one MAJOR (INV-1/INV-6 split per-tenant event placement). BACKEND-DEV rework 1 (step-02a-backend-dev-rework1) has applied fixes: promotion_reviews now provisions per-tenant only (scope: tenant_only), historical public shadow dropped via GBL-143, table added to BUSINESS_TABLES in tools/lint_migration_schema.py and to the runtime isolation list; approve/apply handlers now derive approver/actor identity server-side from the authenticated actor (request body is {plan_digest} only, unknown fields -> 422); a single owner-tenant decision (review row's tenant_id) is enforced on every promotion event path. Re-review the in-scope diff on branch feature/WF02-prm02-05-20260816 against the numbered security invariants, re-running the empirical DB checks you used (promotion_reviews placement in bpm_test, RLS, BUSINESS_TABLES lint, SQL parameterisation) to confirm the findings are resolved. Return PASS only if all prior findings are confirmed resolved and no new invariant violations exist in the reworked diff.",
+    "acceptance_criteria": [
+      "promotion_reviews confirmed tenant-isolated (per-tenant only, no public copy, in BUSINESS_TABLES)",
+      "Approver identity confirmed server-side (no client-supplied approved_by accepted)",
+      "Single owner-tenant decision confirmed on all promotion event paths",
+      "No new invariant violations in the reworked diff",
+      "Verdict PASS or FAIL with specific invariant citations"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Security HARD GATE re-review (Step 2c rework 1) for PRM-02..05 promotion pipeline: PASS. All three prior findings confirmed resolved and no new invariant violations. INV-1 BLOCKER resolved: migration 096 is now scope: tenant_only, GBL-143 drops the historical public shadow, promotion_reviews added to BUSINESS_TABLES (lint_migration_schema.py) and the TNT isolation list (21->22); empirically bpm_test has promotion_reviews ONLY in tenant_default (0 in public), events/plat_event_idempotency per-tenant only, tenant storage_mode SCHEMA. INV-2 BLOCKER resolved: ApproveBody is {plan_digest} only (approved_by or any extra field -> 422 UNKNOWN_FIELD), approver and DEFINITION_PROMOTION_APPROVED actor are the authenticated actor.user_id, self-approval gate compares two server-side values; markReviewApplied records the applying principal as event actor. INV-1/INV-6 MAJOR resolved: single owner-tenant decision (review tenant_id = target tenant) enforced on every promotion path (submit/approve/reject/apply/fail/supersede switch to the owner tenant before DB work; rejectIfConflicts switches to target tenant) so REJECTED/_APPROVED/_APPLIED all land under the same owner tenant. INV-7 clean (all SQL parameterised; lint_sql_param_types exit 0; no allocPrint SQL interpolation in diff); INV-8 clean (no catch unreachable in diff); INV-3/INV-4 not applicable (no Lua/Wasm/secret changes). Verified: zig build check exit 0, test-integration-tnt exit 0 (22-table list). TEST-DESIGNER (Step 3) may start.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-prm02-05-20260816-step-02c-security-reviewer-rework1-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "invariant": "INV-1",
+        "description": "Migration-state observation (not a violation): 096 applied to tenant_default but not yet to the 24 orphaned par05_* test-fixture schemas (pre-date 096, not tenant-table-backed). A promotion targeting a par05_* fixture would fail closed at INSERT (relation does not exist) \u2014 no cross-tenant exposure. TEST-DESIGNER awareness only."
+      },
+      {
+        "severity": "MINOR",
+        "invariant": "INV-2",
+        "description": "Design drift (acknowledged by BACKEND-DEV): design doc PRM-05 documents approve body {plan_digest, approved_by}; implementation accepts {plan_digest} only, rejects approved_by with 422 UNKNOWN_FIELD (strictly more secure). CODE-DESIGNER to reconcile."
+      }
+    ],
+    "next_action": "ORCH routes to TEST-DESIGNER (Step 3) \u2014 HARD GATE re-passed."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

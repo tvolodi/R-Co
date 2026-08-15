@@ -1,0 +1,53 @@
+report_id: WF02-prm02-05-20260816-step-06-doc-updater
+agent_id: DOC-UPDATER
+run_id: WF02-prm02-05-20260816
+step: "06"
+created_at: "2026-08-15T23:29:23Z"
+
+summary: >
+  Executed WF-02 Step 6 documentation update for run WF02-prm02-05-20260816 on branch
+  feature/WF02-prm02-05-20260816. First verified the release decision at
+  docs/status/release-decision-WF02-prm02-05-20260816.yaml is APPROVED (decision:
+  APPROVED, date 2026-08-15T23:23:36Z, RELEASE-VALIDATOR Step 5 PASS). Then advanced
+  PRM-02, PRM-03, PRM-04, PRM-05 from DRAFT to RELEASED in docs/requirements.yaml via
+  tools/reqctl.py set-status (stamps last_updated/released_at from the real clock) with
+  implemented_in pointing at src/definition/promotion_digest.zig,
+  src/definition/promotion_review.zig, src/definition/promotion_conflict.zig,
+  src/api/routes/promotion_review.zig, src/bpm.zig. Regenerated
+  docs/status/requirement_status.yaml via tools/reqctl.py render-status (463 entries;
+  the file header warns it is generated and must not be hand-edited). Prepended a
+  "feat(prm): Stage 16 — PRM-02/03/04/05 RELEASED (WF02-prm02-05-20260816)" section under
+  [Unreleased] in CHANGELOG.md describing each released feature, the gate results
+  (zig build check 0; prm02 8/8, prm03 11/11, prm04 umbrella 7/7 + review-sm 13/13,
+  prm05 13/13, tnt 34/34), migration 096_promotion_reviews.sql, and the release decision
+  file. Did NOT run Step Final git-merge (separate BACKEND-DEV handoff, per dispatch).
+  Verdict: PASS.
+
+files_created:
+  - docs/issue-reports/WF02-prm02-05-20260816-step-06-doc-updater-INNER-REPORT.yaml
+
+files_modified:
+  - docs/requirements.yaml
+  - docs/status/requirement_status.yaml
+  - CHANGELOG.md
+  - handoffs/WF02-prm02-05-20260816/step-06-doc-updater.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: "python tools/reqctl.py set-status PRM-02..05 RELEASED"
+    status: pass
+    detail: "PRM-02 -> RELEASED (2026-08-15T23:28:26Z); PRM-03 (23:28:27Z); PRM-04 (23:28:28Z); PRM-05 (23:28:29Z); released_at/last_updated stamped from the real clock."
+  - name: "python tools/reqctl.py render-status"
+    status: pass
+    detail: "Regenerated docs/status/requirement_status.yaml (463 entries)."
+  - name: "python tools/lint_handoffs.py"
+    status: pass
+    detail: "No findings on files touched by this step (handoffs/WF02-prm02-05-20260816/step-06-doc-updater.json is registered and schema-clean). Remaining lint findings (10 BLOCKER, 31 MAJOR, 1 MINOR) are all pre-existing on other runs' files (ADHOC-prm-env-20260814, WF02-prm-batch2-20260814, WF02-plc-batch-a-20260815) plus the global MINOR H010 registry absence — acknowledged debt, not introduced here."
+
+issues_found: []
+
+next_steps:
+  - "ORCH routes to BACKEND-DEV (Step Final: git-merge) once Step 6 returns PASS."
+
+blockers: []

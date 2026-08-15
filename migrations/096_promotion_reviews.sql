@@ -2,6 +2,14 @@
 -- 096_promotion_reviews.sql
 -- Requirements: PRM-04
 --
+-- scope: tenant_only
+--
+-- INV-1 fix (WF-02 Step 2a rework 1): this table is tenant business data and
+-- must live ONLY in per-tenant schemas (tenant_default, tenant_<uuid>), never
+-- in public. The `tenant_id` column is the owning (target) tenant. Marking the
+-- migration tenant_only stops the public pass from creating a shared public
+-- copy; any historical public shadow is dropped by GBL-143.
+--
 -- Persist promotion approvals in a promotion_reviews table. The table is the
 -- central state machine for the promotion pipeline: records who requested a
 -- promotion, what plan was approved, who approved it, and whether it has been

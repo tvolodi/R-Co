@@ -60,6 +60,11 @@
 				"-Precheck"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "zig-build-check-rework",
+			"type": "shell",
+			"command": "zig build check 2>&1 | Select-Object -Last 30; echo \"build_exit=$LASTEXITCODE\""
 		}
 	]
 }

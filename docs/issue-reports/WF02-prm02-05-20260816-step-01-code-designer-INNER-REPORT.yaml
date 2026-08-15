@@ -1,0 +1,54 @@
+report_id: WF02-prm02-05-20260816-step-01-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF02-prm02-05-20260816
+step: "01"
+created_at: "2026-08-15T20:19:05Z"
+summary: >-
+  Produced the authoritative WF-02 Step 1 design artefact for PRM-02, PRM-03,
+  PRM-04, PRM-05 (all MUST, stage 16, promotion pipeline PW-01) at
+  src/design/prm02-05-promotion-approval-pipeline.md. Classified Type E (novel
+  cross-cutting logic; PRM-04's schema already lands via migrations/096 on the
+  branch, verified against the design's schema spec). The artefact maps every
+  acceptance criterion of all four requirements to a concrete design element,
+  specifies the promotion_reviews schema (columns, six-value CHECK,
+  promotion_reviews_plan_digest_active_uniq partial unique index), the plan_digest
+  canonical JSON serialisation (sorted keys, no insignificant whitespace, entry
+  shape {type, id, changes} with changes = {change_kind, before, after}), the
+  PRM-02 conflict pre-flight ordering guarantee (before digest, before review row,
+  no transaction open against the target tenant schema at raise time), the PRM-05
+  no-bypass approval gate with the GET /api/v1/promotions/{id}/context contract,
+  a Mermaid sequence diagram for the multi-step promotion flow, a consolidated
+  error taxonomy, dependencies, and six open questions. Grounded in the existing
+  implementation (promotion_conflict.zig, promotion_digest.zig,
+  promotion_review.zig, promotion_review.zig routes, migration 096) and the
+  process document. lint_design_artefact.py passes clean (exit 0). No
+  implementation code written (no Zig/SQL/TS blocks); no builds or tests run per
+  the handoff restriction.
+files_created:
+  - src/design/prm02-05-promotion-approval-pipeline.md
+  - docs/issue-reports/WF02-prm02-05-20260816-step-01-code-designer-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF02-prm02-05-20260816/step-01-code-designer.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: python tools/lint_design_artefact.py src/design/prm02-05-promotion-approval-pipeline.md
+    status: pass
+    detail: "OK — 1 file(s) checked, no issues (BLOCKER=0 MAJOR=0 MINOR=0), exit 0"
+issues_found:
+  - severity: MINOR
+    description: >-
+      Design reconciliation notes (not defects of this artefact, recorded for
+      BACKEND-DEV and REQ-ANALYST): (1) requirement PRM-03 names the canonical
+      digest entry shape {type, id, changes}, but the existing
+      src/definition/promotion_digest.zig (prior batch) digests a five-key shape
+      {after, before, change_kind, id, type} — the design specifies {type, id,
+      changes} and BACKEND-DEV must reconcile the digest computation. (2) The
+      current context handler omits assertions[] and the NEEDS_REVIEW package
+      required by PRM-05 AC5 — needs artifact_id on submit/context to satisfy.
+      (3) approveReview/markReviewApplied currently flip status without appending
+      DEFINITION_PROMOTION_APPROVED / DEFINITION_PROMOTION_APPLIED (process doc
+      Step 10 + PRM-04 AC4 require them in the same transactions).
+next_steps:
+  - ORCH routes to CODE-DESIGN-VALIDATOR (Step 1b) once Step 1 returns PASS
+blockers: []

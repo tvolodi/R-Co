@@ -1,0 +1,61 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-01-code-designer",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-prm02-05-20260816/step-01-code-designer.json",
+  "created_at": "2026-08-15T20:13:28Z",
+  "started_at": "2026-08-15T20:13:44Z",
+  "completed_at": "2026-08-15T20:19:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "docs/agents/workflows/WF-02_requirement_implementation.md",
+      "src/design/prm01-promotion-plan-diff.md"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "Produce a code design artefact for WF-02 run WF02-prm02-05-20260816 covering requirements PRM-02 (Conflict pre-flight rejection), PRM-03 (Plan digest binds approval to a diff), PRM-04 (Promotion review state machine), PRM-05 (Non-skippable human approval gate). All four are MUST-priority, stage 16, backend requirements in the promotion pipeline (workflow PW-01), building on the already-released PRM-01 (promotion plan and diff report in src/api/routes/promotions.zig) and PRM-06..09. Read docs/requirements.yaml for the full acceptance criteria of PRM-02..05, read src/design/prm01-promotion-plan-diff.md (if present) for the PRM-01 design to extend, and follow the WF-02 Step 1 procedure (fn:load-requirements, fn:read-backend-conventions). For each requirement: map every acceptance criterion to a concrete design element (function/component/schema), define public signatures with inputs/outputs/errors, describe the new promotion_reviews table (columns, CHECK constraint over the six status values, the partial unique index promotion_reviews_plan_digest_active_uniq over (tenant_id, plan_digest) WHERE status IN ('pending_review','approved')), the plan_digest canonical JSON serialisation (sorted keys, no insignificant whitespace, entry shape {type,id,changes}), the conflict pre-flight ordering guarantee (before digest and before review row), and the no-bypass approval gate with the GET /api/v1/promotions/{id}/context contract. Include a data-flow/sequence diagram for the multi-step promotion flow and an error taxonomy. Do NOT write implementation code (no Zig/SQL/TS code blocks).",
+    "acceptance_criteria": [
+      "Every acceptance criterion of PRM-02..05 maps to a concrete design element",
+      "promotion_reviews schema fully specified (columns, CHECK, partial unique index)",
+      "plan_digest canonical serialisation algorithm specified",
+      "Conflict pre-flight ordering and no-bypass approval gate designed",
+      "Public function signatures fully specified with errors",
+      "Error taxonomy present",
+      "No implementation code in the design artefact"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for PRM-02..05 (promotion approval pipeline) written to src/design/prm02-05-promotion-approval-pipeline.md; every AC mapped, schema/digest/ordering/gate specified, error taxonomy present, lint_design_artefact.py clean.",
+    "artifacts_out": [
+      "src/design/prm02-05-promotion-approval-pipeline.md"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to CODE-DESIGN-VALIDATOR (Step 1b) once Step 1 returns PASS"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

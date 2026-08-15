@@ -1,0 +1,6 @@
+runId: 2026-08-13T17-59-50
+date: '2026-08-13'
+evaluatedPatterns:
+  - msw-import
+  - http-mock-adapter
+violations: []
