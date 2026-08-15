@@ -1,0 +1,66 @@
+{
+  "report_id": "WF02-plc-batch-b-20260815-step-06-doc-updater",
+  "agent_id": "DOC-UPDATER",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "step": "06",
+  "created_at": "2026-08-15T17:45:33Z",
+  "summary": "Step 06 DOC-UPDATER for WF02-plc-batch-b-20260815. Marked SPC-01 and SPC-02 status=RELEASED via `python tools/reqctl.py set-status ... --implemented-in <paths> --note \"...\"` (SPC-01 released_at=2026-08-15T17:40:01Z, SPC-02 released_at=2026-08-15T17:40:06Z). `python tools/reqctl.py render-status` regenerated docs/status/requirement_status.yaml (463 entries); both requirements verified status=RELEASED with implemented_in lists. Prepended CHANGELOG.md entry under `## [Unreleased] \u2014 2026-08-15` for the stage 15 SPC-01/SPC-02 release, mirroring the batch-A PLC entry shape (per-requirement sub-bullets, gate-results paragraph, requirements transition footer). OpenAPI: no spec change required \u2014 definition create/update endpoints already attach the shared Error422/ValidationProblem response via include_standard_errors=true and the ValidationProblem schema is generic (no per-endpoint error-code enumeration to update). Docs commit ec5b01dc pushed; PR #790 created against main, all 8 CI checks green, squash-merged (merge commit 6f3d394f), branch deleted. Requirement tracking issues #260 (SPC-01) and #261 (SPC-02) commented and closed. Repo returned to clean main. Registry cleanup: 11 terminal entries for this run archived from handoffs/registry.json to handoffs/WF02-plc-batch-b-20260815/registry.json. orchestrator.log appended with one COMPLETE line (UTF-8, no shrink).",
+  "files_created": [
+    "docs\\issue-reports\\WF02-plc-batch-b-20260815-step-06-doc-updater-INNER-REPORT.json",
+    "handoffs\\WF02-plc-batch-b-20260815\\registry.json"
+  ],
+  "files_modified": [
+    "CHANGELOG.md",
+    "docs/requirements.yaml",
+    "docs/status/requirement_status.yaml",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log",
+    "handoffs\\WF02-plc-batch-b-20260815\\step-06-doc-updater.json"
+  ],
+  "tests_run": [
+    {
+      "name": "python tools/reqctl.py set-status SPC-01/SPC-02 RELEASED",
+      "status": "pass",
+      "detail": "SPC-01 -> RELEASED (2026-08-15T17:40:01Z); SPC-02 -> RELEASED (2026-08-15T17:40:06Z); implemented_in + note recorded in docs/requirements.yaml."
+    },
+    {
+      "name": "python tools/reqctl.py render-status",
+      "status": "pass",
+      "detail": "regenerated docs/status/requirement_status.yaml (463 entries); SPC-01/SPC-02 verified status=RELEASED with released_at and implemented_in lists."
+    },
+    {
+      "name": "gh pr checks 790",
+      "status": "pass",
+      "detail": "All 8 checks green: Pipeline bookkeeping, Source linters, Platform status, Frontend checks, Fresh-database migration bootstrap, Tenant isolation TNT-01..04, Build and unit tests, Clean-checkout LuaJIT build."
+    },
+    {
+      "name": "gh pr merge 790 --squash --delete-branch",
+      "status": "pass",
+      "detail": "Merged; merge commit 6f3d394f; remote feature branch deleted (verified via git ls-remote)."
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "Hard gate \u2014 see exit status; any remaining findings are pre-existing acknowledged baseline (ISS-0627)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "zig build bench cannot run on this branch due to pre-existing main migration GBL-116_tnt07_rls_cleanup.sql (error.ServerError). Not SPC-introduced; accepted as inherited per batch-A precedent. Needs its own GitHub issue + WF-03 run (recorded by Step 05)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Backend SPC-01 implementation notes (Step 02a): activation-gate failure rolls back the triggering task-completion transaction before parent ERROR (atomic no-orphan-child option); runtime interface parse failure falls back to EXT-05 (permissive direction); module_ref effective-interface source (PLC-01) not wired at runtime. Recorded in step-02a handoff, carried forward."
+    },
+    {
+      "severity": "MINOR",
+      "description": "lint_handoffs.py baseline findings on OTHER runs are pre-existing acknowledged baseline (tools/lint_handoffs.baseline.json, per ISS-0627) \u2014 zero findings reference files touched by this step."
+    }
+  ],
+  "next_steps": [
+    "Workflow complete for this stage/cycle \u2014 SPC-01/SPC-02 RELEASED, PR #790 merged, branch deleted, repo on clean main.",
+    "File a GitHub issue for the GBL-116 migration failure blocking zig build bench on main (pre-existing)."
+  ],
+  "blockers": []
+}

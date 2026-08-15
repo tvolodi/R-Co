@@ -6,9 +6,37 @@
   "step": "06",
   "created_at": "2026-08-15T17:38:05Z",
   "started_at": null,
-  "completed_at": null,
-  "status": "IN_PROGRESS",
-  "result": null,
+  "completed_at": "2026-08-15T17:45:33Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "SPC-01 and SPC-02 set to RELEASED via reqctl set-status (--implemented-in populated, --note per req); docs/status/requirement_status.yaml regenerated (463 entries); CHANGELOG.md prepended with stage-15 SPC release entry. OpenAPI: no change required (shared Error422/ValidationProblem already attached to definition create/update). Docs commit ec5b01dc pushed; PR #790 created, all 8 CI checks green, squash-merged (6f3d394f), branch deleted; requirement tracking issues #260/#261 closed; repo returned to clean main. Inner-report written; registry cleanup archived 11 terminal entries to handoffs/WF02-plc-batch-b-20260815/registry.json; orchestrator.log appended +1 line (UTF-8, no shrink).",
+    "artifacts_out": [
+      "docs/status/requirement_status.yaml",
+      "docs/requirements.yaml",
+      "CHANGELOG.md",
+      "docs/issue-reports/WF02-plc-batch-b-20260815-step-06-doc-updater-INNER-REPORT.json",
+      "handoffs/WF02-plc-batch-b-20260815/registry.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log",
+      "handoffs\\WF02-plc-batch-b-20260815\\step-06-doc-updater.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "zig build bench blocked by pre-existing main migration GBL-116_tnt07_rls_cleanup.sql (inherited; not SPC-introduced; needs its own GitHub issue + WF-03 run)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Backend SPC-01 implementation notes from Step 02a carried forward: activation-gate rollback scope, EXT-05 fallback on runtime parse failure, module_ref effective-interface not wired (PLC-01)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "lint_handoffs.py remaining findings are pre-existing acknowledged baseline on OTHER runs (ISS-0627) \u2014 none reference files touched by this step."
+      }
+    ],
+    "next_action": "Workflow complete for this stage / cycle"
+  },
   "task": {
     "description": "Update documentation and requirement status for SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nREQUIREMENTS: SPC-01, SPC-02 (SHOULD, Stage 15) \u2014 RELEASE-VALIDATOR approved (Step 05 PASS)\n\nTASK:\n1. Set SPC-01 and SPC-02 status to RELEASED via python tools/reqctl.py set-status SPC-01 RELEASED --note '...' --implemented-in <files> (and SPC-02 likewise)\n2. Regenerate docs/status/requirement_status.yaml via python tools/reqctl.py render-status\n3. Update CHANGELOG.md with the SPC-01/SPC-02 release entry\n4. Update the OpenAPI spec if the SPC-02 422 error surface added any documented error responses (check whether the definition create/update 422 schema needs the new error codes)\n5. Commit and push to feature/WF02-plc-batch-b-20260815\n6. Create the PR targeting main (implementation commits are now present from Steps 02a/02b/03)\n\nfn: none",
     "fn": "none",
