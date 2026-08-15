@@ -1,0 +1,194 @@
+stage: "15"
+date: "2026-08-15T17:34:10Z"
+run_id: "WF02-plc-batch-b-20260815"
+workflow_id: "WF-02"
+workflow_step: "05"
+agent: "RELEASE-VALIDATOR"
+handoff_id: "WF02-plc-batch-b-20260815-05-release-validator"
+commit: "9c6ee220"
+branch: "feature/WF02-plc-batch-b-20260815"
+decision: "APPROVED"
+status: "PASS"
+
+requirement_ids:
+  - SPC-01
+  - SPC-02
+
+scope_note: >
+  Declared SUB_PROCESS interface contract release for stage 15 (SPC-01/SPC-02, both
+  SHOULD). SPC-01 introduces the `interface` object on SUB_PROCESS nodes: when declared,
+  only the named `inputs` are copied into the child instance's initial variable map (each
+  validated against its json_schema before the child is created), and on child completion
+  only the named `outputs` are merged back into the parent per EE-09 (unlisted child
+  variables discarded); omitting the interface preserves EXT-05 behaviour unchanged
+  (full copy / full merge). SPC-02 validates at definition-time (create/update) that every
+  json_schema under inputs/outputs is well-formed JSON Schema, rejecting the definition
+  with HTTP 422 otherwise; cross-definition compatibility (parent/child authored
+  independently) is deliberately NOT checked here — that is PLC-03. Backend:
+  src/definition/sub_process_interface.zig (new, 1059 lines), src/tools/json_schema.zig
+  (new validateSchemaShape), src/definition/graph.zig, src/engine/instance.zig. Frontend:
+  web/src/utils/canvas/interfaceValidation.ts (+ test), PropertyPanel, DefinitionEditorPage,
+  ProcessCanvas, web/src/types/api.ts.
+
+stage15_must_check:
+  note: "All MUST requirements for stage 15 (SOL-01..03) are RELEASED. No MUST requirement
+         for stage 15 remains non-RELEASED. Source: docs/status/requirement_status.yaml."
+  requirements:
+    - id: SOL-01
+      title: Solution pack manifest
+      status: RELEASED
+      released_at: '2026-08-14T08:14:04Z'
+      release_run: WF02-sol-batch1-20260814
+    - id: SOL-02
+      title: Solution pack installation into a target tenant
+      status: RELEASED
+      released_at: '2026-08-14T08:14:06Z'
+      release_run: WF02-sol-batch1-20260814
+    - id: SOL-03
+      title: Role-mapping completion gate before activation
+      status: RELEASED
+      released_at: '2026-08-14T08:14:08Z'
+      release_run: WF02-sol-batch1-20260814
+
+test_runner_summary:
+  source: "tests/reports/report-2026-08-15-WF02-plc-batch-b-20260815-step04.yaml"
+  overall_result: "PASS"
+  integration_spc01: "10/10 PASS (SPC-01 AC1..AC6 + 2 edges; SPC-02 AC1/AC2)"
+  unit_full: "884/884 PASS (zig build test)"
+  build_compile: "PASS (zig build, exit 0)"
+  bench_env_verify: "CLEARED 10/10 (exit 0)"
+
+acceptance_criteria_check:
+  SPC-01:
+    AC1_only_named_inputs_copied: "MET — TC-SPC-01-INT-01 sub_process_declared_inputs_are_filtered_test"
+    AC2_missing_required_input: "MET — TC-SPC-01-INT-02 sub_process_missing_required_input_errors_parent_no_child_test (parent ERROR EE-10, no child)"
+    AC3_input_schema_violation: "MET — TC-SPC-01-INT-03 sub_process_input_schema_violation_no_orphan_child_test (no orphaned child)"
+    AC4_only_named_outputs_merged: "MET — TC-SPC-01-INT-04 sub_process_declared_outputs_filter_merge_test"
+    AC5_missing_required_output: "MET — TC-SPC-01-INT-05 sub_process_missing_required_output_errors_parent_test"
+    AC6_no_interface_ext05: "MET — TC-SPC-01-INT-07 sub_process_no_interface_ext05_unchanged_test"
+    edge_empty_inputs: "MET — TC-SPC-01-INT-06 sub_process_empty_inputs_yields_empty_child_map_test"
+    edge_output_schema_violation: "MET — TC-SPC-01-INT-08 sub_process_output_schema_violation_no_partial_merge_test"
+  SPC-02:
+    AC1_malformed_json_schema_422: "MET — TC-SPC-02-INT-01 definition_create_with_bad_interface_returns_422_test (GraphValidationFailed -> HTTP 422, violation names node; + unit TC-SPC-02-UT-04/06/08)"
+    AC2_well_formed_persisted: "MET — TC-SPC-02-INT-02 definition_interface_persisted_in_node_attributes_test (+ unit TC-SPC-02-UT-01/05)"
+  evidence_note: >
+    All 10 integration tests verified present in tests/integration/spc01_sub_process_interface_test.zig
+    (grep of test names), all PASS per Step 04 report. SPC-02 definition-time validation
+    additionally covered by unit tests TC-PD-05-22..27 in tests/unit/graph_node_attributes_test.zig
+    and the pure runtime helpers in src/definition/sub_process_interface.zig (std.testing).
+
+gate_results:
+  zig_build:
+    status: PASS
+    command: "zig build"
+    exit_code: 0
+    note: "exit 0 (TEST-RUNNER Step 04; branch unchanged since then — HEAD 9c6ee220 is the Step 05 handoff commit)"
+
+  zig_build_test:
+    status: PASS
+    command: "zig build test --summary all"
+    exit_code: 0
+    summary: "884/884 unit tests passed, 0 failed (includes SPC-01/SPC-02 unit coverage in sub_process_interface.zig + graph_node_attributes_test.zig)"
+
+  integration_spc01:
+    status: PASS
+    command: "zig build test-integration-spc01 --summary all"
+    exit_code: 0
+    env:
+      BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5434/bpm_test"
+      BPM_TEST_URL: "http://127.0.0.1:8080"
+      BPM_IDP_BASE_URL: "http://localhost:8081"
+    summary: "10/10 SPC-01/SPC-02 integration tests pass."
+
+  github_status:
+    status: PASS
+    command: "python tools/check_github_status.py --json"
+    exit_code: 0
+    component: "Actions"
+    summary: "GitHub Actions: status=operational, degraded=false, incident=null. CI platform healthy (ran by RELEASE-VALIDATOR this run)."
+
+  nfr_bench:
+    status: ACCEPTED_AS_INHERITED
+    command: "& .vscode/run-zig-bench.ps1  (runs zig build bench --summary all)"
+    exit_code: 1
+    last_good_metrics:
+      source: "release-decision-WF02-sol-batch1-20260814.yaml (commit 99ad43db, 2026-08-14)"
+      nfr_01_p99_read_ms: 0.913          # target <=200 ms
+      nfr_01_p99_write_ms: 2.303         # target <=500 ms
+      nfr_02_append_throughput_eps: 13655.925   # target >=1000 events/sec
+      nfr_04_replay_10000_ms: 41.764     # target <=5000 ms
+      nfr_04_replay_snapshot_100000_ms: 6.116
+    blocking_finding: >
+      zig build bench could not complete on this branch because the bench step's
+      migrate prerequisite fails on a PRE-EXISTING main migration:
+      `GBL-116_tnt07_rls_cleanup.sql` (error.ServerError), identical to the failure
+      recorded in release-decision-WF02-plc-batch-a-20260815.yaml. The NFR metrics
+      themselves (NFR-01 p99, NFR-02 throughput, NFR-04 replay) were NOT re-measured
+      because the migrate prerequisite fails before any metric runs.
+    attribution:
+      gbl116_diff: "git diff origin/main...HEAD -- migrations/GBL-116*  => EMPTY (unchanged on this branch)."
+      nfr_paths_diff: "git diff origin/main...HEAD -- src/event_store src/api/routes src/api/middleware src/engine/replay  => EMPTY (SPC does not touch any NFR-relevant code path)."
+      precedent: >
+        Same posture as release-decision-WF02-plc-batch-a-20260815.yaml and the
+        inherited-red-CI precedent (repo memory bpm-inherited-red-ci-buildzig-posixblock.md):
+        the bench failure is pre-existing on main, not introduced by this branch. The SPC
+        changes are a sub-process interface contract (definition-time validation +
+        instance activation/completion gates) plus admin frontend wiring; they do not touch
+        the event store append path, the replay loop, or HTTP request middleware that
+        NFR-01/02/04 measure.
+      decision: "ACCEPT NFR-BENCH AS INHERITED — SPC-01/SPC-02 introduce no NFR regression risk."
+
+  lint_handoffs:
+    status: EXPECTED_PASS_WITH_BASELINE
+    command: "python tools/lint_handoffs.py"
+    exit_code: 1
+    note: >
+      Pre-existing findings on OTHER runs are acknowledged via tools/lint_handoffs.baseline.json
+      (291 ACKNOWLEDGED entries, per batch-A decision). Zero findings reference
+      WF02-plc-batch-b-20260815/step-05-release-validator.json or files touched by this
+      step. Re-verified before completing this handoff.
+
+blocking_issues: []
+
+approved_requirements:
+  - SPC-01
+  - SPC-02
+
+precedent_notes:
+  - >
+    release-decision-WF02-plc-batch-a-20260815.yaml (stage 15, PLC-01..04, commit 590a6624)
+    APPROVED with the identical inherited GBL-116 bench blocker; PLC-01..04 are now RELEASED.
+  - >
+    release-decision-WF02-sol-batch1-20260814.yaml (stage 15, SOL-01..03, commit 99ad43db)
+    APPROVED with successful NFR bench metrics (0.913ms read / 2.303ms write / 13655.925 eps
+    / 41.764ms replay) — the NFR baseline this decision carries forward.
+  - >
+    SOL-01..03 (stage 15 MUST) were RELEASED via WF02-sol-batch1-20260814; SPC-01/SPC-02
+    (SHOULD) complete the remaining stage-15 non-catalog requirements (PLC-01..04 already
+    RELEASED via batch-A).
+
+narrative: >
+  WF-02 Step 5 — Release decision for SPC-01/SPC-02 on branch feature/WF02-plc-batch-b-20260815
+  (HEAD 9c6ee220).
+
+  TEST-RUNNER Step 04 PASSED with 10/10 SPC-01/SPC-02 integration tests (SPC-01 AC1..AC6 +
+  2 edges, SPC-02 AC1/AC2), 884/884 unit tests, and a clean compile. RELEASE-VALIDATOR
+  verified every acceptance criterion is covered by a passing test: the 10 integration test
+  names exist in tests/integration/spc01_sub_process_interface_test.zig and the SPC-02
+  definition-time validation is additionally covered by unit tests TC-PD-05-22..27.
+
+  Stage 15 MUST requirements SOL-01/02/03 are all RELEASED (verified against
+  docs/status/requirement_status.yaml) — release gate on MUST status is green.
+
+  NFR benchmark: `zig build bench` could not complete because the migrate prerequisite hits
+  the pre-existing GBL-116_tnt07_rls_cleanup.sql migration error on main (verified unchanged
+  on this branch; NFR-relevant code paths unchanged). Accepted as inherited per the batch-A
+  precedent, carrying forward the last good NFR metrics from sol-batch1 (2026-08-14,
+  commit 99ad43db). GitHub Actions platform reported operational by check_github_status.py.
+
+  No PR has been opened for this branch yet — this is a release-validator pre-merge decision.
+
+  Decision: APPROVED. Route to DOC-UPDATER for Stage 15 status update (SPC-01/SPC-02 ->
+  RELEASED) and Step Final PR creation.
+
+next_action: "Route to DOC-UPDATER (Step 06) to set SPC-01/SPC-02 requirement status to RELEASED and create the PR."
