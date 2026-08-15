@@ -23,7 +23,7 @@ from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Business tables that MUST NOT appear schema-qualified in migration files.
-# These 21 tables must live exclusively in per-tenant schemas.
+# These 22 tables must live exclusively in per-tenant schemas.
 # ---------------------------------------------------------------------------
 BUSINESS_TABLES = [
     "events",
@@ -47,6 +47,7 @@ BUSINESS_TABLES = [
     "event_retention_policies",
     "repository_form_schemas",
     "instance_sequence",
+    "promotion_reviews",
 ]
 
 # Regex pattern: public.<business_table> — word boundary after table name so

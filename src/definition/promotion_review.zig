@@ -74,6 +74,14 @@ pub fn submitReview(
     };
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
 
+    // Owner-tenant decision (INV-1/INV-6): the review row's `tenant_id` is
+    // the owning (target) tenant. Insert the row under that tenant's schema so
+    // physical placement matches the logical `tenant_id` column — never the
+    // caller's ambient schema. The pool applies search_path on acquire from
+    // the current tenant context, so the context must be switched BEFORE
+    // acquire.
+    tenant_context_mod.set(params.tenant_id);
+
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
         else => ReviewTransitionError.TransactionFailed,
@@ -117,10 +125,15 @@ pub fn submitReview(
 /// On row_version mismatch → InvalidReviewTransition.
 /// Appends `DEFINITION_PROMOTION_APPROVED` in the same transaction as the
 /// transition (process document Step 10 / PRM-04 reconciliation note OQ-3).
+///
+/// `tenant_id` is the review row's owning (target) tenant — the single
+/// owner-tenant decision (INV-1/INV-6) applied to every promotion path. The
+/// UPDATE and the event append both run under that tenant's schema.
 pub fn approveReview(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
     review_id: []const u8,
+    tenant_id: []const u8,
     actor_id: []const u8,
     expected_row_version: u32,
 ) ReviewTransitionError!void {
@@ -129,6 +142,10 @@ pub fn approveReview(
         break :blk if (s.len > 0) s else "";
     };
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
+
+    // Switch to the review's owner tenant BEFORE acquire so the pool applies
+    // the correct search_path for the UPDATE and the per-tenant events table.
+    tenant_context_mod.set(tenant_id);
 
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
@@ -190,10 +207,14 @@ pub fn approveReview(
 
 /// Rejects a review: pending_review → rejected.
 /// Gate: caller checks status == pending_review BEFORE calling this.
+///
+/// `tenant_id` is the review row's owning (target) tenant — the single
+/// owner-tenant decision (INV-1/INV-6) applied to every promotion path.
 pub fn rejectReview(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
     review_id: []const u8,
+    tenant_id: []const u8,
     expected_row_version: u32,
 ) ReviewTransitionError!void {
     const saved_ctx = blk: {
@@ -201,6 +222,9 @@ pub fn rejectReview(
         break :blk if (s.len > 0) s else "";
     };
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
+
+    // Switch to the review's owner tenant BEFORE acquire (see approveReview).
+    tenant_context_mod.set(tenant_id);
 
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
@@ -236,10 +260,17 @@ pub fn rejectReview(
 /// `definition_id`) in the same transaction as the transition — the PRM-04 AC4
 /// requirement that the event and the pointer move be atomic
 /// (reconciliation note OQ-3).
+///
+/// `tenant_id` is the review row's owning (target) tenant — the single
+/// owner-tenant decision (INV-1/INV-6) applied to every promotion path.
+/// `actor_id` is the authenticated principal performing the apply (INV-2 —
+/// event actor identity is server-derived, never client-supplied).
 pub fn markReviewApplied(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
     review_id: []const u8,
+    tenant_id: []const u8,
+    actor_id: []const u8,
     expected_row_version: u32,
 ) ReviewTransitionError!void {
     const saved_ctx = blk: {
@@ -247,6 +278,9 @@ pub fn markReviewApplied(
         break :blk if (s.len > 0) s else "";
     };
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
+
+    // Switch to the review's owner tenant BEFORE acquire (see approveReview).
+    tenant_context_mod.set(tenant_id);
 
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
@@ -263,8 +297,6 @@ pub fn markReviewApplied(
     errdefer conn.rollback() catch {};
 
     // Optimistic-locked transition; RETURNING the row fields the event needs.
-    // The event actor is the approving principal (the apply executes on the
-    // authority of the approval), falling back to the requester.
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
@@ -272,8 +304,7 @@ pub fn markReviewApplied(
         \\    row_version = row_version + 1,
         \\    updated_at = now()
         \\WHERE id = $1::uuid AND row_version = $2
-        \\RETURNING tenant_id::text, plan_digest, def_type, def_id,
-        \\          COALESCE(approved_by::text, requested_by::text)
+        \\RETURNING tenant_id::text, plan_digest, def_type, def_id
     ,
         &[_][]const u8{ review_id, try fmtInt(allocator, expected_row_version) },
     ) catch |err| return switch (err) {
@@ -289,7 +320,8 @@ pub fn markReviewApplied(
     }
 
     // Append DEFINITION_PROMOTION_APPLIED in the same transaction as the
-    // transition (PRM-04 AC4).
+    // transition (PRM-04 AC4). The event actor is the applying principal
+    // (INV-2 — server-derived).
     try appendPromotionEvent(
         allocator,
         conn,
@@ -299,7 +331,7 @@ pub fn markReviewApplied(
         r[2] orelse "",
         r[3] orelse "",
         r[0] orelse "",
-        r[4] orelse "",
+        actor_id,
     );
 
     conn.commit() catch |err| return switch (err) {
@@ -309,10 +341,14 @@ pub fn markReviewApplied(
 }
 
 /// Marks a review as failed: approved → failed.
+///
+/// `tenant_id` is the review row's owning (target) tenant — the single
+/// owner-tenant decision (INV-1/INV-6) applied to every promotion path.
 pub fn markReviewFailed(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
     review_id: []const u8,
+    tenant_id: []const u8,
     expected_row_version: u32,
 ) ReviewTransitionError!void {
     const saved_ctx = blk: {
@@ -320,6 +356,9 @@ pub fn markReviewFailed(
         break :blk if (s.len > 0) s else "";
     };
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
+
+    // Switch to the review's owner tenant BEFORE acquire (see approveReview).
+    tenant_context_mod.set(tenant_id);
 
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
@@ -352,10 +391,14 @@ pub fn markReviewFailed(
 
 /// Supersedes a review: sets superseded_by to the superseding review_id.
 /// Used for: applied→superseded (PRM-08 rollback), failed→superseded, rejected→superseded.
+///
+/// `tenant_id` is the review row's owning (target) tenant — the single
+/// owner-tenant decision (INV-1/INV-6) applied to every promotion path.
 pub fn supersedeReview(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
     review_id: []const u8,
+    tenant_id: []const u8,
     superseding_review_id: []const u8,
     expected_row_version: u32,
 ) ReviewTransitionError!void {
@@ -364,6 +407,9 @@ pub fn supersedeReview(
         break :blk if (s.len > 0) s else "";
     };
     defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
+
+    // Switch to the review's owner tenant BEFORE acquire (see approveReview).
+    tenant_context_mod.set(tenant_id);
 
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,

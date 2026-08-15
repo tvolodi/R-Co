@@ -303,14 +303,18 @@ pub fn handleGetPromotionContext(
 
 const ApproveBody = struct {
     plan_digest: []const u8,
-    approved_by: []const u8,
 };
 
 /// POST /api/v1/promotions/{id}/approve
 ///
-/// Request body: { "plan_digest": "<64-hex>", "approved_by": "<uuid>" }
+/// Request body: { "plan_digest": "<64-hex>" } — exactly one field.
 ///
-/// PRM-05 gates: (1) approved_by != requested_by → 403 SelfApprovalForbidden,
+/// INV-2 (server-side field authorisation): the approver identity is NOT
+/// accepted from the request body. It is derived from the authenticated
+/// principal (`actor.user_id`) server-side, so no caller can fabricate a
+/// different `approved_by` to bypass the PRM-05 separation-of-duties gate.
+///
+/// PRM-05 gates: (1) actor.user_id != requested_by → 403 SelfApprovalForbidden,
 /// (2) status == pending_review → 400, (3) digest match → 409.
 ///
 /// Success — HTTP 200: { "review_id": "<uuid>", "status": "approved" }
@@ -320,6 +324,7 @@ const ApproveBody = struct {
 ///   404  REVIEW_NOT_FOUND
 ///   409  PLAN_DIGEST_MISMATCH
 ///   409  DUPLICATE_REVIEW
+///   422  UNKNOWN_FIELD  (approved_by or any other extra field → 422)
 ///   503  SERVICE_UNAVAILABLE
 ///   500  INTERNAL_ERROR
 pub fn handleApproveReview(
@@ -329,8 +334,6 @@ pub fn handleApproveReview(
     review_id: []const u8,
     body: []const u8,
 ) HandlerResult {
-    _ = actor;
-
     var parse_arena = std.heap.ArenaAllocator.init(allocator);
     defer parse_arena.deinit();
     const pa = parse_arena.allocator();
@@ -351,20 +354,12 @@ pub fn handleApproveReview(
         else => return errorResult(allocator, 422, "INVALID_INPUT", "plan_digest must be a string"),
     };
 
-    // Extract approved_by.
-    const ab_val = obj.get("approved_by") orelse
-        return errorResult(allocator, 422, "INVALID_INPUT", "approved_by is required");
-    const approved_by_str: []const u8 = switch (ab_val) {
-        .string => |s| s,
-        else => return errorResult(allocator, 422, "INVALID_INPUT", "approved_by must be a string"),
-    };
-
     // Check for extra fields (PRM-05 AC3 — no bypass fields allowed).
-    inline for (.{ "plan_digest", "approved_by" }) |allowed| {
-        _ = allowed;
-    }
+    // INV-2: `approved_by` is deliberately NOT a legal body field here — the
+    // approver is the authenticated actor, so any supplied identity field is
+    // rejected with 422 UNKNOWN_FIELD rather than silently ignored.
     for (obj.keys()) |key| {
-        if (!std.mem.eql(u8, key, "plan_digest") and !std.mem.eql(u8, key, "approved_by")) {
+        if (!std.mem.eql(u8, key, "plan_digest")) {
             return errorResult(allocator, 422, "UNKNOWN_FIELD", "Unknown field in request body");
         }
     }
@@ -395,7 +390,10 @@ pub fn handleApproveReview(
     }
 
     // Gate 1: self-approval prevention (PRM-05 AC1).
-    if (std.mem.eql(u8, r.requested_by, approved_by_str)) {
+    // INV-2: the approver is the authenticated actor, so the gate compares
+    // two server-side values (actor.user_id vs the stored requested_by) — a
+    // caller cannot pick a fabricated approved_by to dodge it.
+    if (std.mem.eql(u8, r.requested_by, actor.user_id)) {
         return errorResult(allocator, 403, "SELF_APPROVAL_FORBIDDEN", "A reviewer cannot approve their own promotion request");
     }
 
@@ -409,8 +407,9 @@ pub fn handleApproveReview(
         return errorResult(allocator, 409, "PLAN_DIGEST_MISMATCH", "The provided plan_digest does not match the stored digest");
     }
 
-    // Perform the transition.
-    review_mod.approveReview(allocator, pool, review_id, approved_by_str, r.row_version) catch |err| switch (err) {
+    // Perform the transition under the review's owner tenant, recording the
+    // authenticated actor as the approver (INV-2 + INV-1/INV-6).
+    review_mod.approveReview(allocator, pool, review_id, r.tenant_id, actor.user_id, r.row_version) catch |err| switch (err) {
         review_mod.ReviewTransitionError.InvalidReviewTransition => return errorResult(allocator, 400, "INVALID_REVIEW_TRANSITION", "Review transition failed — possible concurrent update"),
         review_mod.ReviewTransitionError.DuplicateReview => return errorResult(allocator, 409, "DUPLICATE_REVIEW", "A live review for this plan digest already exists"),
         review_mod.ReviewTransitionError.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
@@ -500,8 +499,8 @@ pub fn handleRejectReview(
     }
 
     // No self-approval check for rejection (PRM-05: only approval requires separation of duties).
-
-    review_mod.rejectReview(allocator, pool, review_id, r.row_version) catch |err| switch (err) {
+    // The transition runs under the review's owner tenant (INV-1/INV-6).
+    review_mod.rejectReview(allocator, pool, review_id, r.tenant_id, r.row_version) catch |err| switch (err) {
         review_mod.ReviewTransitionError.InvalidReviewTransition => return errorResult(allocator, 400, "INVALID_REVIEW_TRANSITION", "Review transition failed"),
         review_mod.ReviewTransitionError.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
         review_mod.ReviewTransitionError.TransactionFailed => return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error"),
@@ -544,8 +543,6 @@ pub fn handleApplyReview(
     review_id: []const u8,
     body: []const u8,
 ) HandlerResult {
-    _ = actor;
-
     var parse_arena = std.heap.ArenaAllocator.init(allocator);
     defer parse_arena.deinit();
     const pa = parse_arena.allocator();
@@ -607,7 +604,9 @@ pub fn handleApplyReview(
         return errorResult(allocator, 409, "PLAN_DIGEST_MISMATCH", "The provided plan_digest does not match the stored digest");
     }
 
-    review_mod.markReviewApplied(allocator, pool, review_id, r.row_version) catch |err| switch (err) {
+    // Transition under the review's owner tenant; the DEFINITION_PROMOTION_APPLIED
+    // event actor is the authenticated applying principal (INV-1/INV-2).
+    review_mod.markReviewApplied(allocator, pool, review_id, r.tenant_id, actor.user_id, r.row_version) catch |err| switch (err) {
         review_mod.ReviewTransitionError.InvalidReviewTransition => return errorResult(allocator, 400, "INVALID_REVIEW_TRANSITION", "Review transition failed"),
         review_mod.ReviewTransitionError.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
         review_mod.ReviewTransitionError.TransactionFailed => return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error"),

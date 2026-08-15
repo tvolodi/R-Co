@@ -84,19 +84,16 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
     std.testing.io.random(&raw);
     raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
     raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
-    return std.fmt.allocPrint(allocator,
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
-        .{
-            raw[0],  raw[1],  raw[2],  raw[3],
-            raw[4],  raw[5],
-            raw[6],  raw[7],
-            raw[8],  raw[9],
-            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
-        });
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
 }
 
 /// Derive schema name from a UUID string.
@@ -159,7 +156,7 @@ fn cleanupTenant(
     };
 }
 
-// The full list of 21 business tables that must live in per-tenant schemas.
+// The full list of 22 business tables that must live in per-tenant schemas.
 const BUSINESS_TABLES = [_][]const u8{
     "events",
     "events_archive",
@@ -182,6 +179,7 @@ const BUSINESS_TABLES = [_][]const u8{
     "event_retention_policies",
     "repository_form_schemas",
     "instance_sequence",
+    "promotion_reviews",
 };
 
 // The 10 permitted tables in public.
@@ -203,9 +201,9 @@ const PERMITTED_PUBLIC_TABLES = [_][]const u8{
 // ---------------------------------------------------------------------------
 
 // TC-TNT-01-01
-// Verify that all 21 business tables exist inside the tenant schema after
+// Verify that all 22 business tables exist inside the tenant schema after
 // provisionTenantSchema is called.
-test "TC-TNT-01-01: all 21 business tables exist in tenant schema after provisioning" {
+test "TC-TNT-01-01: all 22 business tables exist in tenant schema after provisioning" {
     const alloc = testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -241,7 +239,7 @@ test "TC-TNT-01-01: all 21 business tables exist in tenant schema after provisio
         \\    'audit_entries', 'audit_log', 'users', 'groups', 'group_members',
         \\    'roles', 'user_roles', 'api_tokens', 'webhook_subscriptions',
         \\    'dead_letter_items', 'event_type_registry', 'event_retention_policies',
-        \\    'repository_form_schemas', 'instance_sequence'
+        \\    'repository_form_schemas', 'instance_sequence', 'promotion_reviews'
         \\  )
     ,
         &.{schema_name_str},
@@ -262,8 +260,8 @@ test "TC-TNT-01-01: all 21 business tables exist in tenant schema after provisio
 }
 
 // TC-TNT-01-02
-// Verify that none of the 21 business tables exist in public after provisioning.
-test "TC-TNT-01-02: none of the 21 business tables exist in public after provisioning" {
+// Verify that none of the 22 business tables exist in public after provisioning.
+test "TC-TNT-01-02: none of the 22 business tables exist in public after provisioning" {
     const alloc = testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -288,7 +286,7 @@ test "TC-TNT-01-02: none of the 21 business tables exist in public after provisi
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    // None of the 21 business tables should appear in public.
+    // None of the 22 business tables should appear in public.
     var result = try conn.query(
         alloc,
         \\SELECT COUNT(*) FROM pg_tables
@@ -299,7 +297,7 @@ test "TC-TNT-01-02: none of the 21 business tables exist in public after provisi
         \\    'audit_entries', 'audit_log', 'users', 'groups', 'group_members',
         \\    'roles', 'user_roles', 'api_tokens', 'webhook_subscriptions',
         \\    'dead_letter_items', 'event_type_registry', 'event_retention_policies',
-        \\    'repository_form_schemas', 'instance_sequence'
+        \\    'repository_form_schemas', 'instance_sequence', 'promotion_reviews'
         \\  )
     ,
         &.{},
