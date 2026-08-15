@@ -26,6 +26,13 @@
     "max_rework": 2
   },
   "workflow_ref": "WF02-plc-batch-a-20260815",
-  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
-  "stage": "stage15"
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER"
 }

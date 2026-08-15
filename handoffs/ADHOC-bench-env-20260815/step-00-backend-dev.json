@@ -21,5 +21,7 @@
   },
   "workflow_ref": "ADHOC-bench-env-20260815",
   "requirements": [],
-  "stage": null
+  "stage": null,
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
 }

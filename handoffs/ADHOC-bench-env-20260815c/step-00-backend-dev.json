@@ -6,7 +6,7 @@
   "step": "00",
   "created_at": "2026-08-15T03:28:02Z",
   "started_at": "2026-08-15T03:28:27Z",
-  "completed_at": "2026-08-14T22:36:28Z",
+  "completed_at": "2026-08-15T03:36:28Z",
   "status": "COMPLETED",
   "result": {
     "status": "PASS",
@@ -21,5 +21,7 @@
   },
   "workflow_ref": "ADHOC-bench-env-20260815c",
   "requirements": [],
-  "stage": null
+  "stage": null,
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
 }

@@ -28,6 +28,15 @@
     "max_rework": 2
   },
   "workflow_ref": "WF01-plc-spc-batch1-20260815",
-  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04", "SPC-01", "SPC-02"],
-  "stage": "stage15"
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04",
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-VALIDATOR"
 }

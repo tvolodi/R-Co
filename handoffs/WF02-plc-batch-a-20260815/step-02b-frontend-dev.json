@@ -6,7 +6,7 @@
   "step": "02b",
   "created_at": "2026-08-15T01:56:27Z",
   "started_at": "2026-08-15T02:50:05Z",
-  "completed_at": "2026-08-14T22:00:37Z",
+  "completed_at": "2026-08-15T03:00:37Z",
   "status": "COMPLETED",
   "result": {
     "status": "PASS",
@@ -27,6 +27,11 @@
     "max_rework": 3
   },
   "workflow_ref": "WF02-plc-batch-a-20260815",
-  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
   "stage": "stage15"
 }

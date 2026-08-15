@@ -11,7 +11,9 @@
   "result": {
     "status": "PASS",
     "summary": "Reviewed PLC-01, PLC-02, PLC-03, PLC-04, SPC-01, SPC-02 (Stage 15). All 6 requirements have complete bodies with titles, descriptions, GIVEN/WHEN/THEN acceptance criteria, and cross-references. No internal contradictions or cross-requirement conflicts found. All cross-references resolve to existing requirements (EXT-05, EE-09, EE-10, PD-02, PD-05, REPO-07, ADP-08, SOL-01, SPT-01). No edits needed.",
-    "artifacts_out": ["docs/requirements.yaml"],
+    "artifacts_out": [
+      "docs/requirements.yaml"
+    ],
     "issues": []
   },
   "task": {
@@ -20,6 +22,15 @@
     "max_rework": 2
   },
   "workflow_ref": "WF01-plc-spc-batch1-20260815",
-  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04", "SPC-01", "SPC-02"],
-  "stage": "stage15"
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04",
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-ANALYST"
 }

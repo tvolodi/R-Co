@@ -31,7 +31,14 @@
     "max_rework": 3
   },
   "workflow_ref": "WF02-prm-batch2-20260814",
-  "requirements": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+  "requirements": [
+    "PRM-02",
+    "PRM-03",
+    "PRM-04",
+    "PRM-05"
+  ],
   "stage": "stage16",
-  "current_commit": "fd64a5f8"
+  "current_commit": "fd64a5f8",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER"
 }

@@ -6,13 +6,14 @@
   "step": "00",
   "created_at": "2026-08-15T01:30:39Z",
   "started_at": "2026-08-15T01:31:11Z",
-  "completed_at": null,
+  "completed_at": "2026-08-15T01:32:11Z",
   "status": "COMPLETED",
-  "completed_at": "2026-08-14T20:32:11Z",
   "result": {
     "status": "PASS",
     "summary": "Git setup complete. Branch feature/WF02-plc-batch-a-20260815 created from origin/main and pushed to origin. PR deferred — no commits yet (implementation follows in subsequent steps).",
-    "artifacts_out": ["branch: feature/WF02-plc-batch-a-20260815"],
+    "artifacts_out": [
+      "branch: feature/WF02-plc-batch-a-20260815"
+    ],
     "issues": []
   },
   "task": {
@@ -21,6 +22,13 @@
     "max_rework": 1
   },
   "workflow_ref": "WF02-plc-batch-a-20260815",
-  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
-  "stage": "stage15"
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
 }

@@ -12,7 +12,9 @@
   "result": {
     "status": "PASS",
     "summary": "Wired PLC-01..04 integration tests into build.zig: plc01_module_catalog_test.zig, plc02_publication_test.zig, plc03_compatibility_test.zig, plc04_visibility_test.zig as b.addTest roots, and test-integration-plc step that depends on all four.",
-    "artifacts_out": ["build.zig"],
+    "artifacts_out": [
+      "build.zig"
+    ],
     "issues": [],
     "next_action": "Route to TEST-DESIGNER"
   },
@@ -22,6 +24,13 @@
     "max_rework": 3
   },
   "workflow_ref": "WF02-plc-batch-a-20260815",
-  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
-  "stage": "stage15"
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
 }
