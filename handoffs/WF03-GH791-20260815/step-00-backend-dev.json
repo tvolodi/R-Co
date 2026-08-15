@@ -1,0 +1,50 @@
+{
+  "run_id": "WF03-GH791-20260815",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "handoff_id": "WF03-GH791-20260815/step-00-backend-dev",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T18:42:33Z",
+  "started_at": "2026-08-15T18:49:03Z",
+  "completed_at": "2026-08-15T18:49:38Z",
+  "task": {
+    "type": "git-setup",
+    "title": "Step 00: Create branch feature/WF03-GH791-20260815 and write task/current.json",
+    "description": "Set up the WF03-GH791-20260815 workflow: create branch off main HEAD 0e4d24bf, write task/current.json with {issue: 791, run_id: WF03-GH791-20260815, status: IN_PROGRESS, workspace_id: r-co-1-loop}. This is the next issue in the queue — GH-791 / ISS-0706 (GBL-116_tnt07_rls_cleanup pre-flight blocks zig build bench on fresh/main DB). Discovered during WF02-plc-batch-b-20260815 Step 05 RELEASE-VALIDATOR (NFR gate) and Step 06 DOC-UPDATER. Pre-cycle: working tree must be clean. On main at 0e4d24bf.",
+    "context": {
+      "branch": "feature/WF03-GH791-20260815",
+      "from_main_sha": "0e4d24bf",
+      "gh_issue": 791,
+      "gh_issue_title": "[BUG] GBL-116_tnt07_rls_cleanup pre-flight blocks zig build bench on fresh/main",
+      "gh_issue_created": "2026-08-15T17:49:03Z",
+      "gh_issue_url": "https://github.com/tvolodi/R-Co/issues/791",
+      "iss_id": "ISS-0706",
+      "iss_path": "docs/issues/ISS-0706.json",
+      "workspace_id": "r-co-1-loop",
+      "prior_session_ref": "WF02-plc-batch-b-20260815 Step 06 DOC-UPDATER closed (PR #790 merged 6f3d394f, repo clean on main at 0e4d24bf). GH-791 was filed by RELEASE-VALIDATOR during that run as a carry-forward MINOR; the next real bug to resolve."
+    },
+    "verification": {
+      "branch_created": "feature/WF03-GH791-20260815",
+      "branch_tip_sha": "0e4d24bf",
+      "task_current_json": {
+        "issue": 791,
+        "run_id": "WF03-GH791-20260815",
+        "status": "IN_PROGRESS",
+        "title": "GBL-116_tnt07_rls_cleanup pre-flight blocks zig build bench on fresh/main",
+        "workspace_id": "r-co-1-loop"
+      },
+      "workspace_id": "r-co-1-loop"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created feature/WF03-GH791-20260815 branch off main at 0e4d24bf9f156f5cb9bf07e61521d8267173f534, wrote task/current.json overwrite (previous BATCH-e2d5bb07eef8 contents), pushed branch to origin successfully.",
+    "artifacts_out": [
+      "handoffs/WF03-GH791-20260815/step-00-backend-dev.json",
+      "task/current.json"
+    ],
+    "issues": [],
+    "next_action": "Route to Step 0.5 ISSUE-FIXER for registry lookup + GH-791 ack comment"
+  }
+}

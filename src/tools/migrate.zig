@@ -176,16 +176,61 @@ pub fn main(init: std.process.Init) !void {
         // reason if this step did not succeed.
         if (!provisioned_default_tenant and std.mem.startsWith(u8, filename, "GBL-")) {
             provisioned_default_tenant = true;
+            // ISS-0706 / GH-791 leg (d): gate the loud post-condition check
+            // (migrations_applied_at IS NOT NULL after provisionTenantSchema)
+            // on a flag that flips true only when the pool actually opened.
+            // When the pool itself fails to open (DB unreachable) the operator
+            // already sees the existing warn + return path; the post-condition
+            // would only add noise.
+            var provision_attempted: bool = false;
             var provision_pool = pool_mod.Pool.init(init.io, allocator, .{ .url = url, .pool_size = 2 }) catch |err| {
                 std.log.warn("default tenant schema provisioning skipped: could not open pool: {}", .{err});
                 return;
             };
             defer provision_pool.deinit();
+            provision_attempted = true;
 
             const default_tenant_id = "00000000-0000-0000-0000-000000000000";
             db_provisioning.provisionTenantSchema(allocator, &provision_pool, default_tenant_id, build_options.migrations_dir) catch |err| {
                 std.log.warn("default tenant schema provisioning failed: {} (tenant_id={s})", .{ err, default_tenant_id });
             };
+
+            // Post-condition check (ISS-0706 leg d): the in-loop hook above
+            // is a one-shot provisioning call. If it returned without throwing
+            // but `tenant_schemas.migrations_applied_at` is still NULL, the
+            // gate at GBL-116 / TNT-07 will trip on the default tenant at
+            // line 39-61 of migrations/GBL-116_tnt07_rls_cleanup.sql. Fail
+            // LOUDLY here so the operator sees the real cause (silent
+            // provisioning failure) instead of the misleading downstream
+            // "Unready tenants" gate message. See
+            // src/design/iss-0706-gbl116-bench-pre-flight.md §3.2.
+            if (provision_attempted) {
+                const lock_conn = provision_pool.acquire() catch |err| {
+                    std.log.err("post-condition: could not acquire pool connection: {}", .{err});
+                    std.process.exit(1);
+                };
+                defer provision_pool.release(lock_conn);
+                const count_str = lock_conn.queryRow(allocator,
+                    "SELECT count(*)::text FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND migrations_applied_at IS NOT NULL",
+                    &.{default_tenant_id},
+                ) catch |err| {
+                    std.log.err("post-condition: query failed: {}", .{err});
+                    std.process.exit(1);
+                };
+                defer if (count_str) |cs| {
+                    for (cs) |col| if (col) |c| allocator.free(c);
+                    allocator.free(cs);
+                };
+                const ready_count: u64 = blk: {
+                    const cs = count_str orelse break :blk 0;
+                    const first = cs[0] orelse break :blk 0;
+                    break :blk std.fmt.parseInt(u64, first, 10) catch 0;
+                };
+                if (ready_count == 0) {
+                    std.log.err("post-condition: default tenant_schemas.migrations_applied_at is NULL after provisionTenantSchema() returned -- aborting migrate", .{});
+                    std.process.exit(1);
+                }
+            }
         }
 
         if (applied.contains(filename)) {
@@ -300,16 +345,50 @@ pub fn main(init: std.process.Init) !void {
     // still ends up with the default tenant provisioned. Idempotent — see
     // the detailed rationale in the in-loop hook above.
     if (!provisioned_default_tenant) {
+        // ISS-0706 / GH-791 leg (d): same provision_attempted gating as the
+        // in-loop hook above. See the detailed rationale in the in-loop
+        // hook's comment block and src/design/iss-0706-gbl116-bench-pre-flight.md
+        // §3.2.3.
+        var provision_attempted: bool = false;
         var provision_pool = pool_mod.Pool.init(init.io, allocator, .{ .url = url, .pool_size = 2 }) catch |err| {
             std.log.warn("default tenant schema provisioning skipped: could not open pool: {}", .{err});
             return;
         };
         defer provision_pool.deinit();
+        provision_attempted = true;
 
         const default_tenant_id = "00000000-0000-0000-0000-000000000000";
         db_provisioning.provisionTenantSchema(allocator, &provision_pool, default_tenant_id, build_options.migrations_dir) catch |err| {
             std.log.warn("default tenant schema provisioning failed: {} (tenant_id={s})", .{ err, default_tenant_id });
         };
+
+        if (provision_attempted) {
+            const lock_conn = provision_pool.acquire() catch |err| {
+                std.log.err("post-condition: could not acquire pool connection: {}", .{err});
+                std.process.exit(1);
+            };
+            defer provision_pool.release(lock_conn);
+            const count_str = lock_conn.queryRow(allocator,
+                "SELECT count(*)::text FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND migrations_applied_at IS NOT NULL",
+                &.{default_tenant_id},
+            ) catch |err| {
+                std.log.err("post-condition: query failed: {}", .{err});
+                std.process.exit(1);
+            };
+            defer if (count_str) |cs| {
+                for (cs) |col| if (col) |c| allocator.free(c);
+                allocator.free(cs);
+            };
+            const ready_count: u64 = blk: {
+                const cs = count_str orelse break :blk 0;
+                const first = cs[0] orelse break :blk 0;
+                break :blk std.fmt.parseInt(u64, first, 10) catch 0;
+            };
+            if (ready_count == 0) {
+                std.log.err("post-condition: default tenant_schemas.migrations_applied_at is NULL after provisionTenantSchema() returned -- aborting migrate", .{});
+                std.process.exit(1);
+            }
+        }
     }
 }
 

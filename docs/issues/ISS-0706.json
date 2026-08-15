@@ -1,0 +1,42 @@
+{
+  "iss_id": "ISS-0706",
+  "id": "ISS-0706",
+  "gh_issue": 791,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/791",
+  "github_issue_confirmed": true,
+  "title": "GBL-116_tnt07_rls_cleanup pre-flight blocks zig build bench on fresh/main DB",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-GH791-20260815",
+  "run_id": "WF03-GH791-20260815",
+  "created_at": "2026-08-15T18:42:00Z",
+  "registered_at": "2026-08-15T18:42:00Z",
+  "created_by": "ORCH (WF03-GH791-20260815 step-00.5)",
+  "registered_by": "ORCH (WF03-GH791-20260815 step-00.5)",
+  "branch": "feature/WF03-GH791-20260815",
+  "branch_base_sha": "0e4d24bf",
+  "labels": [
+    "bug",
+    "process"
+  ],
+  "scope": "migrations/GBL-116_tnt07_rls_cleanup.sql pre-flight gate aborts on fresh/main bench DB because (a) tenant has no row in tenant_schemas with migrations_applied_at IS NOT NULL, and (b) tnt05_progress table does not exist or has no COMPLETED rows. Affects ONLY the bench path (NFR performance gate `zig build bench`); CI fresh-database migrate path passes 146/146 (different provisioning).",
+  "affected_areas": [
+    "migrations/GBL-116_tnt07_rls_cleanup.sql",
+    "migrations/GBL-074*.sql",
+    "migrations/GBL-075*.sql",
+    "migrations/TNT-05*.sql",
+    "bench provisioning path (zig build bench -> zig build migrate)"
+  ],
+  "description": "Mirror of GH-791. On a fresh bench database (or any DB where the default tenant was not provisioned through the TNT-05 backfill path), GBL-116's pre-flight gate aborts with 'TNT-07 pre-flight failed: tnt05_progress table does not exist. Run GBL-074 and GBL-075 first.' or 'TNT-07 pre-flight failed. Unready tenants: ...'. Discovered during WF02-plc-batch-b-20260815 Step 05 RELEASE-VALIDATOR (NFR gate) and Step 06 DOC-UPDATER. NFR gate was carried forward using the last good metrics (sol-batch1, commit 99ad43db). Does NOT block fresh-database CI migration bootstrap (which passes 146/146 — the CI path provisions tenants differently than the bench path). Blocks `zig build bench` (NFR performance gate) on main until resolved.",
+  "symptom": "zig build bench fails at the migrate prerequisite. Underlying error is `TNT-07 pre-flight failed: tnt05_progress table does not exist. Run GBL-074 and GBL-075 first.` or `TNT-07 pre-flight failed. Unready tenants: ...`. Trigger: GBL-116_tnt07_rls_cleanup.sql pre-flight block, fired inside the bench DB's only tenant (default), which lacks tenant_schemas row with migrations_applied_at IS NOT NULL and lacks tnt05_progress row with status='COMPLETED'.",
+  "discovered_at": "2026-08-15T17:49:03Z",
+  "discovered_by": "RELEASE-VALIDATOR (WF02-plc-batch-b-20260815 step-05)",
+  "investigation_notes": "RELEASE-VALIDATOR handoff: handoffs/WF02-plc-batch-b-20260815/step-05-release-validator.json (result note). DOC-UPDATER handoff: handoffs/WF02-plc-batch-b-20260815/step-06-doc-updater.json (carried-forward MINOR). Release decision: docs/status/release-decision-WF02-plc-batch-b-20260815.yaml. Attribution: `git diff origin/main...HEAD -- migrations/GBL-116*` is empty — the SPC-01/SPC-02 batch did NOT touch this migration. NFR-relevant paths (src/event_store, src/api/*, src/engine/replay) also have empty diff on that branch. Purely inherited from main. Three candidate fixes: (a) make the bench DB provisioning path run GBL-074/GBL-075 + TNT-05 backfill before GBL-116; (b) relax the pre-flight gate for the bench seed tenant; (c) document/script a bench-specific migrate path that satisfies the gate. Needs a WF-03 run to pick and apply a fix.",
+  "reproduction": "Pre-fix: (1) Provision a fresh bench DB at BPM_TEST_DB_URL (or any DB with no tenant_schemas row for the default tenant). (2) zig build bench. (3) Observe: zig build bench fails inside the migrate prerequisite with TNT-07 pre-flight failed ... . Post-fix: same steps complete; zig build bench runs the NFR suite to completion.",
+  "fix_file": "TBD -- to be picked in WF-03 step 02 (CODE-DESIGNER)",
+  "fix_diff": "TBD",
+  "pr_url": null,
+  "pr_merged_at": null,
+  "pr_merge_commit": null,
+  "handoff_history": []
+}

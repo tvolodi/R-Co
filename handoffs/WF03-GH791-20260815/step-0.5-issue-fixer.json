@@ -1,0 +1,51 @@
+{
+  "run_id": "WF03-GH791-20260815",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "handoff_id": "WF03-GH791-20260815/step-0.5-issue-fixer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T18:50:27Z",
+  "started_at": "2026-08-15T18:51:02Z",
+  "completed_at": "2026-08-15T18:51:20Z",
+  "task": {
+    "type": "registry-lookup",
+    "title": "Step 0.5: ISSUE-FIXER registry lookup + GH-791 confirm OPEN + confirm ISS-0706",
+    "description": "Look up GH-791 in the local issue registry (docs/issues/ISS-0706.json is already filed by ORCH). Confirm GH-791 is still OPEN on GitHub. Verify docs/issues/ISS-0706.json metadata matches the GitHub issue body. Patch docs/issues/issue_index.json with ISS-0706 entry if missing (it should already be present). Post an ack comment on GH-791 referencing this WF ID. Do NOT do any root-cause analysis (that's Step 01).",
+    "context": {
+      "gh_issue": 791,
+      "gh_issue_title": "[BUG] GBL-116_tnt07_rls_cleanup pre-flight blocks zig build bench on fresh/main",
+      "gh_issue_created": "2026-08-15T17:49:03Z",
+      "gh_issue_url": "https://github.com/tvolodi/R-Co/issues/791",
+      "gh_issue_body_summary": "GBL-116 has a PRE-FLIGHT GATE that RAISE EXCEPTIONs unless every tenant in public.tenant has a tenant_schemas row with migrations_applied_at IS NOT NULL AND at least one tnt05_progress row with status='COMPLETED'. On a fresh bench DB (or any DB where the default tenant was not provisioned through the TNT-05 backfill path), the gate aborts with 'TNT-07 pre-flight failed: tnt05_progress table does not exist. Run GBL-074 and GBL-075 first.' or 'TNT-07 pre-flight failed. Unready tenants: ...'. Discovered during WF02-plc-batch-b-20260815 Step 05 RELEASE-VALIDATOR (NFR gate) and Step 06 DOC-UPDATER. git diff origin/main...HEAD -- migrations/GBL-116* is empty — pure inheritance from main. NFR gate was carried forward using the last good metrics (sol-batch1, commit 99ad43db). Blocks `zig build bench` (NFR performance gate) on main until resolved. Does NOT block Fresh-database CI migration bootstrap (which passes 146/146). Three candidate fixes: (a) make the bench DB provisioning path run GBL-074/GBL-075 + TNT-05 backfill before GBL-116; (b) relax the pre-flight gate for the bench seed tenant; (c) document/script a bench-specific migrate path that satisfies the gate.",
+      "gh_ack_comment_template": "Acknowledged — this bug is now being worked as workflow **WF03-GH791-20260815** (ISS-0706 in the local registry). Root cause is confirmed: GBL-116's pre-flight gate aborts on fresh bench DB because the default tenant has no tenant_schemas row with migrations_applied_at IS NOT NULL and no tnt05_progress row with status='COMPLETED'. Will be root-caused, fixed, and merged via PR. Tracking: docs/issues/ISS-0706.json.",
+      "iss_id": "ISS-0706",
+      "iss_path": "docs/issues/ISS-0706.json",
+      "issue_index_path": "docs/issues/issue_index.json",
+      "branch": "feature/WF03-GH791-20260815",
+      "task_manager": "r-co-1-loop"
+    },
+    "verification": {
+      "gh_791_state": "OPEN",
+      "iss_0706_metadata_match": true,
+      "issue_index_updated": true,
+      "gh_791_ack_comment_posted": true
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 0.5 registry-lookup PASSED: GH-791 verified OPEN (state=OPEN, labels=bug+process); docs/issues/ISS-0706.json metadata matches GH-791 (gh_issue=791, title, labels, severity MAJOR, scope); docs/issues/issue_index.json contains ISS-0706 at position 155 (last) with next_issue_id=707 (bumped last_updated). Ack comment posted on GH-791 (comment ID 5303722017).",
+    "artifacts_out": [
+      "handoffs/WF03-GH791-20260815/step-0.5-issue-fixer.json",
+      "docs/issues/ISS-0706.json",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Route to Step 01 ISSUE-FIXER for root-cause diagnosis (deeper than the already-established summary).",
+    "github_issue_state": "OPEN",
+    "iss_id": "ISS-0706",
+    "iss_metadata_match": true,
+    "issue_index_next_id": 707,
+    "gh_ack_comment_id": "5303722017"
+  }
+}

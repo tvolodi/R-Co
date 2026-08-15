@@ -1,0 +1,155 @@
+{
+  "run_id": "WF03-GH791-20260815",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "handoff_id": "WF03-GH791-20260815/step-04b-test-design-validator",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T19:45:00Z",
+  "started_at": "2026-08-15T19:55:21Z",
+  "completed_at": "2026-08-15T19:56:08Z",
+  "task": {
+    "type": "test-design-validation",
+    "title": "Step 04b: TEST-DESIGN-VALIDATOR validates the test spec (HARD GATE)",
+    "description": "Validate the test spec at tests/specs/iss-0706-gbl116-bench-pre-flight.md and the corresponding Zig test source at tests/integration/iss0706_gbl116_bench_preflight_test.zig. Check: (1) every MUST AC has a concrete Zig test reference; (2) no test coverage is deferred (no 'TODO: implement test for X' placeholders); (3) fixtures are isolated (each test sets up and tears down its own DB state); (4) tests are self-sufficient (no shared mutable state across tests); (5) pipeline chain is wired (the spec lists zig build → zig build test → zig build test-integration-iss0706 → zig build bench smoke); (6) the 10 MUST-NOT ACs are covered (negative tests exist where appropriate). This is a HARD GATE — PASS allows Step 05 TEST-RUNNER to proceed; FAIL routes back to Step 04 for rework.",
+    "context": {
+      "gh_issue": 791,
+      "iss_id": "ISS-0706",
+      "branch": "feature/WF03-GH791-20260815",
+      "branch_base_sha": "0e4d24bf",
+      "implementation_commit": "c0654f99",
+      "memo_commit": "a91e689c",
+      "spec_commit": "698895f4",
+      "design_file": "src/design/iss-0706-gbl116-bench-pre-flight.md",
+      "diagnosis_file": "handoffs/WF03-GH791-20260815/diagnosis-01.md",
+      "spec_file": "tests/specs/iss-0706-gbl116-bench-pre-flight.md",
+      "zig_test_file": "tests/integration/iss0706_gbl116_bench_preflight_test.zig"
+    },
+    "validation_checklist": [
+      "all_20_acs_have_test_references",
+      "no_deferred_coverage_placeholders",
+      "fixtures_isolated",
+      "tests_self_sufficient",
+      "pipeline_chain_wired",
+      "must_not_acs_covered",
+      "spec_matches_format",
+      "no_invented_acs",
+      "lint_handoffs_clean"
+    ],
+    "verification": {
+      "verdict": "PASS",
+      "checklist_results": [
+        {
+          "item": "all_20_acs_have_test_references",
+          "verdict": "PASS",
+          "justification": "21 concrete Zig test references in spec point to file path + line number; each MUST AC (1-10) and MUST-NOT AC (1-10) has at least one reference in the §Regression coverage table. Spot-verified: lines 165, 185, 226, 85, 127, 247, 281 all land on the actual test blocks in the Zig source."
+        },
+        {
+          "item": "no_deferred_coverage_placeholders",
+          "verdict": "PASS",
+          "justification": "No TODO/FIXME/covered-by-future-test placeholders. The 2 hits for deferred/phase 2 are inside the explicit coverage-completeness statement (line 355): No AC is labelled deferred, future, or phase 2. These are negations, not placeholders."
+        },
+        {
+          "item": "fixtures_isolated",
+          "verdict": "PASS",
+          "justification": "Live-DB tests (AC-5.1.3 at line 85, AC-5.1.6 at line 127) each create their own Pool via makePool() and release it in defer. The NULL/NOW restore UPDATEs use defer to clean up. Source-assertion tests (165, 185, 226, 247, 281) read files via std.Io.Dir.cwd().readFileAlloc with 8MB cap and free in defer - no state mutation."
+        },
+        {
+          "item": "tests_self_sufficient",
+          "verdict": "PASS",
+          "justification": "Each of the 7 test blocks is order-independent. Each live-DB test acquires its own Pool, runs its query, and releases. No test depends on the side-effect of another. SkipZigTest pattern on BPM_TEST_DB_URL-missing tests is per-test, not shared."
+        },
+        {
+          "item": "pipeline_chain_wired",
+          "verdict": "PASS",
+          "justification": "Spec Pipeline chain section lists the four steps in order: zig build -> zig build test -> zig build test-integration-iss0706 -> zig build bench. Each step role documented (typecheck/lint, source-assertion cases, live-DB cases, smoke). Suite already registered as test-integration-iss0706 by Step 03."
+        },
+        {
+          "item": "must_not_acs_covered",
+          "verdict": "PASS",
+          "justification": "All 10 MUST-NOT ACs appear in the Regression coverage table. MUST-NOT-1 has TC-07 source-assertion at line 281 with 5 invariants. MUST-NOT-4 verified by TC-03 inspecting SELECT count(*) text. MUST-NOT-7/9/10 verified by TC-02 at line 185."
+        },
+        {
+          "item": "spec_matches_format",
+          "verdict": "PASS",
+          "justification": "Same format as other tests/specs/*.md: Test Spec heading; Requirement/Priority/Test layer metadata; Scope prose; Test cases with TC-<ID>-NN Given/When/Then; Pipeline chain; Failure modes; Manual checks; Isolation and security contract; Regression coverage table; Wiring; Requirement traceability."
+        },
+        {
+          "item": "no_invented_acs",
+          "verdict": "PASS",
+          "justification": "Coverage table covers exactly the 20 ACs (MUST-1..10, MUST-NOT-1..10) declared in design §6.1 and §6.2. No additional ACs."
+        },
+        {
+          "item": "lint_handoffs_clean",
+          "verdict": "PASS",
+          "justification": "python tools/lint_handoffs.py reports 0 violations on handoffs/WF03-GH791-20260815/* (Select-String filter returns empty). Exit 1 is from unrelated legacy handoffs (2885 handoffs checked, 10 BLOCKER/31 MAJOR/1 MINOR/291 ACKNOWLEDGED) - this run chain is clean."
+        }
+      ],
+      "blockers": [],
+      "next_action": "Route to Step 05 TEST-RUNNER if PASS; otherwise back to Step 04 TEST-DESIGNER for rework (max_rework=3).",
+      "lint_check_exit_code": 1,
+      "test_references_in_spec": 21,
+      "unique_zig_test_blocks": 7
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "verdict": "PASS",
+    "summary": "Test design validated 9/9 checklist items PASS. All 20 ACs (MUST-1..10, MUST-NOT-1..10) have concrete Zig test references; 7 unique test blocks verified at lines 85/127/165/185/226/247/281. No deferred coverage. Fixtures isolated per-test. Pipeline chain wired. Spec format matches tests/specs/*.md convention. No invented ACs. Lint chain for WF03-GH791-20260815 is clean (overall exit-1 is from legacy unrelated handoffs only).",
+    "artifacts_out": [
+      "handoffs/WF03-GH791-20260815/step-04b-test-design-validator.json"
+    ],
+    "issues": [],
+    "lint_check_exit_code": 1,
+    "checklist": [
+      {
+        "item": "all_20_acs_have_test_references",
+        "verdict": "PASS",
+        "justification": "21 concrete Zig test references in spec point to file path + line number; each MUST AC (1-10) and MUST-NOT AC (1-10) has at least one reference in the §Regression coverage table. Spot-verified: lines 165, 185, 226, 85, 127, 247, 281 all land on the actual test blocks in the Zig source."
+      },
+      {
+        "item": "no_deferred_coverage_placeholders",
+        "verdict": "PASS",
+        "justification": "No TODO/FIXME/covered-by-future-test placeholders. The 2 hits for deferred/phase 2 are inside the explicit coverage-completeness statement (line 355): No AC is labelled deferred, future, or phase 2. These are negations, not placeholders."
+      },
+      {
+        "item": "fixtures_isolated",
+        "verdict": "PASS",
+        "justification": "Live-DB tests (AC-5.1.3 at line 85, AC-5.1.6 at line 127) each create their own Pool via makePool() and release it in defer. The NULL/NOW restore UPDATEs use defer to clean up. Source-assertion tests (165, 185, 226, 247, 281) read files via std.Io.Dir.cwd().readFileAlloc with 8MB cap and free in defer - no state mutation."
+      },
+      {
+        "item": "tests_self_sufficient",
+        "verdict": "PASS",
+        "justification": "Each of the 7 test blocks is order-independent. Each live-DB test acquires its own Pool, runs its query, and releases. No test depends on the side-effect of another. SkipZigTest pattern on BPM_TEST_DB_URL-missing tests is per-test, not shared."
+      },
+      {
+        "item": "pipeline_chain_wired",
+        "verdict": "PASS",
+        "justification": "Spec Pipeline chain section lists the four steps in order: zig build -> zig build test -> zig build test-integration-iss0706 -> zig build bench. Each step role documented (typecheck/lint, source-assertion cases, live-DB cases, smoke). Suite already registered as test-integration-iss0706 by Step 03."
+      },
+      {
+        "item": "must_not_acs_covered",
+        "verdict": "PASS",
+        "justification": "All 10 MUST-NOT ACs appear in the Regression coverage table. MUST-NOT-1 has TC-07 source-assertion at line 281 with 5 invariants. MUST-NOT-4 verified by TC-03 inspecting SELECT count(*) text. MUST-NOT-7/9/10 verified by TC-02 at line 185."
+      },
+      {
+        "item": "spec_matches_format",
+        "verdict": "PASS",
+        "justification": "Same format as other tests/specs/*.md: Test Spec heading; Requirement/Priority/Test layer metadata; Scope prose; Test cases with TC-<ID>-NN Given/When/Then; Pipeline chain; Failure modes; Manual checks; Isolation and security contract; Regression coverage table; Wiring; Requirement traceability."
+      },
+      {
+        "item": "no_invented_acs",
+        "verdict": "PASS",
+        "justification": "Coverage table covers exactly the 20 ACs (MUST-1..10, MUST-NOT-1..10) declared in design §6.1 and §6.2. No additional ACs."
+      },
+      {
+        "item": "lint_handoffs_clean",
+        "verdict": "PASS",
+        "justification": "python tools/lint_handoffs.py reports 0 violations on handoffs/WF03-GH791-20260815/* (Select-String filter returns empty). Exit 1 is from unrelated legacy handoffs (2885 handoffs checked, 10 BLOCKER/31 MAJOR/1 MINOR/291 ACKNOWLEDGED) - this run chain is clean."
+      }
+    ],
+    "test_references_in_spec": 21,
+    "unique_zig_test_blocks": 7,
+    "next_action": "Route to Step 05 TEST-RUNNER if PASS; otherwise back to Step 04 TEST-DESIGNER for rework (max_rework=3)."
+  }
+}

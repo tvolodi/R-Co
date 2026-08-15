@@ -1,0 +1,69 @@
+{
+  "run_id": "WF03-GH791-20260815",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "handoff_id": "WF03-GH791-20260815/step-01-issue-fixer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T18:51:46Z",
+  "started_at": "2026-08-15T18:52:16Z",
+  "completed_at": "2026-08-15T18:54:22Z",
+  "task": {
+    "type": "root-cause-analysis",
+    "title": "Step 01: ISSUE-FIXER root-cause diagnosis for GH-791 / ISS-0706",
+    "description": "Produce a structured root-cause diagnosis for GH-791 (GBL-116_tnt07_rls_cleanup pre-flight blocks zig build bench on fresh/main DB). Read the actual migration file and the bench provisioning path. Confirm or refine the root cause recorded in ISS-0706, identify the EXACT branch point in the code/migration, and recommend the candidate fix approach (a, b, or c from the GH body). DO NOT propose a fix in detail — that's Step 02 (CODE-DESIGNER). DO write a structured diagnosis file at handoffs/WF03-GH791-20260815/diagnosis-01.md.",
+    "context": {
+      "gh_issue": 791,
+      "iss_id": "ISS-0706",
+      "branch": "feature/WF03-GH791-20260815",
+      "branch_base_sha": "0e4d24bf",
+      "task_manager": "r-co-1-loop",
+      "expected_diagnosis_path": "handoffs/WF03-GH791-20260815/diagnosis-01.md",
+      "relevant_files": [
+        "migrations/GBL-116_tnt07_rls_cleanup.sql",
+        "migrations/GBL-077*.sql",
+        "migrations/GBL-074*.sql",
+        "migrations/GBL-075*.sql",
+        "migrations/TNT-05*.sql",
+        "build.zig (zig build bench target)",
+        "tools/bench*.zig / scripts/bench*.py (if any)",
+        "tests/integration/ env01_test.zig (current bench path used for env01)"
+      ],
+      "known_symptom": "zig build bench fails at the migrate prerequisite with 'TNT-07 pre-flight failed: tnt05_progress table does not exist. Run GBL-074 and GBL-075 first.' or 'TNT-07 pre-flight failed. Unready tenants: ...' on a fresh bench DB. Discovered during WF02-plc-batch-b-20260815 Step 05 RELEASE-VALIDATOR (NFR gate) and Step 06 DOC-UPDATER. The CI fresh-database path passes 146/146 (different provisioning).",
+      "candidate_fixes": [
+        "(a) Make the bench DB provisioning path run GBL-074/GBL-075 + TNT-05 backfill before GBL-116.",
+        "(b) Relax the pre-flight gate for the bench seed tenant (env-only / anon / specific tenant_id).",
+        "(c) Document/script a bench-specific migrate path that satisfies the gate; gate stays strict for production."
+      ]
+    },
+    "diagnosis_required_sections": [
+      "## Summary (1-2 sentences)",
+      "## Reproduction (commands + observed output)",
+      "## Root cause (file:line, exact branch point)",
+      "## Gating logic (the exact pre-flight block in GBL-116 — quote the relevant SQL)",
+      "## Why CI path is unaffected (different provisioning; explain how)",
+      "## Why bench path is affected (default tenant has no tenant_schemas row with migrations_applied_at IS NOT NULL OR no tnt05_progress row with status='COMPLETED')",
+      "## Candidate fix approaches (a, b, c) — PROs / CONs / blast radius",
+      "## Recommendation (which approach to take and why, but NOT yet the actual patch)",
+      "## Risks and regression vectors"
+    ],
+    "verification": {
+      "diagnosis_file_path": "handoffs/WF03-GH791-20260815/diagnosis-01.md",
+      "root_cause_confirmed": "CONFIRMED (refined: bench DB has two compounding defects — migrate.zig hard-reads BPM_DB_URL which the bench never sets; provisionTenantSchema hook fails silently leaving migrations_applied_at NULL; GBL-116 Branch 2 pre-flight trips on the default tenant)",
+      "quoted_block_in_gbl_116": "migrations/GBL-116_tnt07_rls_cleanup.sql lines 17-62 (the DO $$ ... BEGIN ... pre-flight block, in particular lines 25-34 'tnt05_progress table does not exist' branch and lines 53-61 'Unready tenants' RAISE EXCEPTION)",
+      "recommendation": "a (composed with new candidate d: also fail loudly inside migrate.zig when provisionTenantSchema returns MigrationFailed instead of swallowing the error)"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause confirmed at migrations/GBL-116_tnt07_rls_cleanup.sql:53-61 (Branch 2 pre-flight trips because migrations_applied_at IS NULL for default tenant). Underlying cause is twofold: (1) tests/bench/bench.zig resolves BPM_BENCH_DB_URL but migrate.zig hard-reads BPM_DB_URL so the in-loop provisionTenantSchema hook either never runs or runs against the wrong DB; (2) when provisionTenantSchema does run and fails (MigrationFailed inside runForSchema), migrate.zig:186 silently swallows the error and leaves migrations_applied_at NULL, so GBL-116 Branch 2 fires. Recommendation: approach (a) — inject BPM_DB_URL into the migrate child process from the bench step — composed with new candidate (d) — fail loudly inside migrate.zig when the post-condition (migrations_applied_at IS NOT NULL) is not satisfied after provisionTenantSchema returns. CI fresh-DB path unaffected because .github/workflows/ci.yml:441 sets BPM_DB_URL explicitly in the step env block.",
+    "artifacts_out": [
+      "handoffs/WF03-GH791-20260815/diagnosis-01.md",
+      "handoffs/WF03-GH791-20260815/step-01-issue-fixer.json"
+    ],
+    "issues": [],
+    "recommendation": "a",
+    "root_cause_location": "migrations/GBL-116_tnt07_rls_cleanup.sql:53-61 (Branch 2 pre-flight RAISE EXCEPTION, with underlying silent-failure cause in src/tools/migrate.zig:186)",
+    "next_action": "Route to Step 02 CODE-DESIGNER for fix design (composed: bench step sets BPM_DB_URL via setEnvironmentVariable; migrate.zig adds post-condition check on tenant_schemas.migrations_applied_at)"
+  }
+}

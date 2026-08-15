@@ -31,7 +31,7 @@ BEGIN
            AND table_name   = 'tnt05_progress'
            AND table_type   = 'BASE TABLE'
     ) THEN
-        RAISE EXCEPTION 'TNT-07 pre-flight failed: tnt05_progress table does not exist. Run GBL-074 and GBL-075 first.';
+        RAISE EXCEPTION 'TNT-07 pre-flight failed: tnt05_progress table does not exist. Run GBL-113 and GBL-114 first.';
     END IF;
 
     FOR v_tenant IN SELECT id FROM public.tenant LOOP

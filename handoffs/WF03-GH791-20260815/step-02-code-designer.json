@@ -1,0 +1,77 @@
+{
+  "run_id": "WF03-GH791-20260815",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "handoff_id": "WF03-GH791-20260815/step-02-code-designer",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T19:03:36Z",
+  "started_at": "2026-08-15T19:04:12Z",
+  "completed_at": "2026-08-15T19:06:59Z",
+  "task": {
+    "type": "fix-design",
+    "title": "Step 02: CODE-DESIGNER fix design for GH-791 / ISS-0706",
+    "description": "Produce a fix design artefact at src/design/iss-0706-gbl116-bench-pre-flight.md that details the actual code change. Read the diagnosis file (handoffs/WF03-GH791-20260815/diagnosis-01.md) and the relevant source files (migrations/GBL-116_tnt07_rls_cleanup.sql, src/tools/migrate.zig, build.zig, tests/bench/bench.zig). The recommended approach is (a) + (d): inject BPM_DB_URL into the bench step's migrate child process + fail loudly inside migrate.zig when provisionTenantSchema leaves migrations_applied_at NULL. Write the design as interfaces/types/data-flow — NOT implementation code. The design must be complete enough for BACKEND-DEV to implement without ambiguity.",
+    "context": {
+      "gh_issue": 791,
+      "iss_id": "ISS-0706",
+      "branch": "feature/WF03-GH791-20260815",
+      "branch_base_sha": "0e4d24bf",
+      "task_manager": "r-co-1-loop",
+      "diagnosis_file": "handoffs/WF03-GH791-20260815/diagnosis-01.md",
+      "expected_design_path": "src/design/iss-0706-gbl116-bench-pre-flight.md",
+      "recommended_approach": "(a) + (d) — inject BPM_DB_URL into the bench step's migrate child process + fail loudly inside migrate.zig when provisionTenantSchema leaves migrations_applied_at NULL",
+      "relevant_files": [
+        "migrations/GBL-116_tnt07_rls_cleanup.sql",
+        "src/tools/migrate.zig",
+        "build.zig (run_bench step at line 3795)",
+        "tests/bench/bench.zig (resolveDbUrl)",
+        ".github/workflows/ci.yml (BPM_DB_URL injection at line 441)"
+      ]
+    },
+    "design_required_sections": [
+      "## Summary (1-2 sentences)",
+      "## Approach (a + d) — concrete plan",
+      "## Files to change (with line numbers and signature diffs)",
+      "## Migration safety (the gate stays strict for production; only the bench path is relaxed/fixed)",
+      "## Test plan (regression-test plan; what new tests to add, what existing tests to verify)",
+      "## Acceptance criteria (list of MUST-NOT and MUST conditions, each verifiable)",
+      "## Dependencies (depends on which other fixes, if any; order of changes)",
+      "## MUST-NOT-depend on (anti-dependencies — do not modify X)",
+      "## Risks and mitigations"
+    ],
+    "verification": {
+      "design_file_path": "src/design/iss-0706-gbl116-bench-pre-flight.md",
+      "lint_check_exit_code": 0,
+      "acceptance_criteria_count": "TODO",
+      "depends_on": "TODO",
+      "must_not_depend_on": "TODO"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0706 / GH-791: (a) BPM_DB_URL injection in build.zig bench step + (d) post-condition check in migrate.zig provisionTenantSchema hook. GBL-116 pre-flight gate stays strict. 20 acceptance criteria (10 MUST + 10 MUST-NOT).",
+    "artifacts_out": [
+      "src/design/iss-0706-gbl116-bench-pre-flight.md",
+      "handoffs/WF03-GH791-20260815/step-02-code-designer.json"
+    ],
+    "issues": [],
+    "lint_check_exit_code": 0,
+    "acceptance_criteria_count": 20,
+    "depends_on": [],
+    "must_not_depend_on": [
+      "migrations/GBL-116_tnt07_rls_cleanup.sql pre-flight loop body (lines 39-61)",
+      "tests/bench/bench.zig::resolveDbUrl",
+      "src/db/provisioning.zig::provisionTenantSchema signature",
+      "src/main.zig::runApiServer",
+      ".github/workflows/ci.yml fresh-DB job",
+      ".vscode/run-zig-bench.ps1",
+      "any new env var",
+      "any new module-level import in tests/bench/bench.zig",
+      "any new SQL migration file",
+      "any new shell-script wrapper (bench-bootstrap.sh etc.)",
+      "tools/verify_test_env.py"
+    ],
+    "next_action": "Route to Step 02b CODE-DESIGN-VALIDATOR (hard gate) -- must PASS before BACKEND-DEV can implement."
+  }
+}

@@ -53,6 +53,85 @@ fn addIntegrationRun(
     return run;
 }
 
+/// ISS-0706 / GH-791: mirror of tests/bench/bench.zig::resolveDbUrl precedence
+/// (BPM_BENCH_DB_URL -> BPM_DB_URL -> BPM_TEST_DB_URL -> .env file lookup of the
+/// same three keys in the same order). Returns the resolved URL plus the source
+/// name for the BENCH_MIGRATE_URL_INFO diagnostic line. MUST stay byte-for-byte
+/// equivalent to bench.zig::resolveDbUrl so the bench binary and its migrate
+/// child process agree about which DB they are about to touch — a divergence
+/// causes silent path-splitting (bench seeds one DB, migrate operates on
+/// another, both gates trip independently).
+///
+/// On miss (no env var AND no .env file with any of the three keys), returns
+/// null. Callers should leave the BPM_DB_URL env var unset in that case so
+/// migrate.zig's own "BPM_DB_URL environment variable is not set" error
+/// surfaces with its existing diagnostic text — the bench binary's
+/// BENCHMARK_SETUP_ERROR then takes over per the existing flow.
+fn resolveBenchMigrateDbUrl(b: *std.Build) ?struct { url: []const u8, source: []const u8 } {
+    const env_candidates = [_][]const u8{ "BPM_BENCH_DB_URL", "BPM_DB_URL", "BPM_TEST_DB_URL" };
+    const source_labels = [_][]const u8{ "BPM_BENCH_DB_URL", "BPM_DB_URL", "BPM_TEST_DB_URL" };
+
+    // Phase 1: live environment inherited from the shell. b.graph.environ_map
+    // values are stored in b.graph.arena which lives the duration of the build
+    // — the returned slice is valid until build() returns.
+    for (env_candidates, source_labels) |key, label| {
+        if (b.graph.environ_map.get(key)) |url| {
+            return .{ .url = url, .source = label };
+        }
+    }
+
+    // Phase 2: .env file lookup, matching bench.zig::readDotEnvValue's path
+    // walk so an operator who configures their DB via .env (no shell export)
+    // gets the same resolution both at bench runtime and at migrate-time.
+    if (readBuildDotEnvValue(b, "BPM_BENCH_DB_URL")) |url| return .{ .url = url, .source = "BPM_BENCH_DB_URL" };
+    if (readBuildDotEnvValue(b, "BPM_DB_URL")) |url| return .{ .url = url, .source = "BPM_DB_URL" };
+    if (readBuildDotEnvValue(b, "BPM_TEST_DB_URL")) |url| return .{ .url = url, .source = "BPM_TEST_DB_URL" };
+
+    return null;
+}
+
+/// Read a single key's value from a .env file in the project root or its
+/// parents. Mirrors tests/bench/bench.zig::readDotEnvValue's candidate-path
+/// list and parser. The returned slice is allocated in b.graph.arena and
+/// valid for the duration of the build.
+fn readBuildDotEnvValue(b: *std.Build, key: []const u8) ?[]const u8 {
+    const env_candidates = [_][]const u8{
+        ".env",
+        "../.env",
+        "../../.env",
+        "../../../.env",
+        "../../../../.env",
+        "../../../../../.env",
+        "../../../../../../.env",
+    };
+
+    for (env_candidates) |env_path| {
+        const contents = std.Io.Dir.cwd().readFileAlloc(b.graph.io, env_path, b.graph.arena, std.Io.Limit.unlimited) catch continue;
+        if (parseBuildDotEnvValue(b, contents, key)) |value| return value;
+    }
+
+    return null;
+}
+
+fn parseBuildDotEnvValue(b: *std.Build, contents: []const u8, key: []const u8) ?[]const u8 {
+    var lines_iter = std.mem.tokenizeScalar(u8, contents, '\n');
+    while (lines_iter.next()) |raw_line| {
+        const line = std.mem.trim(u8, raw_line, " \t\r");
+        if (line.len == 0) continue;
+        if (line[0] == '#') continue;
+        const eq_idx = std.mem.indexOfScalar(u8, line, '=') orelse continue;
+        const line_key = std.mem.trim(u8, line[0..eq_idx], " \t");
+        if (!std.mem.eql(u8, line_key, key)) continue;
+        var value = std.mem.trim(u8, line[eq_idx + 1 ..], " \t");
+        // Strip surrounding quotes if present.
+        if (value.len >= 2 and value[0] == '"' and value[value.len - 1] == '"') {
+            value = value[1 .. value.len - 1];
+        }
+        return b.graph.arena.dupe(u8, value) catch null;
+    }
+    return null;
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -2174,6 +2253,19 @@ pub fn build(b: *std.Build) void {
     });
     const run_iss208_integration_tests = addIntegrationRun(b, iss208_integration_tests, migrations_dir, clean_test_db);
 
+    // ISS-0706 / GH-791: GBL-116 pre-flight blocks zig build bench on a fresh
+    // bench DB — six regression tests covering the post-condition check, the
+    // build.zig BPM_DB_URL injection, and the cosmetic GBL-113/114 SQL fix.
+    const iss0706_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0706_gbl116_bench_preflight_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0706_integration_tests = addIntegrationRun(b, iss0706_integration_tests, migrations_dir, clean_test_db);
+
     // ISS-205: Webhook transactional outbox integration tests.
     const iss205_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -2505,6 +2597,8 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss202_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss207_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss208_integration_tests.step);
+    // ISS-0706 / GH-791: GBL-116 bench pre-flight regression tests.
+    test_integration_others_step.dependOn(&run_iss0706_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss601_integration_tests.step);
     test_integration_others_step.dependOn(&run_sch303_integration_tests.step);
     // ISS-0617 / GH-566: EXP-601 tier-to-quota enforcement tests.
@@ -3428,6 +3522,11 @@ pub fn build(b: *std.Build) void {
     test_integration_iss208_step.dependOn(&clean_test_db.step);
     test_integration_iss208_step.dependOn(&run_iss208_integration_tests.step);
 
+    // ISS-0706 / GH-791: GBL-116 bench pre-flight regression tests.
+    const test_integration_iss0706_step = b.step("test-integration-iss0706", "Run ISS-0706 GBL-116 bench pre-flight regression tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0706_step.dependOn(&clean_test_db.step);
+    test_integration_iss0706_step.dependOn(&run_iss0706_integration_tests.step);
+
     const test_integration_iss601_step = b.step("test-integration-iss601", "Run ISS-601 state snapshots integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss601_step.dependOn(&clean_test_db.step);
     test_integration_iss601_step.dependOn(&run_iss601_integration_tests.step);
@@ -3789,6 +3888,17 @@ pub fn build(b: *std.Build) void {
     const run_bench = b.addRunArtifact(bench_exe);
     run_bench.setCwd(b.path("."));
     run_bench.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    // ISS-0706 / GH-791: inject the resolved bench DB URL into the migrate
+    // child process. migrate.zig hard-reads BPM_DB_URL (migrate.zig:17-21)
+    // and has no fallback to BPM_BENCH_DB_URL — so without this injection the
+    // bench path exits at the BPM_DB_URL check before any migration runs, and
+    // the subsequent in-loop provisionTenantSchema call never fires. The
+    // helper MUST stay byte-for-byte equivalent to bench.zig::resolveDbUrl so
+    // bench and its migrate child agree about which DB they target.
+    if (resolveBenchMigrateDbUrl(b)) |resolved| {
+        run_migrate.setEnvironmentVariable("BPM_DB_URL", resolved.url);
+        std.debug.print("BENCH_MIGRATE_URL_INFO|source={s}\n", .{resolved.source});
+    }
     // The benchmark needs an applied schema, exactly like the integration
     // steps do. Before ISS-BENCH-ENV this dependency lived only in whichever
     // shell an agent happened to run, so every new session started from zero
