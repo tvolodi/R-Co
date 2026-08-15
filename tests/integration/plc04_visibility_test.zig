@@ -132,8 +132,10 @@ test "TC-PLC-04-01: tenant A's module is invisible to tenant B without a grant" 
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p_a);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    const reg_e_a = try catalog.registerModule(alloc, p_a);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e_a);
+    const pub_r_a = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r_a.entry);
 
     // Tenant B tries to resolve — must fail with UNRESOLVED_MODULE_REF.
     const ref = ModuleRef{ .module_id = module_id, .version_constraint = "*" };
@@ -177,8 +179,10 @@ test "TC-PLC-04-02: grant makes module visible to receiving tenant" {
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p_a);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    const reg_e_a = try catalog.registerModule(alloc, p_a);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e_a);
+    const pub_r_a = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r_a.entry);
 
     // Grant tenant B visibility.
     const grant = ShareGrantParams{
@@ -237,8 +241,10 @@ test "TC-PLC-04-03: grantModuleVisibility creates a share grant row" {
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    const reg_e = try catalog.registerModule(alloc, p);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+    const pub_r = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
 
     const grant = ShareGrantParams{
         .granting_tenant_id = tenant_a,
@@ -304,8 +310,10 @@ test "TC-PLC-04-04: duplicate grant returns SharingGrantAlreadyExists" {
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    const reg_e = try catalog.registerModule(alloc, p);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+    const pub_r = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
 
     const grant = ShareGrantParams{
         .granting_tenant_id = tenant_a,
@@ -353,8 +361,10 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    const reg_e = try catalog.registerModule(alloc, p);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+    const pub_r = try catalog.publishModule(alloc, module_id, "1.0.0", actor_id);
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
 
     const grant = ShareGrantParams{
         .granting_tenant_id = tenant_a,
@@ -370,7 +380,9 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
     const recv_str = try uuidToString(alloc, tenant_b);
     defer alloc.free(recv_str);
 
-    const rows = try pool.acquire().?.query(
+    var conn = try pool.acquire();
+    defer pool.release(conn);
+    const rows = try conn.query(
         alloc,
         \\SELECT grant_id FROM public.process_module_catalog_share
         \\WHERE granting_tenant_id = $1::uuid AND module_id = $2 AND receiving_tenant_id = $3::uuid
@@ -380,7 +392,6 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
     const grant_id_row = rows.rows[0][0].?;
     var grant_id_bytes: [16]u8 = undefined;
     _ = try std.fmt.hexToBytes(&grant_id_bytes, grant_id_row[0..32]);
-    pool.release(rows.conn.?);
 
     // Revoke.
     try catalog.revokeModuleVisibility(alloc, grant_id_bytes, actor_id);
@@ -448,8 +459,10 @@ test "TC-PLC-04-07: listVisibleModules shows only owned and shared ACTIVE module
             .interface_schema_json = "{\"inputs\": []}",
             .exportable = true,
         };
-        _ = try catalog.registerModule(alloc, p);
-        _ = try catalog.publishModule(alloc, mid, "1.0.0", actor_id);
+        const reg_e = try catalog.registerModule(alloc, p);
+        defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+        const pub_r = try catalog.publishModule(alloc, mid, "1.0.0", actor_id);
+        defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
     }
 
     // Grant tenant B visibility to module_x only.
@@ -516,8 +529,10 @@ test "TC-PLC-04-08: grant does not allow B to see A's other modules" {
             .interface_schema_json = "{\"inputs\": []}",
             .exportable = true,
         };
-        _ = try catalog.registerModule(alloc, p);
-        _ = try catalog.publishModule(alloc, mid, "1.0.0", actor_id);
+        const reg_e = try catalog.registerModule(alloc, p);
+        defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+        const pub_r = try catalog.publishModule(alloc, mid, "1.0.0", actor_id);
+        defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
     }
 
     // Grant only module_granted to tenant B.

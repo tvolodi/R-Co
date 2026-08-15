@@ -124,7 +124,8 @@ test "TC-PLC-03-01: first publish produces no compatibility warning" {
         .interface_schema_json = "{\"inputs\": [{\"name\": \"x\", \"type\": \"string\"}]}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params);
+    const reg_e = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
 
     const result = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
     defer {
@@ -167,8 +168,10 @@ test "TC-PLC-03-02: publish new version with prior ACTIVE returns compatibility_
         .interface_schema_json = "{\"inputs\": [{\"name\": \"x\", \"type\": \"string\", \"required\": true}]}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p1);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    const reg_e1 = try catalog.registerModule(alloc, p1);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e1);
+    const pub_r1 = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r1.entry);
 
     // Second version: 1.1.0 — same interface, but publish triggers the check.
     const p2 = RegisterModuleParams{
@@ -179,7 +182,8 @@ test "TC-PLC-03-02: publish new version with prior ACTIVE returns compatibility_
         .interface_schema_json = "{\"inputs\": [{\"name\": \"x\", \"type\": \"string\", \"required\": true}]}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p2);
+    const reg_e2 = try catalog.registerModule(alloc, p2);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e2);
 
     const result = try catalog.publishModule(alloc, module_id, "1.1.0", try randomUuid(alloc));
     defer {
@@ -224,8 +228,10 @@ test "TC-PLC-03-03: compatibility_warning does not block publication" {
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p1);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    const reg_e1 = try catalog.registerModule(alloc, p1);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e1);
+    const pub_r1 = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r1.entry);
 
     // Register and publish 2.0.0 — should succeed even if warning fires.
     const p2 = RegisterModuleParams{
@@ -236,7 +242,8 @@ test "TC-PLC-03-03: compatibility_warning does not block publication" {
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p2);
+    const reg_e2 = try catalog.registerModule(alloc, p2);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e2);
 
     // MUST NOT error — SHOULD, not MUST, blocks on breaking change.
     const result = try catalog.publishModule(alloc, module_id, "2.0.0", try randomUuid(alloc));
@@ -281,8 +288,10 @@ test "TC-PLC-03-04: predecessor is immediately prior semver (highest ACTIVE belo
             .interface_schema_json = "{\"inputs\": [{\"name\": \"x\", \"type\": \"string\", \"required\": true}]}",
             .exportable = true,
         };
-        _ = try catalog.registerModule(alloc, p);
-        _ = try catalog.publishModule(alloc, module_id, ver, try randomUuid(alloc));
+        const reg_e = try catalog.registerModule(alloc, p);
+        defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+        const pub_r = try catalog.publishModule(alloc, module_id, ver, try randomUuid(alloc));
+        defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
     }
 
     // Now publish 3.0.0 — predecessor should be 2.0.0 (highest ACTIVE below 3.0.0).
@@ -294,7 +303,8 @@ test "TC-PLC-03-04: predecessor is immediately prior semver (highest ACTIVE belo
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p3);
+    const reg_e3 = try catalog.registerModule(alloc, p3);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e3);
 
     const result = try catalog.publishModule(alloc, module_id, "3.0.0", try randomUuid(alloc));
     defer {
@@ -340,8 +350,10 @@ test "TC-PLC-03-05: both absent interface schemas produces no warning" {
         .interface_schema_json = "{}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p1);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    const reg_e1 = try catalog.registerModule(alloc, p1);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e1);
+    const pub_r1 = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r1.entry);
 
     const p2 = RegisterModuleParams{
         .module_id = module_id,
@@ -351,7 +363,8 @@ test "TC-PLC-03-05: both absent interface schemas produces no warning" {
         .interface_schema_json = "{}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, p2);
+    const reg_e2 = try catalog.registerModule(alloc, p2);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e2);
 
     const result = try catalog.publishModule(alloc, module_id, "1.1.0", try randomUuid(alloc));
     defer {

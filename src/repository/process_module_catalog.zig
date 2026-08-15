@@ -218,6 +218,9 @@ pub const ProcessModuleCatalog = struct {
 
         const entry = rowToEntry(allocator, rows.rows[0]) catch
             return ModuleCatalogError.TransactionFailed;
+        // `entry` is used only for validation below; the returned `upd_entry`
+        // is the canonical result. Free `entry` before it leaks.
+        defer freeEntry(allocator, entry);
 
         if (!interfaceDeclared(entry.interface_schema_json)) {
             return ModuleCatalogError.InterfaceNotDeclared;
@@ -226,8 +229,11 @@ pub const ProcessModuleCatalog = struct {
             return ModuleCatalogError.ModuleAlreadyActive;
         }
 
-        const predecessor = findPredecessorActive(a, conn, module_id, version) catch
+        const predecessor = findPredecessorActive(allocator, conn, module_id, version) catch
             return ModuleCatalogError.TransactionFailed;
+        // `predecessor` (when present) is heap-allocated; free it after
+        // `computeCompatibilityWarning` consumes the slices it needs.
+        defer if (predecessor) |pred| freeEntry(allocator, pred);
         const warning = if (predecessor) |pred|
             computeCompatibilityWarning(a, entry, pred)
         else
@@ -294,6 +300,8 @@ pub const ProcessModuleCatalog = struct {
             if (satisfiesConstraint(entry.version, module_ref.version_constraint)) {
                 return .{ .resolved = true, .entry = entry, .error_code = null };
             }
+            // Constraint not satisfied — entry is not returned to caller, free it.
+            freeEntry(allocator, entry);
         }
 
         const shared_rows = conn.query(
@@ -322,6 +330,8 @@ pub const ProcessModuleCatalog = struct {
             if (satisfiesConstraint(entry.version, module_ref.version_constraint)) {
                 return .{ .resolved = true, .entry = entry, .error_code = null };
             }
+            // Constraint not satisfied — entry is not returned to caller, free it.
+            freeEntry(allocator, entry);
         }
 
         return .{ .resolved = false, .entry = null, .error_code = "UNRESOLVED_MODULE_REF" };
@@ -652,7 +662,7 @@ fn rowToEntry(allocator: std.mem.Allocator, row: []?[]u8) !ProcessModuleCatalogE
     };
 }
 
-fn freeEntry(allocator: std.mem.Allocator, entry: ProcessModuleCatalogEntry) void {
+pub fn freeEntry(allocator: std.mem.Allocator, entry: ProcessModuleCatalogEntry) void {
     allocator.free(entry.module_id);
     allocator.free(entry.version);
     allocator.free(entry.interface_schema_json);

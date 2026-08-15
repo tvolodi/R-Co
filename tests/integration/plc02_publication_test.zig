@@ -124,7 +124,8 @@ test "TC-PLC-02-01: publish succeeds when interface schema declares inputs" {
         .interface_schema_json = "{\"inputs\": [{\"name\": \"param1\", \"type\": \"string\"}]}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params);
+    const reg_e = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
 
     const result = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
     defer {
@@ -166,7 +167,8 @@ test "TC-PLC-02-02: publish succeeds when interface schema declares outputs" {
         .interface_schema_json = "{\"outputs\": [{\"name\": \"result\", \"type\": \"string\"}]}",
         .exportable = false,
     };
-    _ = try catalog.registerModule(alloc, params);
+    const reg_e = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
 
     const result = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
     defer {
@@ -209,7 +211,8 @@ test "TC-PLC-02-03: publish fails when interface schema is empty object" {
         .interface_schema_json = "{}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params);
+    const reg_e = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
 
     const result = catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
     try std.testing.expectError(bpm.process_module_catalog.ModuleCatalogError.InterfaceNotDeclared, result);
@@ -245,7 +248,8 @@ test "TC-PLC-02-04: publish fails when interface schema is absent (empty string)
         .interface_schema_json = "",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params);
+    const reg_e = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
 
     const result = catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
     try std.testing.expectError(bpm.process_module_catalog.ModuleCatalogError.InterfaceNotDeclared, result);
@@ -281,8 +285,10 @@ test "TC-PLC-02-05: publish fails when module is already ACTIVE" {
         .interface_schema_json = "{\"inputs\": []}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    const reg_e = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+    const pub_r = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
 
     // Publish again — already active.
     const result = catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));

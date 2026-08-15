@@ -175,7 +175,8 @@ test "TC-PLC-01-02: registerModule rejects duplicate (module_id, version)" {
     };
 
     // First registration succeeds.
-    _ = try catalog.registerModule(alloc, params1);
+    const reg_entry_1 = try catalog.registerModule(alloc, params1);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_entry_1);
 
     // Second registration with same module_id + version is rejected.
     const params2 = RegisterModuleParams{
@@ -268,8 +269,10 @@ test "TC-PLC-01-05: resolveModuleRef resolves own tenant's ACTIVE module" {
         .interface_schema_json = "{\"inputs\": [{\"name\": \"x\", \"type\": \"string\"}]}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    const reg_entry = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_entry);
+    const pub_result = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_result.entry);
 
     // Resolve from the same tenant.
     const ref = ModuleRef{ .module_id = module_id, .version_constraint = "*" };
@@ -317,8 +320,10 @@ test "TC-PLC-01-06: resolveModuleRef returns unresolved when no version satisfie
         .interface_schema_json = "{}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params);
-    _ = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    const reg_entry = try catalog.registerModule(alloc, params);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_entry);
+    const pub_result = try catalog.publishModule(alloc, module_id, "1.0.0", try randomUuid(alloc));
+    defer bpm.process_module_catalog.freeEntry(alloc, pub_result.entry);
 
     // Constraint that no version satisfies.
     const ref = ModuleRef{ .module_id = module_id, .version_constraint = ">=2.0.0" };
@@ -362,8 +367,10 @@ test "TC-PLC-01-07: resolveModuleRef prefers highest semver when multiple ACTIVE
             .interface_schema_json = "{\"inputs\": []}",
             .exportable = true,
         };
-        _ = try catalog.registerModule(alloc, p);
-        _ = try catalog.publishModule(alloc, module_id, ver, try randomUuid(alloc));
+        const reg_e = try catalog.registerModule(alloc, p);
+        defer bpm.process_module_catalog.freeEntry(alloc, reg_e);
+        const pub_r = try catalog.publishModule(alloc, module_id, ver, try randomUuid(alloc));
+        defer bpm.process_module_catalog.freeEntry(alloc, pub_r.entry);
     }
 
     const ref = ModuleRef{ .module_id = module_id, .version_constraint = "*" };
@@ -414,7 +421,8 @@ test "TC-PLC-01-08: module_id is globally unique (not per-tenant)" {
         .interface_schema_json = "{}",
         .exportable = true,
     };
-    _ = try catalog.registerModule(alloc, params_a);
+    const reg_entry_a = try catalog.registerModule(alloc, params_a);
+    defer bpm.process_module_catalog.freeEntry(alloc, reg_entry_a);
 
     // Tenant B attempts the same module_id — must fail with DuplicateModuleVersion.
     const params_b = RegisterModuleParams{
