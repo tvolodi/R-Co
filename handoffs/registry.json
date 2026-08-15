@@ -31186,7 +31186,7 @@
       "run_id": "WF02-plc-batch-b-20260815",
       "agent_id": "TEST-DESIGN-VALIDATOR",
       "step": "03b",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "created_at": "2026-08-15T17:17:20Z",
       "started_at": null,
       "file": "handoffs/WF02-plc-batch-b-20260815/step-03b-test-design-validator.json",

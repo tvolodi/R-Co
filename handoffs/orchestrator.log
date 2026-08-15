@@ -1644,3 +1644,4 @@
 2026-08-15T17:04:05Z | ROUTE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-03-test-designer | ORCH -> TEST-DESIGNER | PENDING
 2026-08-15T17:15:43Z | COMPLETE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-03-test-designer | TEST-DESIGNER | PASS - specs SPC-01.md/SPC-02.md + integration binary spc01_sub_process_interface_test.zig (10/10 pass); unit+frontend wiring verified; lint gates green; route to TEST-DESIGN-VALIDATOR
 2026-08-15T17:17:20Z | ROUTE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING
+2026-08-15T17:22:11Z | COMPLETE | WF02-plc-batch-b-20260815 | 03b | TEST-DESIGN-VALIDATOR | Step 03b PASS: SPC-01/SPC-02 test design validated (10/10 integration tests passed, lint_test_wiring PASS)
