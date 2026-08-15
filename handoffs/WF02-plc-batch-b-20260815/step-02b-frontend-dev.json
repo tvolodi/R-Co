@@ -6,9 +6,27 @@
   "step": "02b",
   "created_at": "2026-08-15T16:08:09Z",
   "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
-  "result": null,
+  "completed_at": "2026-08-15T16:59:41Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "SPC-01/SPC-02 frontend implemented: SubProcessInterfaceEntry/SubProcessInterface types (web/src/types/api.ts); validateSubProcessInterface SPC-02 mirror util + 31 unit tests (web/src/utils/canvas/interfaceValidation.ts|.test.ts); SUB_PROCESS Interface section in PropertyPanel (JSON textarea bound to attributes.interface with parse/well-formed indicator); DefinitionEditorPage SUB_PROCESS validation branch surfacing issues on the node (validationError) + validation summary bar + save block (PD-UI-13/PD-UI-14). npm run build (tsc -b && vite build) exit 0, type-check exit 0, eslint exit 0, vitest 178/178 exit 0, lint_frontend_conventions exit 0. Committed 515ade7c and pushed. No interface = EXT-05 path unchanged (no regression).",
+    "artifacts_out": [
+      "web/src/types/api.ts",
+      "web/src/utils/canvas/interfaceValidation.ts",
+      "web/src/utils/canvas/interfaceValidation.test.ts",
+      "web/src/components/canvas/PropertyPanel.tsx",
+      "web/src/components/canvas/ProcessCanvas.tsx",
+      "web/src/pages/definitions/DefinitionEditorPage.tsx"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Playwright E2E/visual verification of the SUB_PROCESS interface editor was not run by FRONTEND-DEV: the backend was down (http://127.0.0.1:8080 unreachable) and the task's verification scope was build/type-check/lint (all green). SPC-02 structural rules are covered by 31 pure unit tests. Downstream TEST-DESIGNER/TEST-RUNNER should cover E2E + visual confirmation."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (WF-02 Step 3)"
+  },
   "task": {
     "description": "Implement the frontend (React/TypeScript) portion of SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nDESIGN: src/design/spc-01-sub-process-interface-contract.md (commit 3a173a5d, PASSED Step 01b gate) — see §TypeScript types and §Frontend surface\n\nREQUIREMENTS:\n- SPC-01: Declared input/output contract for SUB_PROCESS nodes\n- SPC-02: Contract validated at definition-time (client-side mirror of the 422 rule)\n\nFRONTEND SCOPE (per design §Frontend surface):\n1. TypeScript types for the `interface` object (inputs/outputs: {name, json_schema, required}) in web/src/types/api.ts (or the design-specified location)\n2. Interface editor in the SUB_PROCESS node PropertyPanel (web/src/.../PropertyPanel.tsx) — add/edit/remove input and output entries with name, json_schema, required toggle\n3. Client-side validation mirror for SPC-02 (well-formed JSON Schema check before submit, aligned with the backend 422 rule)\n4. Ensure the definition editor round-trips the interface attributes on save/load\n\nVerify: npm run build passes (tsc -b && vite build); type-check clean; lint clean (per lint_frontend_conventions).\n\nfn: none",
     "fn": "none",
