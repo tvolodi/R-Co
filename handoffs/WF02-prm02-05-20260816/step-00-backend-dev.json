@@ -51,6 +51,10 @@
       {
         "severity": "MINOR",
         "description": "Deviation from plain ff-only pull: ORCH bookkeeping (orchestrator.log/registry.json/handoff dir) sat uncommitted and blocked the ff-only pull; committed it on main then rebased onto origin/main (final main 1f4e953b). Union merge restored 4 GH-780 audit lines that origin/main 5ce43dad had dropped."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing lint state (not caused by this step): python tools/lint_handoffs.py exits 1 with 10 BLOCKER + 31 MAJOR non-acknowledged findings, all on historical handoff files from prior runs (WF02-prm-batch2-20260814, WF02-plc-batch-a-20260815, ADHOC-prm-env-20260814) present at origin/main 5ce43dad; 0 findings on any file touched by this run. Baseline extension (tools/generate_lint_handoffs_baseline.py) may be warranted; ORCH to route."
       }
     ],
     "git_evidence": {
