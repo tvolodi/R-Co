@@ -62,6 +62,15 @@ pub const service_task = @import("engine/service_task.zig"); // EXT-01
 pub const plugin_interface = @import("engine/plugin_interface.zig"); // EXT-03
 pub const plugin_registry = @import("engine/plugin_registry.zig"); // EXT-03
 pub const api_auth = @import("api/middleware/auth.zig");
+// Aliases referenced by the PRM-02..05 integration tests (prm0X_*_test.zig).
+// The shim's purpose is to re-export src/ modules to tests; these were missing,
+// so the prm test suite never compiled.
+pub const auth = @import("api/middleware/auth.zig"); // API-08 auth middleware (AuthContext)
+pub const api = struct {
+    pub const routes = struct {
+        pub const promotion_review = @import("api/routes/promotion_review.zig"); // PRM-04/05 review HTTP handlers
+    };
+};
 pub const api_tenant_context = @import("tenant_context");
 pub const api_pipeline_context = @import("pipeline_context");
 pub const trace_context = @import("api/trace_context.zig");

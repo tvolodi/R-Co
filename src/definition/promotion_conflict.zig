@@ -112,7 +112,11 @@ pub fn rejectIfConflicts(
     errdefer allocator.free(target_change);
 
     // Step 2: append DEFINITION_PROMOTION_REJECTED in its own independent transaction.
-    // Platform-scoped event: insert directly via connection, setting search_path to public.
+    // The event store is PER_TENANT after the PAR-01 partitioning (migration 1147
+    // / GBL-112): `events` and `plat_event_idempotency` live in the target tenant
+    // schema, so the event is appended under the target-tenant search_path
+    // established at the top of this function (the same pattern rollback.zig
+    // uses for DEFINITION_VERSION_ROLLED_BACK). public.events no longer exists.
     const rejection_payload = std.fmt.allocPrint(
         allocator,
         \\{{"promotion_id":"{s}","source_tenant_id":"{s}","target_tenant_id":"{s}","process_key":"{s}","target_definition_id":"{s}","target_version":{d},"base_version":{d},"reason":"Target tenant has advanced past base_version"}}
@@ -145,13 +149,6 @@ pub fn rejectIfConflicts(
 
     write_conn.exec("BEGIN", &.{}) catch {};
     errdefer write_conn.exec("ROLLBACK", &.{}) catch {};
-
-    // Platform-scoped event: set search_path to public.
-    write_conn.exec("SET LOCAL search_path TO public", &.{}) catch |err| {
-        write_conn.exec("ROLLBACK", &.{}) catch {};
-        _ = err;
-        return ConflictCheckError.TransactionFailed;
-    };
 
     // Insert into plat_event_idempotency for ES-03 idempotency.
     const plat_idem_rows = write_conn.query(

@@ -115,6 +115,8 @@ pub fn submitReview(
 /// Gate: caller checks status == pending_review, row_version match, digest match,
 /// and reviewer != requested_by BEFORE calling this.
 /// On row_version mismatch → InvalidReviewTransition.
+/// Appends `DEFINITION_PROMOTION_APPROVED` in the same transaction as the
+/// transition (process document Step 10 / PRM-04 reconciliation note OQ-3).
 pub fn approveReview(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
@@ -134,6 +136,15 @@ pub fn approveReview(
     };
     defer pool.release(conn);
 
+    conn.begin() catch |err| return switch (err) {
+        pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
+        else => ReviewTransitionError.TransactionFailed,
+    };
+    // On any error path after BEGIN, roll back (double-rollback after an
+    // explicit COMMIT is harmless — the server rejects it and we ignore it).
+    errdefer conn.rollback() catch {};
+
+    // Optimistic-locked transition; RETURNING the row fields the event needs.
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
@@ -143,7 +154,7 @@ pub fn approveReview(
         \\    row_version = row_version + 1,
         \\    updated_at = now()
         \\WHERE id = $2::uuid AND row_version = $3
-        \\RETURNING id
+        \\RETURNING tenant_id::text, plan_digest, def_type, def_id
     ,
         &[_][]const u8{ actor_id, review_id, try fmtInt(allocator, expected_row_version) },
     ) catch |err| return switch (err) {
@@ -157,6 +168,24 @@ pub fn approveReview(
         for (r) |col| if (col) |v| allocator.free(v);
         allocator.free(r);
     }
+
+    // Append DEFINITION_PROMOTION_APPROVED in the same transaction.
+    try appendPromotionEvent(
+        allocator,
+        conn,
+        "DEFINITION_PROMOTION_APPROVED",
+        review_id,
+        r[1] orelse "",
+        r[2] orelse "",
+        r[3] orelse "",
+        r[0] orelse "",
+        actor_id,
+    );
+
+    conn.commit() catch |err| return switch (err) {
+        pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
+        else => ReviewTransitionError.TransactionFailed,
+    };
 }
 
 /// Rejects a review: pending_review → rejected.
@@ -203,6 +232,10 @@ pub fn rejectReview(
 }
 
 /// Marks a review as applied: approved → applied.
+/// Appends `DEFINITION_PROMOTION_APPLIED` (carrying `plan_digest` and the new
+/// `definition_id`) in the same transaction as the transition — the PRM-04 AC4
+/// requirement that the event and the pointer move be atomic
+/// (reconciliation note OQ-3).
 pub fn markReviewApplied(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
@@ -221,6 +254,17 @@ pub fn markReviewApplied(
     };
     defer pool.release(conn);
 
+    conn.begin() catch |err| return switch (err) {
+        pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
+        else => ReviewTransitionError.TransactionFailed,
+    };
+    // On any error path after BEGIN, roll back (double-rollback after an
+    // explicit COMMIT is harmless — the server rejects it and we ignore it).
+    errdefer conn.rollback() catch {};
+
+    // Optimistic-locked transition; RETURNING the row fields the event needs.
+    // The event actor is the approving principal (the apply executes on the
+    // authority of the approval), falling back to the requester.
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
@@ -228,7 +272,8 @@ pub fn markReviewApplied(
         \\    row_version = row_version + 1,
         \\    updated_at = now()
         \\WHERE id = $1::uuid AND row_version = $2
-        \\RETURNING id
+        \\RETURNING tenant_id::text, plan_digest, def_type, def_id,
+        \\          COALESCE(approved_by::text, requested_by::text)
     ,
         &[_][]const u8{ review_id, try fmtInt(allocator, expected_row_version) },
     ) catch |err| return switch (err) {
@@ -242,6 +287,25 @@ pub fn markReviewApplied(
         for (r) |col| if (col) |v| allocator.free(v);
         allocator.free(r);
     }
+
+    // Append DEFINITION_PROMOTION_APPLIED in the same transaction as the
+    // transition (PRM-04 AC4).
+    try appendPromotionEvent(
+        allocator,
+        conn,
+        "DEFINITION_PROMOTION_APPLIED",
+        review_id,
+        r[1] orelse "",
+        r[2] orelse "",
+        r[3] orelse "",
+        r[0] orelse "",
+        r[4] orelse "",
+    );
+
+    conn.commit() catch |err| return switch (err) {
+        pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
+        else => ReviewTransitionError.TransactionFailed,
+    };
 }
 
 /// Marks a review as failed: approved → failed.
@@ -408,7 +472,68 @@ pub fn getReview(
 
 // ── Internal helpers ────────────────────────────────────────────────────────────
 
-fn fmtInt(allocator: std.mem.Allocator, v: u32) (error{OutOfMemory} || error{Any})![]const u8 {
+/// Appends a DEFINITION_PROMOTION_* event inside an already-open transaction.
+/// The events table is a per-tenant table after the PAR-01 partitioning
+/// (migration 1147 / GBL-112), so the transaction's tenant search_path resolves
+/// it directly — mirroring rollback.zig's DEFINITION_VERSION_ROLLED_BACK append
+/// (PRM-08, released). The idempotency key carries the ES-03 value and is
+/// derived from the review_id, so an approval/apply can never be replayed
+/// against a different diff.
+fn appendPromotionEvent(
+    allocator: std.mem.Allocator,
+    conn: *pool_mod.Conn,
+    event_type: []const u8,
+    review_id: []const u8,
+    plan_digest: []const u8,
+    def_type: []const u8,
+    def_id: []const u8,
+    tenant_id: []const u8,
+    actor_id: []const u8,
+) ReviewTransitionError!void {
+    const payload = std.fmt.allocPrint(
+        allocator,
+        "{{\"review_id\":\"{s}\",\"plan_digest\":\"{s}\",\"def_type\":\"{s}\",\"def_id\":\"{s}\",\"definition_id\":\"{s}\",\"tenant_id\":\"{s}\",\"actor_id\":\"{s}\"}}",
+        .{ review_id, plan_digest, def_type, def_id, def_id, tenant_id, actor_id },
+    ) catch return ReviewTransitionError.OutOfMemory;
+    defer allocator.free(payload);
+
+    const idem_key = std.fmt.allocPrint(
+        allocator,
+        "{s}-{s}",
+        .{ event_type, review_id },
+    ) catch return ReviewTransitionError.OutOfMemory;
+    defer allocator.free(idem_key);
+
+    const event_row = conn.queryRow(
+        allocator,
+        \\INSERT INTO events
+        \\    (event_id, instance_id, event_type, payload, actor_id,
+        \\     idempotency_key, metadata, sequence_number, global_seq,
+        \\     tenant_id, created_at)
+        \\VALUES
+        \\    (gen_random_uuid(),
+        \\     '00000000-0000-0000-0000-000000000000'::uuid,
+        \\     $1,
+        \\     $2::jsonb,
+        \\     $3::uuid,
+        \\     $4,
+        \\     '{}'::jsonb,
+        \\     0, nextval('events_global_seq'),
+        \\     $5::uuid, NOW())
+        \\RETURNING event_id::text
+    ,
+        &[_][]const u8{ event_type, payload, actor_id, idem_key, tenant_id },
+    ) catch return ReviewTransitionError.TransactionFailed;
+
+    if (event_row == null) return ReviewTransitionError.TransactionFailed;
+    const r = event_row.?;
+    defer {
+        for (r) |col| if (col) |v| allocator.free(v);
+        allocator.free(r);
+    }
+}
+
+fn fmtInt(allocator: std.mem.Allocator, v: u32) error{OutOfMemory}![]const u8 {
     return std.fmt.allocPrint(allocator, "{d}", .{v});
 }
 

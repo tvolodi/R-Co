@@ -265,14 +265,28 @@ pub fn handleGetPromotionContext(
     const created_at_iso = timestampToIso(r.created_at);
     defer allocator.free(created_at_iso);
 
+    // PRM-05 AC5: the context response carries the stored plan, `assertions[]`,
+    // the `NEEDS_REVIEW` package and `plan_digest` in one document. The
+    // assertions are derived from the stored plan (design OQ-2 — the artifact
+    // store is not wired in this batch), so the reviewer decides on exactly the
+    // diff the digest binds.
+    const built = buildContextAssertionsAndPackage(allocator, r.serialised_plan, r.def_type, r.def_id) catch
+        return errorResult(allocator, 500, "INTERNAL_ERROR", "Failed to build context assertions");
+    defer {
+        allocator.free(built.assertions);
+        allocator.free(built.package);
+    }
+
     const response_body = std.fmt.allocPrint(
         allocator,
-        \\{{"review_id":"{s}","plan_digest":"{s}","serialised_plan":{s},"status":"{s}","requested_by":"{s}","def_type":"{s}","def_id":"{s}","created_at":"{s}","row_version":{d}}}
+        \\{{"review_id":"{s}","plan_digest":"{s}","serialised_plan":{s},"assertions":{s},"needs_review_package":{s},"status":"{s}","requested_by":"{s}","def_type":"{s}","def_id":"{s}","created_at":"{s}","row_version":{d}}}
     ,
         .{
             r.id,
             r.plan_digest,
             r.serialised_plan,
+            built.assertions,
+            built.package,
             status_str,
             r.requested_by,
             r.def_type,
@@ -367,7 +381,7 @@ pub fn handleApproveReview(
         return errorResult(allocator, 404, "REVIEW_NOT_FOUND", "No review found with the given id");
     }
 
-    const r = review.*;
+    const r = review.?;
     defer {
         allocator.free(r.id);
         allocator.free(r.tenant_id);
@@ -467,7 +481,7 @@ pub fn handleRejectReview(
         return errorResult(allocator, 404, "REVIEW_NOT_FOUND", "No review found with the given id");
     }
 
-    const r = review.*;
+    const r = review.?;
     defer {
         allocator.free(r.id);
         allocator.free(r.tenant_id);
@@ -570,7 +584,7 @@ pub fn handleApplyReview(
         return errorResult(allocator, 404, "REVIEW_NOT_FOUND", "No review found with the given id");
     }
 
-    const r = review.*;
+    const r = review.?;
     defer {
         allocator.free(r.id);
         allocator.free(r.tenant_id);
@@ -611,56 +625,135 @@ pub fn handleApplyReview(
 
 // ── Internal helpers ────────────────────────────────────────────────────────────
 
-fn serialisePlanForStorage(allocator: std.mem.Allocator, plan: plan_mod.PromotionPlan) ![]const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
+const ContextAssertions = struct {
+    assertions: []const u8, // JSON array fragment — the context `assertions[]` field
+    package: []const u8, // JSON object fragment — the `needs_review_package` field
+};
 
-    buf.appendSlice(allocator, "[") catch return error.OutOfMemory;
-    for (plan.entries, 0..) |e, i| {
-        if (i > 0) buf.append(allocator, ',') catch return error.OutOfMemory;
-        buf.appendSlice(allocator, "{\"type\":\"") catch return error.OutOfMemory;
-        buf.appendSlice(allocator, planEntryTypeStr(e.type)) catch return error.OutOfMemory;
-        buf.appendSlice(allocator, "\",\"id\":") catch return error.OutOfMemory;
-        try appendJsonStr(allocator, &buf, e.id);
-        buf.appendSlice(allocator, ",\"change_kind\":\"") catch return error.OutOfMemory;
-        buf.appendSlice(allocator, changeKindStr(e.change_kind)) catch return error.OutOfMemory;
-        buf.appendSlice(allocator, "\",\"before\":") catch return error.OutOfMemory;
-        if (e.before) |b| {
-            try appendJsonStr(allocator, &buf, b);
-        } else {
-            buf.appendSlice(allocator, "null") catch return error.OutOfMemory;
+/// Derives the `assertions[]` and `needs_review_package` fields of the context
+/// response from the STORED plan (PRM-05 AC5): each plan entry becomes a human
+/// review assertion naming exactly the change the digest binds. This resolves
+/// design Open question 2 ("or whether the artifact is resolved another way"):
+/// the promotion artifact store is not yet wired in this batch, so the
+/// assertions are derived deterministically from the stored plan rather than an
+/// artifact lookup. Both returned slices are caller-owned.
+fn buildContextAssertionsAndPackage(
+    allocator: std.mem.Allocator,
+    serialised_plan: []const u8,
+    def_type: []const u8,
+    def_id: []const u8,
+) !ContextAssertions {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const aa = arena.allocator();
+
+    var assertions_buf = std.ArrayList(u8).empty;
+    defer assertions_buf.deinit(allocator);
+    var package_buf = std.ArrayList(u8).empty;
+    defer package_buf.deinit(allocator);
+
+    try assertions_buf.append(allocator, '[');
+    try package_buf.appendSlice(allocator, "{\"marker\":\"NEEDS_REVIEW\",\"assertions\":[");
+
+    // The stored plan is canonical JSON: an array of {changes,id,type} objects.
+    // A malformed stored plan must not fail the context read — the reviewer
+    // still needs the digest + raw plan; return empty assertions in that case.
+    const parsed = std.json.parseFromSlice(std.json.Value, aa, serialised_plan, .{ .allocate = .alloc_always }) catch {
+        try package_buf.append(allocator, ']');
+        try package_buf.append(allocator, '}');
+        try assertions_buf.append(allocator, ']');
+        return .{
+            .assertions = try assertions_buf.toOwnedSlice(allocator),
+            .package = try package_buf.toOwnedSlice(allocator),
+        };
+    };
+    const arr: []const std.json.Value = switch (parsed.value) {
+        .array => |a| a,
+        else => &.{},
+    };
+
+    var first = true;
+    for (arr) |item| {
+        const obj = switch (item) {
+            .object => |o| o,
+            else => continue,
+        };
+        const id_val = obj.get("id") orelse continue;
+        const type_val = obj.get("type") orelse continue;
+        const id_str = switch (id_val) {
+            .string => |s| s,
+            else => continue,
+        };
+        const type_str = switch (type_val) {
+            .string => |s| s,
+            else => continue,
+        };
+        const kind_str: []const u8 = blk: {
+            const changes = obj.get("changes") orelse break :blk "unknown";
+            const changes_obj = switch (changes) {
+                .object => |o| o,
+                else => break :blk "unknown",
+            };
+            const ck = changes_obj.get("change_kind") orelse break :blk "unknown";
+            break :blk switch (ck) {
+                .string => |s| s,
+                else => "unknown",
+            };
+        };
+
+        if (!first) {
+            try assertions_buf.append(allocator, ',');
+            try package_buf.append(allocator, ',');
         }
-        buf.appendSlice(allocator, ",\"after\":") catch return error.OutOfMemory;
-        if (e.after) |a| {
-            try appendJsonStr(allocator, &buf, a);
-        } else {
-            buf.appendSlice(allocator, "null") catch return error.OutOfMemory;
-        }
-        buf.append(allocator, '}') catch return error.OutOfMemory;
+        first = false;
+
+        // assertions[i] = {"id": ..., "type": ..., "change_kind": ...}
+        try assertions_buf.appendSlice(allocator, "{\"id\":");
+        try appendJsonStr(allocator, &assertions_buf, id_str);
+        try assertions_buf.appendSlice(allocator, ",\"type\":");
+        try appendJsonStr(allocator, &assertions_buf, type_str);
+        try assertions_buf.appendSlice(allocator, ",\"change_kind\":");
+        try appendJsonStr(allocator, &assertions_buf, kind_str);
+        try assertions_buf.append(allocator, '}');
+
+        // NEEDS_REVIEW package assertion — HumanReviewAssertion shape
+        // {id, description, severity, rule, sources: [{file, line}]}
+        try package_buf.appendSlice(allocator, "{\"id\":");
+        try appendJsonStr(allocator, &package_buf, id_str);
+        try package_buf.appendSlice(allocator, ",\"description\":\"Review ");
+        try package_buf.appendSlice(allocator, kind_str);
+        try package_buf.appendSlice(allocator, " of ");
+        try package_buf.appendSlice(allocator, type_str);
+        try package_buf.appendSlice(allocator, " ");
+        try appendJsonStr(allocator, &package_buf, id_str);
+        try package_buf.appendSlice(allocator, "\",\"severity\":\"required\",\"rule\":\"human_review_of_promotion_diff\",\"sources\":[{\"file\":");
+        // file = "<def_type>/<def_id>"
+        var file_buf = std.ArrayList(u8).empty;
+        defer file_buf.deinit(allocator);
+        try file_buf.appendSlice(allocator, def_type);
+        try file_buf.append(allocator, '/');
+        try file_buf.appendSlice(allocator, def_id);
+        try appendJsonStr(allocator, &package_buf, file_buf.items);
+        try package_buf.appendSlice(allocator, ",\"line\":0}]}");
     }
-    buf.append(allocator, ']') catch return error.OutOfMemory;
-    return buf.toOwnedSlice(allocator);
-}
 
-fn planEntryTypeStr(t: plan_mod.PlanEntryType) []const u8 {
-    return switch (t) {
-        .graph_node => "graph_node",
-        .graph_edge => "graph_edge",
-        .variable_schema => "variable_schema",
-        .service_binding => "service_binding",
-        .module_ref => "module_ref",
-        .permission_rule => "permission_rule",
+    try assertions_buf.append(allocator, ']');
+    try package_buf.appendSlice(allocator, "]}");
+    return .{
+        .assertions = try assertions_buf.toOwnedSlice(allocator),
+        .package = try package_buf.toOwnedSlice(allocator),
     };
 }
 
-fn changeKindStr(k: plan_mod.ChangeKind) []const u8 {
-    return switch (k) {
-        .added => "added",
-        .modified => "modified",
-        .removed => "removed",
-    };
+fn serialisePlanForStorage(allocator: std.mem.Allocator, plan: plan_mod.PromotionPlan) ![]const u8 {
+    // The stored plan is the canonical serialisation over which the digest is
+    // computed (PRM-03), so a reviewer can recompute the digest over the stored
+    // plan to confirm binding (PRM-03 AC5). No separate 5-key shape: digest and
+    // stored plan are one and the same canonical JSON.
+    return digest_mod.serialisePlanCanonical(allocator, plan);
 }
 
+/// Escapes a string for JSON. Returns an allocated string owned by the caller.
 fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []const u8) !void {
     try buf.append(allocator, '"');
     for (s) |c| {
