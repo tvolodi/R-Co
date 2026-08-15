@@ -19,9 +19,9 @@
 --
 -- scope: public.
 
-CREATE TABLE IF NOT EXISTS solution_pack_installs (
+CREATE TABLE IF NOT EXISTS public.solution_pack_installs (
     id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id         UUID        NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    tenant_id         UUID        NOT NULL REFERENCES public.tenant(id) ON DELETE CASCADE,
     pack_id           TEXT        NOT NULL,
     installed_version TEXT        NOT NULL,
     installed_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -30,12 +30,12 @@ CREATE TABLE IF NOT EXISTS solution_pack_installs (
         UNIQUE (tenant_id, pack_id, installed_version)
 );
 
-CREATE INDEX IF NOT EXISTS idx_solution_pack_installs_tenant_pack
-    ON solution_pack_installs (tenant_id, pack_id);
+CREATE INDEX IF NOT EXISTS public.idx_solution_pack_installs_tenant_pack
+    ON public.solution_pack_installs (tenant_id, pack_id);
 
-CREATE TABLE IF NOT EXISTS solution_pack_artefact_bases (
+CREATE TABLE IF NOT EXISTS public.solution_pack_artefact_bases (
     id            UUID   PRIMARY KEY DEFAULT gen_random_uuid(),
-    install_id    UUID   NOT NULL REFERENCES solution_pack_installs(id) ON DELETE CASCADE,
+    install_id    UUID   NOT NULL REFERENCES public.solution_pack_installs(id) ON DELETE CASCADE,
     artefact_id   TEXT   NOT NULL,
     artefact_kind TEXT   NOT NULL,
     base_content  JSONB  NOT NULL,
@@ -43,12 +43,12 @@ CREATE TABLE IF NOT EXISTS solution_pack_artefact_bases (
         UNIQUE (install_id, artefact_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_solution_pack_artefact_bases_install
-    ON solution_pack_artefact_bases (install_id);
+CREATE INDEX IF NOT EXISTS public.idx_solution_pack_artefact_bases_install
+    ON public.solution_pack_artefact_bases (install_id);
 
-CREATE TABLE IF NOT EXISTS pack_update_resolutions (
+CREATE TABLE IF NOT EXISTS public.pack_update_resolutions (
     id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id        UUID        NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    tenant_id        UUID        NOT NULL REFERENCES public.tenant(id) ON DELETE CASCADE,
     pack_id          TEXT        NOT NULL,
     incoming_version TEXT        NOT NULL,
     artefact_id      TEXT        NOT NULL,
@@ -61,5 +61,5 @@ CREATE TABLE IF NOT EXISTS pack_update_resolutions (
         UNIQUE (tenant_id, pack_id, incoming_version, artefact_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pack_update_resolutions_lookup
-    ON pack_update_resolutions (tenant_id, pack_id, incoming_version);
+CREATE INDEX IF NOT EXISTS public.idx_pack_update_resolutions_lookup
+    ON public.pack_update_resolutions (tenant_id, pack_id, incoming_version);
