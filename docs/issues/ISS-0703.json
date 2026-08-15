@@ -39,16 +39,16 @@
       "Either (a) add a lint rule in `tools/lint_migrations.py` to enforce `^-- scope:` (all lowercase) on the scope header of every `migrations/*.sql`, reporting BLOCKER for any uppercase match; or (b) make `src/db/migrations.zig:migrationScope()` case-insensitive — `std.ascii.eqlIgnoreCase` over the `'-- scope:'` token — so future authoring drift is harmless. Option (b) is the smallest diff and removes the class of bug entirely; option (a) is preferable if header canonicalisation is to remain strict."
     ]
   },
-  "resolution_commit": "51170eed,47d4c7c9 (carry-on-main from feature/WF02-plc-batch-a-20260815 step-04 commit ae0840b3; merge commit back-filled by Step Final DOC-UPDATER SQUASH merge)",
+  "resolution_commit": "88294a68",
   "resolved_at": "2026-08-15T21:11:11Z",
   "resolved_by": "DOC-UPDATER (WF03-GH785-20260815 step-7)",
   "reproduction": "Pre-fix: (1) grep -n '^-- [Ss]cope:' migrations/1156_prm06_promotion_assertion_runs.sql migrations/1157_prm09_solution_pack_update.sql returns two uppercase matches. (2) zig build migrate against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test fails on 1156 then 1157 with 'column tenant_id does not exist' in schema tenant_default. Post-fix: same commands succeed (migrations are in the ledger so the runner skips them with the now-correct scope classification); 'No new migrations to apply.'",
   "fix_file": "migrations/1156_prm06_promotion_assertion_runs.sql; migrations/1157_prm09_solution_pack_update.sql",
   "fix_line": "20",
   "fix_diff": "-- Scope: -> -- scope:  (line 20 in both files)",
-  "pr_url": null,
-  "pr_merged_at": null,
-  "pr_merge_commit": null,
+  "pr_url": "https://github.com/tvolodi/R-Co/pull/794",
+  "pr_merged_at": "2026-08-15T21:18:00Z",
+  "pr_merge_commit": "88294a68",
   "handoff_history": [
     {
       "step": "step-04-issue-fixer",
