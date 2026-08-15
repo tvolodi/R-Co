@@ -1,0 +1,64 @@
+{
+  "iss_id": "ISS-0707",
+  "id": "ISS-0707",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
+  "github_issue_confirmed": true,
+  "title": "tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs — sqlstate 42703 (INC-001 from WF03-GH785-20260815 step-5)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-GH785-20260815",
+  "run_id": "WF03-GH785-20260815",
+  "incidental_of": {
+    "run_id": "WF03-GH785-20260815",
+    "handoff_id": "WF03-GH785-20260815-5-test-runner",
+    "finding_id": "INC-001",
+    "trigger": "step_5_targeted_prm_run",
+    "context": "Pre-existing test-code bug surfaced during TEST-RUNNER retry 6's optional targeted test runs on the GH-785 verification branch. NOT a GH-785 regression; out of scope for WF03-GH785-20260815.",
+    "step_5_completed_at": "2026-08-15T21:03:33Z"
+  },
+  "created_at": "2026-08-15T21:11:11Z",
+  "registered_at": "2026-08-15T21:11:11Z",
+  "registered_by": "DOC-UPDATER (WF03-GH785-20260815 step-7)",
+  "labels": [
+    "bug",
+    "issue"
+  ],
+  "scope": "tests/integration/prm-09-pack-update.test.zig — qualifies `solution_pack_installs` without `public.` schema prefix; unresolved against per-tenant search_path lands on tenant_default.solution_pack_installs with mismatched columns.",
+  "affected_areas": [
+    "tests/integration/prm-09-pack-update.test.zig",
+    "migrations/1157_prm09_solution_pack_update.sql",
+    "migrations/1158_sol02_solution_pack_installs.sql"
+  ],
+  "description": "All four TC-PRM-09-NN tests fail with sqlstate 42703 because the test file issues INSERT/SELECT against unqualified `solution_pack_installs`. After WF02-plc-batch-a-20260815 migration chain, the unqualified name resolves against the per-tenant search_path and lands on `tenant_default.solution_pack_installs` (introduced by migration 1158 with the `-- scope: tenant_only.` header), which has a column layout that does not match the test's parameter list. `public.solution_pack_installs` (introduced by migration 1157 also with `-- scope: tenant_only.` per the GH-785 fix) is the actually-intended destination — but the per-tenant search_path wins. Pre-existing, NOT a GH-785 regression; out of scope for WF03-GH785-20260815. To be picked up by its own WF-03 cycle.",
+  "symptom": "zig build test-integration-prm-09 against BPM_TEST_DB_URL: 4/4 FAIL with `[42703] column X does not exist` against `tenant_default.solution_pack_installs`.",
+  "discovered_at": "2026-08-15T21:03:33Z",
+  "discovered_by": "TEST-RUNNER (WF03-GH785-20260815 step-5 incidental-finding INC-001)",
+  "investigation_notes": "GH-785 verification confirmed the PLC suite (27/27) is green — the failure surfaces only in the optional targeted PRM-09 run that TEST-RUNNER performed after passing the PLC suite. Direct psql reproduction confirms that `INSERT INTO solution_pack_installs` from a `SET search_path = tenant_default, public` session fails because the tenant-side table has different columns from the public-side table. The test was written against the public-side table. The fix is to qualify every reference to `solution_pack_installs` with `public.`. No production-code change required.",
+  "reproduction": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-prm-09 -> 4/4 FAIL. Reading tests/reports/report-2026-08-15-WF03-GH785-20260815-step05-verify.yaml section INC-001 confirms the same root cause.",
+  "fix_file": "tests/integration/prm-09-pack-update.test.zig",
+  "fix_line": "TBD — qualifier every reference (find each INSERT/SELECT on solution_pack_installs and prefix with public.)",
+  "fix_diff": "Replace `solution_pack_installs` with `public.solution_pack_installs` at every test reference. Verify test setup does not depend on tenant-side rows; if it does, qualify selects the same way and shape the setup inserts accordingly.",
+  "pr_url": null,
+  "pr_merged_at": null,
+  "pr_merge_commit": null,
+  "handoff_history": [
+    {
+      "step": "step-5-test-runner",
+      "agent": "TEST-RUNNER",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-5-test-runner",
+      "status": "FAIL",
+      "completed_at": "2026-08-15T21:03:33Z",
+      "summary": "Surface INC-001: TC-PRM-09-01..04 fail with sqlstate 42703 in the optional targeted prm-09 run on the GH-785 verification branch. Pre-existing test-code bug (unqualified solution_pack_installs resolving to tenant_default.solution_pack_installs via search_path). Does NOT block WF03-GH785-20260815 (full PLC suite is 27/27 green). Filed as ISS-0707 with GH #792 for separate WF-03 cycle resolution."
+    },
+    {
+      "step": "step-7-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-7-doc-updater",
+      "status": "FILED",
+      "completed_at": "2026-08-15T21:11:11Z",
+      "summary": "Registered ISS-0707 + GH issue #792 per the 'No Issue Left Local-Only' directive. Mirrors TEST-RUNNER step-5 INC-001. Out of scope for WF03-GH785-20260815."
+    }
+  ]
+}

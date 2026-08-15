@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF03-GH785-20260815-3-backend-dev",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "3",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T20:46:39Z",
+  "started_at": "2026-08-15T20:46:39Z",
+  "completed_at": "2026-08-15T20:48:04Z",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "iss_id": "ISS-0703",
+    "design_artefact": "src/design/fix-GH-785.md",
+    "design_validation_status": "PASS",
+    "fix_already_on_branch": true
+  },
+  "task": {
+    "description": "Step 3 — Fix. The fix for GH-785 (lowercase '-- Scope:' -> '-- scope:' on line 20 of migrations/1156 and 1157) is already on the branch feature/WF03-GH785-20260815 (carried from main at commit e9baade3 which includes 51170eed and 47d4c7c9). This step is a confirmation-only no-op: verify the fix is present, run fn:check-zig-build, run fn:run-unit-tests, and record 'no code change' in the result. No commits to migrations/ or src/db/. No commits to any other source file. The Step 3 path: PURE REGRESSION FIX (data-only change in migration file headers, no business logic added/modified) → skip Step 4/4b (TEST-DESIGNER/TEST-DESIGN-VALIDATOR) and route directly to Step 5 (TEST-RUNNER).",
+    "expected_outputs": [
+      "Confirmation that the fix is on the branch (no source change made).",
+      "fn:check-zig-build (zig build) PASSES.",
+      "fn:run-unit-tests (zig build test) PASSES — at least the unit tests that don't require docker.",
+      "ISS-0703.files_changed updated to reflect the no-op (or empty array if already on the branch from main)."
+    ],
+    "acceptance_criteria": [
+      "zig build exits 0 (PASS)",
+      "zig build test exits 0 (PASS)",
+      "No migration files modified in this step (the fix was on the branch from main)",
+      "No src/db/ files modified in this step",
+      "next_action routed to TEST-RUNNER Step 5 (skipping Steps 4/4b per pure regression fix rule)"
+    ],
+    "fix_scope_path": "PURE REGRESSION FIX — skip Step 4 (TEST-DESIGNER) and Step 4b (TEST-DESIGN-VALIDATOR). Existing tests cover the behaviour. Route directly to Step 5 (TEST-RUNNER)."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 3 confirmation-only PASS. Fix was on branch feature/WF03-GH785-20260815 from main (carried at e9baade3 via 51170eed and 47d4c7c9); verified line-20 lowercase in both 1156_prm06_promotion_assertion_runs.sql and 1157_prm09_solution_pack_update.sql. zig build exits 0; zig build test exits 0. No source change made in this step. Pure regression fix path — skipping Step 4/4b (TEST-DESIGNER / TEST-DESIGN-VALIDATOR) and routing directly to Step 5 (TEST-RUNNER).",
+    "artifacts_out": [
+      "docs/issues/ISS-0703.json",
+      "015eba7f"
+    ],
+    "files_changed": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER Step 5 (skipping Step 4/4b per pure regression fix rule)"
+  }
+}

@@ -5,7 +5,7 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/785",
   "github_issue_confirmed": true,
   "title": "migrations 1156/1157: '-- Scope:' (uppercase S) silently misclassified by case-sensitive migrationScope parser",
-  "status": "REOPENED",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "workflow_id": "WF02-plc-batch-a-20260815",
   "run_id": "WF02-plc-batch-a-20260815",
@@ -32,9 +32,16 @@
   "discovered_at": "2026-08-15T05:51:55Z",
   "discovered_by": "TEST-RUNNER (WF02-plc-batch-a-20260815 step-04 rework 5)",
   "investigation_notes": "Header search is case-sensitive (std.mem.indexOf). Both offending files have '-- Scope:' on line 20. 28 other migration files all use lowercase '-- scope:' — confirmed via grep across migrations/*.sql. The fix is mechanical: change the first character S -> s in both files. No source-code change needed because the parser is documented to expect lowercase (see SCOPE_PUBLIC_HEADER constants and the docstring at src/db/migrations.zig:52, 622). Verified post-fix by running zig build migrate against BPM_TEST_DB_URL: 'No new migrations to apply.' with no simpleQuery failed errors. 1156 and 1157 now correctly skip with the right scope.",
-  "resolution_commit": "ae0840b3",
-  "resolved_at": "2026-08-15T05:55:00Z",
-  "resolved_by": "ISSUE-FIXER (WF02-plc-batch-a-20260815 step-04)",
+  "resolution": "WF-03 verification run WF03-GH785-20260815 Step 5 (TEST-RUNNER retry 6) closed the GH-785 acceptance criterion at 2026-08-15T21:03:33Z: full PLC integration suite green (27/27 tests; plc01=8/8, plc02=6/6, plc03=5/5, plc04=8/8) on `feature/WF03-GH785-20260815` (cut from `main` at `e9baade3`). The carry-on-main fix commits are `51170eed` and `47d4c7c9`; both originated from the WF02-plc-batch-a-20260815 step-04 commit `ae0840b3` on `feature/WF02-plc-batch-a-20260815`, which itself had been verified via `zig build migrate` against BPM_TEST_DB_URL showing 'No new migrations to apply.' with no `simpleQuery failed` errors. No new source-code change was needed during WF-03 — the verification confirms the existing fix. `test-env-verify` is CLEARED (C0–C9 all PASS) per the ADHOC-test-env-stale-locks-20260815-00-backend-dev infrastructure repair earlier the same day. Step 7 DOC-UPDATER at 2026-08-15T21:06:10Z closes the GitHub tracker (GH-785) and the issue is finalised. Branch `feature/WF03-GH785-20260815` reaches Step Final separately as a DOC-UPDATER SQUASH merge; the merge commit SHA will be back-filled into `resolution_commit` once the merge completes (current value list carries the on-main fix commits; see `git log --oneline feature/WF03-GH785-20260815` for the feature branch's commit chain).",
+  "prevention": {
+    "actions": [
+      "Add a regression test to `zig build test-env-verify` (or a dedicated C10 'scope-header-case' check) that asserts `grep -rn '^-- Scope:' migrations/` returns 0; any uppercase match fails the env-verify gate before migrations ever run.",
+      "Either (a) add a lint rule in `tools/lint_migrations.py` to enforce `^-- scope:` (all lowercase) on the scope header of every `migrations/*.sql`, reporting BLOCKER for any uppercase match; or (b) make `src/db/migrations.zig:migrationScope()` case-insensitive — `std.ascii.eqlIgnoreCase` over the `'-- scope:'` token — so future authoring drift is harmless. Option (b) is the smallest diff and removes the class of bug entirely; option (a) is preferable if header canonicalisation is to remain strict."
+    ]
+  },
+  "resolution_commit": "51170eed,47d4c7c9 (carry-on-main from feature/WF02-plc-batch-a-20260815 step-04 commit ae0840b3; merge commit back-filled by Step Final DOC-UPDATER SQUASH merge)",
+  "resolved_at": "2026-08-15T21:11:11Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH785-20260815 step-7)",
   "reproduction": "Pre-fix: (1) grep -n '^-- [Ss]cope:' migrations/1156_prm06_promotion_assertion_runs.sql migrations/1157_prm09_solution_pack_update.sql returns two uppercase matches. (2) zig build migrate against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test fails on 1156 then 1157 with 'column tenant_id does not exist' in schema tenant_default. Post-fix: same commands succeed (migrations are in the ledger so the runner skips them with the now-correct scope classification); 'No new migrations to apply.'",
   "fix_file": "migrations/1156_prm06_promotion_assertion_runs.sql; migrations/1157_prm09_solution_pack_update.sql",
   "fix_line": "20",
@@ -77,6 +84,24 @@
       "status": "PASS",
       "completed_at": "2026-08-15T20:48:04Z",
       "summary": "Step 3 confirmation-only. Fix was already on branch feature/WF03-GH785-20260815 (carried from main at e9baade3 via 51170eed and 47d4c7c9). zig build exits 0; zig build test exits 0. Pure regression fix — skipping Step 4/4b and routing directly to TEST-RUNNER Step 5."
+    },
+    {
+      "step": "step-5-test-runner",
+      "agent": "TEST-RUNNER",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-5-test-runner",
+      "status": "PASS",
+      "completed_at": "2026-08-15T21:03:33Z",
+      "summary": "TEST-RUNNER retry 6 verified: test-env-verify CLEARED (C0–C9 all PASS); zig build test exits 0; zig build test-integration-tm exits 0; zig build test-integration-plc exits 0 with 27/27 PLC tests passing (plc01=8, plc02=6, plc03=5, plc04=8). The 27 PLC integration tests that were failing pre-fix with column tenant_id does not exist at the migration harness are now GREEN. Three PRM-06/07 and four PRM-09 test failures were surfaced as INC-001/INC-002 incidental findings (pre-existing test-code bugs, NOT GH-785 regressions) and forwarded for separate ISS filing."
+    },
+    {
+      "step": "step-7-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-7-doc-updater",
+      "status": "RESOLVED",
+      "completed_at": "2026-08-15T21:11:11Z",
+      "summary": "Closed GH-785 via verification. CHANGELOG.md updated with a one-paragraph entry under [Unreleased] 2026-08-15. ISS-0703 marked RESOLVED, status → RESOLVED, resolution + prevention populated. GitHub issue #785 closed via `gh issue close 785 --reason completed`. Incidental findings INC-001 (prm-09 test) and INC-002 (PRM-06/07 tests) filed as separate ISS-0707 and ISS-0708 respectively (with matching GitHub issues) and forwarded to global queue per `docs/agents/protocols/ISSUE_QUEUE.md` — both are pre-existing test-code bugs, out of scope for this run."
     }
   ],
   "occurrences": [

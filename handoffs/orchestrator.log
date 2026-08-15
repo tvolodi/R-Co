@@ -1695,3 +1695,10 @@
 2026-08-15T20:39:14Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-1-issue-fixer | ORCH → ISSUE-FIXER | PENDING
 2026-08-15T20:40:18Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-2-code-designer | ORCH → CODE-DESIGNER | PENDING
 2026-08-15T20:42:53Z | COMPLETE | WF03-GH785-20260815 | step-2-code-designer | CODE-DESIGNER | PASS -- Type E prose design at src/design/fix-GH-785.md (1573 words). Root cause: case-sensitive -- scope: header match in src/db/migrations.zig::migrationScope (SCOPE_PUBLIC_HEADER / SCOPE_ALL_HEADER / SCOPE_TENANT_ONLY_HEADER constants at lines 604-613; docstrings at 52, 622). Fix: 1-char lowercase S -> s on line 20 of 1156 and 1157 (carried on main via 51170eed + 47d4c7c9). Parser intentionally unmodified. Verification: TEST-RUNNER retry 6 -- full PLC integration suite green. next_action = Route to CODE-DESIGN-VALIDATOR Step 2b.
+2026-08-15T20:45:11Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-2b-code-design-validator | ORCH → CODE-DESIGN-VALIDATOR | PENDING
+2026-08-15T20:46:39Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-3-backend-dev | ORCH → BACKEND-DEV | PENDING
+2026-08-15T20:48:04Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-3-backend-dev | BACKEND-DEV -> ORCH | COMPLETED PASS
+2026-08-15T20:49:12Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-5-test-runner | ORCH → TEST-RUNNER | PENDING
+2026-08-15T21:04:56Z | STEP_COMPLETE | WF03-GH785-20260815-5-test-runner | TEST-RUNNER | COMPLETED PASS | result.status=PASS, 27/27 PLC tests green, next_action=Route to DOC-UPDATER Step 7
+2026-08-15T21:05:37Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-7-doc-updater | ORCH → DOC-UPDATER | PENDING
+2026-08-15T21:11:11Z | COMPLETE | WF03-GH785-20260815 | step-7 | DOC-UPDATER | status=COMPLETED result=PASS gh_closed=785 gh_filed=792,793 new_iss_files=ISS-0707,ISS-0708 resolved=ISS-0703 next_action=Route_to_BACKEND-DEV_Step_Final

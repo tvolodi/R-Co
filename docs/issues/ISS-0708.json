@@ -1,0 +1,65 @@
+{
+  "iss_id": "ISS-0708",
+  "id": "ISS-0708",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/793",
+  "github_issue_confirmed": true,
+  "title": "tests/integration PRM-06/07: three test failures (TC-PRM-06-03, TC-PRM-07-01, TC-PRM-07-03) — NOT NULL / FK / sandbox-teardown test-code bugs (INC-002 from WF03-GH785-20260815 step-5)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-GH785-20260815",
+  "run_id": "WF03-GH785-20260815",
+  "incidental_of": {
+    "run_id": "WF03-GH785-20260815",
+    "handoff_id": "WF03-GH785-20260815-5-test-runner",
+    "finding_id": "INC-002",
+    "trigger": "step_5_targeted_prm_run",
+    "context": "Pre-existing test-code bugs surfaced during TEST-RUNNER retry 6's optional targeted test runs on the GH-785 verification branch. NOT a GH-785 regression; out of scope for WF03-GH785-20260815.",
+    "step_5_completed_at": "2026-08-15T21:03:33Z"
+  },
+  "created_at": "2026-08-15T21:11:11Z",
+  "registered_at": "2026-08-15T21:11:11Z",
+  "registered_by": "DOC-UPDATER (WF03-GH785-20260815 step-7)",
+  "labels": [
+    "bug",
+    "issue"
+  ],
+  "scope": "Three test-code bugs across tests/integration/prm-06-promotion-assertion.test.zig and tests/integration/prm-07-assertion-rerun.test.zig.",
+  "affected_areas": [
+    "tests/integration/prm-06-promotion-assertion.test.zig",
+    "tests/integration/prm-07-assertion-rerun.test.zig",
+    "migrations/1144 (introduced requested_by NOT NULL column on promotion_reviews)",
+    "migrations/1145+ (FK promotion_assertion_runs -> promotion_reviews)"
+  ],
+  "description": "Three test failures, each an independent test-helper bug, but bundled under INC-002 because they share the same root-cause class (test fixture pre-dates migrations 1144/1145 schema additions): (A) TC-PRM-06-03 — `insertPromotionReviewsRow` does not set the `requested_by` NOT NULL column added by migration 1144 → sqlstate 23502. (B) TC-PRM-07-03 — `insertPromotionAssertionRunsRow` (or sibling) inserts into `promotion_assertion_runs` without first seeding a parent `promotion_reviews` row → sqlstate 23503. (C) TC-PRM-07-01 — sandbox teardown failure simulation marker does not propagate into the post-condition `promotion_assertion_runs.status` setter. Pre-existing, NOT GH-785 regressions; out of scope for WF03-GH785-20260815. To be picked up by its own WF-03 cycle.",
+  "symptom": "zig build test-integration-prm-06 fails 1/5 (TC-PRM-06-03 sqlstate 23502); zig build test-integration-prm-07 fails 2/5 (TC-PRM-07-01 teardown simulation mismatch, TC-PRM-07-03 sqlstate 23503). Each is independent of GH-785's `-- scope:` header fix.",
+  "discovered_at": "2026-08-15T21:03:33Z",
+  "discovered_by": "TEST-RUNNER (WF03-GH785-20260815 step-5 incidental-finding INC-002)",
+  "investigation_notes": "GH-785 verification confirmed the PLC suite (27/27) is green — failures surface only in the optional targeted PRM-06/07 runs. Each failure maps to a single test-helper routine (insertPromotionReviewsRow, insertPromotionAssertionRunsRow, sandbox-teardown simulation). No production-code root cause; all three are test-fixture defects that pre-date migrations 1144 and 1145.",
+  "reproduction": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-prm-06 -> 1 FAIL (TC-PRM-06-03 sqlstate 23502 on promotion_reviews.requested_by). BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-prm-07 -> 2 FAIL (TC-PRM-07-01 status mismatch, TC-PRM-07-03 sqlstate 23503 on promotion_assertion_runs -> promotion_reviews).",
+  "fix_file": "tests/integration/prm-06-promotion-assertion.test.zig; tests/integration/prm-07-assertion-rerun.test.zig",
+  "fix_line": "TBD — locate insertPromotionReviewsRow (prm-06), insertPromotionAssertionRunsRow + sandbox-teardown simulation (prm-07).",
+  "fix_diff": "(A) prm-06: add `requested_by` argument to insertPromotionReviewsRow and pass a generated/sentinel UUID. (B) prm-07: in the test setup, INSERT the parent promotion_reviews row before inserting into promotion_assertion_runs. (C) prm-07: trace the simulation flag through sandbox_release_cb and the post-condition status setter; align the test with the actual implementation, OR adjust the test's expectation to the actual outcome.",
+  "pr_url": null,
+  "pr_merged_at": null,
+  "pr_merge_commit": null,
+  "handoff_history": [
+    {
+      "step": "step-5-test-runner",
+      "agent": "TEST-RUNNER",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-5-test-runner",
+      "status": "FAIL",
+      "completed_at": "2026-08-15T21:03:33Z",
+      "summary": "Surface INC-002: TC-PRM-06-03 (sqlstate 23502, requested_by NOT NULL), TC-PRM-07-01 (sandbox teardown simulation mismatch), TC-PRM-07-03 (sqlstate 23503, FK to promotion_reviews). Pre-existing test-helper bugs. Do NOT block WF03-GH785-20260815 (full PLC suite is 27/27 green). Filed as ISS-0708 with GH #793 for separate WF-03 cycle resolution."
+    },
+    {
+      "step": "step-7-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-7-doc-updater",
+      "status": "FILED",
+      "completed_at": "2026-08-15T21:11:11Z",
+      "summary": "Registered ISS-0708 + GH issue #793 per the 'No Issue Left Local-Only' directive. Mirrors TEST-RUNNER step-5 INC-002. Out of scope for WF03-GH785-20260815."
+    }
+  ]
+}

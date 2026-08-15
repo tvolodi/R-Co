@@ -1,0 +1,107 @@
+{
+  "handoff_id": "WF03-GH785-20260815-2b-code-design-validator",
+  "run_id": "WF03-GH785-20260815",
+  "workflow_id": "WF03-GH785-20260815",
+  "step": "2b",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+  "status": "COMPLETED",
+  "created_at": "2026-08-15T20:45:11Z",
+  "started_at": "2026-08-15T20:45:11Z",
+  "completed_at": "2026-08-15T20:45:45Z",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "item_id": "r-co:GH-785",
+  "gh_issue": 785,
+  "rco_sync_ref": "ISS-0703",
+  "context": {
+    "branch_name": "feature/WF03-GH785-20260815",
+    "iss_id": "ISS-0703",
+    "design_artefact": "src/design/fix-GH-785.md",
+    "hard_gate": true
+  },
+  "task": {
+    "description": "Step 2b — Design Validation. Validate the design artefact at `src/design/fix-GH-785.md` against WF-02 Step 1b checks (applied to a fix design). This is a hard gate — Step 3 (Fix) MUST NOT start until this returns PASS. Checks: (a) design addresses the diagnosed root_cause; (b) public function signatures before/after documented (Type E); (c) no implementation code in the design; (d) error taxonomy updated if needed; (e) callers listed; (f) fix scope ≤ 5 files; (g) for Type A/C: codegen dry-run — N/A here, this is Type E prose.",
+    "expected_outputs": [
+      "Validation report (PASS or FAIL) for src/design/fix-GH-785.md"
+    ],
+    "acceptance_criteria": [
+      "Design addresses root_cause from ISS-0703 (case-sensitive std.mem.indexOf on '-- scope:' header in src/db/migrations.zig)",
+      "Public function signatures before/after documented (none — parser unchanged)",
+      "No implementation code in design (Type E prose only)",
+      "Error taxonomy unchanged (no variants added/removed)",
+      "Callers listed: zig build migrate + PLC integration suite",
+      "Fix scope = exactly 2 files (well within ≤ 5)",
+      "Verification path documented: TEST-RUNNER retry 6 — full PLC integration suite green"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 10 checks PASS. lint_design_artefact.py 0 BLOCKER / 0 MAJOR / 0 MINOR. Design covers root cause (case-sensitive std.mem.indexOf on -- scope: header, cites SCOPE_PUBLIC_HEADER / SCOPE_TENANT_ONLY_HEADER constants at lines 604-613 and docstrings at lines 52, 622), files changed (2), no parser modification, callers listed, verification plan documented. Fix scope 2 files (well within <= 5). Type E prose only -- no implementation code.",
+    "artifacts_out": [],
+    "checks": [
+      {
+        "id": "a",
+        "name": "Design addresses diagnosed root_cause",
+        "result": "PASS",
+        "evidence": "src/design/fix-GH-785.md sec 2 'Root cause' cites std.mem.indexOf(u8, header, ...) case-sensitivity and the SCOPE_PUBLIC_HEADER / SCOPE_TENANT_ONLY_HEADER constants at lines 604-613 of src/db/migrations.zig (verified: constants at lines 604/609/613; indexOf calls at 633-635). Docstring at line 52 (MigrationScopeMismatch referencing -- scope: public) verified at src/db/migrations.zig:52. Docstring at line 622 (migrationScope referencing -- scope: tenant_only) verified at src/db/migrations.zig:622-623. Both offending files (1156 and 1157) used -- Scope: with capital S, falling through to .all_schemas. Diagnosis matches ISS-0703.investigation_notes verbatim."
+      },
+      {
+        "id": "b",
+        "name": "Public function signatures before/after",
+        "result": "PASS",
+        "evidence": "src/design/fix-GH-785.md sec 6 explicitly states 'No public API surface change' with a table marking migrationScope and declaresPublicScopeHeader as unchanged. No new signatures added."
+      },
+      {
+        "id": "c",
+        "name": "No implementation code in design",
+        "result": "PASS",
+        "evidence": "Type E prose only. The only code blocks are: (i) a verbatim citation of the existing migrationScope function in src/db/migrations.zig (labelled as a quote, not implementation), (ii) two diff snippets showing only the single-character header change. No new Zig function bodies, no new SQL DDL beyond the literal -- scope: / -- Scope: header lines cited."
+      },
+      {
+        "id": "d",
+        "name": "Error taxonomy updated if needed",
+        "result": "PASS",
+        "evidence": "src/design/fix-GH-785.md sec 7 'Error taxonomy' explicitly states 'No error variants added or changed.' MigrationScopeMismatch continues to fire on the misclassification case."
+      },
+      {
+        "id": "e",
+        "name": "Callers listed",
+        "result": "PASS",
+        "evidence": "src/design/fix-GH-785.md sec 8 'Callers impacted' lists zig build migrate (migration harness -- make.ps1 migrate) and the PLC integration test suite (1156 and 1157 test files plus 25 indirect beneficiaries). No other callers affected; runForSchema inherits the fix."
+      },
+      {
+        "id": "f",
+        "name": "Fix scope <= 5 files",
+        "result": "PASS",
+        "evidence": "src/design/fix-GH-785.md sec 5 'Files changed' lists exactly 2 files, one line each: migrations/1156_prm06_promotion_assertion_runs.sql:20 and migrations/1157_prm09_solution_pack_update.sql:20. Both files exist on disk (verified via file_search). 2 <= 5."
+      },
+      {
+        "id": "g",
+        "name": "Verification plan documented",
+        "result": "PASS",
+        "evidence": "src/design/fix-GH-785.md sec 9 'Verification plan' includes 'TEST-RUNNER retry 6 -- full PLC integration suite green', with sub-sections 9.1 (audit grep), 9.2 (migration harness smoke test), 9.3 (full PLC integration suite with the two direct beneficiary test files named), and 9.4 (build and lint)."
+      },
+      {
+        "id": "h",
+        "name": "Cross-references to GitHub and ISS",
+        "result": "PASS",
+        "evidence": "Design header explicitly cites R-Co#785 with URL and docs/issues/ISS-0703.json. Sections 2, 3, 4, 8, 9, 10 reference both GH-785 and ISS-0703 by ID. ISS-0703.json confirms gh_issue:785 and github_issue_confirmed:true."
+      },
+      {
+        "id": "i",
+        "name": "Parser is NOT modified",
+        "result": "PASS",
+        "evidence": "src/design/fix-GH-785.md sec 4 'Why no parser change' (three subsections: contract documented as lowercase, case-insensitive hides typos, older migrations not retroactively re-classified) and sec 5 'src/db/migrations.zig is not modified. No other migration files are modified.' Both explicitly rule out parser changes."
+      },
+      {
+        "id": "j",
+        "name": "Codegen dry-run",
+        "result": "PASS",
+        "evidence": "N/A -- Type E prose design; no codegen step applies. lint_design_artefact.py exit 0 covers the only mandatory per-artefact check for Type E."
+      }
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step 3"
+  }
+}
