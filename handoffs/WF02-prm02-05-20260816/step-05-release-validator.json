@@ -1,0 +1,79 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-05-release-validator",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-prm02-05-20260816/step-05-release-validator.json",
+  "created_at": "2026-08-15T23:20:31Z",
+  "started_at": "2026-08-15T23:20:47Z",
+  "completed_at": "2026-08-15T23:23:36Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev",
+      "wf02-prm02-05-20260816-01-code-designer",
+      "wf02-prm02-05-20260816-01b-code-design-validator",
+      "wf02-prm02-05-20260816-02a-backend-dev",
+      "wf02-prm02-05-20260816-02c-security-reviewer",
+      "wf02-prm02-05-20260816-02a-backend-dev-rework1",
+      "wf02-prm02-05-20260816-02c-security-reviewer-rework1",
+      "wf02-prm02-05-20260816-03-test-designer",
+      "wf02-prm02-05-20260816-03b-test-design-validator",
+      "wf02-prm02-05-20260816-04-test-runner",
+      "adhoc-bench-env-prm02-05-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260816-WF02-prm02-05-20260816.yaml",
+      "tests/specs/PRM-02.md",
+      "tests/specs/PRM-03.md",
+      "tests/specs/PRM-04.md",
+      "tests/specs/PRM-05.md",
+      "docs/requirements.yaml"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "Perform WF-02 Step 5 release validation for run WF02-prm02-05-20260816 on branch feature/WF02-prm02-05-20260816. Requirements PRM-02..05 are all MUST-priority, stage 16 (promotion pipeline). Verify against the MUST requirements and NFRs: read the TEST-RUNNER report (tests/reports/report-20260816-WF02-prm02-05-20260816.yaml), the test specs, and the requirement ACs in docs/requirements.yaml. Confirm every MUST acceptance criterion is met (PRM-02 conflict pre-flight 409 + rejection event + no review rows; PRM-03 digest binding + PlanDigestMismatch; PRM-04 review state machine + CHECK + partial unique index; PRM-05 non-skippable approval gate + self-approval 403 + context endpoint). Confirm the build/tests pass and no BLOCKER/MAJOR regressions. Write the release decision to docs/status/ as .yaml. Return PASS only if all MUST requirements are satisfied and releasable.",
+    "acceptance_criteria": [
+      "All PRM-02..05 MUST acceptance criteria met",
+      "Build and test evidence reviewed (zig build check exit 0; all PRM-02..05 tests + tnt pass)",
+      "No BLOCKER/MAJOR regressions",
+      "Release decision written to docs/status/ as .yaml",
+      "Verdict PASS or FAIL with specific criteria"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-02 Step 5 release validation APPROVED for PRM-02..05 (stage 16, promotion pipeline) on feature/WF02-prm02-05-20260816. All MUST acceptance criteria verified against docs/requirements.yaml and tests/specs/PRM-02..05.md: PRM-02 conflict pre-flight 409 + single rejection event + no review rows; PRM-03 digest binding + PlanDigestMismatch; PRM-04 state machine + CHECK + partial unique index; PRM-05 non-skippable approval gate + self-approval 403 + context endpoint. RELEASE-VALIDATOR re-verified independently: zig build check exit 0; test-integration-prm02 8/8, prm03 11/11, prm04 umbrella 7/7, prm04-review-sm 13/13, prm05-review-gate 13/13, test-integration-tnt 34/34. Zero BLOCKER/MAJOR regressions (the one MAJOR \u2014 TC-PRM-02-05 advisory-lock deadlock \u2014 fixed under Unblock-Everything by TEST-RUNNER, documented). Release decision written to docs/status/release-decision-WF02-prm02-05-20260816.yaml (APPROVED).",
+    "artifacts_out": [
+      "docs/status/release-decision-WF02-prm02-05-20260816.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "timestampToIso in the promotion-context path returns a fixed '1970-01-01T00:00:00Z' placeholder so created_at in handleGetPromotionContext is not the review creation time (pre-existing code was equally broken; TEST-DESIGNER fix removes the crash but leaves the field constant). Functional, not a security invariant. Recorded by SECURITY-REVIEWER rework2; follow-up to implement real ISO formatting (TODO in code). Related to ISS-0135."
+      },
+      {
+        "severity": "MINOR",
+        "description": "fillRandom ignores the return value of std.os.linux.getrandom. Bounded impact (bytes feed a synthetic promotion_id idempotency key, not an access-control token). Mirrors pre-existing onboarding.zig pattern. Recorded by SECURITY-REVIEWER rework2 inner report."
+      }
+    ],
+    "next_action": "ORCH routes to DOC-UPDATER (Step 6) to set PRM-02..05 status RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

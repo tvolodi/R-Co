@@ -1735,3 +1735,5 @@
 2026-08-15T23:06:16Z | BENCH_ENV_UNBLOCK | WF02-prm02-05-20260816 | --- | ORCH | Services healthy (test-env-verify 10/10) -- dispatching TEST-RUNNER Step 04
 2026-08-15T23:06:16Z | ROUTE | WF-02 | wf02-prm02-05-20260816-04-test-runner | ORCH -> TEST-RUNNER | PENDING (Step 04: execute PRM-02..05 test suite)
 2026-08-15T23:19:12Z | TEST_PASS | WF02-prm02-05-20260816 | wf02-prm | TEST-RUNNER | Step 4 PASS — prm02 8/8, prm03 11/11, prm04 7/7+13/13, prm05 13/13, tnt 34/34, zig build check 0; fixed TC-PRM-02-05 advisory-lock deadlock (Unblock-Everything)
+2026-08-15T23:20:31Z | ROUTE | WF-02 | wf02-prm02-05-20260816-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING (Step 05: release validation for PRM-02..05)
+2026-08-15T23:23:36Z | RELEASE_PASS | WF02-prm02-05-20260816 | wf02-prm | RELEASE-VALIDATOR | Step 5 PASS — PRM-02..05 APPROVED stage 16 (build check 0; prm02 8/8, prm03 11/11, prm04 7/7+13/13, prm05 13/13, tnt 34/34); decision docs/status/release-decision-WF02-prm02-05-20260816.yaml
