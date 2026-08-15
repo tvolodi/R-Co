@@ -1,0 +1,87 @@
+report_id: WF02-prm02-05-20260816-step-02c-security-reviewer-rework1
+agent_id: SECURITY-REVIEWER
+run_id: WF02-prm02-05-20260816
+step: "02c-rework1"
+created_at: "2026-08-15T21:29:03Z"
+summary: >-
+  Security HARD GATE re-review (WF-02 Step 2c rework 1) for PRM-02..05
+  (promotion pipeline) on branch feature/WF02-prm02-05-20260816. Verdict PASS.
+  Re-reviewed the rework commit 2be31ec7 against INV-1..INV-8 and re-ran the
+  empirical checks used in the original FAIL. All three prior findings are
+  confirmed resolved: (1) INV-1 BLOCKER — promotion_reviews is now
+  tenant-isolated; migration 096 is '-- scope: tenant_only', GBL-143 drops the
+  historical public shadow, promotion_reviews is in BUSINESS_TABLES
+  (tools/lint_migration_schema.py) and in the TNT runtime isolation list
+  (21->22); empirically bpm_test has promotion_reviews ONLY in tenant_default
+  (0 copies in public), events/plat_event_idempotency remain per-tenant only.
+  (2) INV-2 BLOCKER — approver identity is server-derived: ApproveBody is
+  {plan_digest} only, any extra field (incl. approved_by) -> 422 UNKNOWN_FIELD,
+  the approver and DEFINITION_PROMOTION_APPROVED actor are the authenticated
+  actor.user_id, and the self-approval gate compares two server-side values
+  (requested_by vs actor.user_id); markReviewApplied records the authenticated
+  applying principal as the DEFINITION_PROMOTION_APPLIED actor. (3) INV-1/INV-6
+  MAJOR — a single owner-tenant decision (review row's tenant_id = target
+  tenant) is now enforced on every promotion path: submitReview switches to
+  params.tenant_id before INSERT; approveReview/rejectReview/markReviewApplied/
+  markReviewFailed/supersedeReview switch to the review's owner tenant before
+  DB work; rejectIfConflicts switches to target_tenant_id; so
+  DEFINITION_PROMOTION_REJECTED/_APPROVED/_APPLIED all land under the same
+  owner tenant. No new invariant violations in the reworked diff: INV-7 clean
+  (all SQL parameterised via $N; lint_sql_param_types exit 0; no allocPrint SQL
+  interpolation in the diff), INV-8 clean (no catch unreachable in the diff),
+  INV-3/INV-4 not applicable (no Lua/Wasm/secret changes). zig build check exit
+  0 and test-integration-tnt exit 0 with the 22-table isolation list.
+  TEST-DESIGNER (Step 3) may start.
+files_created:
+  - docs/issue-reports/WF02-prm02-05-20260816-step-02c-security-reviewer-rework1-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF02-prm02-05-20260816/step-02c-security-reviewer-rework1.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: python tools/lint_migration_schema.py
+    status: pass
+    detail: "Exit 0 — 147 files scanned, 0 violations; promotion_reviews now present in BUSINESS_TABLES (INV-1)."
+  - name: python tools/lint_sql_table_refs.py
+    status: pass
+    detail: "Exit 0 — 445 Zig files scanned; no legacy table-name references (INV-1)."
+  - name: python tools/lint_sql_param_types.py src tests
+    status: pass
+    detail: "Exit 0 — 0 BLOCKER / 0 MAJOR / 0 MINOR (INV-7)."
+  - name: git diff rework scan (Select-String)
+    status: pass
+    detail: "No std.fmt.allocPrint SQL interpolation and no catch unreachable in the rework diff (INV-7/INV-8)."
+  - name: zig build check
+    status: pass
+    detail: "Exit 0 — in-scope modules compile; check_fmt_scope PASSED (BENCH_MIGRATE_URL_INFO line is informational stderr noise, not a failure)."
+  - name: zig build test-integration-tnt
+    status: pass
+    detail: "Exit 0 — TNT tenant-schema isolation suite passes with the 22-table BUSINESS_TABLES list (INV-1 runtime)."
+  - name: DB probe (docker exec r-co-2-db_test-1 psql)
+    status: pass
+    detail: "bpm_test: promotion_reviews exists ONLY in schema tenant_default (0 in public); RLS policies on promotion_reviews = 0 (schema-scoped isolation, consistent with events etc.); events/plat_event_idempotency present only in per-tenant schemas (tenant_default + 24 par05_* fixtures); tenant storage_mode = SCHEMA (no LEGACY_RLS public-search_path path); schema_migrations shows GBL-143 applied to public (shadow dropped) and 096 applied to tenant_default; historical public 096 schema_migrations row remains (pre-fix record only, physical table gone)."
+issues_found:
+  - severity: MINOR
+    description: >-
+      Migration-state observation (not a security violation): 096 has been
+      applied to tenant_default but not yet to the 24 orphaned par05_*
+      test-fixture schemas (they predate 096 and are not tenant-table-backed —
+      the tenant table has a single SCHEMA-mode row). A promotion targeting a
+      par05_* fixture would fail closed at INSERT (relation does not exist), so
+      there is no cross-tenant exposure. TEST-DESIGNER should be aware when
+      writing PRM-02..05 integration tests. This is migration application
+      state, not an INV-1 defect.
+  - severity: MINOR
+    description: >-
+      Design drift (already flagged by BACKEND-DEV rework 1, acknowledged):
+      src/design/prm02-05-promotion-approval-pipeline.md PRM-05 documents the
+      approve body as {plan_digest, approved_by}; the implementation now
+      accepts {plan_digest} only and rejects approved_by with 422 UNKNOWN_FIELD
+      (the secure direction). CODE-DESIGNER to reconcile the design doc. Not a
+      security blocker — the implementation is stricter than the doc.
+next_steps:
+  - ORCH routes to TEST-DESIGNER (Step 3) — the HARD GATE has re-passed.
+  - TEST-DESIGNER to rewrite the acknowledged-broken PRM-02..05 integration tests against the new review transition contracts (owner-tenant tenant_id and server-derived actor params).
+  - CODE-DESIGNER to reconcile the PRM-05 approve-body design drift.
+  - Note for a future run: consider re-running 096 against the par05_* fixture schemas or leaving them as orphaned fixtures (no security impact).
+blockers: []
