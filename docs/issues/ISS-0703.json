@@ -61,6 +61,30 @@
       "trigger": "verification_gap",
       "context": "GH-785 still OPEN at GitHub; the only unchecked acceptance criterion -- 'TEST-RUNNER retry 6 - full PLC integration suite green' -- has not yet been confirmed. Fix is on main via 51170eed and 47d4c7c9 (commit ae0840b3 on branch feature/WF02-plc-batch-a-20260815). Verification remaining.",
       "summary": "Reopened ISS-0703 for WF-03 verification run: GH-785 still OPEN at GitHub because the 'TEST-RUNNER retry 6 -- full PLC integration suite green' acceptance criterion is unchecked. Fix is on main (commits 51170eed, 47d4c7c9); verification remaining."
+    },
+    {
+      "step": "step-1-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH785-20260815",
+      "status": "PASS",
+      "completed_at": "2026-08-15T20:39:42Z",
+      "summary": "Diagnosis confirmed unchanged from WF02-plc-batch-a-20260815 step-04. Root cause: case-sensitive std.mem.indexOf on '-- scope:' header in src/db/migrations.zig; offending files 1156 and 1157 had '-- Scope:' (capital S) on line 20. Fix: lowercase S -> s in both files; carried on main via commits 51170eed and 47d4c7c9. Branch feature/WF03-GH785-20260815 (cut from main at e9baade3) contains the fix. Remaining work: TEST-RUNNER retry 6 -- full PLC integration suite green."
+    }
+  ],
+  "occurrences": [
+    {
+      "occurred_at": "2026-08-15T05:51:55Z",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer",
+      "trigger": "test_regression",
+      "context": "TEST-RUNNER rework 5 -- 27 PLC integration tests fail at migration harness with simpleQuery failed ... column 'tenant_id' does not exist on tenant_default."
+    },
+    {
+      "occurred_at": "2026-08-15T20:39:42Z",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-1-issue-fixer",
+      "trigger": "verification_gap",
+      "context": "GH-785 still OPEN; full diagnosis confirmed; awaiting Step 5 verification"
     }
   ],
   "reopened_at": "2026-08-15T20:36:27Z",
