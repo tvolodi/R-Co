@@ -6,9 +6,49 @@
   "step": "02a",
   "created_at": "2026-08-15T16:08:09Z",
   "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
-  "result": null,
+  "completed_at": "2026-08-15T16:49:05Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented the backend (Zig) portion of SPC-01/SPC-02. New src/definition/sub_process_interface.zig provides the `interface` data model (inputs/outputs of {name, json_schema, required}), SPC-02 parseInterface/collectInterfaceViolations (collects ALL offending entries with direction/name/RFC 6901 pointer), and SPC-01 runtime helpers buildChildInitialMap/selectAndValidateOutputs/validateInputValue/validateOutputValue (filtered copy-in / filtered merge-back, empty-inputs->empty map, ContractViolation structured reason). src/tools/json_schema.zig gained validateSchemaShape (SPC-02 well-formedness: recognised keywords typed, unknown keywords inert, depth cap 32). The SPC-02 hook lives in graph.zig checkSubProcess (PD-05, after PD-02) -> HTTP 422 listing every offending entry, naming the node + offending schema. Runtime wiring in src/engine/instance.zig: activation gate (filtered child initial map, no-orphan, parent ERROR via EE-10 before child creation; EXT-05 fallback when no interface) and completion gate (filtered EE-09 merge-back, no partial merge, parent ERROR) with four new ErrorType variants (SUB_PROCESS_MISSING_REQUIRED_INPUT, SUB_PROCESS_INPUT_SCHEMA_VIOLATION, SUB_PROCESS_MISSING_REQUIRED_OUTPUT, SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION) emitting structured EXECUTION_ERROR payloads (affected_node + affected_field + constraint/pointer in reason). No migration required - the interface lives in the node's attributes JSONB (design states this). Verified: zig build clean (no 'error set' output), zig build test green (exit 0, all 38 test binaries pass incl. 21/21 new module + 7 new SPC-02 json_schema tests + 6 new graph SPC-02 tests, lint_test_wiring PASS), pushed to origin.",
+    "artifacts_out": [
+      "src/definition/sub_process_interface.zig",
+      "src/tools/json_schema.zig",
+      "src/definition/graph.zig",
+      "src/engine/instance.zig",
+      "build.zig",
+      "tests/unit/graph_node_attributes_test.zig"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-SPC01-01",
+        "severity": "MINOR",
+        "description": "Activation-gate failure (missing required input / input schema violation) rolls back the entire triggering task-completion transaction - the triggering task returns to PENDING - before the parent is transitioned to ERROR in its own transaction. This is the atomic no-orphan-child option (no child instance is ever persisted). Operator retry/discard via OBS-05. Confirm this rollback scope is the intended semantics.",
+        "affected_requirement": "SPC-01"
+      },
+      {
+        "id": "ISSUE-SPC01-02",
+        "severity": "MINOR",
+        "description": "Runtime parse failure of a node's `interface` (unreachable because SPC-02 validates at definition time) falls back to EXT-05 (full map copy/merge) rather than failing the activation - the more permissive direction, never less. Confirmed as the conservative interpretation per design 'no-interface -> EXT-05 unchanged'.",
+        "affected_requirement": "SPC-01"
+      },
+      {
+        "id": "ISSUE-SPC01-03",
+        "severity": "MINOR",
+        "description": "module_ref effective-interface source (PLC-01 resolveModuleRef) is not wired at runtime - the module catalog does not yet exist (per pin_resolver.zig comment). Runtime uses the node-declared `interface` for the parent-side contract, matching design OQ-3 precedence (node-declared wins).",
+        "affected_requirement": "SPC-01"
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-plc-batch-b-20260815",
+      "commit_sha_list": ["b0f87569"],
+      "remote_branch": "origin/feature/WF02-plc-batch-b-20260815",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER (SPC-01/SPC-02 test design), then SECURITY-REVIEWER (tenant-data path touched in instance.zig)"
+  },
   "task": {
     "description": "Implement the backend (Zig) portion of SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nDESIGN: src/design/spc-01-sub-process-interface-contract.md (commit 3a173a5d, PASSED Step 01b gate)\n\nREQUIREMENTS:\n- SPC-01: Declared input/output contract for SUB_PROCESS nodes (filtered variable copy-in on activation, filtered merge-back on completion, EE-10 error transitions for missing/invalid inputs and missing required outputs; EXT-05 backward-compatible when interface omitted)\n- SPC-02: Definition-time validation — every json_schema under inputs/outputs must be a well-formed JSON Schema, else HTTP 422\n\nBACKEND SCOPE (per design §Public interface + §Runtime semantics + §SPC-02):\n1. Create src/definition/sub_process_interface.zig — the `interface` object data model (inputs/outputs: {name, json_schema, required}), parse + validate helpers\n2. Runtime: filtered copy-in of named+valid inputs into child initial variable map on SUB_PROCESS activation; filtered merge-back of named outputs on child completion (EE-09); empty-inputs -> empty map; no-interface -> EXT-05 unchanged\n3. EE-10 error transitions: SUB_PROCESS_MISSING_REQUIRED_INPUT, SUB_PROCESS_INPUT_SCHEMA_VIOLATION, SUB_PROCESS_MISSING_REQUIRED_OUTPUT, SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION (with atomicity / no-orphan-child)\n4. Definition-time validation hook in checkSubProcess (PD-05, after PD-02) using src/tools/json_schema.zig well-formedness rule; HTTP 422 with node + offending schema identification\n5. If a migration is needed (e.g. persisting interface attributes on definition nodes), add it following migration scope rules\n\nVerify: zig build compiles; zig build test passes for affected unit tests.\n\nfn: none",
     "fn": "none",
