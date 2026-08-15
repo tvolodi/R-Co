@@ -109,7 +109,7 @@ test "TC-PLC-01-01: register a new module version in DRAFT status" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -151,7 +151,7 @@ test "TC-PLC-01-02: registerModule rejects duplicate (module_id, version)" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -199,7 +199,7 @@ test "TC-PLC-01-03: registerModule rejects empty module_id" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const params = RegisterModuleParams{
         .module_id = "",
@@ -222,7 +222,7 @@ test "TC-PLC-01-04: registerModule rejects empty version" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const params = RegisterModuleParams{
         .module_id = try bpm.uuid.newUuidV4(alloc),
@@ -245,7 +245,7 @@ test "TC-PLC-01-05: resolveModuleRef resolves own tenant's ACTIVE module" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -295,7 +295,7 @@ test "TC-PLC-01-06: resolveModuleRef returns unresolved when no version satisfie
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -338,7 +338,7 @@ test "TC-PLC-01-07: resolveModuleRef prefers highest semver when multiple ACTIVE
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -388,7 +388,7 @@ test "TC-PLC-01-08: module_id is globally unique (not per-tenant)" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid_a = try randomUuid(alloc);
     const def_uuid_b = try randomUuid(alloc);

@@ -102,7 +102,7 @@ test "TC-PLC-02-01: publish succeeds when interface schema declares inputs" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -144,7 +144,7 @@ test "TC-PLC-02-02: publish succeeds when interface schema declares outputs" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -186,7 +186,7 @@ test "TC-PLC-02-03: publish fails when interface schema is empty object" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -223,7 +223,7 @@ test "TC-PLC-02-04: publish fails when interface schema is absent (empty string)
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -259,7 +259,7 @@ test "TC-PLC-02-05: publish fails when module is already ACTIVE" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -297,7 +297,7 @@ test "TC-PLC-02-06: publish fails when module does not exist" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const result = catalog.publishModule(alloc, "non-existent-module", "1.0.0", try randomUuid(alloc));
     try std.testing.expectError(bpm.process_module_catalog.ModuleCatalogError.ModuleNotFound, result);

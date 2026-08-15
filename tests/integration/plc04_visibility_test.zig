@@ -107,7 +107,7 @@ test "TC-PLC-04-01: tenant A's module is invisible to tenant B without a grant" 
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_a = try randomUuid(alloc);
@@ -151,7 +151,7 @@ test "TC-PLC-04-02: grant makes module visible to receiving tenant" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_a = try randomUuid(alloc);
@@ -212,7 +212,7 @@ test "TC-PLC-04-03: grantModuleVisibility creates a share grant row" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_a = try randomUuid(alloc);
@@ -279,7 +279,7 @@ test "TC-PLC-04-04: duplicate grant returns SharingGrantAlreadyExists" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_a = try randomUuid(alloc);
@@ -328,7 +328,7 @@ test "TC-PLC-04-05: revokeModuleVisibility removes the grant" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_a = try randomUuid(alloc);
@@ -399,7 +399,7 @@ test "TC-PLC-04-06: revokeModuleVisibility returns error for unknown grant" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const unknown_grant_id = try randomUuid(alloc);
     const actor_id = try randomUuid(alloc);
@@ -416,7 +416,7 @@ test "TC-PLC-04-07: listVisibleModules shows only owned and shared ACTIVE module
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid_a = try randomUuid(alloc);
     _ = try randomUuid(alloc);
@@ -485,7 +485,7 @@ test "TC-PLC-04-08: grant does not allow B to see A's other modules" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_a = try randomUuid(alloc);

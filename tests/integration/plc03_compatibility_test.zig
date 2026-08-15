@@ -102,7 +102,7 @@ test "TC-PLC-03-01: first publish produces no compatibility warning" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -144,7 +144,7 @@ test "TC-PLC-03-02: publish new version with prior ACTIVE returns compatibility_
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -202,7 +202,7 @@ test "TC-PLC-03-03: compatibility_warning does not block publication" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -257,7 +257,7 @@ test "TC-PLC-03-04: predecessor is immediately prior semver (highest ACTIVE belo
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
@@ -318,7 +318,7 @@ test "TC-PLC-03-05: both absent interface schemas produces no warning" {
     var pool = try makePool(alloc);
     defer pool.deinit();
 
-    const catalog = ProcessModuleCatalog.init(alloc, &pool);
+    var catalog = ProcessModuleCatalog.init(alloc, &pool);
 
     const def_uuid = try randomUuid(alloc);
     const tenant_uuid = try randomUuid(alloc);
