@@ -1,0 +1,72 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-04-test-runner",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-prm02-05-20260816/step-04-test-runner.json",
+  "created_at": "2026-08-15T23:06:16Z",
+  "started_at": "2026-08-15T23:06:33Z",
+  "completed_at": "2026-08-15T23:19:12Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev",
+      "wf02-prm02-05-20260816-01-code-designer",
+      "wf02-prm02-05-20260816-01b-code-design-validator",
+      "wf02-prm02-05-20260816-02a-backend-dev",
+      "wf02-prm02-05-20260816-02c-security-reviewer",
+      "wf02-prm02-05-20260816-02a-backend-dev-rework1",
+      "wf02-prm02-05-20260816-02c-security-reviewer-rework1",
+      "wf02-prm02-05-20260816-03-test-designer",
+      "wf02-prm02-05-20260816-03b-test-design-validator",
+      "adhoc-bench-env-prm02-05-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "tests/specs/PRM-02.md",
+      "tests/specs/PRM-03.md",
+      "tests/specs/PRM-04.md",
+      "tests/specs/PRM-05.md"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "Execute the WF-02 Step 4 test run for run WF02-prm02-05-20260816 on branch feature/WF02-prm02-05-20260816. Run the PRM-02..05 integration test binaries (test-integration-prm02, test-integration-prm03, test-integration-prm04, test-integration-prm04-review-sm, test-integration-prm05-review-gate, and the promotion_reviews umbrella) plus the regression-relevant suites (at minimum test-integration-tnt for the promotion_reviews tenant-isolation change) against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test. Also run zig build check (must exit 0). Collect results and produce a structured test report in tests/reports/ as YAML (per the output format rules \u2014 never .json). The benchmark environment pre-check has already passed (C6 stale locks cleared). Report PASS only if all PRM-02..05 tests pass with zero BLOCKER/MAJOR regressions.",
+    "acceptance_criteria": [
+      "All PRM-02..05 integration tests pass (prm02, prm03, prm04, prm05, promotion_reviews)",
+      "test-integration-tnt passes (promotion_reviews tenant isolation)",
+      "zig build check exits 0",
+      "Structured test report written to tests/reports/ as .yaml",
+      "Zero BLOCKER/MAJOR regressions introduced by this run"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-02 Step 4 test run PASS for PRM-02..05 on feature/WF02-prm02-05-20260816: zig build check exit 0 (check_fmt_scope PASSED); test-integration-prm02 8/8, prm03 11/11, prm04 umbrella 7/7, prm04-review-sm 13/13, prm05-review-gate 13/13, test-integration-tnt 34/34. One branch-introduced BLOCKER (TC-PRM-02-05 advisory-lock self-deadlock: acquireIntegrationLock then ensureSchemaReady on the same bpm_test_migrations_public lock across two connections) was diagnosed and fixed under Unblock-Everything by reordering ensureSchemaReady() before acquireIntegrationLock(); re-run green. Zero remaining BLOCKER/MAJOR regressions.",
+    "artifacts_out": [
+      "tests/reports/report-20260816-WF02-prm02-05-20260816.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Branch-introduced deterministic self-deadlock fixed under Unblock-Everything: tests/integration/prm02_conflict_test.zig TC-PRM-02-05 called helpers.acquireIntegrationLock() (holds bpm_test_migrations_public advisory lock for the test's lifetime on a dedicated connection) then helpers.ensureSchemaReady() (separate connection blocks forever on the same lock). Reordered ensureSchemaReady() before acquireIntegrationLock(); post-fix test-integration-prm02 8/8. Verify at Final gate."
+      }
+    ],
+    "next_action": "ORCH routes to RELEASE-VALIDATOR (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
