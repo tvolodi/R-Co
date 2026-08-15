@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-15T17:40:06Z'
+generated_at: '2026-08-15T23:28:29Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12466,7 +12466,7 @@ requirements:
     title: Conflict pre-flight rejection
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL run conflict detection as the first step of the promotion pipeline, before any transaction opens. A conflict exists when the target tenant's active version of `process_key` is greater than the `base_version` the source branched from. On conflict the platform returns a typed `ConflictRejection` naming each conflicting definition with its source-side change and its target-side change, appends exactly one `DEFINITION_PROMOTION_REJECTED` event in its own transaction, and moves no version pointer.
 
@@ -12481,14 +12481,22 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:45Z'
+    last_updated: '2026-08-15T23:28:26Z'
     workflow: PW-01
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:26Z'
   PRM-03:
     id: PRM-03
     title: Plan digest binds approval to a diff
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL bind every approval to a `plan_digest`: the lowercase hexadecimal SHA-256 over the canonical JSON serialisation of the promotion plan, where canonical means object keys sorted lexicographically and no insignificant whitespace, over the entry shape `{type, id, changes}`. The digest and the full serialised plan are stored on the `promotion_reviews` row at submit time. Approve and apply both require the digest in the request body, and a mismatch is rejected with HTTP 409 `PlanDigestMismatch`.
 
@@ -12503,14 +12511,22 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:46Z'
+    last_updated: '2026-08-15T23:28:27Z'
     workflow: PW-01
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:27Z'
   PRM-04:
     id: PRM-04
     title: Promotion review state machine
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL persist promotion approvals in a `promotion_reviews` table holding `id`, `tenant_id`, `plan_digest`, `def_type`, `def_id`, the serialised plan, `status`, `requested_by`, `approved_by`, `approved_at`, `superseded_by`, `row_version`, `created_at` and `updated_at`. `status` is constrained by a CHECK over exactly six values: `pending_review`, `approved`, `rejected`, `applied`, `failed`, `superseded`. The permitted edges are pending_review to approved, pending_review to rejected, pending_review to superseded, approved to applied, approved to failed, and approved to superseded. A partial unique index `promotion_reviews_plan_digest_active_uniq` over `(tenant_id, plan_digest) WHERE status IN ('pending_review','approved')` permits at most one live review per digest.
 
@@ -12525,14 +12541,22 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:47Z'
+    last_updated: '2026-08-15T23:28:28Z'
     workflow: PW-01
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:28Z'
   PRM-05:
     id: PRM-05
     title: Non-skippable human approval gate
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL require an approved review before a promotion is applied, and SHALL provide no request parameter, header, flag or configuration value that bypasses the check. The principal recorded in `requested_by` cannot approve its own review. `GET /api/v1/promotions/{id}/context` returns the stored plan, the assertions carried by the artifact, the `NEEDS_REVIEW` package and the `plan_digest`, so the reviewer decides on exactly the diff the digest binds.
 
@@ -12547,8 +12571,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:48Z'
+    last_updated: '2026-08-15T23:28:29Z'
     workflow: PW-01
+    note: Released via WF02-prm02-05-20260816 (stage 16, promotion pipeline).
+    implemented_in:
+    - src/definition/promotion_digest.zig
+    - src/definition/promotion_review.zig
+    - src/definition/promotion_conflict.zig
+    - src/api/routes/promotion_review.zig
+    - src/bpm.zig
+    released_at: '2026-08-15T23:28:29Z'
   PRM-06:
     id: PRM-06
     title: Pre-promotion assertion re-run

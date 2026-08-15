@@ -1,0 +1,53 @@
+{
+  "handoff_id": "adhoc-bench-env-prm02-05-20260816-00-backend-dev",
+  "run_id": "ADHOC-bench-env-prm02-05-20260816",
+  "workflow_id": "ADHOC",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/ADHOC-bench-env-prm02-05-20260816/step-00-backend-dev.json",
+  "created_at": "2026-08-15T23:02:59Z",
+  "started_at": "2026-08-15T23:03:15Z",
+  "completed_at": "2026-08-15T23:04:53Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/agents/ORCHESTRATOR.md",
+      "docs/agents/instructions/core-directives.md"
+    ],
+    "branch_name": null
+  },
+  "task": {
+    "description": "ADHOC infrastructure task blocking TEST-RUNNER for WF-02 run WF02-prm02-05-20260816. The benchmark environment pre-check (`zig build test-env-verify`) FAILED 1 of 10 checks: [FAIL] C6 no stale locks -- 4 ungranted lock(s) from a prior session. Remedy per the tool output: 'restart db_test, or terminate the blocking backends'. This is a standard runtime requirement — resolve it autonomously (no user interaction). Restart the db_test container (docker-compose restart db_test) or terminate the blocking backends so the stale advisory locks clear, then re-run `zig build test-env-verify` and confirm ALL 10 checks pass (exit 0). Do NOT just make the output text change — the locks must actually be cleared (verify via the tool's exit code only).",
+    "acceptance_criteria": [
+      "zig build test-env-verify exits 0 (all 10 checks pass, including C6 no stale locks)",
+      "No user interaction required"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Resolved C6 stale-lock failure: restarted db_test (docker-compose restart db_test), waited for healthy (docker compose up -d db_test --wait), cleared the 4 advisory locks. Re-ran `zig build test-env-verify`: all 10 checks PASS (C6 = 0 ungranted), exit code 0. No source changes made.",
+    "artifacts_out": [
+      "docs/issue-reports/ADHOC-bench-env-prm02-05-20260816-step-00-backend-dev-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "ORCH re-runs zig build test-env-verify, then routes to TEST-RUNNER (Step 4) once it exits 0"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

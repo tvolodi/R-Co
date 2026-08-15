@@ -1,0 +1,85 @@
+report_id: WF02-prm02-05-20260816-step-02c-security-reviewer-rework2
+agent_id: SECURITY-REVIEWER
+run_id: WF02-prm02-05-20260816
+step: 02c-rework2
+created_at: 2026-08-15T23:00:43Z
+summary: >
+  Security HARD GATE re-review (Step 2c rework 2) for the PRM-02..05 promotion
+  pipeline: PASS. Re-reviewed the full production diff accumulated since the
+  rework1 PASS commit (3be9639b) — TEST-DESIGNER's Step 3 production changes
+  made under Unblock-Everything. Scope: src/definition/promotion_review.zig,
+  src/definition/promotion_conflict.zig, src/api/routes/promotion_review.zig.
+  Changes classified: (a) Zig 0.16 compile fixes (std.json Value.array->items,
+  ArrayList .empty/deinit(allocator)/append(allocator)/toOwnedSlice(allocator),
+  catch{}-discard, fillRandom replacing removed std.crypto.random);
+  (b) genuine bug fixes (segfault from freeing a string literal on the
+  timestampToIso path, getReview off-by-one column indices r[14] and
+  superseded_by/row_version, 5x fmtInt row_version leaks, errdefer->defer leak
+  in rejectIfConflicts); (c) design-required source-status guards on all five
+  transition UPDATEs (approve/reject require status='pending_review',
+  markReviewApplied/markReviewFailed require 'approved', supersedeReview
+  requires status<>'superseded'). Verified against INV-1..INV-8: no new
+  violations. Guards are parameterised SQL ($N placeholders) with server-side
+  status literals only, fail-closed on 0 rows (-> InvalidReviewTransition), and
+  run under the single owner-tenant search_path (rework1 decision unchanged).
+  getReview column fix correct for the 14-column SELECT (indices 0-13).
+  rejectIfConflicts defer-frees verified not to double-free (ConflictRejection
+  return does not alias rejection_payload/idem_key). Static gates all green:
+  zig build check exit 0; lint_sql_param_types.py 0 findings; lint_migration_schema.py
+  exit 0; lint_sql_table_refs.py exit 0; no `catch unreachable` and no
+  allocPrint SQL interpolation in the diff. INV-3/INV-4/INV-5 not applicable
+  (no Lua/Wasm/secret changes; no new/changed cross-tenant lookup semantics).
+  Two MINOR non-invariant observations recorded (see issues_found). TEST-RUNNER
+  (Step 4) may start.
+files_created:
+  - docs/issue-reports/WF02-prm02-05-20260816-step-02c-security-reviewer-rework2-INNER-REPORT.yaml
+files_modified: []
+tests_run:
+  - name: zig build check (compile of reviewed production files)
+    status: pass
+    detail: "exit 0; check_fmt_scope PASSED — all changed .zig files formatted"
+  - name: tools/lint_sql_param_types.py src tests (INV-7)
+    status: pass
+    detail: "exit 0; 0 BLOCKER, 0 MAJOR, 0 MINOR"
+  - name: tools/lint_migration_schema.py (INV-1)
+    status: pass
+    detail: "exit 0; 147 files scanned, 0 violations"
+  - name: tools/lint_sql_table_refs.py (INV-1)
+    status: pass
+    detail: "exit 0; 445 Zig files scanned, no legacy table-name references"
+  - name: grep diff for 'catch unreachable' (INV-8)
+    status: pass
+    detail: "no matches in the reviewed diff"
+  - name: grep diff for allocPrint SQL interpolation (INV-7)
+    status: pass
+    detail: "no SELECT/INSERT/UPDATE/DELETE interpolation in the reviewed diff"
+issues_found:
+  - severity: MINOR
+    invariant: "none (functional, not a security invariant)"
+    description: >
+      timestampToIso now returns a fixed "1970-01-01T00:00:00Z" placeholder
+      (and ignores its argument), so `created_at` in the promotion-context
+      response (handleGetPromotionContext) is no longer the review's creation
+      time. The pre-existing code was equally broken — it returned a pointer to
+      a local stack buffer AND the caller freed it (double defect: dangling
+      stack pointer + free-on-string-literal segfault). TEST-DESIGNER's fix
+      removes the crash but leaves the field constant. This is a functional
+      regression on the reviewed data path, NOT an INV-1..INV-8 violation
+      (server-populated field, no unauthorised data exposure, no authorisation
+      signal). Recommend a follow-up to implement real ISO formatting (the code
+      comment already carries the TODO).
+  - severity: MINOR
+    invariant: "none (robustness, not a security invariant)"
+    description: >
+      fillRandom ignores the return value of std.os.linux.getrandom. On Linux a
+      failure (e.g. EINTR) would leave uuid_bytes partially undefined. impact is
+      bounded: the bytes only feed a synthetic `promotion_id` used as an event
+      idempotency key, not an access-control token, and getrandom(2) blocks
+      rather than failing on entropy starvation for a 16-byte request. The
+      function mirrors the pre-existing src/api/routes/onboarding.zig fillRandom
+      pattern; all platforms use a CSPRNG (getrandom / RtlGenRandom
+      (SystemFunction036) / arc4random_buf). Not a security-invariant violation.
+next_steps:
+  - ORCH: run BENCH_ENV_CHECK (zig build test-env-verify) then dispatch TEST-RUNNER (Step 4)
+  - Route the timestampToIso functional regression to a follow-up (BACKEND-DEV/CODE-DESIGNER) outside this gate
+blockers: []

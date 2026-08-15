@@ -131,14 +131,17 @@ pub fn rejectIfConflicts(
             base_version,
         },
     ) catch return null;
-    errdefer allocator.free(rejection_payload);
+    // defer, not errdefer: both buffers are consumed by the query/exec calls
+    // below (params are copied by the wire protocol) and must be released on
+    // the success path too — the errdefer form leaked them on every conflict.
+    defer allocator.free(rejection_payload);
 
     const idem_key = std.fmt.allocPrint(
         allocator,
         "DEFINITION_PROMOTION_REJECTED-{s}",
         .{promotion_id},
     ) catch return null;
-    errdefer allocator.free(idem_key);
+    defer allocator.free(idem_key);
 
     // Append via direct connection — independent transaction.
     const write_conn = pool.acquire() catch |err| return switch (err) {
@@ -151,7 +154,7 @@ pub fn rejectIfConflicts(
     errdefer write_conn.exec("ROLLBACK", &.{}) catch {};
 
     // Insert into plat_event_idempotency for ES-03 idempotency.
-    const plat_idem_rows = write_conn.query(
+    var plat_idem_rows = write_conn.query(
         allocator,
         \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
         \\VALUES ($1, gen_random_uuid(), NOW())
@@ -159,9 +162,8 @@ pub fn rejectIfConflicts(
         \\RETURNING event_id
     ,
         &.{idem_key},
-    ) catch |err| {
+    ) catch {
         write_conn.exec("ROLLBACK", &.{}) catch {};
-        _ = err;
         return ConflictCheckError.TransactionFailed;
     };
     defer plat_idem_rows.deinit();
@@ -195,15 +197,13 @@ pub fn rejectIfConflicts(
             idem_key,
             "00000000-0000-0000-0000-000000000000",
         },
-    ) catch |err| {
+    ) catch {
         write_conn.exec("ROLLBACK", &.{}) catch {};
-        _ = err;
         return ConflictCheckError.TransactionFailed;
     };
 
-    write_conn.exec("COMMIT", &.{}) catch |err| {
+    write_conn.exec("COMMIT", &.{}) catch {
         write_conn.exec("ROLLBACK", &.{}) catch {};
-        _ = err;
         return ConflictCheckError.TransactionFailed;
     };
 
@@ -226,11 +226,11 @@ pub fn rejectIfConflictsMulti(
     promotion_id: []const u8,
     source_tenant_id: []const u8,
     actor_id: []const u8,
-) ConflictCheckError![]const ConflictRejection {
-    var rejections = std.ArrayList(ConflictRejection).init(allocator);
+) (ConflictCheckError || error{OutOfMemory})![]const ConflictRejection {
+    var rejections = std.ArrayList(ConflictRejection).empty;
     errdefer {
         for (rejections.items) |*r| r.deinit(allocator);
-        rejections.deinit();
+        rejections.deinit(allocator);
     }
 
     for (process_keys, base_versions) |pk, bv| {
@@ -245,9 +245,9 @@ pub fn rejectIfConflictsMulti(
             actor_id,
         );
         if (rejection) |*r| {
-            try rejections.append(r.*);
+            try rejections.append(allocator, r.*);
         }
     }
 
-    return try rejections.toOwnedSlice();
+    return try rejections.toOwnedSlice(allocator);
 }

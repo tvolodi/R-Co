@@ -1,0 +1,44 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-final-backend-dev",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-prm02-05-20260816/step-final-backend-dev.json",
+  "created_at": "2026-08-15T23:31:31Z",
+  "started_at": "2026-08-15T23:31:48Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": ["PRM-02", "PRM-03", "PRM-04", "PRM-05"],
+    "related_handoff_ids": ["wf02-prm02-05-20260816-00-backend-dev", "wf02-prm02-05-20260816-01-code-designer", "wf02-prm02-05-20260816-01b-code-design-validator", "wf02-prm02-05-20260816-02a-backend-dev", "wf02-prm02-05-20260816-02c-security-reviewer", "wf02-prm02-05-20260816-02a-backend-dev-rework1", "wf02-prm02-05-20260816-02c-security-reviewer-rework1", "wf02-prm02-05-20260816-03-test-designer", "wf02-prm02-05-20260816-03b-test-design-validator", "wf02-prm02-05-20260816-04-test-runner", "wf02-prm02-05-20260816-05-release-validator", "wf02-prm02-05-20260816-06-doc-updater", "adhoc-bench-env-prm02-05-20260816-00-backend-dev"],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "docs/status/release-decision-WF02-prm02-05-20260816.yaml"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for WF-02 run WF02-prm02-05-20260816 (PRM-02..05 RELEASED). On branch feature/WF02-prm02-05-20260816: commit all remaining uncommitted workflow artefacts (handoffs/, docs/issue-reports/, docs/status/, docs/requirements.yaml, CHANGELOG.md, src/, migrations/, tests/), rebase onto the latest origin/main, open a PR, get it squash-merged, delete the feature branch on origin, and return to a clean main with the working tree clean. Verify the release decision at docs/status/release-decision-WF02-prm02-05-20260816.yaml is APPROVED before merging. Then release the TaskManager claim: run python \"C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py\" task/current.json --status DONE (this batch is a requirement_batch, NOT a GitHub issue — do NOT pass --close-github-issue). Record branch_name, commit_sha_list, remote_branch, pr_url (or pr_create_error), and push_status: ok in your result. Confirm the local repo is on main with a clean working tree.",
+    "acceptance_criteria": [
+      "PR opened and squash-merged to main (PR URL recorded)",
+      "feature/WF02-prm02-05-20260816 deleted on origin",
+      "Local repo on main with clean working tree",
+      "result.git_evidence: branch_name, commit_sha_list, remote_branch, pr_url, push_status ok",
+      "TaskManager batch r-co:BATCH-4c5bcf433769 released as DONE via release.py"
+    ],
+    "functions_to_call": ["fn:git-merge", "fn:register-inner-report", "fn:complete-handoff"]
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "ORCH writes DONE log entry and concludes WF02-prm02-05-20260816 once Step Final returns PASS"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

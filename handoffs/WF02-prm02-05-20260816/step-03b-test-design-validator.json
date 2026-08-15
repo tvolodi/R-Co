@@ -1,0 +1,92 @@
+{
+  "handoff_id": "wf02-prm02-05-20260816-03b-test-design-validator",
+  "run_id": "WF02-prm02-05-20260816",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-prm02-05-20260816/step-03b-test-design-validator.json",
+  "created_at": "2026-08-15T22:18:50Z",
+  "started_at": "2026-08-15T22:19:06Z",
+  "completed_at": "2026-08-15T22:57:43Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "16",
+    "requirement_ids": [
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05"
+    ],
+    "related_handoff_ids": [
+      "wf02-prm02-05-20260816-00-backend-dev",
+      "wf02-prm02-05-20260816-01-code-designer",
+      "wf02-prm02-05-20260816-01b-code-design-validator",
+      "wf02-prm02-05-20260816-02a-backend-dev",
+      "wf02-prm02-05-20260816-02c-security-reviewer",
+      "wf02-prm02-05-20260816-02a-backend-dev-rework1",
+      "wf02-prm02-05-20260816-02c-security-reviewer-rework1",
+      "wf02-prm02-05-20260816-03-test-designer"
+    ],
+    "artifacts_in": [
+      "src/design/prm02-05-promotion-approval-pipeline.md",
+      "tests/specs/PRM-02.md",
+      "tests/specs/PRM-03.md",
+      "tests/specs/PRM-04.md",
+      "tests/specs/PRM-05.md",
+      "docs/requirements.yaml"
+    ],
+    "branch_name": "feature/WF02-prm02-05-20260816"
+  },
+  "task": {
+    "description": "Validate the TEST-DESIGNER output for WF-02 run WF02-prm02-05-20260816 (requirements PRM-02..05, all MUST, stage 16, promotion pipeline). This is a HARD GATE — TEST-RUNNER must not start until you return PASS. Read the test specs at tests/specs/PRM-02..05.md and the test source files on branch feature/WF02-prm02-05-20260816. Verify: every MUST requirement (PRM-02..05) has a runnable integration test; no test coverage is deferred (note: TEST-DESIGNER flagged PRM05-AC4-COVERAGE as structurally covered since the provisioning entry point isn't wired this batch — assess whether that satisfies 'no deferred coverage' or is an acceptable structural cover with the design's OQ-4); fixtures are isolated; tests are self-sufficient; test files are wired into the integration harness build steps; and no SkipZigTest on MUST tests without a counterpart. Report PASS or FAIL with specific checklist items.",
+    "acceptance_criteria": [
+      "Every MUST requirement PRM-02..05 has a runnable integration test",
+      "No test coverage deferred without justification",
+      "Fixtures isolated and tests self-sufficient",
+      "Tests wired into the integration harness",
+      "No SkipZigTest on MUST tests without a counterpart",
+      "Verdict PASS or FAIL with specific checklist items"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 3b test design gate PASS. Every MUST requirement PRM-02..05 has a runnable integration test (52 total: prm02 8/8, prm03 11/11, prm04 13/13, prm05 13/13, promotion_reviews umbrella 7/7; EXIT=0 per TEST-DESIGNER and confirmed by TDV verification). No deferred coverage: PRM05-AC4 positive path assessed as acceptable structural cover via design OQ-4 (negative path tested). Fixtures isolated (random UUIDs), self-sufficient (MissingTestDatabaseUrl guard), wired into test-integration-prm0X build steps, no SkipZigTest on MUST tests.",
+    "artifacts_out": [
+      "tests/specs/PRM-02.md",
+      "tests/specs/PRM-03.md",
+      "tests/specs/PRM-04.md",
+      "tests/specs/PRM-05.md",
+      "tests/integration/prm02_conflict_test.zig",
+      "tests/integration/prm03_digest_test.zig",
+      "tests/integration/prm04_review_sm_test.zig",
+      "tests/integration/prm05_review_gate_test.zig",
+      "tests/integration/promotion_reviews_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Transparency: TEST-DESIGN-VALIDATOR ran `zig fmt` on tests/integration/prm02_conflict_test.zig and tests/integration/promotion_reviews_test.zig (Unblock-Everything: `zig build check` was red on fmt before formatting). Mechanical, semantics-preserving; BACKEND-DEV to note at Step Final gate.",
+        "affected_requirement": null
+      },
+      {
+        "severity": "MINOR",
+        "description": "TEST-DESIGNER handoff did not note fail-first status for the rewritten prm0X test files (pre-existing tests never compiled on main, so fail-first is ill-defined for rewritten files).",
+        "affected_requirement": null
+      },
+      {
+        "severity": "MINOR",
+        "description": "PRM05-AC4 positive path (pre-vetted template via separate provisioning entry point) tracked as follow-up until that entry point is wired (design OQ-4). Negative path covered by TC-PRM-05-08/09/13.",
+        "affected_requirement": "PRM-05"
+      }
+    ],
+    "next_action": "ORCH re-runs SECURITY-REVIEWER on the accumulated diff (incl. TEST-DESIGNER production fixes), then routes to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

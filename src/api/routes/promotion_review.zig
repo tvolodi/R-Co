@@ -12,6 +12,7 @@
 //!   src/design/prm-05-non-skippable-approval-gate.md
 
 const std = @import("std");
+const builtin = @import("builtin");
 const pool_mod = @import("pool");
 const auth = @import("../middleware/auth.zig");
 const plan_mod = @import("../../definition/promotion_plan.zig");
@@ -262,8 +263,9 @@ pub fn handleGetPromotionContext(
         .superseded => "superseded",
     };
 
+    // timestampToIso returns a compile-time constant string literal, so it must
+    // NOT be freed — allocator.free on a literal is a segmentation fault.
     const created_at_iso = timestampToIso(r.created_at);
-    defer allocator.free(created_at_iso);
 
     // PRM-05 AC5: the context response carries the stored plan, `assertions[]`,
     // the `NEEDS_REVIEW` package and `plan_digest` in one document. The
@@ -667,7 +669,8 @@ fn buildContextAssertionsAndPackage(
         };
     };
     const arr: []const std.json.Value = switch (parsed.value) {
-        .array => |a| a,
+        // Zig 0.16: std.json.Value.array is std.json.Array (unmanaged ArrayList).
+        .array => |a| a.items,
         else => &.{},
     };
 
@@ -768,11 +771,29 @@ fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []con
     try buf.append(allocator, '"');
 }
 
+/// Fill buf with cryptographically secure random bytes (platform-aware,
+/// thread-safe). Replaces std.crypto.random, which was removed in Zig 0.16
+/// (mirrors src/api/routes/onboarding.zig's fillRandom).
+fn fillRandom(buf: []u8) void {
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS — add a platform branch"),
+    }
+}
+
 /// Generate a synthetic UUID string for a promotion_id.
 /// Uses a simple format: a random UUID v4 string.
 fn genUuidStr(buf: *[36]u8) []const u8 {
     const hex_chars = "0123456789abcdef";
-    const uuid_bytes = std.crypto.random.bytes(16);
+    var uuid_bytes: [16]u8 = undefined;
+    fillRandom(&uuid_bytes);
     var j: usize = 0;
     for (uuid_bytes, 0..) |b, i| {
         buf[j] = hex_chars[b >> 4];
@@ -792,15 +813,10 @@ fn genUuidStr(buf: *[36]u8) []const u8 {
 
 /// Convert a Unix timestamp (seconds) to ISO 8601 string.
 fn timestampToIso(ts: i64) []const u8 {
+    _ = ts;
     // This is a simplified version; in production use std.time.Tm for full formatting.
-    // Return an approximate ISO string; caller must free.
-    // For now, return "1970-01-01T00:00:00Z" placeholder — the real implementation
-    // would use std.time.Tm but requires a more complex approach in this context.
-    // We use a thread-local buffer approach similar to other codebase patterns.
-    var buf: [30]u8 = undefined;
-    const len = std.fmt.formatIntBuf(buf[0..], ts, 10, false, .{});
-    // Format as Unix epoch — actual ISO conversion needs std.time.
-    // Return the raw number as string for now (caller sees this is a rough implementation).
-    _ = len;
+    // For now, return a fixed ISO placeholder — the real implementation would use
+    // std.time.Tm but requires a more complex approach in this context.
+    // (std.fmt.formatIntBuf was removed in Zig 0.16 and the value was unused.)
     return "1970-01-01T00:00:00Z"; // TODO: proper ISO formatting
 }

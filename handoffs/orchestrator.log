@@ -1737,3 +1737,6 @@
 2026-08-15T23:19:12Z | TEST_PASS | WF02-prm02-05-20260816 | wf02-prm | TEST-RUNNER | Step 4 PASS — prm02 8/8, prm03 11/11, prm04 7/7+13/13, prm05 13/13, tnt 34/34, zig build check 0; fixed TC-PRM-02-05 advisory-lock deadlock (Unblock-Everything)
 2026-08-15T23:20:31Z | ROUTE | WF-02 | wf02-prm02-05-20260816-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING (Step 05: release validation for PRM-02..05)
 2026-08-15T23:23:36Z | RELEASE_PASS | WF02-prm02-05-20260816 | wf02-prm | RELEASE-VALIDATOR | Step 5 PASS — PRM-02..05 APPROVED stage 16 (build check 0; prm02 8/8, prm03 11/11, prm04 7/7+13/13, prm05 13/13, tnt 34/34); decision docs/status/release-decision-WF02-prm02-05-20260816.yaml
+2026-08-15T23:26:30Z | ROUTE | WF-02 | wf02-prm02-05-20260816-06-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 06: mark PRM-02..05 RELEASED, CHANGELOG)
+2026-08-15T23:30:31Z | DOC_UPDATE | WF02-prm02-05-20260816 | wf02-prm | DOC-UPDATER | Step 6 PASS — PRM-02..05 RELEASED (docs/requirements.yaml + requirement_status.yaml regenerated + CHANGELOG [Unreleased]); release decision APPROVED; Step Final git-merge is a separate BACKEND-DEV handoff
+2026-08-15T23:31:31Z | ROUTE | WF-02 | wf02-prm02-05-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: git-merge -- PR + squash-merge + branch cleanup + TaskManager release)

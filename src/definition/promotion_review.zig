@@ -162,6 +162,9 @@ pub fn approveReview(
     errdefer conn.rollback() catch {};
 
     // Optimistic-locked transition; RETURNING the row fields the event needs.
+    const row_version_str = try fmtInt(allocator, expected_row_version);
+    defer allocator.free(row_version_str);
+
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
@@ -170,10 +173,10 @@ pub fn approveReview(
         \\    approved_at = now(),
         \\    row_version = row_version + 1,
         \\    updated_at = now()
-        \\WHERE id = $2::uuid AND row_version = $3
+        \\WHERE id = $2::uuid AND row_version = $3 AND status = 'pending_review'
         \\RETURNING tenant_id::text, plan_digest, def_type, def_id
     ,
-        &[_][]const u8{ actor_id, review_id, try fmtInt(allocator, expected_row_version) },
+        &[_][]const u8{ actor_id, review_id, row_version_str },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
         else => ReviewTransitionError.TransactionFailed,
@@ -232,16 +235,19 @@ pub fn rejectReview(
     };
     defer pool.release(conn);
 
+    const row_version_str = try fmtInt(allocator, expected_row_version);
+    defer allocator.free(row_version_str);
+
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
         \\SET status = 'rejected',
         \\    row_version = row_version + 1,
         \\    updated_at = now()
-        \\WHERE id = $1::uuid AND row_version = $2
+        \\WHERE id = $1::uuid AND row_version = $2 AND status = 'pending_review'
         \\RETURNING id
     ,
-        &[_][]const u8{ review_id, try fmtInt(allocator, expected_row_version) },
+        &[_][]const u8{ review_id, row_version_str },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
         else => ReviewTransitionError.TransactionFailed,
@@ -297,16 +303,19 @@ pub fn markReviewApplied(
     errdefer conn.rollback() catch {};
 
     // Optimistic-locked transition; RETURNING the row fields the event needs.
+    const row_version_str = try fmtInt(allocator, expected_row_version);
+    defer allocator.free(row_version_str);
+
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
         \\SET status = 'applied',
         \\    row_version = row_version + 1,
         \\    updated_at = now()
-        \\WHERE id = $1::uuid AND row_version = $2
+        \\WHERE id = $1::uuid AND row_version = $2 AND status = 'approved'
         \\RETURNING tenant_id::text, plan_digest, def_type, def_id
     ,
-        &[_][]const u8{ review_id, try fmtInt(allocator, expected_row_version) },
+        &[_][]const u8{ review_id, row_version_str },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
         else => ReviewTransitionError.TransactionFailed,
@@ -366,16 +375,19 @@ pub fn markReviewFailed(
     };
     defer pool.release(conn);
 
+    const row_version_str = try fmtInt(allocator, expected_row_version);
+    defer allocator.free(row_version_str);
+
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
         \\SET status = 'failed',
         \\    row_version = row_version + 1,
         \\    updated_at = now()
-        \\WHERE id = $1::uuid AND row_version = $2
+        \\WHERE id = $1::uuid AND row_version = $2 AND status = 'approved'
         \\RETURNING id
     ,
-        &[_][]const u8{ review_id, try fmtInt(allocator, expected_row_version) },
+        &[_][]const u8{ review_id, row_version_str },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
         else => ReviewTransitionError.TransactionFailed,
@@ -417,6 +429,9 @@ pub fn supersedeReview(
     };
     defer pool.release(conn);
 
+    const row_version_str = try fmtInt(allocator, expected_row_version);
+    defer allocator.free(row_version_str);
+
     const result = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews
@@ -424,10 +439,10 @@ pub fn supersedeReview(
         \\    superseded_by = $1::uuid,
         \\    row_version = row_version + 1,
         \\    updated_at = now()
-        \\WHERE id = $2::uuid AND row_version = $3
+        \\WHERE id = $2::uuid AND row_version = $3 AND status <> 'superseded'
         \\RETURNING id
     ,
-        &[_][]const u8{ superseding_review_id, review_id, try fmtInt(allocator, expected_row_version) },
+        &[_][]const u8{ superseding_review_id, review_id, row_version_str },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => ReviewTransitionError.PoolExhausted,
         else => ReviewTransitionError.TransactionFailed,
@@ -495,8 +510,12 @@ pub fn getReview(
     else
         null;
 
-    const created_at_raw = r[13] orelse "0";
-    const updated_at_raw = r[14] orelse "0";
+    // Column order (0-based) from the SELECT above: 0 id, 1 tenant_id,
+    // 2 plan_digest, 3 def_type, 4 def_id, 5 serialised_plan, 6 status,
+    // 7 requested_by, 8 approved_by, 9 approved_at, 10 superseded_by,
+    // 11 row_version, 12 created_at, 13 updated_at.
+    const created_at_raw = r[12] orelse "0";
+    const updated_at_raw = r[13] orelse "0";
 
     return ReviewRecord{
         .id = allocator.dupe(u8, r[0] orelse "") catch return error.OutOfMemory,
@@ -509,8 +528,8 @@ pub fn getReview(
         .requested_by = allocator.dupe(u8, r[7] orelse "") catch return error.OutOfMemory,
         .approved_by = if (r[8]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
         .approved_at = approved_at,
-        .superseded_by = if (r[11]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
-        .row_version = std.fmt.parseInt(u32, r[12] orelse "1", 10) catch 1,
+        .superseded_by = if (r[10]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
+        .row_version = std.fmt.parseInt(u32, r[11] orelse "1", 10) catch 1,
         .created_at = std.fmt.parseInt(i64, created_at_raw, 10) catch 0,
         .updated_at = std.fmt.parseInt(i64, updated_at_raw, 10) catch 0,
     };
