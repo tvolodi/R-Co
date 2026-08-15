@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS public.solution_pack_installs (
         UNIQUE (tenant_id, pack_id, installed_version)
 );
 
-CREATE INDEX IF NOT EXISTS public.idx_solution_pack_installs_tenant_pack
+CREATE INDEX IF NOT EXISTS idx_solution_pack_installs_tenant_pack
     ON public.solution_pack_installs (tenant_id, pack_id);
 
 CREATE TABLE IF NOT EXISTS public.solution_pack_artefact_bases (
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.solution_pack_artefact_bases (
         UNIQUE (install_id, artefact_id)
 );
 
-CREATE INDEX IF NOT EXISTS public.idx_solution_pack_artefact_bases_install
+CREATE INDEX IF NOT EXISTS idx_solution_pack_artefact_bases_install
     ON public.solution_pack_artefact_bases (install_id);
 
 CREATE TABLE IF NOT EXISTS public.pack_update_resolutions (
@@ -61,5 +61,5 @@ CREATE TABLE IF NOT EXISTS public.pack_update_resolutions (
         UNIQUE (tenant_id, pack_id, incoming_version, artefact_id)
 );
 
-CREATE INDEX IF NOT EXISTS public.idx_pack_update_resolutions_lookup
+CREATE INDEX IF NOT EXISTS idx_pack_update_resolutions_lookup
     ON public.pack_update_resolutions (tenant_id, pack_id, incoming_version);
