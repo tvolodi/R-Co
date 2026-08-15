@@ -1650,3 +1650,4 @@
 2026-08-15T17:28:59Z | COMPLETED | WF02-plc-batch-b-20260815 | t-runner | TEST-RUNNER | COMPLETED PASS — test-integration-spc01 10/10, zig build test 884/884, zig build OK; report tests/reports/report-2026-08-15-WF02-plc-batch-b-20260815-step04.yaml
 2026-08-15T17:31:18Z | ROUTE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING
 2026-08-15T17:36:40Z | COMPLETED | WF02-plc-batch-b-20260815 | WF02-plc | RELEASE-VALIDATOR | step-05 release APPROVED for stage 15 (SPC-01, SPC-02); artifacts: docs/status/release-decision-WF02-plc-batch-b-20260815.yaml
+2026-08-15T17:38:05Z | ROUTE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-06-doc-updater | ORCH -> DOC-UPDATER | PENDING
