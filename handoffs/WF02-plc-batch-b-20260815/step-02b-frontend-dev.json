@@ -1,0 +1,25 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-02b-frontend-dev",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "FRONTEND-DEV",
+  "agent_name": "BPM Frontend Dev (FRONTEND-DEV)",
+  "step": "02b",
+  "created_at": "2026-08-15T16:08:09Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "result": null,
+  "task": {
+    "description": "Implement the frontend (React/TypeScript) portion of SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nDESIGN: src/design/spc-01-sub-process-interface-contract.md (commit 3a173a5d, PASSED Step 01b gate) — see §TypeScript types and §Frontend surface\n\nREQUIREMENTS:\n- SPC-01: Declared input/output contract for SUB_PROCESS nodes\n- SPC-02: Contract validated at definition-time (client-side mirror of the 422 rule)\n\nFRONTEND SCOPE (per design §Frontend surface):\n1. TypeScript types for the `interface` object (inputs/outputs: {name, json_schema, required}) in web/src/types/api.ts (or the design-specified location)\n2. Interface editor in the SUB_PROCESS node PropertyPanel (web/src/.../PropertyPanel.tsx) — add/edit/remove input and output entries with name, json_schema, required toggle\n3. Client-side validation mirror for SPC-02 (well-formed JSON Schema check before submit, aligned with the backend 422 rule)\n4. Ensure the definition editor round-trips the interface attributes on save/load\n\nVerify: npm run build passes (tsc -b && vite build); type-check clean; lint clean (per lint_frontend_conventions).\n\nfn: none",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV"
+}

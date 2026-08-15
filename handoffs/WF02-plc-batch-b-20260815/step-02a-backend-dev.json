@@ -1,0 +1,25 @@
+{
+  "handoff_id": "WF02-plc-batch-b-20260815-02a-backend-dev",
+  "run_id": "WF02-plc-batch-b-20260815",
+  "agent_id": "BACKEND-DEV",
+  "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+  "step": "02a",
+  "created_at": "2026-08-15T16:08:09Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "result": null,
+  "task": {
+    "description": "Implement the backend (Zig) portion of SPC-01 and SPC-02 (WF-02 Batch B).\n\nBRANCH: feature/WF02-plc-batch-b-20260815\n\nDESIGN: src/design/spc-01-sub-process-interface-contract.md (commit 3a173a5d, PASSED Step 01b gate)\n\nREQUIREMENTS:\n- SPC-01: Declared input/output contract for SUB_PROCESS nodes (filtered variable copy-in on activation, filtered merge-back on completion, EE-10 error transitions for missing/invalid inputs and missing required outputs; EXT-05 backward-compatible when interface omitted)\n- SPC-02: Definition-time validation — every json_schema under inputs/outputs must be a well-formed JSON Schema, else HTTP 422\n\nBACKEND SCOPE (per design §Public interface + §Runtime semantics + §SPC-02):\n1. Create src/definition/sub_process_interface.zig — the `interface` object data model (inputs/outputs: {name, json_schema, required}), parse + validate helpers\n2. Runtime: filtered copy-in of named+valid inputs into child initial variable map on SUB_PROCESS activation; filtered merge-back of named outputs on child completion (EE-09); empty-inputs -> empty map; no-interface -> EXT-05 unchanged\n3. EE-10 error transitions: SUB_PROCESS_MISSING_REQUIRED_INPUT, SUB_PROCESS_INPUT_SCHEMA_VIOLATION, SUB_PROCESS_MISSING_REQUIRED_OUTPUT, SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION (with atomicity / no-orphan-child)\n4. Definition-time validation hook in checkSubProcess (PD-05, after PD-02) using src/tools/json_schema.zig well-formedness rule; HTTP 422 with node + offending schema identification\n5. If a migration is needed (e.g. persisting interface attributes on definition nodes), add it following migration scope rules\n\nVerify: zig build compiles; zig build test passes for affected unit tests.\n\nfn: none",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-b-20260815",
+  "requirements": [
+    "SPC-01",
+    "SPC-02"
+  ],
+  "stage": "stage15",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
+}
