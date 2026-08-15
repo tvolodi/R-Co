@@ -5,7 +5,7 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/785",
   "github_issue_confirmed": true,
   "title": "migrations 1156/1157: '-- Scope:' (uppercase S) silently misclassified by case-sensitive migrationScope parser",
-  "status": "RESOLVED",
+  "status": "REOPENED",
   "severity": "BLOCKER",
   "workflow_id": "WF02-plc-batch-a-20260815",
   "run_id": "WF02-plc-batch-a-20260815",
@@ -50,6 +50,19 @@
       "status": "PASS",
       "completed_at": "2026-08-15T05:55:00Z",
       "summary": "Lowercased -- Scope: -> -- scope: in both 1156 and 1157 line 20. Verified by audit grep (only lowercase headers remain) and zig build migrate against BPM_TEST_DB_URL (No new migrations to apply.; no column tenant_id error). Committed as ae0840b3 on feature/WF02-plc-batch-a-20260815 and pushed."
+    },
+    {
+      "step": "step-05-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH785-20260815",
+      "handoff_id": "WF03-GH785-20260815-05-issue-fixer",
+      "status": "REOPENED",
+      "completed_at": "2026-08-15T20:36:27Z",
+      "trigger": "verification_gap",
+      "context": "GH-785 still OPEN at GitHub; the only unchecked acceptance criterion -- 'TEST-RUNNER retry 6 - full PLC integration suite green' -- has not yet been confirmed. Fix is on main via 51170eed and 47d4c7c9 (commit ae0840b3 on branch feature/WF02-plc-batch-a-20260815). Verification remaining.",
+      "summary": "Reopened ISS-0703 for WF-03 verification run: GH-785 still OPEN at GitHub because the 'TEST-RUNNER retry 6 -- full PLC integration suite green' acceptance criterion is unchecked. Fix is on main (commits 51170eed, 47d4c7c9); verification remaining."
     }
-  ]
+  ],
+  "reopened_at": "2026-08-15T20:36:27Z",
+  "reopened_by": "ISSUE-FIXER (WF03-GH785-20260815 step-0.5)"
 }

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-15T18:51:13Z",
+  "last_updated": "2026-08-15T20:36:27Z",
   "next_issue_id": 707,
   "issues": [
     {
@@ -2552,7 +2552,7 @@
       "id": "ISS-0703",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/785",
       "severity": "BLOCKER",
-      "status": "RESOLVED",
+      "status": "REOPENED",
       "title": "migrations 1156/1157: '-- Scope:' (uppercase S) silently misclassified by case-sensitive migrationScope parser",
       "run_id": "WF02-plc-batch-a-20260815",
       "workflow_id": "WF02-plc-batch-a-20260815",
@@ -2569,7 +2569,11 @@
         "migrations/1156_prm06_promotion_assertion_runs.sql",
         "migrations/1157_prm09_solution_pack_update.sql",
         "src/db/migrations.zig"
-      ]
+      ],
+      "reopened_at": "2026-08-15T20:36:27Z",
+      "reopened_by": "ISSUE-FIXER (WF03-GH785-20260815 step-0.5)",
+      "latest_run_id": "WF03-GH785-20260815",
+      "latest_handoff_id": "WF03-GH785-20260815-05-issue-fixer"
     },
     {
       "id": "ISS-0705",
