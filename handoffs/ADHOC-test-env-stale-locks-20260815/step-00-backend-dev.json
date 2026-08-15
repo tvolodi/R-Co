@@ -58,5 +58,7 @@
       }
     ],
     "next_action": "Route to ORCH: verify_test_env now HEALTHY (exit 0, all 10 checks PASS). ORCH may now dispatch WF03-GH785 Step 5 (TEST-RUNNER). Side note: the killed `zig build test-integration` was running unattended for ~50 minutes - ORCH may want to check session/agent logs to identify which prior agent left it running and whether it was expected work or an orphan."
-  }
+  },
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV"
 }
