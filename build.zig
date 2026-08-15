@@ -2,7 +2,6 @@ const std = @import("std");
 // ISS-0161 / GH #485: LuaJIT static build (LUA-01). See vendor/luajit/build.zig
 // for the three-stage bootstrap and the two toolchain workarounds it needs.
 const luajit_build = @import("vendor/luajit/build.zig");
-
 /// ISS-0148 (GitHub #477): construct a run artifact for an integration/regression
 /// test binary with the test-database cleanup sweep attached as a true ordering
 /// PREDECESSOR.
@@ -2390,12 +2389,7 @@ pub fn build(b: *std.Build) void {
     // configured cap as part of the integration-test step's diagnostic
     // metadata). The build-time value is consumed by the `_ = ` assignment
     // below; the wrapper scripts apply the cap at invocation time.
-    const test_integration_jobs = b.option(u32, "test-integration-jobs", "Max parallel integration-test binaries (overrides BPM_TEST_INTEGRATION_JOB_CAP when unset)") orelse blk: {
-        const environ = std.process.Environ{ .block = .global };
-        const cap_str = environ.getAlloc(b.allocator, "BPM_TEST_INTEGRATION_JOB_CAP") catch "8";
-        const cap = std.fmt.parseInt(u32, std.mem.trim(u8, cap_str, " \t"), 10) catch 8;
-        break :blk cap;
-    };
+    const test_integration_jobs = b.option(u32, "test-integration-jobs", "Max parallel integration-test binaries (overrides BPM_TEST_INTEGRATION_JOB_CAP when unset)") orelse 8;
     _ = test_integration_jobs; // surfaced for diagnostics; cap is applied at invocation time via the wrapper script.
 
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL; scaled by -Dtest-integration-jobs or BPM_TEST_INTEGRATION_JOB_CAP)");
@@ -2911,6 +2905,34 @@ pub fn build(b: *std.Build) void {
     const test_integration_prm01_step = b.step("test-integration-prm01", "Run prm01_promotion_plan_diff_report_test.zig in isolation (requires BPM_TEST_DB_URL)");
     test_integration_prm01_step.dependOn(&clean_test_db.step);
     test_integration_prm01_step.dependOn(&run_prm01_solo_tests.step);
+    // PRM-02 (WF02-prm-batch1-20260814, Step 3): conflict resolution.
+    // See tests/specs/PRM-02.md.
+    const prm02_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm02_conflict_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm02_solo_tests = addIntegrationRun(b, prm02_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm02_step = b.step("test-integration-prm02", "Run prm02_conflict_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm02_step.dependOn(&clean_test_db.step);
+    test_integration_prm02_step.dependOn(&run_prm02_solo_tests.step);
+    // PRM-03 (WF02-prm-batch1-20260814, Step 3): digest emission.
+    // See tests/specs/PRM-03.md.
+    const prm03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm03_digest_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm03_solo_tests = addIntegrationRun(b, prm03_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm03_step = b.step("test-integration-prm03", "Run prm03_digest_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm03_step.dependOn(&clean_test_db.step);
+    test_integration_prm03_step.dependOn(&run_prm03_solo_tests.step);
     // PRM-06 + PRM-07 (WF02-prm-batch1-20260814, Step 3): pre-promotion
     // assertion re-run and sandbox teardown on every exit path.
     // ACs covered: PRM-06 AC1/AC2/AC4/AC5, PRM-07 AC1/AC2/AC4.
@@ -2986,6 +3008,35 @@ pub fn build(b: *std.Build) void {
     test_integration_prm04_step.dependOn(&clean_test_db.step);
     test_integration_prm04_step.dependOn(&run_prm04_solo_tests.step);
     test_integration_others_step.dependOn(&run_prm04_solo_tests.step);
+
+    // PRM-04 (WF02-prm-batch1-20260814, Step 3): review state machine.
+    // See tests/specs/PRM-04.md.
+    const prm04_review_sm_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm04_review_sm_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm04_review_sm_solo_tests = addIntegrationRun(b, prm04_review_sm_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm04_review_sm_step = b.step("test-integration-prm04-review-sm", "Run prm04_review_sm_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm04_review_sm_step.dependOn(&clean_test_db.step);
+    test_integration_prm04_review_sm_step.dependOn(&run_prm04_review_sm_solo_tests.step);
+    // PRM-05 (WF02-prm-batch1-20260814, Step 3): review gate.
+    // See tests/specs/PRM-05.md.
+    const prm05_review_gate_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/prm05_review_gate_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_prm05_review_gate_solo_tests = addIntegrationRun(b, prm05_review_gate_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_prm05_review_gate_step = b.step("test-integration-prm05-review-gate", "Run prm05_review_gate_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_prm05_review_gate_step.dependOn(&clean_test_db.step);
+    test_integration_prm05_review_gate_step.dependOn(&run_prm05_review_gate_solo_tests.step);
 
     // GH-758 regression: standalone pool/lock repro was intentionally left
     // un-wired in the original build graph; the lint gate treats that as a
