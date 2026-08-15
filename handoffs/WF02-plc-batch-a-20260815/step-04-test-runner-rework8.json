@@ -1,0 +1,48 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework8",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "TEST-RUNNER",
+  "agent_name": "BPM Test Runner (TEST-RUNNER)",
+  "from_agent": "ORCH",
+  "to_agent": "ORCH",
+  "step": "04",
+  "rework_of": "WF02-plc-batch-a-20260815-04-test-runner-rework7",
+  "created_at": "2026-08-15T04:57:34Z",
+  "started_at": "2026-08-15T04:57:42Z",
+  "completed_at": "2026-08-15T05:09:00Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "Ran zig build test-integration-plc on commit 2f7e4080 (post memory-leak fix). Environment PASS (backend /health/ready → 200, keycloak /health/ready → 200, db_test healthy on :5434, 145/145 migrations applied). 17/27 PLC tests pass, 10/27 fail with 4 distinct failure clusters. Per-file: plc01 6 pass / 2 fail / 2 leaks; plc02 5 pass / 1 fail / 0 leaks; plc03 1 pass / 4 fail / 0 leaks; plc04 5 pass / 3 fail / 3 leaks. Most failures are ModuleCatalogError.TransactionFailed (pool.zig:564 swallows the actual Postgres SQLSTATE/message). TC-PLC-03-05 is InterfaceNotDeclared (test seed vs production semantics mismatch); TC-PLC-04-05 is InvalidCharacter in hexToBytes (test slices grant_id_row[0..32] but UUID column returns 36 chars including dashes). Filed ISS-0705 with full diagnosis. Handoff set to FAIL; ORCH must dispatch WF-03 ISSUE-FIXER to (a) instrument pool.zig:564 to surface the swallowed Postgres error, (b) fix the PLC-04-05 test slice, (c) align the PLC-03-05 test seed with production semantics, then redispatch TEST-RUNNER for rework 9.",
+    "artifacts_out": [
+      "tests/reports/plc-retry8-output.log",
+      "tests/reports/plc-retry8-backend-start.log",
+      "tests/reports/report-2026-08-15-WF02-plc-batch-a-20260815-rework8.yaml",
+      "docs/issues/ISS-0705.json"
+    ],
+    "issues": [
+      {
+        "iss_id": "ISS-0705",
+        "severity": "BLOCKER",
+        "title": "PLC-01..04 integration tests: 10/27 still fail after rework7 memory-leak fix (commit 2f7e4080)",
+        "blocking": true
+      }
+    ],
+    "next_action": "Route to ORCH for WF-03 ISSUE-FIXER dispatch. Fix priority: (1) instrument pool.zig:564 to surface swallowed Postgres error (unblocks 7 of 10 failures), (2) align PLC-03-05 test seed with production semantics, (3) fix PLC-04-05 test slice [0..32] -> [0..36] with dash stripping. After fix, redispatch TEST-RUNNER for rework 9."
+  },
+  "task": {
+    "description": "RETRY 8 — Run PLC-01..04 tests after ISSUE-FIXER memory-leak fix.\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 2f7e4080 — memory leak fixed in 4 internal sites + 41 test sites across 5 files)\n\nENV:\n- BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test\n- BPM_TEST_URL=http://127.0.0.1:8080\n- BPM_IDP_BASE_URL=http://localhost:8081\n\nSTEPS:\n1. cd c:\\Users\\tvolo\\dev\\ai-dala\\R-Co\n2. Verify backend running on 8080 (curl http://127.0.0.1:8080/health). If not, start-backend.ps1\n3. Verify keycloak running on 8081 (curl http://localhost:8081/health). If not, restart\n4. $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://localhost:8081'\n5. zig build test-integration-plc 2>&1 | tee tests/reports/plc-retry8-output.log\n6. Capture full output with per-file pass/fail counts.\n\nExpected: All 27 PLC tests pass. Smoke already showed 0 leaks.\n\nReturn:\n- PASS if all PLC tests pass.\n- FAIL with full output and per-file breakdown if any still fail.\n\nUpdate handoff to COMPLETED with PASS/FAIL.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15",
+  "current_commit": "2f7e4080",
+  "triggered_by": {
+    "agent_id": "ISSUE-FIXER",
+    "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer-3",
+    "result": "PASS",
+    "fix_commit": "2f7e4080"
+  }
+}
