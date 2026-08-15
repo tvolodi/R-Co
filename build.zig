@@ -469,6 +469,25 @@ pub fn build(b: *std.Build) void {
     });
     const run_json_schema_tests = b.addRunArtifact(json_schema_tests);
 
+    // SPC-01/SPC-02 (WF02-plc-batch-b-20260815): src/definition/
+    // sub_process_interface.zig is a pure module (no I/O) importing only
+    // std + the `json_schema` named module, so it is its own addTest root
+    // here — exactly the json_schema.zig pattern above. Without a standalone
+    // root its in-file test blocks would compile (it is reached relatively
+    // from graph.zig in the main tree) but never run — the ISS-0133 failure
+    // mode tools/lint_test_wiring.py exists to catch.
+    const sub_process_interface_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/definition/sub_process_interface.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "json_schema", .module = json_schema_mod },
+            },
+        }),
+    });
+    const run_sub_process_interface_tests = b.addRunArtifact(sub_process_interface_tests);
+
     // ISS-0160 / GH #481: src/entities/ is reached from src/main.zig only via
     // api/routes/entities.zig, which imports definition.zig and commands.zig
     // directly — validator.zig's own test blocks were therefore in NO addTest
@@ -527,6 +546,13 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/definition/graph.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            // SPC-02: graph.zig's checkSubProcess imports
+            // sub_process_interface.zig (relative), which imports json_schema
+            // by name — so this test module must supply it, mirroring how the
+            // main/bpm modules already do.
+            .{ .name = "json_schema", .module = json_schema_mod },
+        },
     });
     // PD-02/PD-05/PD-06 graph validation unit tests, aggregated into one
     // compile unit via tests/unit/graph_test_root.zig. Reduces this group
@@ -1519,6 +1545,7 @@ pub fn build(b: *std.Build) void {
 
     test_step.dependOn(&run_event_store_tests.step);
     test_step.dependOn(&run_json_schema_tests.step);
+    test_step.dependOn(&run_sub_process_interface_tests.step); // SPC-01/SPC-02
     test_step.dependOn(&run_entities_tests.step); // ISS-0160 / GH #481
     test_step.dependOn(&run_python_interp_tests.step);
     test_step.dependOn(&run_graph_tests.step);

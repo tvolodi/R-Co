@@ -11,6 +11,7 @@ const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const snapshot_mod = @import("../definition/snapshot.zig");
+const sub_proc_iface = @import("../definition/sub_process_interface.zig");
 const task_mod = @import("../tasks/store.zig");
 const transition_mod = @import("transition.zig");
 const snapshot_writer_mod = @import("snapshot_writer.zig");
@@ -254,6 +255,21 @@ pub const ErrorType = enum {
     /// through the SAME retry-then-dead-letter path as SERVICE_TASK_FAILURE
     /// (PIN-03 AC4) — no new retry/DLQ mechanism, only a new named cause.
     PIN_MISSING,
+    /// SPC-01: a required declared input is absent from the parent variable
+    /// map at SUB_PROCESS activation. EE-10 EXECUTION_ERROR on the parent;
+    /// no child instance is created.
+    SUB_PROCESS_MISSING_REQUIRED_INPUT,
+    /// SPC-01: a declared input is present but fails its json_schema at
+    /// SUB_PROCESS activation. EE-10 EXECUTION_ERROR on the parent; no child
+    /// instance is created (no orphan).
+    SUB_PROCESS_INPUT_SCHEMA_VIOLATION,
+    /// SPC-01: a required declared output is absent from the child's final
+    /// variable map at completion. EE-10 EXECUTION_ERROR on the parent; the
+    /// merge is not applied.
+    SUB_PROCESS_MISSING_REQUIRED_OUTPUT,
+    /// SPC-01: a declared output is present but fails its json_schema at
+    /// completion. EE-10 EXECUTION_ERROR on the parent; no partial merge.
+    SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION,
 };
 
 // ---------------------------------------------------------------------------
@@ -2042,6 +2058,7 @@ pub const InstanceStore = struct {
             inst_id_hex,
             effective_state,
             emitted_events,
+            snapshot,
         );
 
         // Serialize new_state for SQL parameters (all in arena, freed at function exit).
@@ -4047,6 +4064,10 @@ fn buildExecutionErrorPayload(
         .TRANSFORM_EVALUATION_ERROR => "TRANSFORM_EVALUATION_ERROR",
         .TRANSFORM_RESULT_NON_OBJECT => "TRANSFORM_RESULT_NON_OBJECT",
         .PIN_MISSING => "PIN_MISSING",
+        .SUB_PROCESS_MISSING_REQUIRED_INPUT => "SUB_PROCESS_MISSING_REQUIRED_INPUT",
+        .SUB_PROCESS_INPUT_SCHEMA_VIOLATION => "SUB_PROCESS_INPUT_SCHEMA_VIOLATION",
+        .SUB_PROCESS_MISSING_REQUIRED_OUTPUT => "SUB_PROCESS_MISSING_REQUIRED_OUTPUT",
+        .SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION => "SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION",
     };
 
     // Helper: serialise a string as a JSON-quoted value.
@@ -4121,6 +4142,28 @@ fn buildExecutionErrorPayload(
                 defer allocator.free(node_json);
                 try buf.appendSlice(allocator, ",\"affected_node\":");
                 try buf.appendSlice(allocator, node_json);
+            }
+        },
+        // SPC-01: the four SUB_PROCESS interface contract failures. The
+        // structured reason (design §Runtime semantics — EE-10) carries the
+        // error type code, the SUB_PROCESS node_id (affected_node), the
+        // offending variable key (affected_field), and the failing constraint
+        // + JSON pointer (folded into `reason` by the call site).
+        .SUB_PROCESS_MISSING_REQUIRED_INPUT,
+        .SUB_PROCESS_INPUT_SCHEMA_VIOLATION,
+        .SUB_PROCESS_MISSING_REQUIRED_OUTPUT,
+        .SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION => {
+            if (args.affected_node) |node| {
+                const node_json = try strJson(allocator, node);
+                defer allocator.free(node_json);
+                try buf.appendSlice(allocator, ",\"affected_node\":");
+                try buf.appendSlice(allocator, node_json);
+            }
+            if (args.affected_field) |field| {
+                const field_json = try strJson(allocator, field);
+                defer allocator.free(field_json);
+                try buf.appendSlice(allocator, ",\"affected_field\":");
+                try buf.appendSlice(allocator, field_json);
             }
         },
     }
@@ -4478,6 +4521,150 @@ fn maybeInsertEscalationTimerInTx(
     ) catch return error.PersistenceFailed;
 }
 
+/// SPC-01 — compute the child's initial variable map JSON for a SUB_PROCESS
+/// activation, applying the declared `interface` contract.
+///
+/// - If the SUB_PROCESS node declares no `interface` (or the attributes are
+///   unparsable — defensive), returns the FULL parent variable map: the EXT-05
+///   legacy path, unchanged.
+/// - If it declares an `interface`, returns the FILTERED map built from
+///   `interface.inputs` (named + present + valid). `interface.inputs == []`
+///   yields an empty map.
+///
+/// On an activation-gate failure (missing required input / input schema
+/// violation) the parent MUST transition to ERROR via EE-10 with NO child
+/// instance created (no orphan). This helper rolls back the caller's
+/// transaction first — it holds the parent row lock via `FOR UPDATE NOWAIT`,
+/// so `setInstanceError`'s own `FOR UPDATE` would otherwise deadlock — then
+/// transitions the parent to ERROR in its own transaction and returns
+/// `CompleteTaskError.InstanceInError` (the caller aborts the whole task
+/// completion; nothing is committed).
+///
+/// The returned string is allocator-owned with `allocator`.
+fn buildSubProcessChildInitialVars(
+    self: *InstanceStore,
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    snapshot: snapshot_mod.DefinitionGraph,
+    parent_node_id: []const u8,
+    parent_vars: std.json.ObjectMap,
+    parent_instance_id: Uuid,
+    parent_instance_id_hex: []const u8,
+) CompleteTaskError![]u8 {
+    // Locate the SUB_PROCESS node's attributes in the parent definition
+    // snapshot (EE-01 snapshot rule).
+    var node_attributes: ?[]const u8 = null;
+    for (snapshot.nodes) |node| {
+        if (std.mem.eql(u8, node.id, parent_node_id)) {
+            node_attributes = node.attributes;
+            break;
+        }
+    }
+
+    const attrs = node_attributes orelse {
+        // No attributes → no interface → EXT-05.
+        return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+            return CompleteTaskError.OutOfMemory;
+    };
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const parsed_attrs = std.json.parseFromSlice(std.json.Value, a, attrs, .{ .allocate = .alloc_always }) catch {
+        // Attributes present but unparsable → treat as no interface (EXT-05).
+        return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+            return CompleteTaskError.OutOfMemory;
+    };
+    defer parsed_attrs.deinit();
+    if (parsed_attrs.value != .object) {
+        return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+            return CompleteTaskError.OutOfMemory;
+    }
+    const iface_val = parsed_attrs.value.object.get("interface") orelse {
+        // No interface attribute → EXT-05.
+        return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+            return CompleteTaskError.OutOfMemory;
+    };
+    if (iface_val == .null) {
+        return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+            return CompleteTaskError.OutOfMemory;
+    }
+
+    // SPC-02 guarantees the interface is well-formed at definition time, so a
+    // parse failure here is a data-integrity anomaly. Fall back to EXT-05
+    // (full map) rather than failing the activation — more permissive, never
+    // less.
+    const iface = sub_proc_iface.parseInterface(a, iface_val) catch |err| switch (err) {
+        error.OutOfMemory => return CompleteTaskError.OutOfMemory,
+        else => {
+            return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+                return CompleteTaskError.OutOfMemory;
+        },
+    };
+    defer iface.deinit(a);
+
+    var violation: ?sub_proc_iface.ContractViolation = null;
+    defer if (violation) |v| sub_proc_iface.freeContractViolation(a, v);
+
+    const child_map = blk: {
+        const m = sub_proc_iface.buildChildInitialMap(a, parent_vars, iface, &violation) catch |err| {
+            switch (err) {
+                error.OutOfMemory => return CompleteTaskError.OutOfMemory,
+                error.SubProcessMissingRequiredInput, error.SubProcessInputSchemaViolation => {
+                    // EE-10 activation gate: parent → ERROR, no child created.
+                    // Roll back the caller's tx first (it holds the parent row
+                    // lock), then transition in our own transaction.
+                    conn.rollback() catch {};
+
+                    const v = violation.?;
+                    const reason = if (v.constraint) |c|
+                        std.fmt.allocPrint(
+                            a,
+                            "{s}: value for key '{s}' violates constraint '{s}' at pointer '{s}' (SUB_PROCESS node '{s}')",
+                            .{ v.code, v.key, c, v.pointer orelse "/", parent_node_id },
+                        ) catch return CompleteTaskError.OutOfMemory
+                    else
+                        std.fmt.allocPrint(
+                            a,
+                            "{s}: required key '{s}' is missing (SUB_PROCESS node '{s}')",
+                            .{ v.code, v.key, parent_node_id },
+                        ) catch return CompleteTaskError.OutOfMemory;
+                    const vars_json = std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+                        return CompleteTaskError.OutOfMemory;
+                    defer allocator.free(vars_json);
+
+                    self.setInstanceError(allocator, SetInstanceErrorArgs{
+                        .instance_id = parent_instance_id,
+                        .error_type = if (err == error.SubProcessMissingRequiredInput)
+                            .SUB_PROCESS_MISSING_REQUIRED_INPUT
+                        else
+                            .SUB_PROCESS_INPUT_SCHEMA_VIOLATION,
+                        .affected_node = parent_node_id,
+                        .affected_field = v.key,
+                        .reason = reason,
+                        .variable_state = vars_json,
+                        .evaluated_conditions = null,
+                        .actor_id = parent_instance_id_hex,
+                    }) catch |set_err| return mapSetErrorToCompleteError(set_err);
+
+                    return CompleteTaskError.InstanceInError;
+                },
+                // The definition-time variants are unreachable here (SPC-02
+                // validated the interface). Defensive EXT-05 fallback.
+                else => {
+                    return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = parent_vars }, .{}) catch
+                        return CompleteTaskError.OutOfMemory;
+                },
+            }
+        };
+        break :blk m;
+    };
+
+    return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = child_map }, .{}) catch
+        return CompleteTaskError.OutOfMemory;
+}
+
 fn startSubProcessesForPendingEventsInTx(
     self: *InstanceStore,
     allocator: std.mem.Allocator,
@@ -4486,6 +4673,7 @@ fn startSubProcessesForPendingEventsInTx(
     parent_instance_id_hex: []const u8,
     state: transition_mod.InstanceState,
     emitted_events: []const transition_mod.EmittedEvent,
+    snapshot: snapshot_mod.DefinitionGraph,
 ) CompleteTaskError!transition_mod.InstanceState {
     const next_state = state;
 
@@ -4495,12 +4683,22 @@ fn startSubProcessesForPendingEventsInTx(
             .sub_process_start => |sp| {
                 const child_definition_id = parseUuid(sp.child_definition_id) catch return CompleteTaskError.TransitionFailed;
 
-                const parent_vars_json = std.json.Stringify.valueAlloc(
+                // SPC-01: resolve the effective interface for this SUB_PROCESS
+                // node and build the FILTERED child initial variable map. No
+                // interface → EXT-05 (full parent map). On an activation-gate
+                // failure the parent is transitioned to ERROR here and no child
+                // instance is created.
+                const child_initial_vars_json = try buildSubProcessChildInitialVars(
+                    self,
                     allocator,
-                    std.json.Value{ .object = state.variables },
-                    .{},
-                ) catch return CompleteTaskError.OutOfMemory;
-                defer allocator.free(parent_vars_json);
+                    conn,
+                    snapshot,
+                    sp.parent_node_id,
+                    state.variables,
+                    parent_instance_id,
+                    parent_instance_id_hex,
+                );
+                defer allocator.free(child_initial_vars_json);
 
                 // PIN-04 AC2/AC3: createWithParentInheritance() merges the
                 // child's own PinResolver.resolve() output against the
@@ -4513,7 +4711,7 @@ fn startSubProcessesForPendingEventsInTx(
                     allocator,
                     child_definition_id,
                     null,
-                    parent_vars_json,
+                    child_initial_vars_json,
                     parent_instance_id,
                 ) catch |err| switch (err) {
                     InstanceError.PoolExhausted => return CompleteTaskError.PoolExhausted,
@@ -4657,6 +4855,106 @@ fn propagateChildCompletionToParent(
     defer parsed_parent_vars.deinit();
     if (parsed_parent_vars.value != .object) return CompleteTaskError.PersistenceFailed;
 
+    // ── SPC-01: filtered merge-back of declared outputs (EE-09) ────────────
+    // If the SUB_PROCESS node declares an `interface`, only the present +
+    // valid named outputs are merged; unlisted child variables are discarded.
+    // No interface → EXT-05 legacy (full child final map merge, unchanged).
+    const child_output_map = blk: {
+        // Load the parent definition snapshot to read the SUB_PROCESS node's
+        // attributes (EE-01 snapshot rule). A missing snapshot is treated as
+        // EXT-05 (defensive) — the merge must not fail on introspection.
+        const snapshot_obj = self.snapshot_store.getByInstanceId(
+            a,
+            parseUuid(parent_instance_id_hex) catch return CompleteTaskError.PersistenceFailed,
+        ) catch |snap_err| switch (snap_err) {
+            snapshot_mod.SnapshotError.PoolExhausted => return CompleteTaskError.PoolExhausted,
+            else => break :blk child_variables,
+        };
+        defer snapshot_mod.freeSnapshot(a, snapshot_obj);
+
+        var node_attributes: ?[]const u8 = null;
+        for (snapshot_obj.graph.nodes) |node| {
+            if (std.mem.eql(u8, node.id, parent_node_id)) {
+                node_attributes = node.attributes;
+                break;
+            }
+        }
+        const attrs = node_attributes orelse break :blk child_variables; // no interface → EXT-05
+
+        const parsed_attrs = std.json.parseFromSlice(std.json.Value, a, attrs, .{ .allocate = .alloc_always }) catch
+            break :blk child_variables;
+        defer parsed_attrs.deinit();
+        if (parsed_attrs.value != .object) break :blk child_variables;
+        const iface_val = parsed_attrs.value.object.get("interface") orelse break :blk child_variables;
+        if (iface_val == .null) break :blk child_variables;
+
+        // SPC-02 guarantees well-formedness at definition time; a parse
+        // failure here is a data-integrity anomaly → defensive EXT-05 fallback.
+        const iface = sub_proc_iface.parseInterface(a, iface_val) catch |err| switch (err) {
+            error.OutOfMemory => return CompleteTaskError.OutOfMemory,
+            else => break :blk child_variables,
+        };
+        defer iface.deinit(a);
+
+        var violation: ?sub_proc_iface.ContractViolation = null;
+        defer if (violation) |v| sub_proc_iface.freeContractViolation(a, v);
+
+        const filtered = sub_proc_iface.selectAndValidateOutputs(a, child_variables, iface, &violation) catch |err| {
+            switch (err) {
+                error.OutOfMemory => return CompleteTaskError.OutOfMemory,
+                error.SubProcessMissingRequiredOutput, error.SubProcessOutputSchemaViolation => {
+                    // EE-10 completion gate: the parent transitions to ERROR
+                    // and the merge is NOT applied (no partial merge). Roll
+                    // back the merge transaction first (it holds the parent
+                    // row lock), then transition in our own transaction.
+                    conn.rollback() catch {};
+
+                    const v = violation.?;
+                    const reason = if (v.constraint) |c|
+                        std.fmt.allocPrint(
+                            a,
+                            "{s}: value for key '{s}' violates constraint '{s}' at pointer '{s}' (SUB_PROCESS node '{s}')",
+                            .{ v.code, v.key, c, v.pointer orelse "/", parent_node_id },
+                        ) catch return CompleteTaskError.OutOfMemory
+                    else
+                        std.fmt.allocPrint(
+                            a,
+                            "{s}: required key '{s}' is missing (SUB_PROCESS node '{s}')",
+                            .{ v.code, v.key, parent_node_id },
+                        ) catch return CompleteTaskError.OutOfMemory;
+
+                    self.setInstanceError(allocator, SetInstanceErrorArgs{
+                        .instance_id = parseUuid(parent_instance_id_hex) catch return CompleteTaskError.PersistenceFailed,
+                        .error_type = if (err == error.SubProcessMissingRequiredOutput)
+                            .SUB_PROCESS_MISSING_REQUIRED_OUTPUT
+                        else
+                            .SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION,
+                        .affected_node = parent_node_id,
+                        .affected_field = v.key,
+                        .reason = reason,
+                        .variable_state = parent_vars_json,
+                        .evaluated_conditions = null,
+                        .actor_id = parent_instance_id_hex,
+                    }) catch |set_err| return mapSetErrorToCompleteError(set_err);
+
+                    // Mark the subprocess link terminal so the WAITING row does
+                    // not dangle after the parent ERROR.
+                    conn.exec(
+                        \\UPDATE subprocess_links
+                        \\SET status = 'ERROR', completed_at = NOW()
+                        \\WHERE child_instance_id = $1::uuid
+                    ,
+                        &.{child_instance_id_hex},
+                    ) catch {};
+
+                    return;
+                },
+                else => break :blk child_variables, // defensive EXT-05 fallback
+            }
+        };
+        break :blk filtered;
+    };
+
     var violation_detail: ?SchemaViolationDetail = null;
     var merge_result = self.mergeVariables(
         allocator,
@@ -4665,7 +4963,7 @@ fn propagateChildCompletionToParent(
         parseUuid(parent_instance_id_hex) catch return CompleteTaskError.PersistenceFailed,
         null,
         parsed_parent_vars.value.object,
-        child_variables,
+        child_output_map,
         &violation_detail,
     ) catch return CompleteTaskError.PersistenceFailed;
     defer merge_result.merged.deinit(allocator);

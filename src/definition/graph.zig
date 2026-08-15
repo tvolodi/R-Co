@@ -7,6 +7,7 @@
 //!
 //! Design artefact: src/design/definition.md
 const std = @import("std");
+const sub_proc_iface = @import("sub_process_interface.zig");
 
 // ---------------------------------------------------------------------------
 // Limits  (CHK-07, CHK-08)
@@ -917,6 +918,47 @@ fn checkSubProcess(
             "SUB_PROCESS_MISSING_CHILD_DEFINITION_ID",
             "Node '{s}' (SUB_PROCESS) is missing required attribute 'child_definition_id'",
             .{node.id},
+        );
+    }
+
+    // SPC-02: validate the optional `interface` attribute (PD-05, after PD-02).
+    // A node that omits `interface` behaves exactly as EXT-05 (full map copy
+    // out / full map merge back). An explicit JSON null is treated as absent.
+    if (obj.get("interface")) |iface_val| {
+        if (iface_val != .null) {
+            try checkSubProcessInterface(allocator, violations, node, iface_val);
+        }
+    }
+}
+
+/// SPC-02 — validate a SUB_PROCESS node's `interface` attribute and report
+/// EVERY offending entry as a graph Violation (HTTP 422 on definition
+/// create/update). Each violation names the node, direction, entry name, and
+/// an RFC 6901 pointer to the offending field so an operator can locate the
+/// defect without parsing the whole definition.
+fn checkSubProcessInterface(
+    allocator: std.mem.Allocator,
+    violations: *std.ArrayList(Violation),
+    node: GraphNode,
+    iface_val: std.json.Value,
+) GraphError!void {
+    var ivs: std.ArrayList(sub_proc_iface.InterfaceViolation) = .empty;
+    defer {
+        sub_proc_iface.freeInterfaceViolations(allocator, ivs.items);
+        ivs.deinit(allocator);
+    }
+    sub_proc_iface.collectInterfaceViolations(allocator, iface_val, &ivs) catch |err| switch (err) {
+        error.OutOfMemory => return error.OutOfMemory,
+    };
+
+    for (ivs.items) |iv| {
+        const direction = if (iv.direction.len == 0) "interface" else iv.direction;
+        try addViolation(
+            allocator,
+            violations,
+            iv.code,
+            "Node '{s}' (SUB_PROCESS) {s} entry '{s}': {s} (at {s})",
+            .{ node.id, direction, iv.name, iv.message, iv.pointer },
         );
     }
 }
