@@ -1,0 +1,59 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-06-doc-updater",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "DOC-UPDATER",
+  "agent_name": "BPM Doc Updater (DOC-UPDATER)",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "step": "06",
+  "rework_of": null,
+  "created_at": "2026-08-15T05:56:47Z",
+  "started_at": "2026-08-15T05:56:50Z",
+  "completed_at": "2026-08-15T06:01:19Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "WF-02 Step 6 DOC-UPDATER for PLC-01..04: status advanced VALIDATED->RELEASED via reqctl set-status (--implemented-in populated, --note per req). docs/status/requirement_status.yaml regenerated (463 entries). CHANGELOG.md prepended with stage-15 PLC release entry (mirrors SOL-01..03 / PRM-02..05 entry shape). Inner-report written; registry cleanup archived 10 terminal entries to handoffs/WF02-plc-batch-a-20260815/registry.json; orchestrator.log appended +1 line (UTF-8, no shrink). Branch pushed to origin; PR opened (Step Final squash-merge deferred to BACKEND-DEV dispatch).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "docs/issue-reports/WF02-plc-batch-a-20260815-step-06-doc-updater-INNER-REPORT.json",
+      "handoffs/WF02-plc-batch-a-20260815/registry.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log",
+      "handoffs/WF02-plc-batch-a-20260815/step-06-doc-updater.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Release-decision file naming differs from prior PRM/SOL runs (release-decision-<run-id>.yaml vs <RUN-ID>-RELEASE-DECISION.yaml) \u2014 RELEASE-VALIDATOR choice, not actionable here."
+      },
+      {
+        "severity": "MINOR",
+        "description": "lint_handoffs.py baseline 30 BLOCKER + 72 MAJOR still present (all in 291 ACKNOWLEDGED baseline per ISS-0627) \u2014 pre-existing, not introduced by this step."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step Final) for squash-merge of feature/WF02-plc-batch-a-20260815 to main with --delete-branch and Step Final housekeeping."
+  },
+  "task": {
+    "description": "WF-02 Step 6 \u2014 Mark PLC-01..04 as RELEASED.\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 590a6624)\n\nRELEASE DECISION: APPROVED (docs/status/release-decision-WF02-plc-batch-a-20260815.yaml)\n\nREQUIREMENTS TO RELEASE: PLC-01, PLC-02, PLC-03, PLC-04\n\nSTEPS:\n1. cd c:\\Users\\tvolo\\dev\\ai-dala\\R-Co\n2. python3 tools/reqctl.py set-status PLC-01 RELEASED (run for each of PLC-01, PLC-02, PLC-03, PLC-04)\n3. Regenerate docs/status/requirement_status.yaml\n4. Update CHANGELOG.md with the release entry (follow pattern from prior PLC/PRM/SOL entries)\n5. Git commit + push\n6. Report PR URL and final commit hash.\n\nDO NOT squash-merge yet \u2014 that's Step Final (BACKEND-DEV).\n\nUpdate handoff to COMPLETED with PASS/FAIL.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
+  "stage": "stage15",
+  "current_commit": "590a6624",
+  "triggered_by": {
+    "agent_id": "RELEASE-VALIDATOR",
+    "handoff_id": "WF02-plc-batch-a-20260815-05-release-validator",
+    "result": "PASS",
+    "decision_file": "docs/status/release-decision-WF02-plc-batch-a-20260815.yaml"
+  }
+}

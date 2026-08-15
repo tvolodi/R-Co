@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "run_id": "WF02-plc-batch-a-20260815",
+  "entries": [
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-02a-backend-dev",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "BACKEND-DEV",
+      "step": "02a",
+      "status": "COMPLETED",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-03b-test-design-validator",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "step": "03b",
+      "status": "COMPLETED",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework1",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-15T03:26:42Z",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework4",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+      "status": "COMPLETED",
+      "result_status": "FAIL",
+      "completed_at": "2026-08-15T05:25:18Z",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework5",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+      "status": "COMPLETED",
+      "result_status": "FAIL",
+      "completed_at": "2026-08-15T00:48:25Z",
+      "requirements": [
+        "PLC-01",
+        "PLC-02",
+        "PLC-03",
+        "PLC-04"
+      ],
+      "workflow_ref": "WF02-plc-batch-a-20260815",
+      "stage": "stage15"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "ISSUE-FIXER",
+      "step": "04",
+      "rework_of": null,
+      "status": "COMPLETED",
+      "created_at": "2026-08-15T05:51:55Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-test-runner-rework5",
+      "result": "PASS",
+      "completed_at": "2026-08-15T06:02:25Z",
+      "fix_commit": "ae0840b3"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework7",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner-rework6",
+      "rework_index": 7,
+      "status": "COMPLETED",
+      "created_at": "2026-08-15T04:39:27Z",
+      "started_at": "2026-08-15T04:39:38Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework7.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-issue-fixer-2",
+      "completed_at": "2026-08-15T04:42:17Z",
+      "result": "FAIL"
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework8",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner-rework7",
+      "rework_index": 8,
+      "status": "COMPLETED",
+      "created_at": "2026-08-15T04:57:34Z",
+      "started_at": "2026-08-15T04:57:42Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework8.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-issue-fixer-3",
+      "completed_at": "2026-08-15T05:09:00Z",
+      "result_status": "FAIL",
+      "result_summary": "17/27 pass, 10/27 fail (4 clusters). Filed ISS-0705. Needs WF-03 dispatch."
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework9",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "TEST-RUNNER",
+      "step": "04",
+      "rework_of": "WF02-plc-batch-a-20260815-04-test-runner-rework8",
+      "rework_index": 9,
+      "status": "COMPLETED",
+      "created_at": "2026-08-15T05:31:55Z",
+      "started_at": "2026-08-15T05:32:03Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework9.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-issue-fixer-4",
+      "completed_at": "2026-08-15T05:39:55Z",
+      "result": {
+        "status": "PASS",
+        "tests_passed": 27,
+        "tests_total": 27
+      }
+    },
+    {
+      "handoff_id": "WF02-plc-batch-a-20260815-05-release-validator",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "agent_id": "RELEASE-VALIDATOR",
+      "step": "05",
+      "status": "COMPLETED",
+      "created_at": "2026-08-15T05:41:46Z",
+      "started_at": "2026-08-15T05:41:49Z",
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-05-release-validator.json",
+      "triggered_by": "WF02-plc-batch-a-20260815-04-test-runner-rework9",
+      "completed_at": "2026-08-15T05:55:21Z",
+      "result_status": "PASS"
+    }
+  ]
+}

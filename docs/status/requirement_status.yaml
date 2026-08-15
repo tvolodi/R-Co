@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-14T20:29:18Z'
+last_updated: '2026-08-15T05:59:46Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -2969,25 +2969,54 @@ requirements:
     released_at: '2026-05-29'
     release_run: WF02-f2b-shoulds-20260529
   PLC-01:
-    status: VALIDATED
+    status: RELEASED
     stage: 15
     priority: SHOULD
     title: Process module catalog
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - migrations/1162_plc01_module_id_unique_per_tenant.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:33Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-01).
   PLC-02:
-    status: VALIDATED
+    status: RELEASED
     stage: 15
     priority: SHOULD
     title: Catalog entry publication requires a declared interface
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:35Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-02).
   PLC-03:
-    status: VALIDATED
+    status: RELEASED
     stage: 15
     priority: SHOULD
     title: Cross-version compatibility check on publish
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:37Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-03).
   PLC-04:
-    status: VALIDATED
+    status: RELEASED
     stage: 15
     priority: SHOULD
     title: Cross-tenant module distribution
+    implemented_in:
+    - migrations/1161_plc01_process_module_catalog.sql
+    - src/repository/process_module_catalog.zig
+    - src/api/routes/process_modules.zig
+    - web/src/pages/admin/modules/ProcessModulesPage.tsx
+    released_at: '2026-08-15T05:59:39Z'
+    note: Released via WF02-plc-batch-a-20260815 (commit 590a6624). RELEASED in stage 15 (PLC-04).
   REPO-01:
     status: RELEASED
     stage: 10
