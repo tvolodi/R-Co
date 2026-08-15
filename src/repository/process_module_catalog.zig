@@ -167,7 +167,7 @@ pub const ProcessModuleCatalog = struct {
             \\INSERT INTO public.process_module_catalog
             \\  (module_id, version, owning_tenant_id, owning_definition_id,
             \\   interface_schema, exportable, status)
-            \\VALUES ($1, $2, $3::uuid, $4::uuid, $5, $6, '\''DRAFT'\'')
+            \\VALUES ($1, $2, $3::uuid, $4::uuid, $5, $6, 'DRAFT')
             \\ON CONFLICT (module_id, version) DO NOTHING
             \\RETURNING module_id, version, owning_tenant_id, owning_definition_id,
             \\          interface_schema, exportable, status,
@@ -236,7 +236,7 @@ pub const ProcessModuleCatalog = struct {
         const upd_rows = conn.query(
             allocator,
             \\UPDATE public.process_module_catalog
-            \\SET status = '\''ACTIVE'\'', updated_at = CURRENT_TIMESTAMP
+            \\SET status = 'ACTIVE', updated_at = CURRENT_TIMESTAMP
             \\WHERE module_id = $1 AND version = $2
             \\RETURNING module_id, version, owning_tenant_id, owning_definition_id,
             \\          interface_schema, exportable, status,
@@ -280,7 +280,7 @@ pub const ProcessModuleCatalog = struct {
             \\FROM public.process_module_catalog
             \\WHERE module_id = $1
             \\  AND owning_tenant_id = $2::uuid
-            \\  AND status = '\''ACTIVE'\''
+            \\  AND status = 'ACTIVE'
             \\ORDER BY semver_sort(version) DESC
             \\LIMIT 1
         ,
@@ -308,7 +308,7 @@ pub const ProcessModuleCatalog = struct {
             \\ AND pmcs.module_id = pmc.module_id
             \\WHERE pmc.module_id = $1
             \\  AND pmcs.receiving_tenant_id = $2::uuid
-            \\  AND pmc.status = '\''ACTIVE'\''
+            \\  AND pmc.status = 'ACTIVE'
             \\ORDER BY semver_sort(pmc.version) DESC
             \\LIMIT 1
         ,
@@ -425,14 +425,14 @@ pub const ProcessModuleCatalog = struct {
             \\FROM (
             \\  SELECT module_id, version, owning_tenant_id
             \\  FROM public.process_module_catalog
-            \\  WHERE owning_tenant_id = $1::uuid AND status = '\''ACTIVE'\''
+            \\  WHERE owning_tenant_id = $1::uuid AND status = 'ACTIVE'
             \\  UNION
             \\  SELECT pmc.module_id, pmc.version, pmc.owning_tenant_id
             \\  FROM public.process_module_catalog pmc
             \\  JOIN public.process_module_catalog_share pmcs
             \\    ON pmcs.granting_tenant_id = pmc.owning_tenant_id
             \\   AND pmcs.module_id = pmc.module_id
-            \\  WHERE pmcs.receiving_tenant_id = $1::uuid AND pmc.status = '\''ACTIVE'\''
+            \\  WHERE pmcs.receiving_tenant_id = $1::uuid AND pmc.status = 'ACTIVE'
             \\) visible
             \\JOIN public.process_module_catalog pmc
             \\  ON pmc.module_id = visible.module_id AND pmc.version = visible.version
@@ -443,7 +443,7 @@ pub const ProcessModuleCatalog = struct {
                 break :blk conn.query(
                     allocator,
                     base_sql ++
-                    \\WHERE pmc.module_id || '\''/'\'' || pmc.version > $2
+                    \\WHERE pmc.module_id || '/' || pmc.version > $2
                     \\ORDER BY pmc.module_id ASC, semver_sort(pmc.version) DESC
                     \\LIMIT $3
                 ,
@@ -509,7 +509,7 @@ fn findPredecessorActive(
         \\       (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         \\FROM public.process_module_catalog
         \\WHERE module_id = $1
-        \\  AND status = '\''ACTIVE'\''
+        \\  AND status = 'ACTIVE'
         \\  AND semver_sort(version) < semver_sort($2)
         \\ORDER BY semver_sort(version) DESC
         \\LIMIT 1
