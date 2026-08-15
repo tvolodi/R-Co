@@ -1,0 +1,41 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "ISSUE-FIXER",
+  "agent_name": "BPM Issue Fixer (ISSUE-FIXER)",
+  "step": "04",
+  "rework_of": null,
+  "created_at": "2026-08-15T05:51:55Z",
+  "started_at": "2026-08-15T05:52:15Z",
+  "completed_at": "2026-08-15T06:02:25Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Lowercased scope header in migrations 1156 (line 6) and 1157 (line 5). Audit grep confirmed no other uppercase 'S' headers remain in migrations/*.sql. migrationScope now classifies 1156 as tenant_only and 1157 as public_only; zig build migrate against BPM_TEST_DB_URL no longer fails. Commit ae0840b3 pushed to feature/WF02-plc-batch-a-20260815.",
+    "artifacts_out": [
+      "migrations/1156_prm06_promotion_assertion_runs.sql",
+      "migrations/1157_prm09_solution_pack_update.sql"
+    ],
+    "issues": [],
+    "fix_commit": "ae0840b3",
+    "next_action": "Route to TEST-RUNNER for Step 04 retry 6"
+  },
+  "task": {
+    "description": "Root cause: TEST-RUNNER retry 5 (commit 5eddb97b) reported that all 27 PLC tests fail at migration harness with:\n  [MIGRATION_DEBUG] simpleQuery failed: err=QueryFailed\n  schema=tenant_default file=1157_prm09_solution_pack_update.sql\n  Underlying psql error: column \"tenant_id\" does not exist\n\nRoot cause analysis:\n- src/db/migrations.zig::migrationScope matches '-- scope: public' case-sensitively via std.mem.indexOf\n- migrations/1157_prm09_solution_pack_update.sql line 5 carries '-- Scope: public.' (capital S)\n- migrations/1156_prm06_promotion_assertion_runs.sql line 6 also has '-- Scope: tenant_only.' (capital S)\n- These files are silently classified as 'all_schemas' and run on tenant_default, where their ALTER TABLE … ADD COLUMN tenant_id fails because the tenant-side table has no tenant_id column\n\nFix:\n1. Edit migrations/1157_prm09_solution_pack_update.sql: change '-- Scope: public.' to '-- scope: public.' on line 5\n2. Edit migrations/1156_prm06_promotion_assertion_runs.sql: change '-- Scope: tenant_only.' to '-- scope: tenant_only.' on line 6\n3. Verify no other migrations have '-- Scope:' (capital S) header — grep and audit\n4. Verify migrationScope now classifies them correctly: zig build migrate-test (or direct psql test)\n5. Commit and push\n6. Update handoff to COMPLETED with PASS\n\nDon't run zig build test-integration-plc — TEST-RUNNER will retry next.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15",
+  "current_commit": "ae0840b3",
+  "triggered_by": {
+    "agent_id": "TEST-RUNNER",
+    "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework5",
+    "result": "FAIL",
+    "issues": [
+      "MIGRATION_DEBUG simpleQuery failed: err=QueryFailed schema=tenant_default file=1157_prm09_solution_pack_update.sql Underlying psql error: column \"tenant_id\" does not exist",
+      "MIGRATION_DEBUG simpleQuery failed: schema=tenant_default file=1156_prm06_promotion_assertion_runs.sql (same casing bug)"
+    ]
+  }
+}

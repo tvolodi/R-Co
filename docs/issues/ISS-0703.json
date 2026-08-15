@@ -1,0 +1,55 @@
+{
+  "iss_id": "ISS-0703",
+  "id": "ISS-0703",
+  "gh_issue": 785,
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/785",
+  "github_issue_confirmed": true,
+  "title": "migrations 1156/1157: '-- Scope:' (uppercase S) silently misclassified by case-sensitive migrationScope parser",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "workflow_id": "WF02-plc-batch-a-20260815",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "created_at": "2026-08-15T05:53:00Z",
+  "registered_at": "2026-08-15T05:53:00Z",
+  "created_by": "ISSUE-FIXER (WF02-plc-batch-a-20260815 step-04)",
+  "registered_by": "ISSUE-FIXER (WF02-plc-batch-a-20260815 step-04)",
+  "branch": "feature/WF02-plc-batch-a-20260815",
+  "branch_base_sha": "5eddb97b",
+  "labels": [
+    "bug",
+    "blocker",
+    "migration",
+    "plc"
+  ],
+  "scope": "src/db/migrations.zig (case-sensitive -- scope: header matcher) and two migration files with uppercase headers.",
+  "affected_areas": [
+    "migrations/1156_prm06_promotion_assertion_runs.sql",
+    "migrations/1157_prm09_solution_pack_update.sql",
+    "src/db/migrations.zig"
+  ],
+  "description": "Mirror of GH-703 (to be filed). migrationScope() in src/db/migrations.zig uses std.mem.indexOf(u8, header, '-- scope: ...') (case-sensitive) to classify each migration. Two PRM-batch files were authored with '-- Scope:' (capital S), so they fall through to the default .all_schemas and apply to tenant_default. Their bodies then ALTER TABLE ... ADD COLUMN tenant_id, which fails on the tenant-side table because tenant tables lack tenant_id under SPT architecture. Result: all 27 PLC tests fail at the migration harness with: [MIGRATION_DEBUG] simpleQuery failed: err=QueryFailed schema=tenant_default file=1157_prm09_solution_pack_update.sql Underlying psql error: column 'tenant_id' does not exist.",
+  "symptom": "All 27 PLC integration tests fail at the migration harness (commit 5eddb97b) with simpleQuery failed ... column 'tenant_id' does not exist on tenant_default. TEST-RUNNER rework 5 reported the failure.",
+  "discovered_at": "2026-08-15T05:51:55Z",
+  "discovered_by": "TEST-RUNNER (WF02-plc-batch-a-20260815 step-04 rework 5)",
+  "investigation_notes": "Header search is case-sensitive (std.mem.indexOf). Both offending files have '-- Scope:' on line 20. 28 other migration files all use lowercase '-- scope:' — confirmed via grep across migrations/*.sql. The fix is mechanical: change the first character S -> s in both files. No source-code change needed because the parser is documented to expect lowercase (see SCOPE_PUBLIC_HEADER constants and the docstring at src/db/migrations.zig:52, 622). Verified post-fix by running zig build migrate against BPM_TEST_DB_URL: 'No new migrations to apply.' with no simpleQuery failed errors. 1156 and 1157 now correctly skip with the right scope.",
+  "resolution_commit": "ae0840b3",
+  "resolved_at": "2026-08-15T05:55:00Z",
+  "resolved_by": "ISSUE-FIXER (WF02-plc-batch-a-20260815 step-04)",
+  "reproduction": "Pre-fix: (1) grep -n '^-- [Ss]cope:' migrations/1156_prm06_promotion_assertion_runs.sql migrations/1157_prm09_solution_pack_update.sql returns two uppercase matches. (2) zig build migrate against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test fails on 1156 then 1157 with 'column tenant_id does not exist' in schema tenant_default. Post-fix: same commands succeed (migrations are in the ledger so the runner skips them with the now-correct scope classification); 'No new migrations to apply.'",
+  "fix_file": "migrations/1156_prm06_promotion_assertion_runs.sql; migrations/1157_prm09_solution_pack_update.sql",
+  "fix_line": "20",
+  "fix_diff": "-- Scope: -> -- scope:  (line 20 in both files)",
+  "pr_url": null,
+  "pr_merged_at": null,
+  "pr_merge_commit": null,
+  "handoff_history": [
+    {
+      "step": "step-04-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF02-plc-batch-a-20260815",
+      "status": "PASS",
+      "completed_at": "2026-08-15T05:55:00Z",
+      "summary": "Lowercased -- Scope: -> -- scope: in both 1156 and 1157 line 20. Verified by audit grep (only lowercase headers remain) and zig build migrate against BPM_TEST_DB_URL (No new migrations to apply.; no column tenant_id error). Committed as ae0840b3 on feature/WF02-plc-batch-a-20260815 and pushed."
+    }
+  ]
+}

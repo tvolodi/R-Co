@@ -1,0 +1,46 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework5",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "TEST-RUNNER",
+  "agent_name": "BPM Test Runner (TEST-RUNNER)",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "04",
+  "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+  "created_at": "2026-08-15T05:40:24Z",
+  "started_at": "2026-08-15T05:41:39Z",
+  "completed_at": "2026-08-15T05:48:25Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "All 4 PLC test files (plc01..plc04, 27 tests) now compile after fixing plc04_visibility_test.zig:373 (pool.acquire() returns PoolError, not optional). All 27 tests still fail at the migration harness step (runMigrationsForSchema → MigrationFailed on tenant_default) due to a pre-existing scope-header casing bug in migrations/1157_prm09_solution_pack_update.sql (`-- Scope: public.` is case-sensitive in src/db/migrations.zig::migrationScope, so the public-scoped migration is misclassified as all_schemas and applied to tenant_default where it cannot find column tenant_id). TEST-RUNNER scope is limited to compile-error-class fixes; the migration header bug requires ISSUE-FIXER.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-15-WF02-plc-batch-a-rework5.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "F-PLC-COMPILE-plc04_visibility_test.zig:373 — RESOLVED IN-REWORK. Compile error fixed by replacing pool.acquire().?.query(...) pattern with var conn = try pool.acquire(); defer pool.release(conn); const rows = try conn.query(...)."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "F-PLC-MIGRATION-1157-scope-header — OPEN, NEEDS ISSUE-FIXER. migrations/1157_prm09_solution_pack_update.sql line 5 reads `-- Scope: public.` (capital S); src/db/migrations.zig::migrationScope matches `-- scope: public` case-sensitively, so the public-scoped migration is silently classified as all_schemas and applied to tenant_default. ALTER TABLE solution_pack_installs ADD COLUMN tenant_id fails because tenant_default's solution_pack_installs (created by 1158) has no tenant_id column. Same casing bug exists in migrations/1156_prm06_promotion_assertion_runs.sql (`-- Scope: tenant_only.`). Fix: lowercase the S in both files' scope header (line 5 / line 6). Introduced in commit 47d4c7c9."
+      }
+    ],
+    "next_action": "ISSUE-FIXER — file and resolve the scope-header casing bug in migrations/1157 + 1156 (lowercase the S), then redispatch TEST-RUNNER."
+  },
+  "task": {
+    "description": "RETRY 5 — Run PLC-01..04 tests after const→var fix.\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 5eddb97b)\nENV:\n- BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test\n- BPM_TEST_URL=http://127.0.0.1:8080\n- BPM_IDP_BASE_URL=http://localhost:8081\n\nRun: zig build test-integration-plc\nExpected: all PLC tests compile and pass\n\nReturn PASS if tests pass, FAIL with issue list if not.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": [
+    "PLC-01",
+    "PLC-02",
+    "PLC-03",
+    "PLC-04"
+  ],
+  "stage": "stage15",
+  "current_commit": "5eddb97b"
+}

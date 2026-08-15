@@ -1,0 +1,32 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-03-test-designer-rework2",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "TEST-DESIGNER",
+  "agent_name": "BPM Test Designer (TEST-DESIGNER)",
+  "step": "03",
+  "rework_of": "WF02-plc-batch-a-20260815-03-test-designer",
+  "created_at": "2026-08-15T05:26:20Z",
+  "started_at": "2026-08-15T05:27:58Z",
+  "completed_at": "2026-08-15T05:28:31Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed const catalog -> var catalog in all 4 PLC test files (plc01, plc02, plc03, plc04). Commit 5eddb97b pushed to feature/WF02-plc-batch-a-20260815.",
+    "artifacts_out": [
+      "tests/integration/plc01_module_catalog_test.zig",
+      "tests/integration/plc02_publication_test.zig",
+      "tests/integration/plc03_compatibility_test.zig",
+      "tests/integration/plc04_visibility_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "task": {
+    "description": "FIX: const catalog -> var catalog in all 4 PLC test files.\n\nBRANCH: feature/WF02-plc-batch-a-20260815\n\nReplace ALL instances of:\n  const catalog = ProcessModuleCatalog.init(alloc, &pool);\nwith:\n  var catalog = ProcessModuleCatalog.init(alloc, &pool);\n\nFiles:\n- tests/integration/plc01_module_catalog_test.zig\n- tests/integration/plc02_publication_test.zig\n- tests/integration/plc03_compatibility_test.zig\n- tests/integration/plc04_visibility_test.zig\n\nReason: registerModule and publishModule take *ProcessModuleCatalog (mutable). const catalog binds *const, causing 'cast discards const qualifier'.\n\nVerify: zig build test-integration-plc compiles.\nCommit + push on feature/WF02-plc-batch-a-20260815.",
+    "fn": "none",
+    "max_rework": 2
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15"
+}

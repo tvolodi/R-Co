@@ -1,0 +1,72 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework4",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "TEST-RUNNER",
+  "agent_name": "BPM Test Runner (TEST-RUNNER)",
+  "step": "04",
+  "rework_of": "WF02-plc-batch-a-20260815-04-test-runner",
+  "created_at": "2026-08-15T03:58:30Z",
+  "started_at": "2026-08-15T03:59:09Z",
+  "completed_at": "2026-08-15T05:25:18Z",
+  "status": "COMPLETED",
+  "result": {
+    "status": "FAIL",
+    "summary": "zig build test-integration-plc failed at compile stage. All 4 PLC test files (PLC-01..04) report `cast discards const qualifier` errors (27 total) because `const catalog = ProcessModuleCatalog.init(...)` binds a value-typed `*const ProcessModuleCatalog` while `registerModule` and `publishModule` are declared `self: *ProcessModuleCatalog` (mutable). Production source under src/repository/process_module_catalog.zig is correct. Defect is in test files (TEST-DESIGNER carryover from commit 37c64888). Fix: replace `const catalog = ...` with `var catalog = ...` in all four PLC test files. Backend services + test-env-verify all green; failure is purely compile-stage.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-15-WF02-plc-batch-a-rework4.yaml",
+      "tests/reports/plc-test-output.log"
+    ],
+    "issues": [
+      {
+        "id": "ISS-WF02-plc-batch-a-rework4-1",
+        "severity": "BLOCKER",
+        "requirement_id": "PLC-01",
+        "file": "tests/integration/plc01_module_catalog_test.zig",
+        "line": 118,
+        "error_count": 8,
+        "description": "`const catalog = ProcessModuleCatalog.init(...)` at line 118 makes `catalog` a value-typed `*const ProcessModuleCatalog`. Calls to `catalog.registerModule(...)` therefore pass `*const T` where the production API requires `*T`. 8 compile errors at lines 134, 178, 213, 236, 271, 320, 365, 417.",
+        "fix": "Change `const catalog = ProcessModuleCatalog.init(alloc, &pool);` to `var catalog = ProcessModuleCatalog.init(alloc, &pool);`"
+      },
+      {
+        "id": "ISS-WF02-plc-batch-a-rework4-2",
+        "severity": "BLOCKER",
+        "requirement_id": "PLC-02",
+        "file": "tests/integration/plc02_publication_test.zig",
+        "line": null,
+        "error_count": 6,
+        "description": "Same const-discards-const defect as PLC-01. 6 compile errors at lines 127, 169, 212, 248, 284 (registerModule) and 302 (publishModule).",
+        "fix": "Replace `const catalog` with `var catalog` at the catalog binding site."
+      },
+      {
+        "id": "ISS-WF02-plc-batch-a-rework4-3",
+        "severity": "BLOCKER",
+        "requirement_id": "PLC-03",
+        "file": "tests/integration/plc03_compatibility_test.zig",
+        "line": null,
+        "error_count": 5,
+        "description": "Same const-discards-const defect. 5 compile errors at lines 127, 170, 227, 284, 343.",
+        "fix": "Replace `const catalog` with `var catalog` at the catalog binding site."
+      },
+      {
+        "id": "ISS-WF02-plc-batch-a-rework4-4",
+        "severity": "BLOCKER",
+        "requirement_id": "PLC-04",
+        "file": "tests/integration/plc04_visibility_test.zig",
+        "line": null,
+        "error_count": 8,
+        "description": "Same const-discards-const defect. 8 compile errors at lines 135, 180, 240, and others.",
+        "fix": "Replace `const catalog` with `var catalog` at the catalog binding site."
+      }
+    ],
+    "next_action": "TEST-DESIGNER rework: apply `var catalog` fix to all four PLC test files, commit, then redispatch TEST-RUNNER. This handoff is rework4; the source handoff declares max_rework=3 which has been exhausted. ORCH must evaluate: escalate to WF-03 ISSUE-FIXER per `core-directives.md` Unblock-Everything, or grant one additional rework slot since the fix is mechanical and small. Recommend granting one additional rework."
+  },
+  "task": {
+    "description": "RETRY 4 — Run PLC-01..04 integration tests after compile fix.\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit 37c64888 — compile errors fixed by TEST-DESIGNER)\nENV:\n- BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test\n- BPM_TEST_URL=http://127.0.0.1:8080\n- BPM_IDP_BASE_URL=http://localhost:8081\n\nRun: zig build test-integration-plc\nExpected: all PLC tests compile and pass\n\nReturn PASS if tests pass, FAIL with issue list if not.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15",
+  "current_commit": "37c64888"
+}

@@ -1,0 +1,48 @@
+{
+  "handoff_id": "WF02-plc-batch-a-20260815-04-test-runner-rework6",
+  "run_id": "WF02-plc-batch-a-20260815",
+  "agent_id": "TEST-RUNNER",
+  "agent_name": "BPM Test Runner (TEST-RUNNER)",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "04",
+  "rework_of": "WF02-plc-batch-a-20260815-04-test-runner-rework5",
+  "created_at": "2026-08-15T06:03:50Z",
+  "started_at": "2026-08-15T06:04:16Z",
+  "completed_at": "2026-08-15T09:33:35Z",
+  "status": "FAIL",
+  "result": {
+    "status": "FAIL",
+    "summary": "All 4 PLC test files compile and migrations apply (145/145), but 23/27 tests fail at runtime with PoolError.QueryFailed -> ModuleCatalogError.TransactionFailed. Root cause: src/repository/process_module_catalog.zig:170 embeds the status literal as '\\''DRAFT'\\'' inside a Zig raw string, producing invalid SQL '\\''DRAFT'\\'' in PostgreSQL (verified: psql returns 'syntax error at or near \\'). This is a production-code SQL defect, NOT the migration scope-casing issue from ae0840b3 (which is correctly resolved). ORCH must spawn WF-03 ISSUE-FIXER to patch the SQL literal.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-15-WF02-plc-batch-a-20260815-rework6.yaml",
+      "tests/reports/plc-retry6-output.log"
+    ],
+    "issues": [
+      {
+        "id": "ISS-WF02-plc-rework6-01",
+        "severity": "BLOCKER",
+        "description": "src/repository/process_module_catalog.zig:170 SQL literal syntax error: VALUES clause contains '\\''DRAFT'\\'' (embedded backslashes from Zig raw-string escape), causing PostgreSQL 'syntax error at or near \\'. Affects every INSERT into public.process_module_catalog, which is the entry point for all 27 PLC tests. Fix: replace with bare 'DRAFT' or pass status as $7 parameter.",
+        "source_file": "src/repository/process_module_catalog.zig",
+        "source_line": 170,
+        "verified": true,
+        "verified_via": "docker-compose exec -T db_test psql -U bpm -d bpm_test -c \"SELECT '\\''DRAFT'\\'';\" returns 'ERROR: syntax error at or near \\\"\\\"'"
+      }
+    ]
+  },
+  "task": {
+    "description": "RETRY 6 — Run PLC-01..04 tests after ISSUE-FIXER scope-casing fix.\n\nBRANCH: feature/WF02-plc-batch-a-20260815 (commit ae0840b3 - lowercase scope headers in migrations 1156/1157)\n\nPrevious FAIL cause (RESOLVED):\n- migrations/1157_prm09_solution_pack_update.sql had '-- Scope: public.' (capital S) → silently classified as all_schemas → applied to tenant_default → ALTER TABLE ADD COLUMN tenant_id failed\n- migrations/1156_prm06_promotion_assertion_runs.sql had '-- Scope: tenant_only.' (capital S) → same root cause\n- ISSUE-FIXER commit ae0840b3: lowercased both; audit confirmed no other uppercase 'S' headers remain\n\nENV:\n- BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test\n- BPM_TEST_URL=http://127.0.0.1:8080\n- BPM_IDP_BASE_URL=http://localhost:8081\n\nSteps:\n1. cd c:\\Users\\tvolo\\dev\\ai-dala\\R-Co\n2. Ensure backend running on 8080 (curl http://127.0.0.1:8080/health). If not, start-backend.ps1\n3. Ensure keycloak running on 8081 (curl http://localhost:8081/health). If not, restart\n4. Run: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://localhost:8081'; zig build test-integration-plc 2>&1 | tee tests/reports/plc-retry6-output.log\n5. Capture full output\n\nExpected: tests compile (compile fix from commit 5eddb97b already in) and pass at runtime (migration fix from commit ae0840b3).\n\nReturn:\n- PASS if all 4 PLC test files pass\n- FAIL with full output if not\n\nUpdate handoff to COMPLETED with PASS/FAIL.",
+    "fn": "none",
+    "max_rework": 3
+  },
+  "workflow_ref": "WF02-plc-batch-a-20260815",
+  "requirements": ["PLC-01", "PLC-02", "PLC-03", "PLC-04"],
+  "stage": "stage15",
+  "current_commit": "ae0840b3",
+  "triggered_by": {
+    "agent_id": "ISSUE-FIXER",
+    "handoff_id": "WF02-plc-batch-a-20260815-04-issue-fixer",
+    "result": "PASS",
+    "fix_commit": "ae0840b3"
+  }
+}
