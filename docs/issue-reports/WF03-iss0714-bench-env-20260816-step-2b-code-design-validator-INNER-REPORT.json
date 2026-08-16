@@ -1,0 +1,108 @@
+{
+  "report_id": "WF03-iss0714-bench-env-20260816-step-2b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-iss0714-bench-env-20260816",
+  "step": "2b",
+  "created_at": "2026-08-16T11:12:25Z",
+  "summary": "HARD GATE validation of src/design/fix-ISS-0714-bench-env.md (ISS-0714 / GH #809 dev-DB default-tenant ledger reconciliation). Verdict: PASS. All six acceptance criteria verified with source-grounded evidence: (1) design is dev-DB-only data repair — git diff main...HEAD shows only handoffs/, docs/issues/ISS-0714.json and the design file, no src/*.zig and no migrations/*.sql; (2) reconciliation SQL complete — advisory lock key verified byte-identical to provisionTenantSchema (provisioning.zig:38 advisoryLockKeyPrefix + acquireAdvisoryLock hashtext($1||$2)), BEGIN/COMMIT wraps B+C, ledger INSERTs use the exact runner shape ON CONFLICT (schema_name,version) DO NOTHING (migrations.zig:535-538), migrations_applied_at UPDATE matches provisioning.zig:192 Step-6, schema_migrations DDL shape matches migrations.zig:158-164; (3) canonical source sound — re-computed migrationScope() over migrations/ with the exact 4 KiB header rule: 49 public_only (17 numeric 011..1157 + 32 GBL), 89 all_schemas, 9 tenant_only (026,093,095,096,1154,1156,1158,1159,1160) = 98 tenant_default set / 147 total, matching the design's counts and the test DB 147/147; union with test-DB 111-row ledger (B-1 has a !=111 abort guard) covers both; schemaNameForTenant -> 'tenant_default' for all-zeros UUID (pool.zig:154-157); (4) safety — idempotent, no destructive ops, B+C atomic under ON_ERROR_STOP=1 with rollback, serialized under the same tenant advisory lock, confined to 2 tables; (5) verification gates D-1..D-7 concrete with commands/expected values and an error taxonomy; (6) no unintended app-code change. lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0 MINOR=21 E030 prose-only). lint_handoffs.py exit 0 with 0 findings on this run/handoff (no NEW issues). Design validated only — reconciliation NOT executed (BACKEND-DEV Step 3).",
+  "files_created": [
+    "docs/issue-reports/WF03-iss0714-bench-env-20260816-step-2b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-iss0714-bench-env-20260816/step-2b-code-design-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "lint_design_artefact.py src/design/fix-ISS-0714-bench-env.md",
+      "status": "pass",
+      "detail": "exit 0; BLOCKER=0 MAJOR=0 MINOR=21 (all E030 schema-qualified-name-in-prose; precedent-verified MINOR-by-design for prose, non-blocking — qualifications are intentional here since the subject tables live in public)"
+    },
+    {
+      "name": "migrationScope() re-computation over migrations/ (49/89/9/98/147)",
+      "status": "pass",
+      "detail": "exact match with design counts: public_only=49 (17 numeric + 32 GBL), all_schemas=89, tenant_only=9 (026,093,095,096,1154,1156,1158,1159,1160), tenant_default set=98, total=147"
+    },
+    {
+      "name": "git diff main...HEAD (branch scope)",
+      "status": "pass",
+      "detail": "only handoffs/, docs/issues/ISS-0714.json, src/design/fix-ISS-0714-bench-env.md changed; no src/*.zig, no migrations/*.sql"
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0; 0 findings referencing WF03-iss0714/step-2b (only the pre-existing acknowledged baseline on other runs) — no NEW issues"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "handoff task.functions_to_call lists fn:validate-design, which is NOT defined in docs/agents/FUNCTIONS.md; executed the canonical chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff per HANDOFF_PROTOCOL §4 (same MINOR as prior steps in this run)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "21x E030 schema-qualified-name findings in design prose (public.schema_migrations / public.tenant_schemas). Non-blocking per E030-prose precedent; in a data-repair design these qualifications are deliberate and necessary because the subject tables live in public and the repair targets them by exact name."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Design §4 'pending public backlog (GBL-116..143 + 1134..1162 = 59 files)' is an illustrative count (147 total - 88 already applied); it is not asserted by any verification gate (D-5 requires exit 0 / fast-path / leg-(d) pass, no count) and does not affect the reconciliation. Traceability note only."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Pre-existing registry casing duplication in this run: step-1 has both WF03-iss0714-bench-env-20260816-001 (PENDING) and wf03-...-001 (COMPLETED); step-2b registry entry is capital-W WF03-...-002b while the handoff file uses lowercase wf03-...-002b. Updated the registry entry case-insensitively; not introduced by this step."
+    }
+  ],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 3): execute §3 reconciliation verbatim (B-1 export 111-row test-DB ledger -> scratch/reconcile_iss0714.sql, B-3 completeness guard, psql -v ON_ERROR_STOP=1 under the tenant advisory lock), then run verification gates D-1..D-7 (migrate exit 0, bench proceeds, no test-DB regression).",
+    "On any D-4 spot-check failure (object absent for a ledgered version): STOP and escalate to ORCH — do not paper over a non-modern schema with a ledger row."
+  ],
+  "blockers": [],
+  "validate_completeness": {
+    "all_met": true,
+    "criteria": [
+      {
+        "criterion": "Design targets the root cause (dev-DB-only, no src/*.zig or migrations/*.sql change)",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "src/design/fix-ISS-0714-bench-env.md §1/§2/§6 + git diff main...HEAD (no src/*.zig, no migrations/*.sql); root cause consistent with docs/issues/ISS-0714.json root_cause_analysis"
+      },
+      {
+        "criterion": "Reconciliation SQL complete: advisory lock, BEGIN/COMMIT, ledger INSERTs (ON CONFLICT DO NOTHING), migrations_applied_at UPDATE",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "§3.3 lock key == provisioning.zig:38+acquireAdvisoryLock; §3.6 BEGIN/COMMIT; §3.4 INSERT shape == migrations.zig:535-538; §3.5 UPDATE == provisioning.zig:192; DDL shape == migrations.zig:158-164"
+      },
+      {
+        "criterion": "Canonical ledger source sound (test-DB tenant_default ledger + union with current migrations/ non-public-only files)",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "§3.4 B-1 (111, abort-if-ne-111) + B-3 guard; re-computed counts match (98 tenant_default set / 147 total); schemaNameForTenant -> tenant_default (pool.zig:154-157)"
+      },
+      {
+        "criterion": "Safety: idempotent, no destructive ops, rollback on verification failure",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "§4 idempotency (ON CONFLICT DO NOTHING), no DELETE/DROP/TRUNCATE, B+C atomic under ON_ERROR_STOP=1, rollback + STOP-on-spot-check-failure, DROP SCHEMA alternative rejected"
+      },
+      {
+        "criterion": "Verification gates concrete (ledger count, migrate exit 0, bench proceeds)",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "§5 D-1..D-7 with commands/assertions/expected values + §5.1 error taxonomy"
+      },
+      {
+        "criterion": "Design contains no unintended app-code change",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "git diff main...HEAD — data-repair design only; no src/*.zig, no migrations/*.sql, no web/ changes"
+      },
+      {
+        "criterion": "python tools/lint_handoffs.py exits 0 on this handoff",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "exit 0; 0 findings on WF03-iss0714/step-2b (no NEW issues)"
+      }
+    ]
+  }
+}

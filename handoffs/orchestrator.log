@@ -1924,3 +1924,5 @@
 2026-08-16T10:50:05Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-001 | ORCH -> ISSUE-FIXER | PENDING | STEP 1: root cause diagnosis of ISS-0714/GH#809 (dev-DB provisioning)
 2026-08-16T10:59:56Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-002 | ORCH -> CODE-DESIGNER | PENDING | STEP 2: fix design for dev-DB ledger reconciliation
 2026-08-16T11:07:55Z | COMPLETE | WF03-iss0714-bench-env-20260816 | wf03-iss0714-bench-env-20260816-002 | CODE-DESIGNER | PASS — fix design src/design/fix-ISS-0714-bench-env.md written; reconciliation spec for tenant_default ledger (canonical 111 + 98 guard) + registry stamp; route to CODE-DESIGN-VALIDATOR (Step 2b)
+2026-08-16T11:09:02Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-002b | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | STEP 2b: HARD GATE validate fix design
+2026-08-16T11:12:25Z | COMPLETE | WF03-iss0714-bench-env-20260816 | wf03-iss | CODE-DESIGN-VALIDATOR | PASS | STEP 2b: fix design validated (HARD GATE) - route to BACKEND-DEV Step 3
