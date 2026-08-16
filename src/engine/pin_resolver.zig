@@ -13,7 +13,7 @@
 //! Design artefact: src/design/pin-01-dependency-version-resolution.md
 const std = @import("std");
 const db = @import("pool");
-const graph_mod = @import("../definition/graph.zig");
+const graph_mod = @import("graph");
 const registry_mod = @import("../event_store/registry.zig");
 
 pub const Uuid = graph_mod.Uuid;

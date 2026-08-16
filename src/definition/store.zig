@@ -9,7 +9,7 @@ const std = @import("std");
 const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
-const graph_mod = @import("graph.zig");
+const graph_mod = @import("graph");
 const svc_scope_validator = @import("service_scope_validator.zig");
 
 // ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ const std = @import("std");
 const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
-const graph_mod = @import("graph.zig");
+const graph_mod = @import("graph");
 
 // Re-export types so callers can import from one file.
 pub const Uuid = graph_mod.Uuid;

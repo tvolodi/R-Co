@@ -12,7 +12,7 @@
 //! Design artefact: src/design/pin-05-explicit-instance-pin-rebind.md
 const std = @import("std");
 const db = @import("pool");
-const graph_mod = @import("../definition/graph.zig");
+const graph_mod = @import("graph");
 const pin_resolver_mod = @import("pin_resolver.zig");
 const reconstruction_mod = @import("reconstruction.zig");
 

@@ -7,7 +7,7 @@
 //!
 //! Design artefact: src/design/definition.md
 const std = @import("std");
-const sub_proc_iface = @import("sub_process_interface.zig");
+const sub_proc_iface = @import("sub_process_interface");
 
 // ---------------------------------------------------------------------------
 // Limits  (CHK-07, CHK-08)
@@ -1026,7 +1026,13 @@ fn isValidIso8601Duration(s: []const u8) bool {
 ///   - empty or whitespace-only strings
 ///   - unbalanced parentheses or brackets
 ///   - unmatched string delimiters (single or double quotes)
-fn isValidCelSyntax(expr: []const u8) bool {
+///
+/// `pub` so the VLD-01/02/03 validation module (src/validation/pd06.zig) can call it
+/// directly — VLD-02 AC4 re-uses this same gate for every CEL expression site
+/// (transition guards, human-task assignment, timer delay, service-task input
+/// mapping, form visible_when, form computed_from), not only the edge-condition
+/// sites that validateEdgeConditions() covers.
+pub fn isValidCelSyntax(expr: []const u8) bool {
     var has_non_ws = false;
     var paren_depth: i32 = 0;
     var bracket_depth: i32 = 0;

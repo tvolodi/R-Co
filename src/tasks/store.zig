@@ -9,7 +9,7 @@ const std = @import("std");
 const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
-const graph_mod = @import("../definition/graph.zig");
+const graph_mod = @import("graph");
 
 /// Raw 16-byte UUID v4 representation (same as graph_mod.Uuid).
 pub const Uuid = graph_mod.Uuid;

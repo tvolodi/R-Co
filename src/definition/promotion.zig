@@ -12,7 +12,7 @@ const pool_mod = @import("pool");
 const tenant_context_mod = @import("tenant_context");
 const export_import = @import("export_import.zig");
 const store_mod = @import("store.zig");
-const graph_mod = @import("graph.zig");
+const graph_mod = @import("graph");
 
 // ── Error set ──────────────────────────────────────────────────────────────────
 

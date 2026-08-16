@@ -7,7 +7,7 @@
 //! Design artefact: src/design/svc-01-04-service-scope.md §2.5
 
 const std = @import("std");
-const graph_mod = @import("graph.zig");
+const graph_mod = @import("graph");
 const catalog_mod = @import("../repository/service_catalog.zig");
 const plugin_registry = @import("../engine/plugin_registry.zig");
 

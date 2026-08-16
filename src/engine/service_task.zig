@@ -1,5 +1,5 @@
 const std = @import("std");
-const Uuid = @import("../definition/graph.zig").Uuid;
+const Uuid = @import("graph").Uuid;
 
 pub const HttpMethod = enum {
     GET,

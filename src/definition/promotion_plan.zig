@@ -16,7 +16,7 @@
 const std = @import("std");
 const pool_mod = @import("pool");
 const tenant_context_mod = @import("tenant_context");
-const graph_mod = @import("graph.zig");
+const graph_mod = @import("graph");
 
 // ── Public types (per the design's Public interface) ───────────────────────
 
