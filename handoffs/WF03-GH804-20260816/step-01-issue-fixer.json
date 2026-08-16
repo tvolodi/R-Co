@@ -1,0 +1,60 @@
+{
+  "handoff_id": "wf03-gh804-20260816-01-issue-fixer",
+  "run_id": "WF03-GH804-20260816",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH804-20260816/step-01-issue-fixer.json",
+  "created_at": "2026-08-16T07:15:50Z",
+  "started_at": "2026-08-16T07:16:08Z",
+  "completed_at": "2026-08-16T07:17:39Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 1 -- root-cause diagnosis",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/804",
+    "iss_id": "ISS-0713",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh804-20260816-00-backend-dev",
+      "wf03-gh804-20260816-005-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0713.json",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "src/design/iss0711-gh802-prm08-fixture-fix.md"
+    ],
+    "branch_name": "feature/WF03-GH804-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 1 for run WF03-GH804-20260816: root-cause diagnosis (diagnosis-as-design) for the TC-PRM-08-03 fixture seed mismatch (ISS-0713 / GH-804). CONFIRM the diagnosis already documented in ISS-0713 and the GH-804 body: the fixture promotion_reviews row in tests/integration/prm-08-rollback-sandbox.test.zig is seeded via insertPromotionReviewsRow (call site ~line 466) with the test's random tenant UUID and the helper's hardcoded zero def_id, but the production rollback supersede (src/definition/rollback.zig Step 5) matches WHERE tenant_id = DEFAULT_TENANT_ID AND def_id = current_active_id (V2 def id) \u2014 so the row can never be superseded and the 'superseded' assertion is unsatisfiable. Read the ACTUAL test file to confirm the call site and the helper signature. DEFINE the fix spec for Step 3 precisely: pass DEFAULT_TENANT_ID as the tenant and def_id_v2 (the current-active V2 definition id used by the rollback under test) as the def_id \u2014 either by adding a def_id parameter to insertPromotionReviewsRow or via a dedicated AC4 seeding helper; confirm the exact identifiers/constants available in the test file. SCOPE: test-code only; do NOT modify production src/definition/rollback.zig (that is GH-803/ISS-0712, separate run). Specify the verification command (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08) and note that full 4/4 green also requires the GH-803 production fix. Do NOT implement the fix yourself.",
+    "acceptance_criteria": [
+      "Root cause confirmed against the ACTUAL prm-08 test file (call site + helper signature + available constants)",
+      "Fix spec for Step 3 fully specified (tenant=DEFAULT_TENANT_ID, def_id=def_id_v2; helper parameter or dedicated helper)",
+      "SCOPE explicit: no production rollback.zig change (GH-803), no other files",
+      "Verification command(s) specified with the GH-803 dependency noted",
+      "No fix implemented (Step 3 only)",
+      "Work on branch feature/WF03-GH804-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 1 diagnosis (GH-804/ISS-0713) COMPLETED. CONFIRMED + REPRODUCED the TC-PRM-08-03 fixture seed mismatch against the ACTUAL test file: tests/integration/prm-08-rollback-sandbox.test.zig helper insertPromotionReviewsRow (line 233) hardcodes def_id = zero UUID and the single call site (line 472) passes the test's random tenant_id, while the production supersede (src/definition/rollback.zig Step 5) matches WHERE tenant_id = DEFAULT_TENANT_ID AND def_id = current_active_id (def_id_v2) AND status IN ('applied','approved') - so the seeded row can never be superseded and expectEqualStrings('superseded', ...) (line 504) is unsatisfiable. Reproduction (current tree, post-GH-802, pre-GH-803): BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 -> 3 pass, 1 fail; TC-PRM-08-03 fails line 504 expected 'superseded' found 'approved' (supersede UPDATE also raises 42883, GH-803 not yet applied, swallowed by catch null). Fix spec for Step 3 defined (test-code ONLY): add a def_id parameter to insertPromotionReviewsRow ($4::text replacing the hardcoded zero UUID) and seed at the call site with tenant = DEFAULT_TENANT_ID and def_id = def_id_v2. Scope: NO production src/definition/rollback.zig change (GH-803/ISS-0712 separate run), NO migrations, NO build.zig. Verification: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08; full 4/4 green ALSO requires the GH-803 production 42883 fix. No fix implemented (Step 3 only).",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH804-20260816-step-1-issue-fixer-INNER-REPORT.json",
+      "handoffs/WF03-GH804-20260816/step-01-issue-fixer.json"
+    ],
+    "issues": [
+      "ISS-0713 / GH-804 - OPEN (scoped defect; fix deferred to Step 3, test-code only)",
+      "GH-803 / ISS-0712 - dependency: production supersede 42883 (def_id = $3::uuid vs TEXT) must be fixed for 4/4 green (separate run)"
+    ],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) for the design artefact, then Step 3 (BACKEND-DEV/ISSUE-FIXER) to implement the test-code-only fix spec, then TEST-RUNNER verification."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

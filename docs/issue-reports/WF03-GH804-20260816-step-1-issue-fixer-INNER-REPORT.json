@@ -1,0 +1,60 @@
+{
+  "report_id": "WF03-GH804-20260816-step-1-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH804-20260816",
+  "step": "1",
+  "created_at": "2026-08-16T07:17:39Z",
+  "summary": "WF-03 Step 1 (diagnosis-as-design) for GH-804/ISS-0713. CONFIRMED the documented diagnosis against the ACTUAL test file and REPRODUCED it on the current tree (post-GH-802 helper fix; GH-803 NOT yet applied). tests/integration/prm-08-rollback-sandbox.test.zig TC-PRM-08-03 (test at line 438) seeds its promotion_reviews fixture row via insertPromotionReviewsRow (helper line 233) at the single call site (line 472), passing the test's fresh random tenant_id and relying on the helper's hardcoded zero def_id ('00000000-0000-0000-0000-000000000000'::uuid). The production supersede in src/definition/rollback.zig Step 5 (lines 286-294) runs UPDATE promotion_reviews SET status='superseded' WHERE tenant_id=$2::uuid AND def_id=$3::uuid AND status IN ('applied','approved') with $2 = DEFAULT_TENANT_ID (zero) and $3 = current_active_id = def_id_v2 (the ACTIVE V2 definition), so the seeded row can never match and the assertion expectEqualStrings('superseded', ...) at line 504 is unsatisfiable. Reproduction on the current tree: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 -> 3 pass, 1 fail; TC-PRM-08-03 fails at line 504 with expected 'superseded' found 'approved' (the supersede UPDATE also errors sqlstate 42883, GH-803 not yet applied, swallowed by catch null, so the row stays 'approved'). Fix spec for Step 3 defined precisely (test-code only, single file: add a def_id parameter to insertPromotionReviewsRow; seed at the call site with tenant = DEFAULT_TENANT_ID and def_id = def_id_v2). No fix implemented (Step 3 only).",
+  "files_created": [
+    "docs/issue-reports/WF03-GH804-20260816-step-1-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH804-20260816/step-01-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (current tree: post-GH-802 helper NOT-NULL fix; GH-803 production 42883 fix NOT applied)",
+      "status": "fail",
+      "detail": "3 pass, 1 fail (4 total). TC-PRM-08-03 fails at tests/integration/prm-08-rollback-sandbox.test.zig:504 expectEqualStrings('superseded', superseded): expected 'superseded', found 'approved'. The supersede UPDATE also raises sqlstate=42883 (rollback.zig Step 5 `def_id = $3::uuid` vs TEXT promotion_reviews.def_id; GH-803 not yet applied), which is swallowed by `catch null` so superseded_review_id stays null and the seeded row keeps status 'approved'. This reproduces ISS-0713 (the fixture seed can never satisfy the supersede WHERE tenant_id=DEFAULT_TENANT_ID AND def_id=current_active_id) and confirms the GH-803 dependency for a green assertion."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "ISS-0713/GH-804 CONFIRMED + REPRODUCED against the ACTUAL test file: TC-PRM-08-03 seeds promotion_reviews via insertPromotionReviewsRow(&pool, tenant_id, review_id, requested_by) at line 472 (tenant_id = fresh random UUID; helper hardcodes def_id = zero UUID at lines 233-258), but the production supersede predicate (src/definition/rollback.zig Step 5) matches WHERE tenant_id = DEFAULT_TENANT_ID (zero) AND def_id = current_active_id (def_id_v2). The row can never be superseded; the 'superseded' assertion (line 504) is unsatisfiable. Fix spec for Step 3 delivered (test-code only)."
+    },
+    {
+      "severity": "MAJOR",
+      "description": "Dependency (already filed as GH-803/ISS-0712, not new in this run): production src/definition/rollback.zig Step 5 supersede UPDATE `def_id = $3::uuid` vs TEXT promotion_reviews.def_id -> sqlstate 42883 (operator does not exist: text = uuid), swallowed by catch null so superseded_review_id is always null. Reproduced 42883 in this run. Both GH-804 (fixture seed) AND GH-803 (production cast) are jointly required for the 'superseded' assertion and for 4/4 green."
+    }
+  ],
+  "fix_spec": {
+    "scope": "TEST-CODE ONLY. Single file: tests/integration/prm-08-rollback-sandbox.test.zig. NO production change to src/definition/rollback.zig (that is GH-803/ISS-0712, separate run). NO migrations, NO build.zig change.",
+    "root_cause": "Fixture/supersede predicate mismatch. Helper insertPromotionReviewsRow (lines 233-258) INSERTs the fixture row with def_id = '00000000-0000-0000-0000-000000000000'::uuid (hardcoded zero) and the caller-supplied tenant_id (the test's fresh random UUID at call site line 472). The production supersede (rollback.zig Step 5, lines 286-294) matches WHERE tenant_id = $2 (= DEFAULT_TENANT_ID, zero) AND def_id = $3 (= current_active_id = def_id_v2, the ACTIVE V2 definition id) AND status IN ('applied','approved'). The fixture row (tenant=random, def_id=zero) can never satisfy it, so the row is never superseded and expectEqualStrings('superseded', ...) (line 504) fails.",
+    "approach": "Option A (RECOMMENDED - add a def_id parameter to insertPromotionReviewsRow, mirroring the GH-802 requested_by pattern). The helper has exactly ONE call site (verified by search: only line 472), so a dedicated AC4 helper (Option B) adds no value; parameter threading keeps one source of truth.",
+    "helper_change": "BEFORE (lines 233-258): fn insertPromotionReviewsRow(pool, tenant_id, review_id, requested_by) !void { ... VALUES ($1::uuid, $2::uuid, 'approved', '00000000-0000-0000-0000-000000000000'::uuid, 'prm08-test-plan-digest', NOW(), $3::uuid, 'rollback', 'prm08-test-serialised-plan') ... params { review_id, tenant_id, requested_by }. AFTER: add a 5th parameter 'def_id: []const u8' (// NEW - feeds promotion_reviews.def_id); replace the hardcoded zero-UUID literal with $4::text (promotion_reviews.def_id is TEXT; binding $4::text is precise since def_id_v2 is already a UUID string and avoids relying on the implicit uuid->text assignment cast); extend params to { review_id, tenant_id, requested_by, def_id }. Keep everything else unchanged (status 'approved', ON CONFLICT (id) DO UPDATE SET status='approved', def_type 'rollback', serialised_plan sentinel).",
+    "call_site_change": "BEFORE (line 472): if (has_pr) { try insertPromotionReviewsRow(&pool, tenant_id, review_id, requested_by); } AFTER: if (has_pr) { try insertPromotionReviewsRow(&pool, DEFAULT_TENANT_ID, review_id, requested_by, def_id_v2); } -- tenant = DEFAULT_TENANT_ID (zero), def_id = def_id_v2 (the ACTIVE V2 definition the rollback supersedes FROM).",
+    "identifiers_available": {
+      "DEFAULT_TENANT_ID": "const at line 37 = '00000000-0000-0000-0000-000000000000' (zero UUID); the tenant under which process_definitions are seeded (line 463-464) and the tenant passed to rollbackDefinitionVersion (line 481).",
+      "def_id_v2": "local var in TC-PRM-08-03 (lines 453-454); id of the ACTIVE V2 definition '2' seeded at line 464 under DEFAULT_TENANT_ID; equals production current_active_id (rollback to version 1 makes V2 the supersede source).",
+      "def_id_v1": "local var; id of the SUPERSEDED V1 definition '1' (line 463); NOT used for the supersede predicate.",
+      "review_id": "local var (line 457); the promotion_reviews.id to seed and later assert on via getPromotionReviewSuperseded.",
+      "requested_by": "local var (line 467); already threaded into the helper (GH-802 fix).",
+      "status": "fixture status 'approved' is already in the production predicate set IN ('applied','approved'), so no status change is needed."
+    },
+    "cleanup_note": "dropTenantFixtures (line 276+) already deletes promotion_reviews WHERE tenant_id = DEFAULT_TENANT_ID, so seeding under DEFAULT_TENANT_ID is consistent with cleanup (and fixes a latent leak: the current random-tenant row would never be deleted).",
+    "verification": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (target exists at build.zig:3147). Expected after fix: 4/4 pass; TC-PRM-08-03 'superseded' assertion passes. Do NOT use .vscode/run-zig-test-integration.ps1 or the zig-test-integration-cmd task - they hardcode the stale port 5433; this run's test DB is on 5453.",
+    "gh803_dependency": "Full 4/4 green ALSO requires the GH-803/ISS-0712 production fix (remove the ::uuid cast on `def_id = $3` in src/definition/rollback.zig Step 5 to eliminate sqlstate 42883). With GH-804 alone the supersede UPDATE still errors 42883 (swallowed by catch null), superseded_review_id stays null, and the seeded row remains 'approved' -> the assertion still fails. GH-804 (fixture seed) is independent test-code; GH-803 (production predicate cast) is the companion production fix; both are required for the assertion and for 4/4 green. Current-tree reproduction (this run) confirmed 42883 is still present.",
+    "negative_control_recommendation": "Optional hardening (aligns with ISS-0713 prevention notes): after seeding the matching row, a second promotion_reviews row with a non-matching def_id (e.g. def_id_v1 or another random id) could be asserted to remain 'approved', proving the supersede predicate's selectivity. Not required for the AC; leave to Step 2/3 discretion."
+  },
+  "next_steps": [
+    "Step 3 (BACKEND-DEV / ISSUE-FIXER): implement the GH-804 fix spec (test-code ONLY) in tests/integration/prm-08-rollback-sandbox.test.zig: add the def_id parameter to insertPromotionReviewsRow ($4::text replacing the hardcoded zero UUID; params array gains def_id) and change the single call site (line 472) to insertPromotionReviewsRow(&pool, DEFAULT_TENANT_ID, review_id, requested_by, def_id_v2).",
+    "Verification: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08. Note the 5453 port (not the stale 5433 in .vscode scripts).",
+    "ORCH: sequence GH-803/ISS-0712 (production 42883 supersede fix) - GH-804's verification can only reach 4/4 green once GH-803 is applied, because the supersede UPDATE still errors 42883 (swallowed by catch null) without it and the seeded row stays 'approved'.",
+    "GH-804 is test-code-only and independent of GH-803's code; it does not conflict with the GH-803 production change."
+  ],
+  "blockers": [
+    "None for Step 1 (diagnosis complete; no fix implemented). NOTE for downstream: TC-PRM-08-03's 'superseded' assertion cannot pass with GH-804 alone - the production supersede UPDATE still raises sqlstate 42883 (GH-803 not yet applied) and is swallowed by catch null, so the row remains 'approved'. GH-804 (fixture seed) + GH-803 (production cast) are jointly required for 4/4 green."
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "report_id": "WF03-GH804-20260816-step-2-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-GH804-20260816",
+  "step": "2",
+  "created_at": "2026-08-16T07:22:34Z",
+  "summary": "WF-03 Step 2 (fix design) for GH-804/ISS-0713. Produced the Type E prose design artefact src/design/iss0713-gh804-prm08-seed-fix.md defining the exact TC-PRM-08-03 fixture seed patch (test-code only, single file tests/integration/prm-08-rollback-sandbox.test.zig): add a 5th def_id param to insertPromotionReviewsRow (helper line 233; hardcoded zero-UUID def_id literal -> $4::text; params -> {review_id, tenant_id, requested_by, def_id}) and change the single call site (line 472) to insertPromotionReviewsRow(&pool, DEFAULT_TENANT_ID, review_id, requested_by, def_id_v2) so the seeded row matches the production supersede WHERE (tenant_id=DEFAULT_TENANT_ID, def_id=current_active_id=def_id_v2). Explicitly scoped OUT production src/definition/rollback.zig (GH-803/ISS-0712, separate run) with the why (the predicate is the intended contract; the fixture simply did not seed a matching row). Verification plan documents BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 and notes that full 4/4 green also requires GH-803 (42883), with any remaining TC-PRM-08-03 failure attributed to GH-803 and out of scope for this run. lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0 MINOR=0). No implementation code written (Step 3 only).",
+  "files_created": [
+    "src/design/iss0713-gh804-prm08-seed-fix.md"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH804-20260816/step-02-code-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/iss0713-gh804-prm08-seed-fix.md",
+      "status": "pass",
+      "detail": "exit 0 \u2014 'OK \u2014 1 file(s) checked, no issues.' Type E markdown lint applies; BLOCKER=0 MAJOR=0 MINOR=0."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Doc drift: core-directives.md Output File Format Rules lists inner reports (docs/issue-reports/) as .yaml, but fn:register-inner-report.md (the mandatory function contract) specifies <run_id>-step-<step>-<agent>-INNER-REPORT.json with a JSON schema, and this run's existing inner reports (step-00/0.5/1) are .json. Followed the function definition + same-run precedent (.json); flagged for source fix."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 2b) to validate the Type E design artefact (lint_design_artefact.py exit 0 already confirmed here).",
+    "Step 3 (BACKEND-DEV / ISSUE-FIXER): implement the GH-804 fix spec (test-code ONLY) in tests/integration/prm-08-rollback-sandbox.test.zig: add def_id param to insertPromotionReviewsRow ($4::text replacing the hardcoded zero UUID; params array gains def_id) and change the single call site (line 472) to insertPromotionReviewsRow(&pool, DEFAULT_TENANT_ID, review_id, requested_by, def_id_v2).",
+    "Verification: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (port 5453, NOT the stale 5433 in .vscode scripts).",
+    "ORCH: sequence GH-803/ISS-0712 (production 42883 supersede cast fix) \u2014 4/4 green requires BOTH GH-804 (seed) and GH-803 (production cast). GH-804 alone leaves TC-PRM-08-03 failing on the swallowed 42883 (row stays 'approved')."
+  ],
+  "blockers": [
+    "None for Step 2 (design only; no fix implemented). TC-PRM-08-03's 'superseded' assertion cannot pass with GH-804 alone \u2014 the production supersede UPDATE still raises sqlstate 42883 (GH-803 not applied) and is swallowed by catch null; GH-804 (fixture seed) + GH-803 (production cast) are jointly required for 4/4 green."
+  ]
+}
