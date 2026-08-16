@@ -557,6 +557,58 @@ If any infrastructure dependency is unavailable at any pipeline step:
 3. Only advance the blocked step after the ADHOC returns PASS.
 4. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
 
+## Dispatch-time end-state precondition — construction rule 7 (§8f gate)
+
+**Rule 7 (ad-hoc construction):** If the ADHOC's desired end state is a status change in a
+tracked YAML/data file, declare the target requirement IDs and the desired end-state status
+as part of the constructed workflow, then run the **§8f Dispatch-Time Staleness Check
+BEFORE dispatching step-00**. If any target is already at the desired end-state at
+`origin/main` HEAD, do NOT create or dispatch step-00 (no branch, no stash) — abort with
+`result.status = BLOCKED` (see §8f in `docs/agents/ORCHESTRATOR.md`).
+
+**§8f Dispatch-Time Staleness Check — BEFORE an ADHOC run's Step 00.** Before ORCH
+constructs and dispatches any ADHOC run whose desired end state is a status change in a
+tracked YAML/data file (e.g. marking PRM-02/03/04/05 `RELEASED` in
+`docs/requirements.yaml`), it MUST verify no target requirement is already at that end
+state at `origin/main` HEAD. **Check before step-00 — do not create the branch or stash
+first and discover afterwards.** This gate closes the dispatch-time staleness window
+behind GH-797 / ISS-0710, where `ADHOC-prm-reqctl-status-20260816` aborted BLOCKER only
+after step-00 had already created a housekeeping branch and stash.
+
+```bash
+git fetch origin
+git show origin/main:docs/requirements.yaml   # then parse each target ID's status
+```
+
+For each requirement ID targeted by the ADHOC's declared desired end-state, read its
+status at `origin/main` HEAD and compare it against the declared desired status. Use
+`git show origin/main:docs/requirements.yaml` + parse as the authoritative read;
+`python tools/reqctl.py show <id>` is a valid substitute only when the working tree is
+verified to be at `origin/main` HEAD.
+
+**Exit 0 → CLEARED.** No target is already at the desired end-state. Log:
+`<ISO8601> | DISPATCH_STALE | <RUN-ID> | --- | ORCH | CLEARED — no target already at <end-state> at origin/main HEAD`
+Then proceed with normal §5 construction and dispatch step-00.
+
+**Non-zero exit → BLOCKED.** At least one target is already at the ADHOC's desired
+end-state at `origin/main` HEAD, OR the read could not be completed. Do NOT create or
+dispatch step-00 — no branch, no stash, no `fn:git-setup`. Abort the ADHOC with
+`result.status = BLOCKED`, file a BLOCKER issue entry naming the already-done requirement
+IDs and, where known, the delivering run/PR (here: `WF02-prm02-05-20260816` / `PR #795`),
+and log:
+`<ISO8601> | DISPATCH_STALE | <RUN-ID> | --- | ORCH | BLOCKER — target already at <status> at origin/main HEAD (<delivering run/PR>) — ADHOC short-circuited before step-00`
+No cleanup is required because no branch or stash is ever created.
+
+**Judge this gate by the exit code only.** Never phrase an ADHOC task as "make X stop
+appearing" — the same trap as §8a/§8e and the 2026-05-30 label-renaming incident
+(`docs/anti-patterns.md`). If the gate's definition is wrong, change the definition; do
+not arrange for it to pass. **Fail-closed:** a fetch/show/parse failure is BLOCKED, never
+CLEARED — an unverified target must not be assumed not-done.
+
+**Defense-in-depth:** the existing in-run pre-flight ("if already RELEASED, STOP and FAIL
+with BLOCKER (someone else fixed it)") is retained for the dispatch-to-execution race
+window; it is not the primary control.
+
 ## GitHub Branch Management (MANDATORY)
 
 **Every feature branch created by the pipeline MUST be managed through GitHub to

@@ -1,0 +1,66 @@
+report_id: WF03-GH797-20260816-step-03-backend-dev
+agent_id: BACKEND-DEV
+run_id: WF03-GH797-20260816
+step: "3"
+created_at: "2026-08-16T05:04:47Z"
+summary: >-
+  WF-03 Step 3 for GH-797 / ISS-0710: implemented the ORCH dispatch-time staleness gate
+  as a docs/process change only, exactly per the validated design
+  (src/design/iss0710-gh797-dispatch-staleness-gate.md, Type E). No production code, no
+  migrations, no other docs touched. (a) Added new §8f 'Dispatch-Time Staleness Check —
+  BEFORE an ADHOC run's Step 00' to docs/agents/ORCHESTRATOR.md immediately after §8e
+  (per the validator's placement note), verbatim from design §11 — including the
+  git fetch origin / git show origin/main:docs/requirements.yaml mechanics, the
+  exit-code-only CLEARED/BLOCKED verdict, the exact DISPATCH_STALE log lines on both
+  branches, the BLOCKER short-circuit before step-00 (no branch, no stash, no fn:git-setup,
+  result.status = BLOCKED + BLOCKER issue entry naming PRM-02/03/04/05 and
+  WF02-prm02-05-20260816 / PR #795), the fail-closed principle, and the defense-in-depth
+  retention of the in-run pre-flight. (b) Added §5 construction rule 7 (dispatch-time
+  end-state precondition) verbatim from design §12. (c) Mirrored the gate (rule 7 + §8f
+  prose) into the canonical per-role file .claude/agents/orchestrator.md and the two
+  GitHub-harness adapters .github/instructions/orchestrator.instructions.md +
+  .github/agents/orchestrator.agent.md per AGENT_SYSTEM.md §9 / A007 — all three carry
+  identical 52-line gate blocks. (d) Verification: tools/lint_agent_docs.py exits 0 with
+  0 BLOCKER / 0 MAJOR / 0 MINOR (all 6 A007 findings are the pre-existing acknowledged
+  baseline, now suppressed); the orchestrator pair's similarity moved UP (0.40 -> 0.43,
+  0.42 -> 0.45), closing drift, and tools/lint_agent_docs.baseline.json was updated to the
+  new values to keep the acknowledgment record accurate. tools/lint_handoffs.py exits 0
+  (hard gate). RESULT: PASS.
+files_created:
+  - docs/issue-reports/WF03-GH797-20260816-step-03-backend-dev-INNER-REPORT.yaml
+files_modified:
+  - docs/agents/ORCHESTRATOR.md
+  - .claude/agents/orchestrator.md
+  - .github/instructions/orchestrator.instructions.md
+  - .github/agents/orchestrator.agent.md
+  - tools/lint_agent_docs.baseline.json
+  - handoffs/WF03-GH797-20260816/step-03-backend-dev.json
+  - handoffs/registry.json
+tests_run:
+  - name: tools/lint_agent_docs.py --no-baseline (A007 drift, full set)
+    status: pass
+    detail: "Exit 0 — 0 BLOCKER, 0 MAJOR, 6 MINOR (pre-existing acknowledged set). Orchestrator similarity moved up: orchestrator.agent.md 0.40 -> 0.43, orchestrator.instructions.md 0.42 -> 0.45. No new role fell below threshold."
+  - name: tools/lint_agent_docs.py (with baseline)
+    status: pass
+    detail: "Exit 0 — 0 BLOCKER, 0 MAJOR, 0 MINOR; 6 A007 findings suppressed by lint_agent_docs.baseline.json (pre-existing acknowledged drift)."
+  - name: tools/lint_handoffs.py (hard gate)
+    status: pass
+    detail: "Exit 0 — 0 BLOCKER, 0 MAJOR, 1 MINOR (H010: 2 pre-existing handoffs absent from registry, not from this run), 332 ACKNOWLEDGED."
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md still specifies inner reports as
+      docs/issue-reports/<run>-step-<step>-<agent>-INNER-REPORT.json, but
+      docs/agents/instructions/core-directives.md (authoritative output-format rule) requires
+      .yaml for inner reports and forbids .json. This report is written as .yaml per
+      core-directives.md. Pre-existing drift, re-flagged MINOR (same finding as Step 1/2/2b);
+      fix the function doc at the source.
+  - severity: MINOR
+    description: >-
+      tools/lint_handoffs.py H010 reports handoffs absent from registry.json (2 files:
+      handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json and
+      handoffs/WF02-iss201-event-return-20260611/step-final-backend-dev.json). Both are
+      pre-existing historical runs, not this run; lint_handoffs still exits 0.
+next_steps:
+  - "Docs-only change — no TEST-DESIGNER / TEST-DESIGN-VALIDATOR (4b) steps apply per the handoff and design §14. Route to DOC-UPDATER (Step 7) then Step Final (git-merge) per the WF-03 pipeline as ORCH decides."
+blockers: []
