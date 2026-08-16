@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-16T07:52:13Z",
+  "last_updated": "2026-08-16T08:33:19Z",
   "next_issue_id": 714,
   "issues": [
     {
@@ -2745,7 +2745,7 @@
       "id": "ISS-0712",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
       "severity": "MAJOR",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "title": "src/definition/rollback.zig supersede UPDATE compares def_id = $3::uuid but promotion_reviews.def_id is TEXT -> sqlstate 42883 (operator does not exist); swallowed by catch null so superseded_review_id is always null (PRM-08 AC4 never works)",
       "run_id": "WF03-GH803-20260816",
       "handoff_id": "wf03-gh803-20260816-005-issue-fixer",
@@ -2758,7 +2758,9 @@
       "step_1_diagnosis_completed_at": "2026-08-16T06:31:51Z",
       "github_issue_confirmed": true,
       "branch": "feature/WF03-GH803-20260816",
-      "step_0.5_completed_at": "2026-08-16T07:52:13Z"
+      "step_0.5_completed_at": "2026-08-16T07:52:13Z",
+      "resolved_at": "2026-08-16T08:33:19Z",
+      "resolved_by": "DOC-UPDATER (WF03-GH803-20260816 step-07)"
     },
     {
       "id": "ISS-0713",

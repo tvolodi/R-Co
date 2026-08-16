@@ -1842,3 +1842,5 @@
 2026-08-16T08:11:04Z | ROUTE | WF-03 | wf03-gh803-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T08:21:48Z | ROUTE | WF-03 | wf03-gh803-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING
 2026-08-16T08:29:03Z | complete-handoff | WF03-GH803-20260816 | wf03-gh8 | TEST-RUNNER | Step 5 PASS — production supersede fix verified (prm08 4/4, no 42883; lint 0; scope rollback.zig only; test-env-verify 0; unit 0). report=tests/reports/report-20260816-WF03-GH803-20260816.yaml
+2026-08-16T08:31:02Z | ROUTE | WF-03 | wf03-gh803-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
+2026-08-16T08:40:32Z | complete-handoff | WF03-GH803-20260816 | wf03-gh803-20260816-07-doc-updater | DOC-UPDATER | Step 7 PASS - CHANGELOG updated, ISS-0712 RESOLVED, issue_index updated; GH-803 left OPEN for Step Final release.py --close-github-issue

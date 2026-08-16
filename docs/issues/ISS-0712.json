@@ -4,7 +4,7 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
   "github_issue_confirmed": true,
   "title": "src/definition/rollback.zig supersede UPDATE compares def_id = $3::uuid but promotion_reviews.def_id is TEXT -> sqlstate 42883 (operator does not exist); swallowed by catch null so superseded_review_id is always null (PRM-08 AC4 never works)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "workflow_id": "WF03-GH803-20260816",
   "run_id": "WF03-GH803-20260816",
@@ -73,13 +73,26 @@
       "status": "COMPLETED",
       "completed_at": "2026-08-16T07:57:26Z",
       "summary": "WF-03 Step 1 (diagnosis-as-design): CONFIRMED the 42883 supersede diagnosis against the ACTUAL src/definition/rollback.zig Step 5 (def_id = $3::uuid vs TEXT promotion_reviews.def_id, swallowed by bare `catch null`) and migration 096. Defined the exact Step 3 fix spec: drop ::uuid on $3 (text = text); replace the bare `catch null` with a SQLSTATE-42P01 distinction (copy conn.lastSqlState(); 42P01 -> null, else map to RollbackError) mirroring src/event_store/store.zig PAR-01. `zig build check` exit 0 (runtime-only). Issue remains OPEN pending Step 3 fix."
+    },
+    {
+      "step": "step-07-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH803-20260816",
+      "handoff_id": "wf03-gh803-20260816-07-doc-updater",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T08:33:19Z",
+      "summary": "WF-03 Step 7 for GH-803: CHANGELOG.md updated under [Unreleased] 2026-08-16 with the production rollback supersede fix entry (Change A def_id = $3 text=text + Change B 42P01-distinguishing catch). ISS-0712 marked RESOLVED with resolved_at / resolution / prevention; docs/issues/issue_index.json updated (ISS-0712 RESOLVED with resolved_at/resolved_by). GitHub issue #803 intentionally NOT closed by this step — left open for Step Final (release.py --close-github-issue) per the loop-mode instruction."
     }
   ],
   "prevention": {
     "actions": [
       "SQL predicates must be type-checked against the actual column types in the applied migrations; casting a bound parameter to a type that differs from the column type (here ::uuid vs TEXT def_id) is a compile-time-invisible runtime error that only surfaces at execution.",
       "Do not use a broad `catch null` to tolerate a missing table \u2014 check the specific SQLSTATE (42P01 relation does not exist) so a missing table is skipped but any other query error propagates.",
-      "The lint_sql_param_types.py / lint_sql_table_refs.py linters already catch C42883 patterns elsewhere (see ISS-0124, ISS-0637/0638, ISS-0632); extend or run them over src/definition/rollback.zig so this class is caught statically next time."
+      "The lint_sql_param_types.py / lint_sql_table_refs.py linters already catch C42883 patterns elsewhere (see ISS-0124, ISS-0637/0638, ISS-0632); extend or run them over src/definition/rollback.zig so this class is caught statically next time.",
+      "When a query binds a value into a column, the parameter type must match the column type — TEXT columns must not be compared with ::uuid-cast parameters; a bare `catch null` must never swallow real query errors — distinguish SQLSTATE 42P01 from other failures."
     ]
-  }
+  },
+  "resolved_at": "2026-08-16T08:33:19Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH803-20260816 step-07)",
+  "resolution": "RESOLVED via run WF03-GH803-20260816 (branch feature/WF03-GH803-20260816). The production supersede defect in src/definition/rollback.zig Step 5 was fixed (production change, per src/design/iss0712-gh803-rollback-supersede-fix.md). Step 1 (ISSUE-FIXER) confirmed the 42883 diagnosis against the actual code: the supersede UPDATE compared promotion_reviews.def_id (TEXT, migration 096) against $3::uuid (no implicit text = uuid operator -> sqlstate 42883), and the bare `catch null` wrapper swallowed the error so superseded_review_id was always null (PRM-08 AC4 never worked). Step 3 (BACKEND-DEV) implemented the two-part fix in src/definition/rollback.zig ONLY: Change A — line 290 `AND def_id = $3::uuid` -> `AND def_id = $3` (drop the ::uuid cast so the TEXT column compares text = text; $1::uuid/$2::uuid unchanged); Change B — line 295 bare `catch null` replaced with a SQLSTATE-distinguishing catch mirroring the PAR-01 pattern in src/event_store/store.zig (copy conn.lastSqlState() into a 5-byte buffer; 42P01 -> null for a genuinely missing table, else switch PoolError.ExhaustedPool -> RollbackError.PoolExhausted / else -> RollbackError.TransactionFailed) so real query failures surface as RollbackError. No migration needed (schema is correct; the bug was the query cast). Step 5 (TEST-RUNNER) independent verification PASS (tests/reports/report-20260816-WF03-GH803-20260816.yaml): BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 exit 0 — 4/4 green (TC-PRM-08-01..04 including the previously-failing TC-PRM-08-03 supersede; superseded_review_id now populated), no sqlstate=42883 in stderr; change-scope audit confirms the production change is confined to src/definition/rollback.zig (no migrations/, no tests/); test-env-verify HEALTHY 10/10; zig build test exit 0 (lint_test_wiring PASS). lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACK). Step 7 (DOC-UPDATER) updated CHANGELOG.md under [Unreleased] 2026-08-16 and marked ISS-0712 RESOLVED. GitHub issue #803 left OPEN for Step Final (release.py --close-github-issue, loop-mode)."
 }
