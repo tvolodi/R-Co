@@ -1772,3 +1772,7 @@
 2026-08-16T05:28:39Z | ROUTE | WF02 | WF02-vld01-03-20260816-03-test-designer-rework-1 | ORCH -> TEST-DESIGNER | PENDING | REWORK #2: fix transition_mod regression + wire main_test.zig + narrow steps + commit
 2026-08-16T05:39:33Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-001 | ORCH -> ISSUE-FIXER | PENDING | STEP 1: root cause diagnosis of ISS-0709/GH#799
 2026-08-16T05:44:34Z | COMPLETE | WF03 | WF03-vld-impl-bugs-20260816 | ISSUE-FIXER | step-1 diagnosis of ISS-0709/GH#799 -> 5 root-cause groups (R1..R5) written to ISS-0709.json; no implementation change
+2026-08-16T05:48:37Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002 | ORCH -> CODE-DESIGNER | PENDING | STEP 2: fix design for ISS-0709/GH#799 (R1-R5)
+2026-08-16T05:58:04Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002b | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | STEP 2b: HARD GATE fix design validation (R1-R5)
+2026-08-16T06:04:32Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-003 | ORCH -> BACKEND-DEV | PENDING | STEP 3: implement R1-R5 fix per FIX design
+2026-08-16T06:21:12Z | COMPLETE | WF03 | WF03-vld-impl-bugs-20260816-003 | BACKEND-DEV | FAIL | R1-R5 implemented (38/38 unit); integration gates blocked by out-of-scope defects (scope.zig/graph.zig/emitEmptyExpression/fixture/vld-http 42P01); commit 6c079980
