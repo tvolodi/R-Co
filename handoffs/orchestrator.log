@@ -1836,3 +1836,4 @@
 2026-08-16T07:50:08Z | ROUTE | WF-03 | wf03-gh803-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T07:53:55Z | ROUTE | WF-03 | wf03-gh803-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T07:57:26Z | COMPLETE | WF03-GH803-20260816 | wf03-gh8 | ISSUE-FIXER | Step 1 diagnosis PASS: confirmed 42883 supersede defect (rollback.zig Step 5 def_id = $3::uuid vs TEXT def_id, swallowed by catch null); Step 3 fix spec delivered (drop ::uuid on $3; SQLSTATE 42P01 catch distinction) in docs/issue-reports/WF03-GH803-20260816-step-1-issue-fixer-INNER-REPORT.yaml
+2026-08-16T07:59:39Z | ROUTE | WF-03 | wf03-gh803-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
