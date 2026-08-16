@@ -1922,3 +1922,5 @@
 2026-08-16T10:44:31Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-000 | ORCH -> BACKEND-DEV | PENDING | STEP 00: git-setup for ISS-0714/GH#809 bench-env fix
 2026-08-16T10:47:42Z | COMPLETE | WF03-iss0714-bench-env-20260816 | WF03-iss | BACKEND-DEV | STEP 00 git-setup PASS: branch feature/wf03-iss0714-bench-env-20260816 @ 59554217, pushed, base drifted from 02c1010b (origin/main advanced post-routing)
 2026-08-16T10:50:05Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-001 | ORCH -> ISSUE-FIXER | PENDING | STEP 1: root cause diagnosis of ISS-0714/GH#809 (dev-DB provisioning)
+2026-08-16T10:59:56Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-002 | ORCH -> CODE-DESIGNER | PENDING | STEP 2: fix design for dev-DB ledger reconciliation
+2026-08-16T11:07:55Z | COMPLETE | WF03-iss0714-bench-env-20260816 | wf03-iss0714-bench-env-20260816-002 | CODE-DESIGNER | PASS — fix design src/design/fix-ISS-0714-bench-env.md written; reconciliation spec for tenant_default ledger (canonical 111 + 98 guard) + registry stamp; route to CODE-DESIGN-VALIDATOR (Step 2b)
