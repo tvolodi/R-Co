@@ -1,0 +1,43 @@
+{
+  "report_id": "WF03-iss0714-bench-env-20260816-step-1-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-iss0714-bench-env-20260816",
+  "step": "1",
+  "created_at": "2026-08-16T10:57:52Z",
+  "summary": "Diagnosed ISS-0714 / GH #809 root cause (WF-03 Step 1, diagnosis only — no fix implemented). Reproduced `zig build migrate` against BPM_DB_URL (5442/bpm_dev): CLI shows only `default tenant schema provisioning failed: error.MigrationFailed` + ISS-0706 leg-(d) post-condition abort (exit 1). Surfaced the swallowed SQL error from the Postgres server log: 001_event_store.sql line 48 CREATE UNIQUE INDEX uq_event_idempotency ON events(idempotency_key) -> SQLSTATE 42P16 (unique constraint on partitioned table must include all partitioning columns; DETAIL: lacks column created_at which is part of the partition key). Root cause: STATE MISMATCH — tenant_default already provisioned with modern shape (events PARTITIONED BY RANGE(created_at) from 1147_par01) but public.schema_migrations has 0 rows for schema_name='tenant_default' and tenant_schemas.migrations_applied_at is NULL, so runForSchema re-applies the whole set from 001 against the partitioned events. NOT a migration-set defect (test DB 5434 passes 147/147 public + 111 tenant_default with same partitioned shape). Fix = repair dev DB only: populate tenant_default ledger + stamp migrations_applied_at. Written to docs/issues/ISS-0714.json (root_cause_analysis) and commented on GH #809 (#issuecomment-5307094779).",
+  "files_created": [],
+  "files_modified": [
+    "docs/issues/ISS-0714.json",
+    "handoffs/WF03-iss0714-bench-env-20260816/step-1-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build migrate (dev DB 5442/bpm_dev, reproduce)",
+      "status": "fail",
+      "detail": "exit 1: default tenant schema provisioning failed: error.MigrationFailed; leg-(d) post-condition abort. Expected — confirms the reported failure. Underlying SQL error captured from docker logs r-co-db-1 (42P16, 001 uq_event_idempotency)."
+    },
+    {
+      "name": "read-only dev DB inspection (psql via docker exec)",
+      "status": "pass",
+      "detail": "58 tenant_default tables; events partitioned RANGE(created_at); 0 tenant_default ledger rows; tenant_schemas.migrations_applied_at NULL; public ledger 88 rows."
+    },
+    {
+      "name": "test DB comparison (5434/bpm_test)",
+      "status": "pass",
+      "detail": "147 public + 111 tenant_default ledger rows; migrations_applied_at NOT NULL; same partitioned events shape — proves migration set is correct."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "runForSchema() (src/db/migrations.zig) swallows the per-migration SQL error (simpleQuery catch -> ROLLBACK -> return MigrationFailed) with no logging; migrate.zig logs only the error enum name. Root-cause diagnosis required reading the Postgres server log. Consider logging filename+error on migration failure to make future failures self-diagnosing. Tracked as a note; not filed separately."
+    }
+  ],
+  "next_steps": [
+    "CODE-DESIGNER (WF-03 Step 2): design dev-DB-only repair — populate public.schema_migrations schema_name='tenant_default' with the 111 non-public-only migrations (canonical ref = test DB tenant_default ledger) + UPDATE tenant_schemas SET migrations_applied_at=NOW() for default tenant; verify 001's partitioned-events unique indexes are not re-attempted.",
+    "ISSUE-FIXER Step 2: implement the ledger reconciliation against 5442/bpm_dev; verify `zig build migrate` exit 0 and leg-(d) post-condition passes; then `zig build bench` starts.",
+    "Do NOT re-run `zig build migrate` as the fix — it will keep failing until the ledger is reconciled."
+  ],
+  "blockers": []
+}

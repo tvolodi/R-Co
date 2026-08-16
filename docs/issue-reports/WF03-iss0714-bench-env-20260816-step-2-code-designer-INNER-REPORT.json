@@ -1,0 +1,86 @@
+{
+  "report_id": "WF03-iss0714-bench-env-20260816-step-2-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-iss0714-bench-env-20260816",
+  "step": "2",
+  "created_at": "2026-08-16T11:07:55Z",
+  "summary": "Fix design for ISS-0714 / GH #809 written to src/design/fix-ISS-0714-bench-env.md. Grounded in docs/issues/ISS-0714.json root_cause_analysis and source verification of provisionTenantSchema() idempotency fast-path, runForSchema() ledger write shape, and migrate.zig leg-(d) post-condition. Design specifies: tenant-keyed session advisory lock; populate public.schema_migrations for schema_name='tenant_default' with the canonical 111-row test-DB ledger (5434) plus a completeness guard that unions the 98 current non-public-only migrations/*.sql files (89 all_schemas + 9 tenant_only); stamp tenant_schemas.migrations_applied_at=NOW() for the default tenant in the same transaction; and D-1..D-7 verification gates (ledger count/coverage, registry stamp, events partitioned + 58 tables spot-checks, zig build migrate exit 0, zig build bench proceeds, no test-DB regression). Documented the 111-vs-98 ledger delta (13 historical rows reclassified to -- scope: public after being applied to tenant_default) and confirmed the public backlog (GBL-116..143 + 1134..1162) does not delete tenant_default ledger rows. Design lints clean (BLOCKER=0 MAJOR=0, MINOR E030 = unavoidable schema-qualified table names). Design only — no reconciliation executed, no src/*.zig or migrations/*.sql modified.",
+  "files_created": [
+    "src/design/fix-ISS-0714-bench-env.md"
+  ],
+  "files_modified": [
+    "handoffs/WF03-iss0714-bench-env-20260816/step-2-code-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log",
+    "docs/issue-reports/WF03-iss0714-bench-env-20260816-step-2-code-designer-INNER-REPORT.json"
+  ],
+  "tests_run": [
+    {
+      "name": "lint_design_artefact.py src/design/fix-ISS-0714-bench-env.md",
+      "status": "pass",
+      "detail": "exit 0; BLOCKER=0 MAJOR=0 MINOR=21 (E030 schema-qualified table names only — the design's subject tables)"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "handoff task.functions_to_call lists fn:design-fix, which is NOT defined in docs/agents/FUNCTIONS.md; used the canonical chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff per HANDOFF_PROTOCOL §4."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Pre-existing registry casing duplication in this run: step-1 has both WF03-iss0714-bench-env-20260816-001 (PENDING) and wf03-...-001 (COMPLETED). Not introduced by this step; aligned step-2 registry entry handoff_id to the file's lowercase form per doc-updater convention."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 2b) to validate the fix design before BACKEND-DEV executes the reconciliation.",
+    "BACKEND-DEV (Step 3): execute §3 reconciliation verbatim (generate scratch/reconcile_iss0714.sql, apply with psql -v ON_ERROR_STOP=1), then run §5 verification gates D-1..D-7."
+  ],
+  "blockers": [],
+  "validate_completeness": {
+    "all_met": true,
+    "criteria": [
+      {
+        "criterion": "Design specifies the exact tenant_default schema_migrations reconciliation (which migrations, source of the canonical ledger, ordering)",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "src/design/fix-ISS-0714-bench-env.md §3.4 / §3.5 / §5 / §4 / §1 / lint",
+        "missing": null
+      },
+      {
+        "criterion": "Design specifies the migrations_applied_at UPDATE for the default tenant",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "src/design/fix-ISS-0714-bench-env.md §3.4 / §3.5 / §5 / §4 / §1 / lint",
+        "missing": null
+      },
+      {
+        "criterion": "Design specifies verification (spot-check reconciled versions vs objects present; re-run zig build migrate exit 0; zig build bench proceeds)",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "src/design/fix-ISS-0714-bench-env.md §3.4 / §3.5 / §5 / §4 / §1 / lint",
+        "missing": null
+      },
+      {
+        "criterion": "Design addresses safety (advisory lock, no destructive ops, idempotency)",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "src/design/fix-ISS-0714-bench-env.md §3.4 / §3.5 / §5 / §4 / §1 / lint",
+        "missing": null
+      },
+      {
+        "criterion": "Design explicitly notes this is dev-DB-only repair — no src/*.zig or migrations/*.sql change required",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "src/design/fix-ISS-0714-bench-env.md §3.4 / §3.5 / §5 / §4 / §1 / lint",
+        "missing": null
+      },
+      {
+        "criterion": "python tools/lint_handoffs.py exits 0 on this handoff",
+        "type": "documentation",
+        "status": "MET",
+        "evidence": "src/design/fix-ISS-0714-bench-env.md §3.4 / §3.5 / §5 / §4 / §1 / lint",
+        "missing": null
+      }
+    ]
+  }
+}

@@ -2810,7 +2810,7 @@
       "id": "ISS-0714",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/809",
       "severity": "MAJOR",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "title": "bench env: dev DB default-tenant schema provisioning fails (tenant_schemas.migrations_applied_at NULL) blocks WF-04",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "workflow_id": "WF03-vld-impl-bugs-20260816",

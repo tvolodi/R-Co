@@ -1,0 +1,68 @@
+{
+  "handoff_id": "wf03-iss0714-bench-env-20260816-002b",
+  "run_id": "WF03-iss0714-bench-env-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-iss0714-bench-env-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T11:08:51Z",
+  "started_at": "2026-08-16T11:08:51Z",
+  "completed_at": "2026-08-16T11:12:25Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 2b — Fix design validation (HARD GATE)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-iss0714-bench-env-20260816-002",
+      "wf03-iss0714-bench-env-20260816-001"
+    ],
+    "artifacts_in": [
+      "src/design/fix-ISS-0714-bench-env.md",
+      "docs/issues/ISS-0714.json (root_cause_analysis)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b: Validate the fix design at src/design/fix-ISS-0714-bench-env.md before BACKEND-DEV executes it. Verify: (1) the design correctly targets the root cause (dev-DB-only ledger reconciliation), (2) the reconciliation SQL is complete and correct (advisory lock, ledger population, migrations_applied_at stamp, verification), (3) the canonical ledger source is sound (test-DB tenant_default ledger + union with current migrations/ dir), (4) no app code / migration file change is required, (5) safety (idempotency, no destructive ops, rollback path), (6) verification gates are concrete and sufficient. Hard gate — return PASS only if all checks pass.",
+    "acceptance_criteria": [
+      "Design targets the root cause (dev-DB-only, no src/*.zig or migrations/*.sql change)",
+      "Reconciliation SQL complete: advisory lock, BEGIN/COMMIT, ledger INSERTs (ON CONFLICT DO NOTHING), migrations_applied_at UPDATE",
+      "Canonical ledger source sound (test-DB tenant_default ledger + union with current migrations/ non-public-only files)",
+      "Safety: idempotent, no destructive ops, rollback on verification failure",
+      "Verification gates concrete (ledger count, migrate exit 0, bench proceeds)",
+      "Design contains no unintended app-code change",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "gate": "PASS",
+    "summary": "Fix design src/design/fix-ISS-0714-bench-env.md validated (HARD GATE) - PASS. (1) Root cause: dev-DB-only ledger reconciliation, no src/*.zig/migrations/*.sql change (git diff main...HEAD confirms branch diff = handoffs + issue + design only). (2) Reconciliation SQL complete: advisory lock key byte-identical to provisionTenantSchema (provisioning.zig:38 + hashtext($1||$2)), BEGIN/COMMIT wraps B+C, ledger INSERTs use runner shape ON CONFLICT (schema_name,version) DO NOTHING (migrations.zig:535-538), migrations_applied_at UPDATE matches provisioning.zig:192, schema_migrations DDL shape verified. (3) Canonical source sound: test-DB 111-row tenant_default ledger (B-1 abort-if-ne-111) + B-3 guard unioning current migrations/; re-computed migrationScope() = 49 public_only / 89 all_schemas / 9 tenant_only = 98 tenant_default set / 147 total, matches design + test DB; schemaNameForTenant -> tenant_default. (4) Safety: idempotent, no destructive ops, B+C atomic under ON_ERROR_STOP=1 with rollback, serialized under the tenant advisory lock, confined to 2 tables. (5) Gates D-1..D-7 concrete with error taxonomy. (6) No unintended app-code change. lint_design_artefact exit 0 (MINOR E030 prose only); lint_handoffs exit 0, 0 findings on this handoff (no NEW issues).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "task.functions_to_call lists fn:validate-design (not in FUNCTIONS.md); used canonical fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff chain per HANDOFF_PROTOCOL s4."
+      },
+      {
+        "severity": "MINOR",
+        "description": "21x E030 schema-qualified-name findings in design prose (public.schema_migrations / public.tenant_schemas) - non-blocking per E030-prose precedent; intentional here since subject tables live in public and the repair targets them by exact name."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Design s4 public-backlog count \"59 files\" (GBL-116..143 + 1134..1162) is illustrative (147 total - 88 applied); not asserted by gate D-5, does not affect reconciliation. Traceability note only."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing registry casing duplication in run (step-1 WF03/wf03 pair, step-2b capital-W entry vs lowercase file); registry entry updated case-insensitively, not introduced by this step."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3a) to execute the s3 reconciliation verbatim, then run verification gates D-1..D-7"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

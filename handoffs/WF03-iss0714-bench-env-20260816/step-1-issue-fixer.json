@@ -1,0 +1,61 @@
+{
+  "handoff_id": "wf03-iss0714-bench-env-20260816-001",
+  "run_id": "WF03-iss0714-bench-env-20260816",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-iss0714-bench-env-20260816/step-1-issue-fixer.json",
+  "created_at": "2026-08-16T10:49:54Z",
+  "started_at": "2026-08-16T10:49:54Z",
+  "completed_at": "2026-08-16T10:57:52Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 1 — Root cause diagnosis of ISS-0714 / GH #809",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-iss0714-bench-env-20260816-000",
+      "wf03-vld-impl-bugs-20260816-009-issue"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0714.json",
+      "https://github.com/tvolodi/R-Co/issues/809",
+      "src/tools/migrate.zig (ISS-0706 leg-(d) post-condition)",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1: Root-cause diagnosis of ISS-0714 / GH #809. The dev/bench DB (BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev) fails default-tenant schema provisioning: provisionTenantSchema() returns error.MigrationFailed (tenant_id=00000000-0000-0000-0000-000000000000), so public.tenant_schemas.migrations_applied_at stays NULL and the ISS-0706 leg-(d) post-condition in src/tools/migrate.zig aborts `zig build migrate` / `zig build bench`. Diagnose the ROOT CAUSE: which migration in runForSchema fails on the dev DB, and why. Do NOT implement a fix in this step. Deliverable: root-cause analysis appended to docs/issues/ISS-0714.json (root_cause_analysis section) with the exact failing migration, the error, and the fix approach. The analysis must be specific enough for CODE-DESIGNER (WF-03 Step 2) to write a fix design without re-diagnosing.",
+    "acceptance_criteria": [
+      "Root cause identified: the specific migration file(s) that fail in runForSchema on the dev DB, and the SQL/error",
+      "Whether it's a state-mismatch (dev DB already partially provisioned) vs a migration-set defect",
+      "Whether repairing the dev DB alone suffices (re-run migrations) or the migration set needs a fix",
+      "Analysis written into docs/issues/ISS-0714.json (root_cause_analysis section)",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:update-issue",
+      "fn:diagnose"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause of ISS-0714/GH#809 diagnosed: STATE MISMATCH on the dev DB. tenant_default is already provisioned with the modern shape (events PARTITIONED BY RANGE(created_at) from 1147_par01) but its migration ledger (public.schema_migrations schema_name='tenant_default') is EMPTY and tenant_schemas.migrations_applied_at is NULL, so provisionTenantSchema() re-runs runForSchema('tenant_default') from scratch and 001_event_store.sql line 48 CREATE UNIQUE INDEX uq_event_idempotency ON events(idempotency_key) fails with SQLSTATE 42P16 (unique constraint on partitioned table must include all partitioning columns; DETAIL: UNIQUE constraint on table \"events\" lacks column \"created_at\" which is part of the partition key). NOT a migration-set defect (test DB 5434 migrates 147/147 + 111 tenant_default with same partitioned events). Fix = repair dev DB only: populate tenant_default ledger (111 rows, ref = test DB) + stamp migrations_applied_at. Analysis written to docs/issues/ISS-0714.json (root_cause_analysis) and commented on GH #809.",
+    "root_cause": "STATE MISMATCH (dev-DB-only). failing_migration=001_event_store.sql (line 48, uq_event_idempotency on events). sql_error=42P16 unique constraint on partitioned table must include all partitioning columns (DETAIL: lacks column created_at). state_mismatch_or_defect=STATE MISMATCH, not a migration-set defect (test DB proves set is good). repair_dev_db_only_or_migration_fix=repair_dev_db_only (ledger reconcile + stamp migrations_applied_at; no migration/code change).",
+    "artifacts_out": [
+      "docs/issues/ISS-0714.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) to design the dev-DB-only ledger-reconciliation + migrations_applied_at repair; then ISSUE-FIXER Step 2 implements it.",
+    "functions_completed": [
+      "fn:search-issues",
+      "fn:update-issue",
+      "fn:diagnose"
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
