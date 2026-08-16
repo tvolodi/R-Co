@@ -109,6 +109,13 @@ fn uuidToHex32(allocator: std.mem.Allocator, uuid: [16]u8) ![]u8 {
 }
 
 fn cleanupDefinition(pool: *Pool, name: []const u8, version: []const u8) void {
+    // ISS-0709 R10-1: handleValidate's `defer api_tenant_context.clear()`
+    // empties the ambient tenant context, so the cleanup DELETE must
+    // re-establish the default tenant BEFORE acquiring a pool connection —
+    // otherwise the pool routes search_path to `public`, where
+    // `process_definitions` does not exist (sqlstate 42P01). Matches the
+    // makePool() pattern (all-zeros UUID -> tenant_default,public).
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
     conn.exec(
@@ -258,13 +265,21 @@ test "int_vld_03_02: every Finding in the response carries all five mandatory fi
     const actor_uuid_str = try randomUuidStr(alloc);
     defer alloc.free(actor_uuid_str);
     const actor_id = try parseTestUuid(alloc, actor_uuid_str);
+    // ISS-0709 R10-3: drive a clean-syntax graph whose conditions reference
+    // an undeclared variable (`amount`). The handler passes an EMPTY env
+    // (Definition has no variable_schemas column yet — VLD-04 will
+    // pre-fetch), so `amount` is unknown and the semantic compile emits real
+    // UnknownVariable findings carrying all five mandatory fields (VLD-03
+    // AC2). The PD-06 short-circuit body (empty findings) is asserted
+    // separately in int_vld_03_http_422_pd06.
     const created = try def_store.create(alloc, CreateParams{
         .name = name,
         .version = version,
         .description = null,
-        .graph = bad_syntax_graph,
+        .graph = happy_graph,
         .created_by = actor_id,
     });
+    defer created.deinit(alloc);
     const created_hex = try uuidToHex32(alloc, created.id);
     defer alloc.free(created_hex);
 
@@ -287,11 +302,12 @@ test "int_vld_03_02: every Finding in the response carries all five mandatory fi
     try std.testing.expect(std.mem.indexOf(u8, handler_result.body, "\"error_kind\":") != null);
     try std.testing.expect(std.mem.indexOf(u8, handler_result.body, "\"message\":") != null);
 
-    // For the PD-06 short-circuit path, `findings` is empty and
-    // `pd06_diagnostics` carries the diagnostics; each diagnostic also has
-    // `code` + `message` (the verbatim PD-06 shape).
-    try std.testing.expect(std.mem.indexOf(u8, handler_result.body, "\"pd06_diagnostics\":") != null);
-    try std.testing.expect(std.mem.indexOf(u8, handler_result.body, "\"code\":") != null);
+    // The findings are real and non-empty (semantic failure), so the PD-06
+    // short-circuit markers must be ABSENT: no empty `findings` array and no
+    // `pd06_diagnostics` block. The PD-06 short-circuit shape is asserted
+    // separately in int_vld_03_http_422_pd06.
+    try std.testing.expect(std.mem.indexOf(u8, handler_result.body, "\"findings\":[]") == null);
+    try std.testing.expect(std.mem.indexOf(u8, handler_result.body, "\"pd06_diagnostics\":") == null);
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +346,7 @@ test "int_vld_03_05: every ErrorKind field in the response is one of the 7 wire 
         .graph = bad_syntax_graph,
         .created_by = actor_id,
     });
+    defer created.deinit(alloc);
     const created_hex = try uuidToHex32(alloc, created.id);
     defer alloc.free(created_hex);
 
@@ -416,6 +433,7 @@ test "int_vld_03_http_200: validateDefinition on a clean definition returns 200 
         .graph = happy_graph,
         .created_by = actor_id,
     });
+    defer created.deinit(alloc);
     const created_hex = try uuidToHex32(alloc, created.id);
     defer alloc.free(created_hex);
 
@@ -468,6 +486,7 @@ test "int_vld_03_http_422_pd06: validateDefinition with a PD-06 violation return
         .graph = bad_syntax_graph,
         .created_by = actor_id,
     });
+    defer created.deinit(alloc);
     const created_hex = try uuidToHex32(alloc, created.id);
     defer alloc.free(created_hex);
 
@@ -527,6 +546,7 @@ test "int_vld_03_cross_tenant_404: tenant B's validate request for tenant A's de
         .graph = happy_graph,
         .created_by = actor_id,
     });
+    defer created.deinit(alloc);
     const created_hex = try uuidToHex32(alloc, created.id);
     defer alloc.free(created_hex);
 

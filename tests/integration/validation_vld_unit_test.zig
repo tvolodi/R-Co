@@ -513,27 +513,39 @@ test "int_vld_01_05b: validateDefinition form-field scope is per-HUMAN_TASK-node
 // ---------------------------------------------------------------------------
 // VLD-02 AC1 — twelve positive operator cases (returns 0 findings)
 // + VLD-02 AC3 negative case (string > number produces OperandTypeError).
+//
+// ISS-0709 R7: the four arithmetic operators (+ - * /) infer `number` and
+// are NOT positive on a bool-expecting EXCLUSIVE_GATEWAY guard (VLD-02 AC1).
+// They are relocated to a number-expecting HUMAN_TASK form `computed_from`
+// site so every operator is positive at its natural result type.
 // ---------------------------------------------------------------------------
 
 test "int_vld_02_01: validateDefinition returns 0 findings for all twelve positive CEL operator cases" {
     const alloc = std.testing.allocator;
 
-    // Each operator exercised on number/number (or bool for ||, &&, !) —
-    // all twelve should yield 0 findings against the env that declares
-    // `a`, `b` as numbers.
-    const operator_cases = [_]struct { name: []const u8, condition: []const u8 }{
+    // Eight bool-producing operators are exercised on the bool-expecting
+    // EXCLUSIVE_GATEWAY guard — all yield 0 findings against the env that
+    // declares `a`, `b` as numbers (VLD-02 AC1).
+    const bool_cases = [_]struct { name: []const u8, condition: []const u8 }{
         .{ .name = "==", .condition = "a == b" },
         .{ .name = "!=", .condition = "a != b" },
-        .{ .name = "+", .condition = "a + b" },
-        .{ .name = "-", .condition = "a - b" },
-        .{ .name = "*", .condition = "a * b" },
-        .{ .name = "/", .condition = "a / b" },
         .{ .name = "<", .condition = "a < b" },
         .{ .name = "<=", .condition = "a <= b" },
         .{ .name = ">", .condition = "a > b" },
         .{ .name = ">=", .condition = "a >= b" },
         .{ .name = "&&", .condition = "a > 0 && b > 0" },
         .{ .name = "||", .condition = "a > 0 || b > 0" },
+    };
+
+    // Four arithmetic operators infer `number` — they are exercised at a
+    // number-expecting HUMAN_TASK form `computed_from` site whose field
+    // declares `type: "number"` (R7 relocation), not on the bool-expecting
+    // gateway guard. All four yield 0 findings at their natural result type.
+    const arithmetic_cases = [_]struct { name: []const u8, expression: []const u8 }{
+        .{ .name = "+", .expression = "a + b" },
+        .{ .name = "-", .expression = "a - b" },
+        .{ .name = "*", .expression = "a * b" },
+        .{ .name = "/", .expression = "a / b" },
     };
 
     const vars = [_]VariableSchemaEntry{
@@ -548,7 +560,7 @@ test "int_vld_02_01: validateDefinition returns 0 findings for all twelve positi
         .{ .id = "no", .node_type = .END, .label = null },
     };
 
-    for (operator_cases) |c| {
+    for (bool_cases) |c| {
         const edges = [_]GraphEdge{
             .{ .id = "e1", .source = "S", .target = "gw", .condition = null },
             .{ .id = "e2", .source = "gw", .target = "yes", .condition = c.condition },
@@ -558,6 +570,44 @@ test "int_vld_02_01: validateDefinition returns 0 findings for all twelve positi
             .graph = DefinitionGraph{
                 .nodes = &gw_nodes,
                 .edges = &edges,
+            },
+            .variable_schema = &vars,
+        };
+
+        var failure = try validation.validateDefinition(alloc, input);
+        defer failure.deinit(alloc);
+
+        try std.testing.expectEqual(@as(usize, 0), failure.findings.len);
+    }
+
+    for (arithmetic_cases) |c| {
+        // Field declares `type: "number"` so the walker sets the site's
+        // expected_type to `.number` — the arithmetic operator's natural
+        // result type (R7).
+        const attrs = try std.fmt.allocPrint(
+            alloc,
+            "{{\"forms\":[{{\"fields\":[{{\"computed_from\":\"{s}\",\"type\":\"number\"}}]}}]}}",
+            .{c.expression},
+        );
+        defer alloc.free(attrs);
+
+        const ht_nodes = [_]GraphNode{
+            .{ .id = "S", .node_type = .START, .label = null },
+            .{ .id = "task", .node_type = .HUMAN_TASK, .label = null, .attributes = attrs },
+            .{ .id = "gw", .node_type = .EXCLUSIVE_GATEWAY, .label = null },
+            .{ .id = "yes", .node_type = .END, .label = null },
+            .{ .id = "no", .node_type = .END, .label = null },
+        };
+        const ht_edges = [_]GraphEdge{
+            .{ .id = "e1", .source = "S", .target = "task", .condition = null },
+            .{ .id = "e2", .source = "task", .target = "gw", .condition = null },
+            .{ .id = "e3", .source = "gw", .target = "yes", .condition = "a > 0" },
+            .{ .id = "e4", .source = "gw", .target = "no", .condition = "a <= 0" },
+        };
+        const input = EnvInput{
+            .graph = DefinitionGraph{
+                .nodes = &ht_nodes,
+                .edges = &ht_edges,
             },
             .variable_schema = &vars,
         };
