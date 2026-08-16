@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-17T02:48:43Z'
+last_updated: '2026-08-17T03:52:11Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -5157,10 +5157,11 @@ requirements:
     note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
       fix verified 40/40 + 14/14 + 5/5).'
   VLD-04:
-    status: TESTED
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Validation gate at authoring and promotion
+    released_at: '2026-08-17T03:52:10Z'
     note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
       used as closest legal status.
   BRW-MOB-1:

@@ -1,0 +1,63 @@
+{
+  "report_id": "WF02-batch-7-20260816-step-05-rework2-release-validator",
+  "agent_id": "RELEASE-VALIDATOR",
+  "run_id": "WF02-batch-7-20260816",
+  "workflow_id": "WF-02",
+  "step": "05-rework2",
+  "created_at": "2026-08-16T22:20:20Z",
+  "summary": "RE-VALIDATED VLD-04 after REWORK-2 (da4761fc + 8cdde77e wired runSemanticGate into handlePut, handleValidate, handleCreatePromotionPlan, handleSubmitPromotion). TEST-RUNNER step-04-rework2 PASS; RELEASE-VALIDATOR independently re-ran vld04-gate 7/7, vld-http 5/5, prm02 8/8 and NFR bench (overall_passed=true, exit 0); grep-verified gate call sites at all four declared handlers and gate-BEFORE-computePromotionPlan ordering in both promotion surfaces. VLD-04 AC1/AC2 SATISFIED; all 5 ACs MET. Verdict APPROVED/RELEASE-READY. VLD-04 moved TESTED->RELEASED via reqctl.py (release decision YAML updated, requirement_status.yaml regenerated). ISS-0715/GH-813 resolved and closed. New non-blocking follow-up filed: ISS-0717/GH-816 (live PATCH draft-save surface not yet gate-enforced; pre-existing route-registration divergence). 403-vs-422 precedence edge recorded as non-blocking (AWARE).",
+  "files_created": [
+    "docs/issues/ISS-0717.json",
+    "docs/issue-reports/WF02-batch-7-20260816-step-05-rework2-release-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/requirements.yaml",
+    "docs/status/requirement_status.yaml",
+    "docs/status/release-stage16-WF02-batch-7-20260816.yaml",
+    "docs/issues/ISS-0715.json",
+    "docs/issues/issue_index.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "test-integration-vld04-gate",
+      "status": "pass",
+      "detail": "7/7 (independently re-run this session)"
+    },
+    {
+      "name": "test-integration-vld-http",
+      "status": "pass",
+      "detail": "5/5 (handleValidate) independently re-run"
+    },
+    {
+      "name": "test-integration-prm02",
+      "status": "pass",
+      "detail": "8/8 (handleSubmitPromotion) independently re-run"
+    },
+    {
+      "name": "zig build bench (NFR)",
+      "status": "pass",
+      "detail": "NFR-01 p99_read 4.433ms<=200, p99_write 9.206ms<=500; NFR-02 13994.7eps>=1000; NFR-04 replay_10000 105.759ms<=5000, snapshot 9.202ms<=1000; overall_passed=true, exit 0"
+    },
+    {
+      "name": "zig build test (unit)",
+      "status": "pass",
+      "detail": "from TEST-RUNNER step-04-rework2: 1155/1219, 64 baseline skips, 0 failures (REWORK-2 touches no test files)"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "PATCH-vs-PUT live draft-save surface: main.zig registers PATCH->handlePatch; VLD-04 gate wired into handlePut per design; frontend client.patch path not gate-enforced. Non-blocking; filed ISS-0717/GH-816."
+    },
+    {
+      "severity": "MINOR",
+      "description": "403-vs-422 precedence edge: promotion gate runs before computePromotionPlan, so an unauthorized caller with an invalid source gets 422 (gate) instead of PRM-01 403. Both are rejections; no AC invalidated. Recorded as AWARE."
+    }
+  ],
+  "next_steps": [
+    "Route to DOC-UPDATER (Step 6): batch WF02-batch-7-20260816 fully approved (DDL-04, OBP-04, ORD-03, VLD-04 all RELEASED); changelog, requirement status, Step Final branch management.",
+    "Track ISS-0717/GH-816 (wire VLD-04 gate into handlePatch or register handlePut as live PUT route) in a follow-up batch."
+  ],
+  "blockers": []
+}

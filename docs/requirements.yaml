@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-17T02:48:38Z'
+generated_at: '2026-08-17T03:52:10Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -13257,7 +13257,7 @@ requirements:
     title: Validation gate at authoring and promotion
     stage: '16'
     priority: SHOULD
-    status: TESTED
+    status: RELEASED
     body: |-
       > The platform SHALL enforce semantic validation at two points: on definition draft save and on `POST /api/v1/definitions/{id}/validate`, and again at promotion submit before the PRM-01 plan is computed. A clean pass records a `semantically_valid` verdict on the definition version together with the CEL compiler version that produced it; a verdict produced by a different compiler version is re-verified rather than trusted. Compilation is bounded at 5 seconds per definition.
 
@@ -13272,10 +13272,11 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-17T02:48:38Z'
+    last_updated: '2026-08-17T03:52:10Z'
     workflow: PW-02
     note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
       used as closest legal status.
+    released_at: '2026-08-17T03:52:10Z'
   BRW-MOB-1:
     id: BRW-MOB-1
     title: Generic definition-interpreter mobile app

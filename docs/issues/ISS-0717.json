@@ -1,0 +1,50 @@
+{
+  "status": "OPEN",
+  "classification": "DEFECT",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-batch-7-20260816",
+  "handoff_id": "WF02-batch-7-20260816/step-05-release-validator-rework2",
+  "triggered_by": "RELEASE-VALIDATOR (WF02-batch-7-20260816 step-05-rework2)",
+  "discovered_at": "2026-08-16T22:15:46Z",
+  "discovered_by": "RELEASE-VALIDATOR (WF02-batch-7-20260816 step-05-rework2)",
+  "branch": "feature/WF02-batch-7-20260816",
+  "created_at": "2026-08-16T22:15:46Z",
+  "registered_at": "2026-08-16T22:15:46Z",
+  "registered_by": "RELEASE-VALIDATOR (WF02-batch-7-20260816 step-05-rework2)",
+  "github_issue_confirmed": true,
+  "github_issue_filed_at": "2026-08-16T22:15:46Z",
+  "labels": [
+    "bug"
+  ],
+  "iss_id": "ISS-0717",
+  "id": "ISS-0717",
+  "issue_id": "ISS-0717",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "github_issue_number": 816,
+  "severity": "MINOR",
+  "title": "VLD-04 AC1: live draft-save surface is PATCH (handlePatch), not PUT (handlePut) - frontend draft-save path is not gate-enforced",
+  "summary": "The VLD-04 gate is wired into handlePut (PUT /api/v1/definitions/{id}) per the validated design call-site table, but main.zig registers PATCH -> handlePatch as the only live definition-update route and handlePatch does not call runSemanticGate. The frontend save path (web/src/api/definitions.ts client.patch) therefore bypasses the gate: a finding-producing definition saved through the UI receives HTTP 200, not the AC1 HTTP 422. Non-blocking for VLD-04 release (AC1 satisfied at the declared call-site contract; gate module + /validate + promotion surfaces all enforced), tracked so the live PATCH gap is not silently dropped.",
+  "description": "REWORK-2 (da4761fc) wired runSemanticGate into handlePut per src/design/vld-04-validation-gate-authoring-promotion.md call-site table (Draft save = PUT /api/v1/definitions/{id}). gate-level TC-VLD-04-AC1 passes and handlePut maps .invalid -> HTTP 422. However src/main.zig line ~717 registers PATCH /api/v1/definitions/{id} -> handlePatch (no method == .PUT branch), and handlePatch (src/api/routes/definitions.zig line ~458) calls store.update but does NOT run the gate. web/src/api/definitions.ts updateDefinition uses client.patch. So the live frontend draft-save path is not gate-enforced. This is a pre-existing route-registration divergence (predates this batch; design, CODE-DESIGN-VALIDATOR, TEST-DESIGN-VALIDATOR, ISS-0715 and the prior release decision all treated PUT as the draft-save surface). Fix: wire the gate into handlePatch (mirroring handlePut) or register handlePut as the live PUT route, and add a handler-level test on the chosen live surface asserting HTTP 422 on findings.",
+  "symptom": "A finding-producing definition saved via PATCH /api/v1/definitions/{id} (the frontend save path) returns HTTP 200 instead of the VLD-04 AC1 HTTP 422.",
+  "investigation_notes": "Raised as MINOR by BACKEND-DEV (step-2a-rework2) and TEST-RUNNER (step-04-rework2); confirmed by RELEASE-VALIDATOR grep: main.zig registers PATCH -> handlePatch; handlePatch has no runSemanticGate call; frontend uses client.patch.",
+  "reproduction": "Save a finding-producing definition through the frontend (PATCH /api/v1/definitions/{id}) - observe HTTP 200 with no gate 422.",
+  "acceptance_criteria": [
+    "handlePatch (the live PATCH draft-save surface) invokes runSemanticGate and returns HTTP 422 on findings (or handlePut is registered as the live PUT route and the frontend switches to PUT)",
+    "A handler-level test on the chosen live draft-save surface asserts HTTP 422 on a finding-producing definition"
+  ],
+  "files_affected": [
+    "src/api/routes/definitions.zig",
+    "src/main.zig",
+    "web/src/api/definitions.ts"
+  ],
+  "affected_areas": [
+    "src/api/routes/definitions.zig",
+    "src/main.zig",
+    "web/src/api/definitions.ts"
+  ],
+  "context": {
+    "release_decision": "docs/status/release-stage16-WF02-batch-7-20260816.yaml",
+    "related_issue": "ISS-0715 (resolved - this is the residual live-surface gap)",
+    "non_blocking": true
+  }
+}
