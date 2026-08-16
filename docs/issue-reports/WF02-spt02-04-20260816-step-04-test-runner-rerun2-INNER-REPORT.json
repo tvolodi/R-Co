@@ -1,0 +1,47 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-04-test-runner-rerun2",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "04-rerun2",
+  "created_at": "2026-08-16T21:25:31Z",
+  "summary": "TEST-RUNNER (resumed turn) completed the second WF-02 Step 4 gate re-run for SPT-02/03/04 on feature/WF02-spt02-04-20260816 after the migration-062 view-dependency fix (commit 79112125 — drop/recreate v_active_configs around DROP COLUMN) and new regression test TC-SPT-02-07 (suite now 17). Prior turn confirmed green: test-integration-spt 17/17, test-integration-spt01-iss68 3/3, test-integration-event-store 29/29, unit 1145/1209 (0 failed, 64 skipped), all 23 regression suites (pin*, prm*, sol*, svc*, vld*, idn*) EXIT 0. This resumed turn confirmed the remaining gates: (1) zig build bench COMPLETED with exit 0 and NFR_BENCH_SUMMARY overall_passed=true (run_id bench-1786914992779; NFR-01 p99_read=4.316ms/p99_write=19.368ms, NFR-02 throughput=18617.477 eps, NFR-04 replay_10000=68.480ms/replay_snapshot_100000=8.644ms — all passed=true, no error/panic in log), (2) zig build migrate EXIT 0 on bpm_test (5434) AND bpm_dev (5442), 'No new migrations to apply', with 062_remove_tenant_id_rls_from_public.sql and 1163_events_ephemeral_tenant_id_default.sql confirmed recorded in the public.schema_migrations ledger of both databases. Report updated to final green state at tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml (step 04-rerun2, total 1441 / passed 1377 / failed 0 / skipped 64, nfr_results 5/5 passed, migration_verification 062+1163 on both DBs). fn:validate-completeness all_met=true (8/8 criteria); result.status = PASS.",
+  "files_created": [
+    "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-rerun2-INNER-REPORT.json",
+    "scratch/spt_rerun2_bench.log",
+    "scratch/spt02_migrate_bpm_test.log",
+    "scratch/spt02_migrate_bpm_dev.log"
+  ],
+  "files_modified": [
+    "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+    "handoffs/WF02-spt02-04-20260816/step-04-test-runner-rerun2.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    { "name": "zig build test-integration-spt", "status": "pass", "detail": "17/17 tests passed, EXIT 0 (16 AC + TC-SPT-02-07 view-dependency regression; suite grew 16→17 after migration-062 fix)." },
+    { "name": "zig build test-integration-spt01-iss68", "status": "pass", "detail": "3/3 tests passed, EXIT 0 (SPT-01 ISS-0068 provisioning)." },
+    { "name": "zig build test-integration-event-store", "status": "pass", "detail": "29/29 tests passed, EXIT 0." },
+    { "name": "zig build test", "status": "pass", "detail": "Build Summary 107/107 steps succeeded; 1145/1209 passed, 64 skipped, 0 failed, EXIT 0 (no new unit failures)." },
+    { "name": "zig build test-integration-pin01..05", "status": "pass", "detail": "9/9, 5/5, 5/5, 5/5, 4/4 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm01..04, prm04-review-sm, prm05-review-gate, prm06-07, prm08, prm09", "status": "pass", "detail": "5/5, 8/8, 11/11, 7/7, 13/13, 13/13, 9/9, 4/4, 4/4 passed, EXIT 0." },
+    { "name": "zig build test-integration-sol01..03", "status": "pass", "detail": "4/4, 5/5, 3/3 passed, EXIT 0." },
+    { "name": "zig build test-integration-svc", "status": "pass", "detail": "35/35 passed, EXIT 0." },
+    { "name": "zig build test-integration-vld-unit / vld-http", "status": "pass", "detail": "14/14 and 5/5 passed, EXIT 0." },
+    { "name": "zig build test-integration-idn02 / idn03 / idn05", "status": "pass", "detail": "7/7, 1/1, 7/7 passed, EXIT 0." },
+    { "name": "zig build bench", "status": "pass", "detail": "EXIT 0. NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1786914992779. NFR_RESULT lines all passed=true: NFR-01 p99_read=4.316ms (<=200), NFR-01 p99_write=19.368ms (<=500), NFR-02 throughput=18617.477 eps (>=1000), NFR-04 replay_10000=68.480ms (<=5000), NFR-04 replay_snapshot_100000=8.644ms (<=1000). No error/panic in log. Bench process confirmed completed (no longer running)." },
+    { "name": "zig build migrate (bpm_test)", "status": "pass", "detail": "EXIT 0, 'No new migrations to apply' on postgres://bpm:bpm@localhost:5434/bpm_test. 062_remove_tenant_id_rls_from_public.sql and 1163_events_ephemeral_tenant_id_default.sql present in public.schema_migrations ledger." },
+    { "name": "zig build migrate (bpm_dev)", "status": "pass", "detail": "EXIT 0, 'No new migrations to apply' on postgres://bpm:bpm@localhost:5442/bpm_dev. 062_remove_tenant_id_rls_from_public.sql and 1163_events_ephemeral_tenant_id_default.sql present in public.schema_migrations ledger." },
+    { "name": "Pre-checks: backend services + test-env-verify", "status": "pass", "detail": "db_test healthy on :5434, keycloak :8081 OK, DB reachable; zig build test-env-verify EXIT 0 (10/10 HEALTHY) — verified in prior turn." }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "The 64 skipped unit tests are pre-existing skips in the unit suite (not MUST-covering integration skips); no new failures. Recorded for completeness."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route to RELEASE-VALIDATOR (WF-02 Step 5) — the Step 4 gate is fully green (incl. the bench NFR blocker that previously blocked release re-decision).",
+    "DOC-UPDATER (Step Final): record SPT-02/03/04 PASS; note migration-062 view-dependency fix (commit 79112125) and TC-SPT-02-07 landed."
+  ],
+  "blockers": []
+}
