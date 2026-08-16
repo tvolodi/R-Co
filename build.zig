@@ -1282,6 +1282,10 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "expr", .module = expr_mod },
+                // VLD-01/02/03 (graph named module): transition.zig now reaches
+                // graph via @import("graph"), so this test root must supply the
+                // graph module too.
+                .{ .name = "graph", .module = graph_mod },
             },
         }),
     });
@@ -1308,6 +1312,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "pool", .module = pool_root_mod },
+                // VLD-01/02/03 (graph named module): store.zig now reaches graph
+                // via @import("graph"), so this test root must supply it too.
+                .{ .name = "graph", .module = graph_mod },
             },
         }),
     });
@@ -1332,6 +1339,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "pool", .module = pool_root_mod },
+                // VLD-01/02/03 (graph named module): store.zig now reaches graph
+                // via @import("graph"), so this test root must supply it too.
+                .{ .name = "graph", .module = graph_mod },
             },
         }),
     });
