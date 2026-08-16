@@ -4,7 +4,7 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
   "github_issue_confirmed": true,
   "title": "tests/integration prm-08-rollback-sandbox.test.zig: insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan (latent sqlstate 23502; same class as ISS-0708/GH-793 Cluster A)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "workflow_id": "WF03-GH802-20260816",
   "run_id": "WF03-GH802-20260816",
@@ -74,6 +74,15 @@
       "status": "COMPLETED",
       "completed_at": "2026-08-16T06:31:51Z",
       "summary": "WF-03 Step 1 diagnosis for GH-802: confirmed the NOT NULL 23502 fixture defect against the ACTUAL test file (helper insertPromotionReviewsRow lines 233-258; single call site line 466 in TC-PRM-08-03) and REPRODUCED it (zig build test-integration-prm08 -> sqlstate 23502). Defined the exact fix spec for Step 3 (mirror GH-793 Cluster A: add requested_by param + requested_by/def_type/serialised_plan columns; fresh UUID at call site). Reproduction also surfaced TWO additional latent defects filed separately: ISS-0712/GH-803 (production rollback.zig Step 5 supersede def_id = $3::uuid vs TEXT column -> 42883, swallowed by catch null, superseded_review_id always null) and ISS-0713/GH-804 (TC-PRM-08-03 fixture row seeded under random tenant + zero def_id can never match the supersede WHERE -> 'superseded' assertion fails post-fix). Both must be addressed for the GH-802 verification command to pass. No fix implemented (Step 3 only)."
+    },
+    {
+      "step": "step-07-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-07-doc-updater",
+      "status": "RESOLVED",
+      "completed_at": "2026-08-16T07:01:32Z",
+      "summary": "CHANGELOG.md updated under [Unreleased] 2026-08-16 with the PRM-08 integration-test fixture fix entry (GH-802/ISS-0711, Type E test-code-only). ISS-0711 marked RESOLVED with resolved_at/resolved_by/resolution (insertPromotionReviewsRow now supplies NOT NULL requested_by/def_type/serialised_plan; sqlstate 23502 eliminated; residual TC-PRM-08-03 forwarded to GH-803/ISS-0712 production 42883 + GH-804/ISS-0713 seed mismatch, OUT OF SCOPE). docs/issues/issue_index.json updated (ISS-0711 status RESOLVED with resolved_at/resolved_by). GitHub issue #802 intentionally NOT closed by this step — left open for Step Final (release.py --close-github-issue) per the loop-mode instruction. GH-803/GH-804 untouched (separate runs)."
     }
   ],
   "prevention": {
@@ -82,5 +91,8 @@
       "When a test-helper fixture defect is found and fixed in one test file, grep sibling test files for the same helper/INSERT pattern and fix or file them too (this defect is the prm-08 duplicate of the ISS-0708/GH-793 prm-06-07 fix).",
       "PRM-08 integration tests that seed promotion_reviews rows should reuse the fixed helper (single source of truth) rather than duplicating the INSERT inline."
     ]
-  }
+  },
+  "resolved_at": "2026-08-16T07:01:32Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH802-20260816 step-07)",
+  "resolution": "RESOLVED via run WF03-GH802-20260816 (branch feature/WF03-GH802-20260816). The prm-08 integration-test fixture defect was fixed test-code-only (Type E). Step 1 (ISSUE-FIXER) confirmed and reproduced the defect (zig build test-integration-prm08 -> sqlstate 23502). Step 2 (CODE-DESIGNER) produced src/design/iss0711-gh802-prm08-fixture-fix.md; Step 3 (BACKEND-DEV) implemented the fix in tests/integration/prm-08-rollback-sandbox.test.zig ONLY: insertPromotionReviewsRow gained a requested_by parameter and the INSERT now supplies requested_by/def_type/serialised_plan (VALUES $3::uuid, 'rollback', 'prm08-test-serialised-plan'), mirroring the ISS-0708/GH-793 Cluster A fix; the single call site (TC-PRM-08-03, line 466) passes a fresh randomUuidStr. No production code and no migration changed. Step 5 (TEST-RUNNER) independent verification PASS (tests/reports/report-20260816-WF03-GH802-20260816.yaml): BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 shows sqlstate 23502 ELIMINATED from TC-PRM-08-03 (3 pass / 1 fail); the residual TC-PRM-08-03 failure is sqlstate 42883 on the production supersede UPDATE (def_id = $3::uuid vs TEXT column) plus the fixture seed-logic mismatch — neither attributable to this fix. Residuals forwarded per No-Issue-Left-Local-Only to GH-803/ISS-0712 (production rollback.zig) and GH-804/ISS-0713 (test seed-logic), both filed in Step 1 and tracked in their own WF-03 cycles. lint_handoffs.py exit 0; test-env-verify HEALTHY 10/10. Step 7 (DOC-UPDATER) updated CHANGELOG.md under [Unreleased] 2026-08-16 and marked ISS-0711 RESOLVED. GitHub issue #802 left OPEN for Step Final (release.py --close-github-issue); GH-803/GH-804 untouched."
 }

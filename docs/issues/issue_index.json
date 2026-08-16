@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-16T06:31:51Z",
+  "last_updated": "2026-08-16T07:01:32Z",
   "next_issue_id": 714,
   "issues": [
     {
@@ -2725,7 +2725,7 @@
       "id": "ISS-0711",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
       "severity": "MAJOR",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "title": "tests/integration prm-08-rollback-sandbox.test.zig: insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan (latent sqlstate 23502; same class as ISS-0708/GH-793 Cluster A)",
       "run_id": "WF03-GH802-20260816",
       "handoff_id": "wf03-gh802-20260816-005-issue-fixer",
@@ -2737,7 +2737,9 @@
       "created_at": "2026-08-16T06:15:25Z",
       "step_0.5_completed_at": "2026-08-16T06:15:25Z",
       "github_issue_confirmed": true,
-      "branch": "feature/WF03-GH802-20260816"
+      "branch": "feature/WF03-GH802-20260816",
+      "resolved_at": "2026-08-16T07:01:32Z",
+      "resolved_by": "DOC-UPDATER (WF03-GH802-20260816 step-07)"
     },
     {
       "id": "ISS-0712",

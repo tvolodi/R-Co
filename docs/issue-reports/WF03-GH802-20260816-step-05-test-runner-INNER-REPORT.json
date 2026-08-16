@@ -1,0 +1,58 @@
+{
+  "report_id": "WF03-GH802-20260816-step-5-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF03-GH802-20260816",
+  "step": "5",
+  "created_at": "2026-08-16T06:58:17Z",
+  "summary": "Independent verification (WF-03 Step 5) of the prm-08 fixture fix for ISS-0711/GH-802 on branch feature/WF03-GH802-20260816. All acceptance criteria verified PASS: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (direct, NOT the stale-5433 wrapper) -> 3 pass / 1 fail (4 total); sqlstate 23502 in TC-PRM-08-03 is GONE. The residual TC-PRM-08-03 failure is now sqlstate 42883 on the production supersede UPDATE (promotion_reviews.def_id TEXT vs def_id = $3::uuid), swallowed by catch null so the row stays 'approved' — attributed to GH-803 (ISS-0712, production rollback.zig, 42883) plus GH-804 (ISS-0713, test seed-logic mismatch: random tenant + zero def_id cannot match supersede WHERE), both OUT OF SCOPE for this run and documented in the report. (b) python tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACK). (c) No production code or migration files modified by this run (git diff --name-only 7b0cbc5..HEAD: only the single target test file, handoffs, docs/issue-reports, docs/issues, src/design design doc; filtered ^src/ (non-design) and ^migrations/ scan returns empty). (d) zig build test-env-verify exits 0 (HEALTHY, 10 checks). Backend service pre-check passed (test DB :5453 SELECT 1 ok, Keycloak :8081 ok). Verification report written to tests/reports/report-20260816-WF03-GH802-20260816.yaml.",
+  "files_created": [
+    "tests/reports/report-20260816-WF03-GH802-20260816.yaml",
+    "docs/issue-reports/WF03-GH802-20260816-step-05-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH802-20260816/step-05-test-runner.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-env-verify",
+      "status": "pass",
+      "detail": "exit 0; verify_test_env: HEALTHY — 10 checks passed"
+    },
+    {
+      "name": "zig build test-integration-prm08 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test, direct)",
+      "status": "pass",
+      "detail": "3 pass / 1 fail (4 total). sqlstate 23502 ELIMINATED from TC-PRM-08-03 — the GH-802 fixture defect is fixed. Residual TC-PRM-08-03 = sqlstate 42883 (production supersede text=uuid) + seed mismatch, attributed to GH-803/GH-804 (out of scope). Exit code 1 expected."
+    },
+    {
+      "name": "TC-PRM-08-01 / TC-PRM-08-02 / TC-PRM-08-04",
+      "status": "pass",
+      "detail": "3/4 tests pass"
+    },
+    {
+      "name": "TC-PRM-08-03 (residual)",
+      "status": "fail",
+      "detail": "expected 'superseded', found 'approved'; sqlstate 42883 on production supersede UPDATE, swallowed by catch null — GH-803 (42883) + GH-804 (seed mismatch), both OUT OF SCOPE."
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0; 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010), 332 ACKNOWLEDGED; re-verified after handoff completion"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "fn:register-inner-report.md specifies inner reports as .json but core-directives.md requires .yaml (authoritative). Pre-existing drift, re-flagged (same as prior steps in this run)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "lint_handoffs H010: 1 pre-existing MINOR (registry-absent handoff), not from this run; lint_handoffs exits 0 with 0 BLOCKER / 0 MAJOR."
+    }
+  ],
+  "next_steps": [
+    "Route to ORCH for WF-03 closure of GH-802/ISS-0711. GH-803 (ISS-0712, production rollback.zig 42883) and GH-804 (ISS-0713, test seed-logic) remain as separate runs."
+  ],
+  "blockers": []
+}
