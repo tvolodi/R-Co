@@ -82,5 +82,34 @@
   "prevention": null,
   "pr_url": null,
   "pr_merged_at": null,
-  "pr_merge_commit": null
+  "pr_merge_commit": null,
+  "root_cause_analysis": {
+    "analyzed_at": "2026-08-16T10:57:18Z",
+    "analyzed_by": "ISSUE-FIXER (WF03-iss0714-bench-env-20260816 step-1)",
+    "method": "Reproduced `zig build migrate` against BPM_DB_URL (postgres://bpm:bpm@localhost:5442/bpm_dev): CLI shows only `default tenant schema provisioning failed: error.MigrationFailed (tenant_id=00000000-...)` then the ISS-0706 leg-(d) post-condition abort (exit 1). The underlying SQL error is SWALLOWED by runForSchema() in src/db/migrations.zig (conn.simpleQuery catch -> ROLLBACK -> return MigrationError.MigrationFailed, no per-migration logging) and src/tools/migrate.zig logs only the error enum name. Surfaced the real error from the Postgres SERVER log (docker logs r-co-db-1; log_min_error_statement=error default): `ERROR: unique constraint on partitioned table must include all partitioning columns / DETAIL: UNIQUE constraint on table \"events\" lacks column \"created_at\" which is part of the partition key.` STATEMENT: -- 001_event_store.sql (the whole migration file is logged as one simple-query statement). Identical error at 10:44:00 UTC (prior bench attempt) and 10:54:19 UTC (this reproduce) — reproducible.",
+    "failing_migration": "001_event_store.sql",
+    "failing_statement": "001_event_store.sql line 48: `CREATE UNIQUE INDEX IF NOT EXISTS uq_event_idempotency ON events(idempotency_key);` — the FIRST unique index on `events` in 001 (line 52 uq_event_sequence would fail identically).",
+    "sql_error": "ERROR: unique constraint on partitioned table must include all partitioning columns | DETAIL: UNIQUE constraint on table \"events\" lacks column \"created_at\" which is part of the partition key. | SQLSTATE 42P16 (invalid_table_definition).",
+    "root_cause": "STATE MISMATCH on the dev DB. `tenant_default` schema is ALREADY provisioned with the MODERN table shape (events is PARTITIONED by RANGE (created_at) from 1147_par01_events_partitioning.sql; effects_outbox, plat_effect_completion, plat_partition_catalog, instance_projections token-model columns, events_2026_08/09/10 partitions, etc. are all present — 58 tables) YET public.schema_migrations has ZERO rows for schema_name='tenant_default' (empty tenant migration ledger; no tenant_* schema_name rows at all) and public.tenant_schemas.migrations_applied_at is NULL for the default tenant (row created 2026-08-15T05:45Z, never stamped). Because the ledger is empty and migrations_applied_at is NULL, provisionTenantSchema() cannot take its Step-2 idempotency fast-path, so runForSchema('tenant_default') re-applies the ENTIRE non-public-only migration set from scratch (001 onward) against the already-provisioned schema. 001's CREATE UNIQUE INDEX ... uq_event_idempotency ON events(idempotency_key) runs against the already-PARTITIONED events table; PostgreSQL rejects any UNIQUE index that omits the partition key created_at -> SQLSTATE 42P16. runForSchema -> MigrationFailed -> provisionTenantSchema -> ProvisionError.MigrationFailed -> migrate.zig leg-(d) post-condition abort (the exact observed symptom).",
+    "state_mismatch_or_defect": "STATE MISMATCH (environment / dev-DB-specific) — NOT a migration-set defect. The healthy TEST DB (postgres://bpm:bpm@localhost:5434/bpm_test) has the SAME partitioned events shape (RANGE (created_at)) and migrates 147/147 public + 111 tenant_default with tenant_schemas.migrations_applied_at IS NOT NULL. On a fresh schema 001's unique indexes are created against a REGULAR events table (1147 converts it to partitioned only later, and handles the index rebuild), so the migration set is proven correct. The defect is purely the dev DB's empty tenant_default ledger + NULL migrations_applied_at coexisting with an already-provisioned modern schema.",
+    "dev_db_evidence": {
+      "tenant_default_tables": 58,
+      "events_partitioned": "relkind 'p', PARTITION BY RANGE (created_at)",
+      "tenant_default_ledger_rows_in_public_schema_migrations": 0,
+      "tenant_schemas_row": "tenant 00000000-0000-0000-0000-000000000000 -> schema_name=tenant_default, migrations_applied_at=NULL, created_at=2026-08-15T05:45:20.119517Z",
+      "public_schema_migrations_count": 88,
+      "public_ledger_top": "001-096, 1106-1111, GBL-112..GBL-115 (applied 2026-08-15 05:45); GBL-116..143 and 1134..1162 NOT yet applied to public"
+    },
+    "test_db_evidence": {
+      "migrate_result": "147/147 public + 111 tenant_default (exit 0)",
+      "tenant_schemas_row": "tenant_default, migrations_applied_at IS NOT NULL = true",
+      "tenant_default_ledger_rows": 111,
+      "events_shape": "identical partitioned RANGE (created_at)"
+    },
+    "fix_approach": "Repair the dev DB ledger + registry ONLY — NO migration-set change and NO src/*.zig change required. (a) Populate public.schema_migrations for schema_name='tenant_default' with the 111 non-public-only/non-tenant_only migrations of the current set (canonical reference = the healthy test DB's tenant_default ledger, which exactly matches the current migrations/ dir; derive via migrationScope over the on-disk set if preferred). (b) SET public.tenant_schemas.migrations_applied_at = NOW() for the default tenant. (c) Spot-check that reconciled ledger versions correspond to objects actually present in tenant_default (verified: modern shape present). After repair, `zig build migrate` on 5442 fast-paths provisioning (Step-2 idempotency now passes), the leg-(d) post-condition passes, then the public pass applies the pending GBL-116..143 + 1134..1162 backlog; exit 0 and `zig build bench` proceeds. IMPORTANT: simply re-running `zig build migrate` does NOT fix it — 001 will keep failing against the partitioned events until the ledger is reconciled. Alternative (more invasive, not preferred): DROP tenant_default + delete the tenant_schemas row and let provisioning rebuild from scratch — destructive; only acceptable if the bench DB's tenant_default data is disposable.",
+    "repair_dev_db_only_or_migration_fix": "repair_dev_db_only — dev DB ledger reconciliation (populate tenant_default rows in public.schema_migrations + stamp migrations_applied_at) suffices; no migration-set fix and no code change needed (migration set proven correct by the test DB)."
+  },
+  "last_updated": "2026-08-16T10:57:18Z",
+  "updated_at": "2026-08-16T10:57:18Z",
+  "diagnosis_completed_at": "2026-08-16T10:57:18Z"
 }
