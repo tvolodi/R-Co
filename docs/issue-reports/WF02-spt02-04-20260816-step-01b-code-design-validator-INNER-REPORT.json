@@ -1,0 +1,83 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-01b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "01b",
+  "created_at": "2026-08-16T16:57:56Z",
+  "summary": "Validated the Type E design artefact src/design/spt-02-03-04-schema-per-tenant-migration.md (WF-02 Step 1b hard gate) for SPT-02/SPT-03/SPT-04. RESULT: PASS. lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=5 E030 prose-only, non-gating). All 16 acceptance criteria (6 SPT-02 + 5 SPT-03 + 5 SPT-04) traced in the design's §15 matrix and verified against docs/requirements.yaml. All F1-F10 codebase-state facts independently re-verified (no migrations 061/062/063; pool.zig set_config('bpm.tenant_id') at line 298; ~967-1401 src/ and ~1637-2157 tests/integration/ tenant_id refs; GBL-123/ISS-502/ISS-504 correctly identified as not satisfying the ACs). Classification Type E for all three requirements is correct per lego-catalog selection rules (data backfill DML+DDL, cross-cutting removal/rework); no Type A-D parameter files emitted, so no codegen dry-run applies. OQ-1 (SPT-03 AC1 literal grep) adjudicated ACCEPTED-AS-IS: the literal AC is genuinely unsatisfiable (Class G registry queries and owner_tenant_id bind lines necessarily contain the substrings); the design's scoped interpretation (no bpm.tenant_id/set_config.*tenant; no tenant_id on Class B tables; Class G allow-list §8.2 R4) is faithful and implementable — formal requirement re-scope queued for REQ-ANALYST as non-blocking follow-up. OQ-2..OQ-5 all ACCEPTED (table-list reconciliation, 062/GBL-123 coexistence, storage_mode retention, %I scope-header pattern) with one implementation constraint on 062/063 DDL construction. Design is implementation-code-free (sketches are labeled specifications with placeholders per established Type E convention), complete (module purpose, public interface, error taxonomy, dependencies incl. MUST-NOT, data flow diagram), and security-sound (%I interpolation for all dynamic identifiers; schema isolation replaces RLS as the access-control mechanism; SECURITY-REVIEWER downstream gate for the RLS-removal posture change). Requirement status SPT-02/03/04 -> DESIGN-REVIEWED recorded for DOC-UPDATER (reqctl cannot represent it — VALID_STATUSES gap, see issues).",
+  "files_created": [],
+  "files_modified": [
+    "handoffs/WF02-spt02-04-20260816/step-01b-code-design-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "lint_design_artefact.py src/design/spt-02-03-04-schema-per-tenant-migration.md",
+      "status": "pass",
+      "detail": "EXIT=0; BLOCKER=0 MAJOR=0 MINOR=5 (E030 schema-qualified names in prose only — non-gating per established convention)."
+    },
+    {
+      "name": "codebase-state verification (F1-F10)",
+      "status": "pass",
+      "detail": "No migrations 061/062/063 confirmed; pool.zig set_config('bpm.tenant_id') at line 298; src tenant_id ~967 word-boundary/85 files (design 972/66); tests/integration ~2157 substring/102 files (design 2369/118); bpm_effective_tenant_id 12x/7 files; GBL-123/executeSptCutover/provisioning SCHEMA promotion/process_instances-absent/sessions-no-tenant_id/tenant_hostnames-keeps-tenant_id/migrationOrder-scope-guard all verified."
+    },
+    {
+      "name": "lego-catalog classification check",
+      "status": "pass",
+      "detail": "SPT-02/03/04 all correctly Type E; no Type A-D parameter files; no codegen dry-run applicable."
+    },
+    {
+      "name": "reqctl set-status probe (SPT-02 DESIGN-REVIEWED)",
+      "status": "pass",
+      "detail": "EXIT=1 as expected: 'DESIGN-REVIEWED' is not a recognised status. Confirms status update must be recorded for DOC-UPDATER (or tool fixed)."
+    },
+    {
+      "name": "tests/integration legacy-shim spot check",
+      "status": "pass",
+      "detail": "adp02/adp03 use set_config('bpm.tenant_id') + bpm_effective_tenant_id (design named first); env02/03/05, par06, pin01, prm01, tnt_backfill, main_test, test_iss503 use bpm_effective_tenant_id (all named); svc04_admin_api_test.zig (4x set_config) omitted from high-impact list -> MINOR."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "OQ-1 RESOLVED-ACCEPTED (adjudicated MAJOR->MINOR): SPT-03 AC1's literal grep `grep -r \"bpm\\.tenant_id|set_config.*tenant|WHERE tenant_id|tenant_id = \\$\" src/` is unsatisfiable as written — verified: Class G registry queries against tenant_schemas/tenant_hostnames/tenant_realm_binding in pool.zig, provisioning.zig, tenant_lifecycle.zig, tenant_migration.zig legitimately contain `WHERE tenant_id = $N`, and owner_tenant_id (62) / production_tenant_id (49) bind lines in src/ contain the `tenant_id = $` substring. The design's scoped interpretation (§8.2 R1-R4 + §8.3 allow-list: no bpm.tenant_id/set_config.*tenant; no tenant_id on Class B business tables; Class G allow-list retained) is faithful to the AC's intent, complete, and unambiguous -> ACCEPTED-AS-IS. Formal SPT-03 AC1 requirement-text re-scope queued for REQ-ANALYST (WF-01) as a non-blocking follow-up; BACKEND-DEV may implement against the accepted interpretation."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-2 ACCEPTED: SPT-02 'Tables affected' list is stale vs live schema — verified process_instances does NOT exist (005 creates instance_projections+tokens+tasks), sessions has NO tenant_id (008), tenant_hostnames is a public routing table that KEEPS tenant_id (050). Class B information_schema reconciliation (§4) is the authoritative copy list. Requirement text should be updated by REQ-ANALYST in the same follow-up."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-3 ACCEPTED: 062 and GBL-123 coexist idempotently — GBL-123 (ISS-503-guarded) stays for the test_iss503_rls_removal.zig raw-file test; 062 adds the data-migration pre-flight (data_migrated_at) and explicit composite-index drops. No consolidation required."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-4 ACCEPTED: storage_mode column stays for provisioning.zig (writes SCHEMA, verified) and tenant_migration.zig (reads it, verified); only the pool.zig routing call site is removed. Whether to delete resolveAndCacheStorageMode is deferred to SPT-04 test rework (iss107_tenant_storage_mode_test / tnt_schema_isolation_test re-assert schema-only routing) — the design's conservative answer is correct."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-5 ACCEPTED with implementation constraint: no runner change needed — verified the misclassification guard (src/db/migrations.zig declaresUnqualifiedTableWork) skips %I lines and comments and accepts schema-qualified refs; lint_migration_schema.py BLOCKERs public.<business_table> only in NON-GBL files and does not match `public.%I` (069 precedent). CONSTRAINT: 062/063 per-table DDL must be emitted via EXECUTE format(... %I ...) with `public.%I` in the format string — static `public.<table>` would fail lint_migration_schema.py M001 (BLOCKER), bare `<table>` would fail the runner's MigrationScopeMismatch guard. Design §6.3/§10.1 should state this explicitly for BACKEND-DEV."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Count discrepancy (measurement/state variance, non-gating): design states src tenant_id = 972 refs/66 files, tests/integration = 2369/118. Independent re-measurement on the current tree: src \\btenant_id\\b = 967/85 (substring 1401/92); tests/integration \\btenant_id\\b = 1637/91 (substring 2157/102). Magnitudes agree and both far exceed the requirement's 37-file estimate; no design conclusion depends on the exact count. BACKEND-DEV must re-run `grep -rn tenant_id src/` at implementation (design already mandates this)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "SPT-04 §9.2 high-impact list omits svc04_admin_api_test.zig, which calls set_config('bpm.tenant_id', $1, false) directly at 4 sites (lines 471/496/607/626) for RLS-based inserts into tenant-scoped tables. Covered by the general 'every' instruction, but should be named for completeness."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Requirement-status machinery drift: tools/reqctl.py VALID_STATUSES omits DESIGNED/DESIGN-REVIEWED/TEST-DESIGNED/TEST-DESIGN-REVIEWED, so `reqctl set-status SPT-02 DESIGN-REVIEWED` exits 1 (verified, no mutation) even though AGENT_SYSTEM.md defines DESIGN-REVIEWED as the CODE-DESIGN-VALIDATOR PASS status. DOC-UPDATER must apply SPT-02/03/04 -> DESIGN-REVIEWED by direct edit of docs/requirements.yaml + docs/status/requirement_status.yaml, or after the tool is fixed. Exact intended commands recorded in result.next_action/result.summary."
+    }
+  ],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) to implement migrations 061/062/063, pool.zig routing collapse, and tenant_id triage per design §4-§8.",
+    "REQ-ANALYST (WF-01, non-blocking follow-up): formally re-scope SPT-03 AC1 (unsatisfiable literal grep) and refresh SPT-02 'Tables affected' list.",
+    "DOC-UPDATER: apply SPT-02/03/04 status -> DESIGN-REVIEWED via direct YAML edit (reqctl VALID_STATUSES lacks DESIGN-REVIEWED; tool update needed).",
+    "SECURITY-REVIEWER (Step 2c): review RLS-removal / schema-isolation posture change once BACKEND-DEV lands 062/063 + routing collapse.",
+    "Fix reqctl.py VALID_STATUSES to include DESIGNED/DESIGN-REVIEWED/TEST-DESIGNED/TEST-DESIGN-REVIEWED (align AGENT_SYSTEM.md lifecycle)."
+  ],
+  "blockers": []
+}
