@@ -1,0 +1,64 @@
+{
+  "handoff_id": "wf03-gh792-20260816-03-backend-dev",
+  "run_id": "WF03-GH792-20260816",
+  "workflow_id": "WF-03",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH792-20260816/step-03-backend-dev.json",
+  "created_at": "2026-08-16T09:19:42Z",
+  "started_at": "2026-08-16T09:19:58Z",
+  "completed_at": "2026-08-16T09:23:57Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 3 -- implement fix (test + production)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
+    "iss_id": "ISS-0707",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh792-20260816-02-code-designer",
+      "wf03-gh792-20260816-2b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/iss0707-gh792-prm09-public-qualify-fix.md",
+      "docs/issues/ISS-0707.json",
+      "tests/integration/prm-09-pack-update.test.zig",
+      "src/definition/pack_update.zig"
+    ],
+    "branch_name": "feature/WF03-GH792-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 3 for ISS-0707 / GH-792: implement the public.-qualification fix per the validated design at src/design/iss0707-gh792-prm09-public-qualify-fix.md (test file + ONE production file, no migrations). Changes: (a) tests/integration/prm-09-pack-update.test.zig \u2014 L98/L119/L164 solution_pack_installs -> public.solution_pack_installs, L128 solution_pack_artefact_bases -> public.solution_pack_artefact_bases; (b) src/definition/pack_update.zig (PRODUCTION) \u2014 L117 solution_pack_installs -> public.solution_pack_installs, L179 solution_pack_artefact_bases -> public.solution_pack_artefact_bases. Leave process_definitions references unqualified (tenant-side). Do NOT touch migrations or any other file (sol02/sol03 tenant-side code must stay unqualified). Verify: zig build exits 0; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 (direct, NOT the stale-5433 wrapper). NOTE: the warm test DB currently masks the bug (4/4 passes regardless), so the authoritative verification is the STATIC qualification check \u2014 confirm every solution_pack_installs / solution_pack_artefact_bases reference in these two files now carries the public. prefix and the sol02/sol03 tenant-side files are untouched. Also run python tools/lint_handoffs.py.",
+    "acceptance_criteria": [
+      "public. qualification applied to the exact lines in both files (test L98/L119/L128/L164; pack_update.zig L117/L179)",
+      "process_definitions references remain unqualified; no migrations and no other files modified (sol02/sol03 untouched)",
+      "zig build exits 0",
+      "Static qualification check: all solution_pack_installs / solution_pack_artefact_bases references in the two files carry public.",
+      "test-integration-prm09 runs 4/4 (warm DB; the static check is authoritative)",
+      "python tools/lint_handoffs.py exits 0",
+      "Work on branch feature/WF03-GH792-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented public.-qualification fix for ISS-0707/GH-792 in tests/integration/prm-09-pack-update.test.zig (L98/L119/L128/L164) and PRODUCTION src/definition/pack_update.zig (L117/L179) per the validated design; process_definitions left unqualified; no migrations and no other files touched (sol02/sol03 tenant-side code untouched). zig build exits 0; error-set validation clean; test-integration-prm09 4/4 PASS on warm :5453 (direct binary; static qualification check is authoritative since the warm DB masks the 42703); lint_handoffs exits 0.",
+    "artifacts_out": [
+      "src/definition/pack_update.zig",
+      "tests/integration/prm-09-pack-update.test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "SOL-02/SOL-03 integration tests fail on the warm :5453 bpm_test DB with sqlstate 42703 because tenant_default.solution_pack_installs carries the legacy 1157 layout (no pack_version/schema_version; verified via information_schema). Pre-existing and environmental (documented 'Warm-DB legacy state', accepted in the design Open Questions; dual-schema remediation tracked as ISS-0185). store.zig and the sol02/sol03 test files are untouched by this fix; fresh-DB confirmation delegated to Step 5 TEST-RUNNER per design verification plan steps 3/4."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 5) for fresh-migration-DB runtime confirmation (4/4) and no-collateral verification"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
