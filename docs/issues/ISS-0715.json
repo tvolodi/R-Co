@@ -22,7 +22,7 @@
     "migrations/094_entity_subsystem.sql"
   ],
   "fix_applied_in": "WF02-spt02-04-20260816 step-03-unblock (BACKEND-DEV)",
-  "fix_verified": "zig build test-integration-spt: 16/16 PASS; test-integration-spt01-iss68: 3/3 PASS; zig build 0; zig build migrate 0; lint_handoffs 0. public.bpm_audit_resource_info still TEXT; tenant_default unchanged (UUID)."
+  "fix_verified": "zig build test-integration-spt: 16/16 PASS; test-integration-spt01-iss68: 3/3 PASS; zig build 0; zig build migrate 0; lint_handoffs 0. public.bpm_audit_resource_info still TEXT; tenant_default unchanged (UUID).",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/812",
   "prevention": [
     "Per-schema migrations that CREATE OR REPLACE a shared-named function must schema-qualify the DROP (or use the DROP-then-CREATE pattern in the target schema) so an unqualified CREATE OR REPLACE never resolves a same-signature function in public and fails on an OUT-type change.",

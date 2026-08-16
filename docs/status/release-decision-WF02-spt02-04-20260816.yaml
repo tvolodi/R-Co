@@ -1,0 +1,154 @@
+stage: "Schema-Per-Tenant Migration"
+date: "2026-08-16T20:12:07Z"
+run_id: "WF02-spt02-04-20260816"
+branch: "feature/WF02-spt02-04-20260816"
+decision: "BLOCKED"
+
+requirement_ids:
+  - SPT-02
+  - SPT-03
+  - SPT-04
+
+acceptance_criteria_coverage:
+  SPT-02:
+    - ac: "AC1 — N distinct tenant IDs -> N tenant_schemas rows and N schemas"
+      coverage: "TC-SPT-02-01 (tests/integration/spt02_03_04_schema_tenant_migration_test.zig:249)"
+      status: MET
+    - ac: "AC2 — each tenant schema table holds exactly that tenant's rows (no data loss / cross-tenant contamination)"
+      coverage: "TC-SPT-02-02 (:281)"
+      status: MET
+    - ac: "AC3 — after 062 no tenant_id column, no bpm_effective_tenant_id(), no RLS, no composite indexes in public (Class G exempt)"
+      coverage: "TC-SPT-02-03 (:336) + RELEASE-VALIDATOR live re-check on bpm_test: 13 public tenant_id tables (all Class-G), 0 RLS, 0 function"
+      status: MET
+    - ac: "AC4 — 063 re-issues DROP POLICY IF EXISTS for every known policy (belt-and-suspenders)"
+      coverage: "TC-SPT-02-04 (:385)"
+      status: MET
+    - ac: "AC5 — re-running 061/062/063 raises no error and leaves state unchanged (idempotency)"
+      coverage: "TC-SPT-02-05 (:415)"
+      status: MET
+    - ac: "AC6 — interrupted copy detected via tenant_schemas.data_migrated_at IS NULL; 062 pre-flight gates"
+      coverage: "TC-SPT-02-06 (:471)"
+      status: MET
+  SPT-03:
+    - ac: "AC1 (scoped, OQ-1) — no bpm.tenant_id / set_config.*tenant in src/; no Class-B tenant_id column"
+      coverage: "TC-SPT-03-01 (:521) — scoped interpretation per design §8.3 / OQ-1 ruling; literal grep deviation is adjudicated, NOT a blocking issue"
+      status: MET
+    - ac: "AC2 — collapsed routing compiles and routes via search_path only"
+      coverage: "TC-SPT-03-02 (:571) + zig build gate"
+      status: MET
+    - ac: "AC3 — tenant JWT context -> correct current_schema(); no bpm.tenant_id session variable"
+      coverage: "TC-SPT-03-03 (:607)"
+      status: MET
+    - ac: "AC4 — two concurrent requests for different tenants isolated via search_path"
+      coverage: "TC-SPT-03-04 (:642)"
+      status: MET
+    - ac: "AC5 — no-tenant / reset path returns to public; existing routing keeps working"
+      coverage: "TC-SPT-03-05 (:706)"
+      status: MET
+  SPT-04:
+    - ac: "AC1 (scoped) — SPT suite fixtures use per-test provisioned schemas (no new explicit tenant_id fixtures)"
+      coverage: "TC-SPT-04-01 (:755)"
+      status: MET
+    - ac: "AC2 — zig build test-integration coverage: every SPT AC has a runnable, non-skipped test"
+      coverage: "TC-SPT-04-02 (:783) + suite run 16/16 no SkipZigTest on MUST blocks"
+      status: MET
+    - ac: "AC3 — ADP-12 regression passes against tenant_default with no BLOCKER/MAJOR"
+      coverage: "TC-SPT-04-03 (:801)"
+      status: MET
+    - ac: "AC4 — provisioned schema + tenant_schemas row cleaned up after the test (no leakage)"
+      coverage: "TC-SPT-04-04 (:832)"
+      status: MET
+    - ac: "AC5 — zig build test (unit) stays green; helpers + suite compile clean"
+      coverage: "TC-SPT-04-05 (:887) + unit 1145/1209 passed, 0 failed"
+      status: MET
+
+gate_results:
+  build:
+    status: PASS
+    detail: "zig build check exit 0 (Step 1/2 chain green; no new compile failures)"
+  test_integration_spt:
+    status: PASS
+    detail: "test-integration-spt 16/16 (SPT-02/03/04 schema-per-tenant migration suite) — report + INNER-REPORT EXIT 0"
+  test_integration_spt01:
+    status: PASS
+    detail: "test-integration-spt01-iss68 3/3"
+  test_integration_event_store:
+    status: PASS
+    detail: "test-integration-event-store 29/29 (previously compile-failing; fixed by BACKEND-DEV 741a40cf)"
+  unit:
+    status: PASS
+    detail: "zig build test 1145/1209 passed, 64 skipped, 0 failed (identical to pre-unblock baseline)"
+  regression_suites:
+    status: PASS
+    detail: "23 tenant/schema regression suites (pin*, prm*, sol*, svc 35/35, vld* 19/19, idn* 15/15) EXIT 0"
+  migrate_test_db:
+    status: PASS
+    detail: "zig build migrate EXIT 0 on bpm_test (5434); migration 1163 applied cleanly; 061/062/063 recorded in public + tenant_default + per-tenant ledgers"
+  nfr_bench:
+    status: FAIL
+    detail: "zig build bench (WF-04 NFR metric suite) exit 1 — migrate precondition aborts at migration 062 against BPM_DB_URL (bpm_dev:5442): cannot drop column tenant_id of table artifact_activations because view v_active_configs depends on it. No NFR_RESULT lines emitted; no NFR threshold measured."
+
+nfr_results:
+  nfr01_p99_read_latency: "UNMEASURED — bench blocked at migration 062 (see gate_results.nfr_bench)"
+  nfr01_p99_write_latency: "UNMEASURED — bench blocked at migration 062"
+  nfr02_event_append_throughput: "UNMEASURED — bench blocked at migration 062"
+  nfr03_availability: "NOT APPLICABLE — requires production deployment"
+  nfr04_replay_10000_ms: "UNMEASURED — bench blocked at migration 062"
+  nfr05_db_storage: "NOT RE-BENCHED — no event-log schema change in this batch; covered by prior suites"
+  nfr06_pool_bounds: "NOT RE-BENCHED — no pool change in this batch"
+  nfr07_crash_safety: "COVERED — transactional per-tenant copy (savepoints) + 062 pre-flight gate exercised by TC-SPT-02-05/06"
+
+blocking_issues:
+  - severity: BLOCKER
+    source: "Independent RELEASE-VALIDATOR verification (fresh-DB path + NFR bench gate)"
+    description: >-
+      Migration 062_remove_tenant_id_rls_from_public.sql (shipped by this run) aborts on any
+      database where migration 052 has created the v_active_configs view and public
+      artifact_activations still carries tenant_id — which is EVERY fresh database, because
+      GBL-123 (migrationOrder 1123) runs ~1000 order-units AFTER 062 (order 62), and 052
+      (order 52) runs before both. Reproduced verbatim against bpm_dev (BPM_DB_URL) inside a
+      rolled-back transaction: `ERROR: cannot drop column tenant_id of table
+      artifact_activations because other objects depend on it / DETAIL: view v_active_configs
+      depends on column tenant_id of table artifact_activations`. 062's belt-and-suspenders
+      residual-index sweep handles indexes/constraints but NOT dependent VIEWS. The Step 4 gate
+      passed only because bpm_test applied GBL-123 on 2026-08-11 (before 061/062/063 existed),
+      so artifact_activations had already lost tenant_id and 062's Class-B discovery found
+      nothing to drop there — the failure path was never exercised by the SPT test suite.
+    affected_requirements: ["SPT-02", "SPT-03", "SPT-04"]
+    recommended_agent: "BACKEND-DEV (fix migration 062 to drop/recreate the dependent v_active_configs view around the DROP COLUMN, or DROP COLUMN with dependent-view handling) + TEST-DESIGNER (add a test reproducing the view-dependency state: synthetic public view depending on a Class-B tenant_id column, then execute 062 raw SQL and assert success)"
+
+known_minor_issues:
+  - severity: MINOR
+    scope: BOOKKEEPING
+    description: >-
+      ISS-0715 / GH-812 (fresh tenant provisioning blocker) was fixed in-run by commit
+      3ec8832e (schema-aware 020 + 094 entity index guard) and verified (test-integration-spt
+      16/16, spt01 3/3, zig build 0, migrate 0 — per docs/issues/ISS-0715.json fix_verified),
+      but the GitHub issue #812 remains OPEN and docs/issues/ISS-0715.json still carries
+      status OPEN (and had a JSON syntax error — missing comma after fix_verified — fixed by
+      RELEASE-VALIDATOR). NOT a release blocker (code defect resolved); route closure to
+      DOC-UPDATER / a closure ADHOC (fn:update-issue RESOLVED + gh issue close 812).
+  - severity: MINOR
+    scope: ADJUDICATED
+    description: >-
+      SPT-03 AC1 literal-grep deviation (`grep -r "bpm\.tenant_id\|set_config.*tenant\|WHERE
+      tenant_id\|tenant_id = \$" src/`) is a documented, adjudicated scoping (OQ-1, CODE-DESIGN-
+      VALIDATOR ruling, reflected in TC-SPT-03-01). NOT treated as a blocking issue.
+  - severity: MINOR
+    scope: ENVIRONMENT
+    description: >-
+      bpm_dev (BPM_DB_URL:5442) is now in a half-migrated state: 061 recorded (data_migrated_at
+      set 2026-08-16 20:07:57Z for tenant_default) with 062 pending/failing. The bench-env
+      repair for the BLOCKED 062 fix must either apply GBL-123 out-of-order (as bpm_test did)
+      or resume migrate after 062 is fixed. The migration 062 defect is branch-attributable,
+      NOT a dev-DB-only quirk — the same failure reproduces on the canonical fresh-DB path.
+
+approved_requirements: []
+
+recommendation: >-
+  BLOCK the release for SPT-02/03/04 (Schema-Per-Tenant Migration). All 16 MUST ACs pass as
+  tested on bpm_test, but independent verification found migration 062 fails on the canonical
+  fresh-DB path (view dependency) and consequently the NFR/bench gate cannot start. Route to
+  BACKEND-DEV to fix migration 062 (dependent-view handling), TEST-DESIGNER to add
+  view-dependency coverage, then re-run the Step 4 gate and the NFR bench before re-dispatching
+  RELEASE-VALIDATOR. SPT-02/03/04 remain PENDING — DOC-UPDATER must NOT set RELEASED this cycle.
