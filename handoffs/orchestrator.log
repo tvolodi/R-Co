@@ -1790,3 +1790,8 @@
 2026-08-16T06:07:43Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | DOC-UPDATER | PASS - Step 7 doc update: ISS-0708 RESOLVED (three test-setup patches, combined file tests/integration/prm-06-07-promotion-assertion.test.zig, migrations 096/1156 citations corrected), CHANGELOG [Unreleased] 2026-08-16 entry, issue_index RESOLVED; GH-793 left OPEN for Step Final release.py --close-github-issue
 2026-08-16T06:09:14Z | ROUTE | WF-03 | wf03-gh793-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T06:11:33Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | BACKEND-DEV | PASS - Step Final git-merge: PR #801 squash-merged (19be9a64), branch deleted, claim released (GH-793 closed)
+2026-08-16T06:13:43Z | DONE | WF03-GH793-20260816 | --- | PIPELINE COMPLETE | GH-793 CLOSED (ISS-0708 RESOLVED, PRM-06/07 integration-test fixes landed)
+2026-08-16T06:13:43Z | GIT  | WF03-GH793-20260816 | feature/WF03-GH793-20260816 | 19be9a64 | PR: https://github.com/tvolodi/R-Co/pull/801
+2026-08-16T06:13:43Z | LOOP | WF03-GH793-20260816 | --- | ORCH | claim released (r-co:GH-793 DONE, gh-793 closed, task/current.json empty) - continuing loop
+2026-08-16T06:13:57Z | ROUTE | ADHOC | adhoc-prm08-fixture-defect-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (file incidental prm-08 fixture defect)
+2026-08-16T06:16:34Z | COMPLETE | ADHOC-prm08-fixture-defect-20260816 | adhoc-prm | ISSUE-FIXER | PASS - Step 0.5 filed incidental prm-08 fixture defect: ISS-0711 registered + GitHub issue #802 (bug) created; no fix (claimable loop item)

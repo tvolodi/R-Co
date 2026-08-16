@@ -1,0 +1,26 @@
+{
+  "report_id": "ADHOC-prm08-fixture-defect-20260816-step-0.5-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "ADHOC-prm08-fixture-defect-20260816",
+  "step": "0.5",
+  "created_at": "2026-08-16T06:16:34Z",
+  "summary": "ADHOC Step 0.5 (file-only, no fix) for the incidental prm-08 fixture defect surfaced in WF03-GH793-20260816 step-1: registered the latent insertPromotionReviewsRow defect in tests/integration/prm-08-rollback-sandbox.test.zig (same class as ISS-0708/GH-793 Cluster A) as ISS-0711 and filed it on GitHub as issue #802 per No-Issue-Left-Local-Only / ISSUE_QUEUE.md. Registry lookup (fn:search-issues over docs/issues/ + gh issue list --search 'prm-08' / 'insertPromotionReviewsRow' / 'ISS-0711' --state all) confirmed no prior ISS or GitHub issue covers the prm-08 fixture defect (ISS-0708/GH-793 covers PRM-06/07 only and explicitly scoped prm-08 out). No ID collision: registry next_issue_id was 711, docs/issues/ISS-0711.json did not exist, and gh issue list found no GitHub match for ISS-0711. Verified the defect statically against migrations/096_promotion_reviews.sql (requested_by/def_type/serialised_plan all NOT NULL) and the test helper lines 233-258 (INSERT omits all three). Created docs/issues/ISS-0711.json (severity MAJOR, classification IMPL_BUG/test-fixture, github_issue=https://github.com/tvolodi/R-Co/issues/802, github_issue_confirmed=true) and appended the ISS-0711 entry to docs/issues/issue_index.json (next_issue_id 711 -> 712, last_updated 2026-08-16T06:15:25Z). GitHub issue #802 created with the bug label and <!-- rco-sync-ref: ISS-0711 --> tag, body mirroring the ISS (symptom, root cause, acceptance criteria, severity). NO fix implemented (becomes a claimable loop item). Work performed on main; changes to be committed as a bookkeeping commit.",
+  "files_created": [
+    "docs/issues/ISS-0711.json",
+    "docs/issue-reports/ADHOC-prm08-fixture-defect-20260816-step-0.5-issue-fixer-INNER-REPORT.json",
+    "scratch/gh-issue-ISS-0711-body.md"
+  ],
+  "files_modified": [
+    "docs/issues/issue_index.json",
+    "handoffs/ADHOC-prm08-fixture-defect-20260816/step-005-issue-fixer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "No further action in this ADHOC — the filing IS the deliverable. The newly filed GitHub issue #802 (ISS-0711) will be mirrored into TaskManager work_items by github_pull.py on the next loop refresh and is claimable as its own WF-03 run.",
+    "When the fix is claimed, mirror the ISS-0708/GH-793 Cluster A fix in tests/integration/prm-08-rollback-sandbox.test.zig (add requested_by param + NOT NULL columns; fresh UUID at call site) and verify with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08."
+  ],
+  "blockers": []
+}

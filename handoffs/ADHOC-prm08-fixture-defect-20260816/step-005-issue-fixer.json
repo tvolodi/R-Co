@@ -1,0 +1,55 @@
+{
+  "handoff_id": "adhoc-prm08-fixture-defect-20260816-005-issue-fixer",
+  "run_id": "ADHOC-prm08-fixture-defect-20260816",
+  "workflow_id": "ADHOC",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/ADHOC-prm08-fixture-defect-20260816/step-005-issue-fixer.json",
+  "created_at": "2026-08-16T06:13:57Z",
+  "started_at": "2026-08-16T06:14:13Z",
+  "completed_at": "2026-08-16T06:16:34Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 0.5 -- file incidental finding",
+    "iss_id": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh793-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/ISSUE_QUEUE.md",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "docs/issue-reports/WF03-GH793-20260816-step-1-issue-fixer-INNER-REPORT.json"
+    ],
+    "branch_name": "main"
+  },
+  "task": {
+    "description": "ADHOC Step 0.5 for the incidental finding surfaced in WF03-GH793-20260816 Step 1 (ISSUE-FIXER): an identical insertPromotionReviewsRow test-fixture defect is latent in tests/integration/prm-08-rollback-sandbox.test.zig (the same requested_by NOT NULL / missing-column class fixed in prm-06-07-promotion-assertion.test.zig by WF03-GH793). Per No-Issue-Left-Local-Only and ISSUE_QUEUE.md: (1) registry lookup \u2014 confirm no existing ISS/GitHub issue already covers the prm-08 fixture defect (check issue_index.json + gh issue list --search 'prm-08' / 'insertPromotionReviewsRow' --state all); (2) create the ISS file in docs/issues/ (use the current registry next_issue_id \u2014 verify first; do not collide) documenting the latent defect (severity MAJOR, classification IMPL_BUG/test-fixture), append to docs/issues/issue_index.json; (3) file a real GitHub issue via gh issue create with a clear title/body (bug label) referencing the ISS. Do NOT implement any fix (this becomes a claimable loop item). Work on main (no branch needed for issue filing); commit the ISS/index changes to main with a bookkeeping commit.",
+    "acceptance_criteria": [
+      "Registry lookup confirms no existing issue for the prm-08 fixture defect",
+      "ISS file created in docs/issues/ with correct next_issue_id (no collision) and appended to issue_index.json",
+      "GitHub issue filed via gh issue create (bug label) with the ISS reference",
+      "No fix implemented",
+      "python tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Filed the incidental prm-08 fixture defect (insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan in tests/integration/prm-08-rollback-sandbox.test.zig; latent sqlstate 23502, same class as ISS-0708/GH-793 Cluster A) as ISS-0711 and GitHub issue #802 per No-Issue-Left-Local-Only. Registry lookup confirmed no existing coverage; no ID collision (next_issue_id 711 -> 712). No fix implemented.",
+    "artifacts_out": [
+      "docs/issues/ISS-0711.json",
+      "docs/issue-reports/ADHOC-prm08-fixture-defect-20260816-step-0.5-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "No further action in this ADHOC. Loop: claim GitHub issue #802 (ISS-0711) as its own WF-03 run once TaskManager github_pull.py mirrors it."
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}
