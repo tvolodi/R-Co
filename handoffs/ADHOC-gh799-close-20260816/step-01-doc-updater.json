@@ -1,0 +1,67 @@
+{
+  "handoff_id": "adhoc-gh799-close-20260816-001",
+  "run_id": "ADHOC-gh799-close-20260816",
+  "workflow_id": "ADHOC",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/ADHOC-gh799-close-20260816/step-01-doc-updater.json",
+  "created_at": "2026-08-16T15:50:08Z",
+  "started_at": "2026-08-16T15:50:50Z",
+  "completed_at": "2026-08-16T16:06:13Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Post-run issue closure bookkeeping — GH #799 / ISS-0709 (VLD-01/02/03 impl bugs)",
+    "summary": "The implementation fix for GitHub issue #799 (ISS-0709) was already delivered and verified by run WF03-vld-impl-bugs-20260816: PR #808 squash-merged to main as commit 91a48040 (mergedAt 2026-08-16T09:24:25Z), VLD-01/02/03 marked RELEASED by the run's Step 7, Step Final completed, branch deleted, working tree clean on main. The run completed WITHOUT closing the GitHub issue and WITHOUT marking the local ISS record RESOLVED — both were missed. This ADHOC run completes that closure bookkeeping only. No source code changes, no requirement status changes, no test runs.",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/799",
+    "github_issue_number": 799,
+    "local_record": "docs/issues/ISS-0709.json",
+    "issue_index": "docs/issues/issue_index.json",
+    "iss_id": "ISS-0709",
+    "pr_number": 808,
+    "pr_url": "https://github.com/tvolodi/R-Co/pull/808",
+    "pr_merged_at": "2026-08-16T09:24:25Z",
+    "pr_merge_commit": "91a48040bfde66a0c777e1a101aae69eb2da433f",
+    "delivering_run": "WF03-vld-impl-bugs-20260816",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "reference_closure_pattern": "docs/issues/ISS-0707.json (status RESOLVED, resolved_at, resolution, prevention, resolved_by) — GH #792 closure was done the same way at run tail. GitHub issue close mechanism: `gh issue close <number> --comment '<text>'` (no release.py --close-github-issue tool exists).",
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-008-final",
+      "wf03-vld-impl-bugs-20260816-007"
+    ]
+  },
+  "task": {
+    "description": "Complete the closure bookkeeping for GitHub issue #799 / ISS-0709. The fix is ALREADY merged (PR #808, commit 91a48040) and verified — do NOT re-fix, re-test, or change any requirement status (VLD-01/02/03 already RELEASED). Do exactly this: (1) Read docs/issues/ISS-0709.json and update it to RESOLVED via the fn:update-issue pattern, filling: status = \"RESOLVED\", pr_url = https://github.com/tvolodi/R-Co/pull/808, pr_merged_at = 2026-08-16T09:24:25Z, pr_merge_commit = 91a48040bfde66a0c777e1a101aae69eb2da433f, resolution (narrative: fix delivered via run WF03-vld-impl-bugs-20260816 / PR #808 / commit 91a48040; root-cause groups R1-R5 (and scope expansions R6-R10) implemented across src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig and src/api/routes/validation.zig; integration tests tests/integration/validation_vld_unit_test.zig + validation_vld_http_test.zig added; VLD-01/02/03 RELEASED; STEP 5 TEST-RUNNER PASS vld 14/14 + 5/5 + 40/40; full corpus 107/107 steps / 1129/1209 tests green before merge), prevention (a rule or pattern that prevents recurrence — e.g. the validator entry point validateDefinition must never report findings on the clean/happy path; in-file unit tests for src/validation/* are authoritative — any new validation module must ship with its own passing in-file unit tests and the clean-path test must return 0 findings before merge), resolved_at = current UTC now, resolved_by = \"DOC-UPDATER (ADHOC-gh799-close-20260816 step-01)\". (2) Update the matching ISS-0709 entry in docs/issues/issue_index.json to RESOLVED with resolved_at (follow the ISS-0707 precedent). (3) Close the GitHub issue: `gh issue comment 799 --body \"Resolved by PR #808 (commit 91a48040) — VLD-01/02/03 Stage 16 semantic validation; fix delivered via run WF03-vld-impl-bugs-20260816; full corpus green (107/107 steps, 1129/1209 tests).\"` then `gh issue close 799` (or `gh issue close 799 --comment ...` in one call). Verify with `gh issue view 799 --json state` → must be CLOSED. (4) Commit the bookkeeping (docs/issues/ISS-0709.json + docs/issues/issue_index.json + any handoff/registry/log bookkeeping) directly to main and push, following the repo's pure-bookkeeping commit convention (e.g. `chore(issues): mark ISS-0709 RESOLVED (GH #799, PR #808)`). (5) Return to a clean main working tree. Encoding rules: handoff JSONs and docs/issues/ISS-*.json use literal UTF-8 (json.dump ensure_ascii=False); handoffs/registry.json and docs/issues/issue_index.json use ASCII-escaped JSON (ensure_ascii=True) to avoid whole-file diff noise. Never write with PowerShell `>>` (UTF-16). Return PASS only when the GitHub issue is CLOSED and the ISS record is RESOLVED on origin/main.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0709.json: status = RESOLVED, with pr_url / pr_merged_at / pr_merge_commit / resolution / resolved_at / resolved_by populated",
+      "docs/issues/issue_index.json: ISS-0709 marked RESOLVED with resolved_at",
+      "GitHub issue #799 state = CLOSED (gh issue view 799 --json state confirms)",
+      "Bookkeeping committed and pushed to main; working tree clean on main",
+      "python tools/lint_handoffs.py exits 0 on this handoff (pre-existing baseline acceptable)"
+    ],
+    "functions_to_call": [
+      "fn:update-issue",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Closed GH #799 / ISS-0709 (VLD-01/02/03 impl bugs) - pure closure bookkeeping. ISS-0709.json marked RESOLVED (pr_url PR #808, pr_merge_commit 91a48040, resolution, prevention, resolved_at, resolved_by); docs/issues/issue_index.json entry updated RESOLVED + resolved_at; GitHub issue #799 closed (verified CLOSED) with comment noting PR #808 / run WF03-vld-impl-bugs-20260816; bookkeeping committed to main and pushed; working tree clean; lint_handoffs.py exit 0.",
+    "artifacts_out": [
+      "docs/issues/ISS-0709.json",
+      "docs/issues/issue_index.json",
+      "handoffs/ADHOC-gh799-close-20260816/step-01-doc-updater.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete — ADHOC run done; repo on clean main"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

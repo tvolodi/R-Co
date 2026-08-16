@@ -1937,3 +1937,6 @@
 2026-08-16T12:15:56Z | STEP-FINAL-COMPLETED | WF03-iss0714-bench-env-20260816 | WF03-iss | BACKEND-DEV | Step Final PASS - PR #811 squash-merged (24523cb), feature branch deleted, GH #809 closed, clean main; audit reconciled after rebase
 2026-08-16T12:16:59Z | DONE | WF03-iss0714-bench-env-20260816 | --- | PIPELINE COMPLETE | ISS-0714/GH#809 RESOLVED via PR #811 (24523cb8) — dev/bench DB provisioning reconciled; bench NFR green
 2026-08-16T12:16:59Z | GIT | WF03-iss0714-bench-env-20260816 | feature/wf03-iss0714-bench-env-20260816 | 24523cb8 | PR: https://github.com/tvolodi/R-Co/pull/811
+2026-08-16T15:50:08Z | DISPATCH_STALE | ADHOC-gh799-close-20260816 | --- | ORCH | CLEARED — ISS-0709 status OPEN at origin/main HEAD (not already RESOLVED)
+2026-08-16T15:50:08Z | ROUTE | ADHOC | adhoc-gh799-close-20260816-001 | ORCH → DOC-UPDATER | PENDING | GH #799/ISS-0709 closure bookkeeping (PR #808 already merged, fix verified)
+2026-08-16T16:06:13Z | COMPLETE | ADHOC-gh799-close-20260816 | adhoc-gh | DOC-UPDATER | GH #799 closed (PR #808, commit 91a48040); ISS-0709 RESOLVED; issue_index updated; bookkeeping pushed to clean main; lint_handoffs.py exit 0

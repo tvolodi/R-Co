@@ -7,7 +7,7 @@
   "github_issue_confirmed": true,
   "github_issue_filed_at": "2026-08-16T04:00:57Z",
   "title": "VLD-01/02/03 implementation: validateDefinition returns findings on clean definitions (4 fail + 2 crash in src/validation/*.zig)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "classification": "IMPL_BUG",
   "severity": "BLOCKER",
   "workflow_id": "WF03-vld-impl-bugs-20260816",
@@ -134,11 +134,19 @@
   "fix_file": "src/validation/mod.zig; src/validation/site.zig; src/validation/pd06.zig; src/validation/typecheck.zig",
   "fix_line": "TBD — start at mod.validateDefinition's finding-accumulation path (source of the 3 spurious findings on the clean definition), then site.enumerateSites, pd06.runSyntaxCheck, typecheck.checkSite.",
   "fix_diff": null,
-  "resolution": null,
-  "prevention": null,
-  "pr_url": null,
-  "pr_merged_at": null,
-  "pr_merge_commit": null,
+  "resolution": "RESOLVED via run WF03-vld-impl-bugs-20260816. Fix delivered through PR #808 (merge commit 91a48040bfde66a0c777e1a101aae69eb2da433f, merged 2026-08-16T09:24:25Z). Root-cause groups R1-R5 (plus scope expansions R6-R10) implemented across src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig and src/api/routes/validation.zig. Integration tests tests/integration/validation_vld_unit_test.zig and tests/integration/validation_vld_http_test.zig added. VLD-01/02/03 marked RELEASED. Step 5 TEST-RUNNER PASS: vld 14/14 + 5/5 + 40/40; full corpus 107/107 steps / 1129/1209 tests green before merge.",
+  "prevention": {
+    "actions": [
+      "The validator entry point validateDefinition must never report findings on the clean/happy path - a valid definition must yield 0 findings; the clean-path test is authoritative and must return 0 findings before merge.",
+      "In-file unit tests for src/validation/* are authoritative - any new validation module must ship with its own passing in-file unit tests, and the clean-path test must return 0 findings before merge.",
+      "Memory ownership in src/validation/* must match the documented contract: freeSites owns and frees the whole []Site backing returned by enumerateSites' toOwnedSlice; TypedEnv ownership (who frees entries) must be explicit in test scaffolding; per-site []Finding backings from checkSite's toOwnedSlice must be freed to keep std.testing.allocator leak detection green.",
+      "The PD-06 per-site syntax gate must use the real expr.parse check (not delimiter-balance-only) so truncated/dangling-operator expressions are rejected and the VLD-02 AC4 short-circuit fires; run the PD-06 gate before any env-level finding is accumulated so the 'findings stays empty' contract holds.",
+      "The declared-type table (mapDeclaredTypeName) must map every CEL type name used in fixtures (including 'number') so no spurious UnknownVariableType / UnknownVariable false positive is emitted."
+    ]
+  },
+  "pr_url": "https://github.com/tvolodi/R-Co/pull/808",
+  "pr_merged_at": "2026-08-16T09:24:25Z",
+  "pr_merge_commit": "91a48040bfde66a0c777e1a101aae69eb2da433f",
   "links": [
     {
       "type": "github_issue",
@@ -169,6 +177,15 @@
       "status": "FILED",
       "completed_at": "2026-08-16T04:00:57Z",
       "summary": "WF-03 Step 0.5 — registered ISS-0709 and filed the corresponding GitHub issue per the 'No Issue Left Local-Only' directive. No implementation fix attempted at this step."
+    },
+    {
+      "step": "step-01-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "ADHOC-gh799-close-20260816",
+      "handoff_id": "adhoc-gh799-close-20260816-001",
+      "status": "RESOLVED",
+      "completed_at": "2026-08-16T16:05:19Z",
+      "summary": "Marked ISS-0709 RESOLVED and closed GitHub issue #799 (PR #808, commit 91a48040) - VLD-01/02/03 Stage 16 semantic validation implementation bug. Pure closure bookkeeping: no code changes, no requirement status changes, no test runs."
     }
   ],
   "root_cause_analysis": {
@@ -314,5 +331,7 @@
       ],
       "design_decision_needed": "R3: whether to extend the declared-type table with 'number' (semantically aligned — .number is a first-class TypeTag and the clean-path AC requires 0 findings) or to change the mod.zig fixtures to a mapped name such as 'decimal'. The design §8 table currently omits 'number'; this must be reconciled explicitly, and the change (either direction) documented so it is not silently reverted."
     }
-  }
+  },
+  "resolved_at": "2026-08-16T16:05:19Z",
+  "resolved_by": "DOC-UPDATER (ADHOC-gh799-close-20260816 step-01)"
 }
