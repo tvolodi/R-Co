@@ -1,0 +1,51 @@
+{
+  "handoff_id": "c9874333-313d-4695-8f85-03225b127ce9",
+  "run_id": "WF02-batch-7-20260816",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-batch-7-20260816/step-final-backend-dev.json",
+  "created_at": "2026-08-16T22:59:04Z",
+  "started_at": "2026-08-16T22:59:21Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-04",
+      "OBP-04",
+      "ORD-03",
+      "VLD-04"
+    ],
+    "related_handoff_ids": [
+      "1689e714-a71b-467f-8e69-6fb010aac234"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "docs/agents/protocols/LOOP_PROTOCOL.md",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md"
+    ],
+    "branch_name": "feature/WF02-batch-7-20260816",
+    "github_issue": null
+  },
+  "task": {
+    "description": "Step Final for WF-02 run WF02-batch-7-20260816: execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md to merge feature branch feature/WF02-batch-7-20260816 to main (PR, squash-merge, branch cleanup, return to clean main). This is LOOP-MODE: after the merge, call TaskManager release.py for the claimed item r-co:BATCH-e0c55c6ac25e in task/current.json: `python \"C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py\" task/current.json --status DONE` (no --close-github-issue needed for a requirement_batch item). Verify release.py exits 0 and task/current.json returns to {}. Result must confirm: local repo on main with clean working tree, branch_name, commit_sha_list (at least one entry), remote_branch, pr_url (or pr_create_error), push_status ok, and release.py exit 0.",
+    "acceptance_criteria": [
+      "fn:git-merge completed: PR squash-merged into main, feature branch deleted locally and on origin",
+      "Local repo on main with clean working tree (confirmed in result)",
+      "result.git_evidence has branch_name, commit_sha_list, remote_branch, pr_url (or pr_create_error), push_status ok",
+      "TaskManager release.py exited 0 and task/current.json is {}",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {},
+  "rework_count": 0,
+  "max_rework": 3
+}

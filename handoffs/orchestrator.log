@@ -2002,3 +2002,5 @@
 2026-08-16T21:25:08Z | COMPLETE | WF02-batch-7-20260816 | fa7637f7 | BACKEND-DEV | PASS (REWORK-2 VLD-04 gate wired into handlers; vld04-gate 7/7, vld-http 5/5, prm suites green; commit da4761fc) -> TEST-DESIGNER/TEST-RUNNER
 2026-08-16T21:33:38Z | ROUTE | WF-02 | 58683e55 | ORCH -> TEST-RUNNER | PENDING | Step 04-rework2 re-verify VLD-04 handler wiring (AC1/AC2)
 2026-08-16T21:57:55Z | ROUTE | WF-02 | d8b00b6d | ORCH -> RELEASE-VALIDATOR | PENDING | Step 05-rework2 re-validate VLD-04 release
+2026-08-16T22:43:59Z | ROUTE | WF-02 | 1689e714 | ORCH -> DOC-UPDATER | PENDING | Step 06 changelog + status (DDL-04, OBP-04, ORD-03, VLD-04 RELEASED)
+2026-08-16T22:59:04Z | ROUTE | WF-02 | c9874333 | ORCH -> BACKEND-DEV | PENDING | Step Final git-merge + release.py (DDL-04, OBP-04, ORD-03, VLD-04)
