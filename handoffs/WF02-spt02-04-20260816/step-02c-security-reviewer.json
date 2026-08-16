@@ -1,0 +1,81 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-02c-security-reviewer",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-spt02-04-20260816/step-02c-security-reviewer.json",
+  "created_at": "2026-08-16T17:46:49Z",
+  "started_at": "2026-08-16T17:47:07Z",
+  "completed_at": "2026-08-16T17:55:25Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-00-backend-dev",
+      "WF02-spt02-04-20260816-01-code-designer",
+      "WF02-spt02-04-20260816-01b-code-design-validator",
+      "WF02-spt02-04-20260816-02a-backend-dev"
+    ],
+    "artifacts_in": [
+      "src/design/spt-02-03-04-schema-per-tenant-migration.md",
+      "docs/requirements.yaml",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md",
+      "docs/agents/instructions/security-invariants.md",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-02a-backend-dev-INNER-REPORT.yaml"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Step 2a BACKEND-DEV PASS (commit 27ec5d6c): migrations 061/062/063 created+applied; pool.zig routing collapsed to search_path-only (legacy set_config('bpm.tenant_id') removed); Class B tenant_id predicates/columns removed per design R3 triage; Class G registry tables keep tenant_id. BACKEND-DEV logged 4 MINOR notes, notably: solution_pack_installs + pack_update_resolutions kept as Class G (deviation from design §4 — pack_update.zig queries the shared public table explicitly; removing the predicate would be an INV-1 leak), and remaining Class B refs in files outside the design R3 triage (oidc/*, promotion_conflict, promotion_review, engine/instance). This diff touches tenant-data paths — INV-1 (tenant predicate on shared tables) is directly implicated. Adjudicate whether the Class G deviations and residual refs are acceptable or must be reworked."
+  },
+  "task": {
+    "description": "Security review (WF-02 Step 2c hard gate) of the SPT-02/SPT-03 implementation diff (commit 27ec5d6c on feature/WF02-spt02-04-20260816) against the numbered invariants in docs/agents/instructions/security-invariants.md. In scope: migration 061/062/063 (tenant data copy, RLS/policy/tenant_id removal), src/db/pool.zig routing collapse to search_path-only, Class B tenant_id removal across src/. Specifically verify: INV-1 — no shared-table query loses its tenant scoping (adjudicate whether solution_pack_installs/pack_update_resolutions kept as Class G is the correct call, and whether the residual Class B refs in oidc/*, promotion_conflict, promotion_review, engine/instance are safe or must be reworked); INV-6 — every new data-access path proves its tenant scoping; migration 061 per-tenant atomicity (no cross-tenant contamination during copy); migration 062/063 idempotency. Run the lints/`git diff`/`zig build test-*` checks your instructions prescribe. Return PASS only if the diff is safe to hand to TEST-DESIGNER.",
+    "acceptance_criteria": [
+      "INV-1..INV-6 checked against the actual diff (not prose)",
+      "Explicit verdict on solution_pack_installs/pack_update_resolutions Class G retention",
+      "Explicit verdict on residual Class B refs outside the design R3 triage",
+      "Migration 061 per-tenant atomicity and 062/063 idempotency verified",
+      "result.status == PASS only if no BLOCKER/MAJOR invariant violation remains",
+      "lint exits reported"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Security review (WF-02 Step 2c) of SPT-02/03 commit 27ec5d6c: PASS. INV-1 PASS (search_path-only routing; live bpm_test confirms public tenant_id == exactly the Class G allow-list, no Class B public table keeps tenant_id, no stranded unscoped data; lints lint_migration_schema/lint_sql_table_refs exit 0). INV-2 PASS (only response change is DefinitionRecord losing tenant_id). INV-3 N/A (no lua/wasm change; test-lua=0, test-misc-unit=0). INV-4 N/A (no secrets change; no hardcoded secrets). INV-5 N/A (no new/changed lookup handler). INV-7 PASS (parameterised SQL; schema identifier interpolation bounded by UUID-validated tenant context + extended query protocol). INV-8 PASS (no catch unreachable in diff). Class G retention of solution_pack_installs/pack_update_resolutions ACCEPTED (security-improving: pack_update.zig keeps tenant_id predicate on the explicit public table; removing it would be an INV-1 leak). Residual Class B refs (oidc/*, promotion_*, engine/instance) SAFE (unqualified, resolve to tenant schema where tenant_id column remains; MINOR follow-up cleanup). Migration 061 per-tenant atomicity verified (nested BEGIN...EXCEPTION savepoints; unmarked tenant keeps public tenant_id so 062 pre-flight prevents leak window; copy filtered WHERE tenant_id= with count parity). 062/063 idempotency verified. result.status=PASS — safe to hand to TEST-DESIGNER (Step 3).",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-spt02-04-20260816-step-02c-security-reviewer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Class G retention (solution_pack_installs + pack_update_resolutions) vs design §4: ACCEPTED as security-correct. pack_update.zig explicitly queries public.solution_pack_installs with a retained tenant_id= predicate; applying the design Class B classification would drop the only tenant boundary on that shared public table (INV-1 leak). Design §4 list should be corrected in the queued REQ-ANALYST follow-up."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Residual Class B tenant_id refs in oidc/*, promotion_conflict, promotion_review, promotion_plan, engine/instance: SAFE for this diff (unqualified queries resolve to tenant schema where tenant_id column remains; 062 drops only public copies; oidc/* tenant_id is runtime JWT context kept per design §8.2). Incomplete SPT-03 cleanup — follow-up SPT batch. Coupling warning: these depend on tenant-schema tables retaining tenant_id; a future migration dropping tenant-schema tenant_id must rework them first."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing latent INV-7 robustness note (not introduced by this diff): promotion routes set tenant_context from body strings before UUID validation; mitigated by auth parseUuid on the JWT path + extended query protocol (single-statement Parse) bounding the schema-name interpolation. Harden with explicit UUID validation at the route boundary as follow-up."
+      },
+      {
+        "severity": "MINOR",
+        "description": "executeSptCutover() (src/admin/tenant_migration.zig) references public business-table tenant_id columns dropped by 062 — obsolete after SPT-02; remove/re-gate in follow-up."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
