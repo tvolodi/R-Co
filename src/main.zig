@@ -760,6 +760,18 @@ fn serveRequest(
                 const r = definition_routes.handleExport(req_alloc, export_import_inst, seg4);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else if (method == .POST and std.mem.eql(u8, seg5, "validate")) {
+                // VLD-01/02/03 (WF02-vld01-03-20260816):
+                // POST /api/v1/definitions/:id/validate
+                // Run semantic validation against the stored definition's
+                // graph. tenant_id from the authenticated AuthContext is
+                // threaded into the handler so the RLS policy on
+                // process_definitions cannot return a row owned by another
+                // tenant. Falls through to 404 on cross-tenant reads.
+                const validate_tenant = if (authenticated_ctx) |ctx| ctx.tenant_id else api_auth.DEFAULT_TENANT_ID.*;
+                const r = validation_routes.handleValidate(def_store, req_alloc, validate_tenant, seg4);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

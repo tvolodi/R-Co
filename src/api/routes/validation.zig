@@ -20,6 +20,15 @@
 //! Auth: PROCESS_DESIGNER or PLATFORM_ADMIN — enforced by upstream middleware
 //! (the router registers this handler in the same auth context as the
 //! existing definition endpoints).
+//!
+//! Tenant scoping: `tenant_id` from the authenticated request is set on the
+//! ambient tenant context (`api_tenant_context.set`) for the duration of the
+//! DB read, then cleared. This is defence in depth on top of the
+//! `process_definitions` RLS policy (see migrations/028_adp02_tenant_scope_
+//! persistence.sql §process_definitions_tenant_policy) — even if RLS were
+//! disabled or the connection were reused from a previous request with a
+//! different tenant, the handler refuses to read another tenant's row.
+//! Cross-tenant reads fall through as `DefinitionNotFound` (HTTP 404).
 
 const std = @import("std");
 const definition_store = @import("../../definition/store.zig");
@@ -29,6 +38,7 @@ const graph_mod = @import("graph");
 // src/api/routes/ into src/validation/ since validation/test_root.zig is
 // its own module root.
 const validation = @import("validation");
+const api_tenant_context = @import("tenant_context");
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -46,6 +56,12 @@ pub const HandlerResult = struct {
 
 /// Run VLD-01/02/03 semantic validation on the stored definition.
 ///
+/// `tenant_id` is the 36-char UUID resolved by API-08 auth middleware for the
+/// current request. The handler sets the ambient tenant context for the DB
+/// read so the RLS policy on `process_definitions` cannot return a row owned
+/// by another tenant; cross-tenant reads fall through as `DefinitionNotFound`
+/// (HTTP 404).
+///
 /// Success: HTTP 200 + JSON `{"status":"semantically_valid", ...}`.
 /// Findings present: HTTP 422 + JSON Problem Details body.
 /// Definition not found: HTTP 404 + JSON error body.
@@ -55,11 +71,22 @@ pub const HandlerResult = struct {
 pub fn handleValidate(
     store: *definition_store.Store,
     allocator: std.mem.Allocator,
+    tenant_id: [36]u8,
     id_str: []const u8,
 ) HandlerResult {
     const id = parseUuid(id_str) catch {
         return errorResult(allocator, 422, "invalid id format");
     };
+
+    // Defence in depth: pin the ambient tenant context for the duration of the
+    // DB read. `process_definitions` has FORCE ROW LEVEL SECURITY with a
+    // `tenant_id = bpm_effective_tenant_id()` predicate, but the pool only
+    // issues `set_config('bpm.tenant_id', ...)` on connection acquisition —
+    // re-asserting here closes the gap if a future refactor caches/reuses
+    // connections across tenant boundaries, and it makes the handler
+    // self-documenting.
+    api_tenant_context.set(tenant_id[0..]);
+    defer api_tenant_context.clear();
 
     const def = store.getById(allocator, id) catch |err| switch (err) {
         definition_store.DefinitionError.DefinitionNotFound => return errorResult(allocator, 404, "not found"),
