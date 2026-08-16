@@ -1820,3 +1820,5 @@
 2026-08-16T07:15:50Z | ROUTE | WF-03 | wf03-gh804-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T07:20:05Z | ROUTE | WF-03 | wf03-gh804-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
 2026-08-16T07:22:34Z | complete | WF03-GH804-20260816 | wf03-gh8 | CODE-DESIGNER | Step 2 design PASS; artefact src/design/iss0713-gh804-prm08-seed-fix.md; lint_design_artefact exit 0; next: CODE-DESIGN-VALIDATOR (Step 2b)
+2026-08-16T07:24:28Z | ROUTE | WF-03 | wf03-gh804-20260816-2b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-08-16T07:28:31Z | ROUTE | WF-03 | wf03-gh804-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
