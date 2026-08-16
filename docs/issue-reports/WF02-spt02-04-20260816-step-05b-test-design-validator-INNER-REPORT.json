@@ -1,0 +1,64 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-05b-test-design-validator",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "05b",
+  "created_at": "2026-08-16T20:58:31Z",
+  "summary": "TEST-DESIGN-VALIDATOR re-ran the WF-02 hard gate (Step 3b re-gate) on the updated SPT-02/03/04 suite after TEST-DESIGNER added TC-SPT-02-07 (migration-062 view-dependency regression). VERDICT: PASS. Confirmed 17 test blocks (16 ACs + TC-SPT-02-07 regression) each with a runnable, non-skipped integration test; spec case count (SPT-02:7, SPT-03:5, SPT-04:5) matches implemented test-block count (7+5+5=17). No error.SkipZigTest on any MUST test (the only occurrence is TC-SPT-04-02's runtime-built self-reference needle). Fixtures isolated (per-test random v4 UUIDs via randomUuidStr, defer dropTestTenantSchema on every provisioning test, testDbUrl fails with error.MissingTestDatabaseUrl when BPM_TEST_DB_URL is absent — no silent skip). TC-SPT-02-07 correctly targets the migration-062 defect: it reproduces migration 052's exact v_active_configs definition (verified column-for-column against migrations/052_xc03_configuration_repository.sql), pre-asserts the dependent-view state so it exercises the failure path, runs 062 raw SQL inside BEGIN/ROLLBACK (a pre-fix 'cannot drop column ... because other objects depend on it' PgError fails the test), asserts the post-062 recreation semantics (view exists, tenant_id projection removed, artifact_activations loses tenant_id, tenant_default.v_active_configs keeps tenant_id), and ROLLBACK returns the shared bpm_test DB to its real migrated state — no leakage. tests/specs/SPT-02.md traceability updated (case table row + detail section for TC-SPT-02-07). Lint exits: lint_test_isolation.py SPT file EXIT=0; lint_test_isolation.py tests/integration EXIT=0; lint_handoffs.py EXIT=0 (3025 checked; 0 BLOCKER, 0 MAJOR, 1 MINOR, 332 ACKNOWLEDGED). Pipeline checklist items 6-10 not applicable: SPT-02/03/04 are backend migration requirements with no sequential UI action (no e2e pipeline required). TEST-RUNNER may re-run (Step 4 gate) and RELEASE-VALIDATOR may re-decide.",
+  "files_created": [
+    "docs/issue-reports/WF02-spt02-04-20260816-step-05b-test-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-spt02-04-20260816/step-05b-test-design-validator-rerun.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "Static validation: test-block count and SkipZigTest scan (grep of tests/integration/spt02_03_04_schema_tenant_migration_test.zig)",
+      "status": "pass",
+      "detail": "17 test \"TC-SPT-\" blocks found (TC-SPT-02-01..07 =7, TC-SPT-03-01..05 =5, TC-SPT-04-01..05 =5). error.SkipZigTest appears only inside TC-SPT-04-02's runtime-built assertion needle (lines 884/894) — no actual skip exists."
+    },
+    {
+      "name": "TC-SPT-02-07 targeting: reproduced view definition vs migrations/052_xc03_configuration_repository.sql",
+      "status": "pass",
+      "detail": "Test's CREATE VIEW matches 052 exactly (tenant_id projection, artifact_activations->artifact_versions->repository_artifacts chain, encode(content_hash,'hex'), WHERE artifact_kind='config'); pre-asserts (aa_tid_pre==1, viewdef contains tenant_id) guarantee the failure path is exercised; post-asserts match 062's recreation block (tenant_id removed, chain preserved, tenant_default copy keeps tenant_id); ROLLBACK restores shared DB."
+    },
+    {
+      "name": "tools/lint_test_isolation.py tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+      "status": "pass",
+      "detail": "EXIT=0."
+    },
+    {
+      "name": "tools/lint_test_isolation.py tests/integration",
+      "status": "pass",
+      "detail": "EXIT=0."
+    },
+    {
+      "name": "tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "EXIT=0 — 3025 handoffs checked; 0 BLOCKER, 0 MAJOR, 1 MINOR, 332 ACKNOWLEDGED; none on WF02-spt02-04-20260816."
+    },
+    {
+      "name": "TEST-DESIGNER's own evidence (accepted, not re-run): zig build test-integration-spt",
+      "status": "pass",
+      "detail": "TEST-DESIGNER reported 17/17 PASS (exit 0) on bpm_test with clean_test_db + migrate first; approach sanity check in rolled-back transaction; shared-DB post-test state clean (per WF02-spt02-04-20260816-step-05-test-designer-INNER-REPORT.json)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "tests/specs/SPT-04.md TC-SPT-04-02 'Given' prose still enumerates '16 test blocks (TC-SPT-02-01..06, TC-SPT-03-01..05, TC-SPT-04-01..05)' — stale now that the suite is 17 blocks including TC-SPT-02-07. The SPT-04 case table itself is correct (5 SPT-04 cases = 5 test blocks); only the descriptive prose is stale. Non-gating doc drift."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Carried from step-03b: TC-SPT-04-04 calls dropTestTenantSchema explicitly (not defer) — a failure between provision and cleanup could theoretically leak; recommend hardening to defer in a follow-up. Pre-existing, not introduced by this re-gate."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route to TEST-RUNNER (Step 4) to re-run the full Step 4 gate (test-integration-spt 17/17 + spt01 3/3 + event-store 29/29 + unit + 23 regression suites), then re-dispatch RELEASE-VALIDATOR for a fresh release decision.",
+    "SPT-02/03/04 stay PENDING until RELEASE-VALIDATOR approves — do NOT set RELEASED this cycle.",
+    "DOC-UPDATER (follow-up, MINOR): fix the stale '16 test blocks' prose in tests/specs/SPT-04.md TC-SPT-04-02 detail section to '17 test blocks (TC-SPT-02-01..07, ...)'."
+  ],
+  "blockers": []
+}

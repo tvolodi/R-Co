@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-16T20:39:09Z",
+  "last_updated": "2026-08-16T20:56:14Z",
   "entries": [
     {
       "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
@@ -33827,6 +33827,23 @@
       "step": "05-test-designer",
       "created_at": "2026-08-16T20:39:09Z",
       "started_at": "2026-08-16T20:39:27Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-05b-test-design-validator-rerun",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+      "step": "05b",
+      "created_at": "2026-08-16T20:56:14Z",
+      "started_at": "2026-08-16T20:56:32Z",
       "status": "COMPLETED",
       "workflow_ref": "WF02-spt02-04-20260816",
       "requirements": [
