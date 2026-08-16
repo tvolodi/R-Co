@@ -1,17 +1,18 @@
 {
   "version": 1,
-  "generated_at": "2026-08-08T23:57:55Z",
+  "generated_at": "2026-08-16T00:30:53Z",
   "source": "tools/generate_lint_handoffs_baseline.py --apply --now 2026-08-08T23:57:55Z --run-id WF03-GH596-20260808",
   "regenerated_by": "WF03-GH596-20260808 (GitHub #596 / ISS-0627, H003/H004/H005/H009 permanent-acknowledgment subset)",
-  "regeneration_note": "Initial generation: 225 entries (148 H003, 34 H004, 5 H005, 38 H009), one per finding tools/lint_handoffs.py reported against the full corpus at generation time. See docs/issues/ISS-0627.json for the shared root-cause narrative this baseline's reason_ref values point to. Appended 2026-08-10 by WF03-GH666-20260810 (GH #666 / ISS-0656): +1 H004 (handoffs/WF03-GH631-20260809/step-00-backend-dev.json) and +1 H009 (handoffs/WF03-GH360-20260809/step-00-backend-dev.json), both discovered incidentally during GH-652's Step Final review, both dated 2026-08-09 (predating this session's earliest touch of the baseline). Appended by hand to the existing 289-entry file rather than via generate_lint_handoffs_baseline.py --apply, because that script only ever emits the H003/H004/H005/H009 subset and would silently drop the 53 H013 + 9 H007 entries added to this file by other processes after the script's original 2026-08-08 run -- confirmed by a dry run that produced only 229 entries against this file's actual 289.",
+  "regeneration_note": "Initial generation: 225 entries (148 H003, 34 H004, 5 H005, 38 H009), one per finding tools/lint_handoffs.py reported against the full corpus at generation time. See docs/issues/ISS-0627.json for the shared root-cause narrative this baseline's reason_ref values point to. Appended 2026-08-10 by WF03-GH666-20260810 (GH #666 / ISS-0656): +1 H004 (handoffs/WF03-GH631-20260809/step-00-backend-dev.json) and +1 H009 (handoffs/WF03-GH360-20260809/step-00-backend-dev.json), both discovered incidentally during GH-652's Step Final review, both dated 2026-08-09 (predating this session's earliest touch of the baseline). Appended by hand to the existing 289-entry file rather than via generate_lint_handoffs_baseline.py --apply, because that script only ever emits the H003/H004/H005/H009 subset and would silently drop the 53 H013 + 9 H007 entries added to this file by other processes after the script's original 2026-08-08 run -- confirmed by a dry run that produced only 229 entries against this file's actual 289.\nAppended 2026-08-16 by WF03-lintdebt-20260816 (GH #796 / ISS-0709, BACKEND-DEV Step 3): +41 entries acknowledged in one batch (H003 x5, H013 x5, H007 x30, H009 x1) covering the 42 unacknowledged findings on out-of-band runs ADHOC-prm-env-20260814 / WF02-prm-batch2-20260814 / WF02-plc-batch-a-20260815 (2026-08-14/15). The H007 x30 findings use the new reason key 'H007-prm-agent-id-schema' (agent_id/agent_name instead of from_agent/to_agent). Appended by hand to the existing 291-entry file rather than via generate_lint_handoffs_baseline.py --apply, because that script only ever emits the H003/H004/H005/H009 subset and would silently drop the 53 H013 + 9 H007 entries already present. H010 (1 MINOR, registry-absent) is NOT baseline-bound: its message embeds the live count and is repaired instead via tools/repair_handoff_bookkeeping.py --category h010 (67 of 71 backfilled; residual 4 non-backfillable, non-gating).",
   "reasons": {
-    "H003": "ISS-0627 \u00a7H003: completed_at precedes started_at with no whole-hour-offset signature (that subset is H013, separately tracked). No field in the handoff file recovers the true value; any correction would be fabricated audit-trail data. Accepted as permanent historical record.",
-    "H004": "ISS-0627 \u00a7H004: started_at precedes created_at. Same unrecoverable-history problem as H003, opposite field pair. Accepted as permanent historical record.",
-    "H005": "ISS-0627 \u00a7H005: status is COMPLETED but completed_at was never set. No value to recover from any source in the file. Accepted as permanent historical record.",
-    "H009": "ISS-0627 \u00a7H009: a PENDING/IN_PROGRESS step has later COMPLETED steps in the same run. Marking the orphaned step COMPLETED or FAILED after the fact would fabricate evidence the record does not show; this is a real historical process irregularity, not a data-entry error. Accepted as permanent historical record.",
-    "H007-gh387-step07": "ISS-0627 \u00a7H007 (GH-596, resolved 2026-08-10): handoffs/WF03-gh387-20260802/step-07-doc-updater.json is not a handoff at all -- it is an ISS-issue-record document (top-level 'id'/'title'/'root_cause'/'candidate_resolution' fields, matching docs/issues/*.json's shape) that was written into the handoffs/ directory instead of docs/issues/ during WF03-gh387-20260802. Its content is a legitimate, valuable historical record of ISS-0121's diagnosis and partial resolution -- reformatting it into the handoff schema would fabricate from_agent/to_agent/step values that were never assigned because this was never actually a routed handoff. Accepted as permanent historical record of a misfiled document.",
-    "H007-gh389-step2b": "ISS-0627 \u00a7H007 (GH-596, resolved 2026-08-10): handoffs/WF03-gh389-20260802/step-2b-code-design-validator.json is a genuinely truncated handoff -- only status/result/completed_at survive; handoff_id, run_id, step, from_agent, to_agent, created_at were never recorded (or were lost) for this step. handoff_id is a UUID with no field in the file to recover it from; from_agent/to_agent/step can be inferred from the filename and CLAUDE.md's WF-03 pipeline (Step 2b = CODE-DESIGN-VALIDATOR, from ORCH) but fabricating a plausible-looking value into a historical audit record is worse than an honest gap -- the acknowledgment records what is missing rather than inventing what might have been there. Accepted as permanent historical record.",
-    "H013": "ISS-0627 \u00a7H013 (GH-596, resolved 2026-08-10): completed_at is offset from started_at by an amount very close to a whole number of hours -- the .ToUniversalTime() omission signature (local time labelled 'Z'). Explicit documented decision (per this issue's own acceptance criteria): correction is REJECTED, folding into this same acknowledgment mechanism as H003/H004/H005/H009. Rationale: the 53 findings span offsets of 0.0h through 9.9h with no single consistent value (clusters near 1h/2h/4h/5h/7h/8h/9.9h across different dates and presumably different operators/timezones/sessions) -- there is no way to recover the ONE true UTC value from the file alone, only to guess an offset. A guessed correction would be exactly the fabricated audit-trail data H003/H004's existing reasoning already forbids. Spot-checked the two least-round-number outliers (WF02-obs04-20260525, 0.1h/9.9h offset) and found a 9h55m23s gap that does not cleanly resolve to any whole-hour correction, confirming a uniform 'subtract N hours' fix is not safe to apply blindly across all 53. Accepted as permanent historical record."
+    "H003": "ISS-0627 §H003: completed_at precedes started_at with no whole-hour-offset signature (that subset is H013, separately tracked). No field in the handoff file recovers the true value; any correction would be fabricated audit-trail data. Accepted as permanent historical record.",
+    "H004": "ISS-0627 §H004: started_at precedes created_at. Same unrecoverable-history problem as H003, opposite field pair. Accepted as permanent historical record.",
+    "H005": "ISS-0627 §H005: status is COMPLETED but completed_at was never set. No value to recover from any source in the file. Accepted as permanent historical record.",
+    "H009": "ISS-0627 §H009: a PENDING/IN_PROGRESS step has later COMPLETED steps in the same run. Marking the orphaned step COMPLETED or FAILED after the fact would fabricate evidence the record does not show; this is a real historical process irregularity, not a data-entry error. Accepted as permanent historical record.",
+    "H007-gh387-step07": "ISS-0627 §H007 (GH-596, resolved 2026-08-10): handoffs/WF03-gh387-20260802/step-07-doc-updater.json is not a handoff at all -- it is an ISS-issue-record document (top-level 'id'/'title'/'root_cause'/'candidate_resolution' fields, matching docs/issues/*.json's shape) that was written into the handoffs/ directory instead of docs/issues/ during WF03-gh387-20260802. Its content is a legitimate, valuable historical record of ISS-0121's diagnosis and partial resolution -- reformatting it into the handoff schema would fabricate from_agent/to_agent/step values that were never assigned because this was never actually a routed handoff. Accepted as permanent historical record of a misfiled document.",
+    "H007-gh389-step2b": "ISS-0627 §H007 (GH-596, resolved 2026-08-10): handoffs/WF03-gh389-20260802/step-2b-code-design-validator.json is a genuinely truncated handoff -- only status/result/completed_at survive; handoff_id, run_id, step, from_agent, to_agent, created_at were never recorded (or were lost) for this step. handoff_id is a UUID with no field in the file to recover it from; from_agent/to_agent/step can be inferred from the filename and CLAUDE.md's WF-03 pipeline (Step 2b = CODE-DESIGN-VALIDATOR, from ORCH) but fabricating a plausible-looking value into a historical audit record is worse than an honest gap -- the acknowledgment records what is missing rather than inventing what might have been there. Accepted as permanent historical record.",
+    "H013": "ISS-0627 §H013 (GH-596, resolved 2026-08-10): completed_at is offset from started_at by an amount very close to a whole number of hours -- the .ToUniversalTime() omission signature (local time labelled 'Z'). Explicit documented decision (per this issue's own acceptance criteria): correction is REJECTED, folding into this same acknowledgment mechanism as H003/H004/H005/H009. Rationale: the 53 findings span offsets of 0.0h through 9.9h with no single consistent value (clusters near 1h/2h/4h/5h/7h/8h/9.9h across different dates and presumably different operators/timezones/sessions) -- there is no way to recover the ONE true UTC value from the file alone, only to guess an offset. A guessed correction would be exactly the fabricated audit-trail data H003/H004's existing reasoning already forbids. Spot-checked the two least-round-number outliers (WF02-obs04-20260525, 0.1h/9.9h offset) and found a 9h55m23s gap that does not cleanly resolve to any whole-hour correction, confirming a uniform 'subtract N hours' fix is not safe to apply blindly across all 53. Accepted as permanent historical record.",
+    "H007-prm-agent-id-schema": "ISS-0709 §H007 (WF03-lintdebt-20260816 / GH #796): out-of-band runs ADHOC-prm-env-20260814, WF02-prm-batch2-20260814, WF02-plc-batch-a-20260815 (2026-08-14/15) wrote handoff files using the non-canonical schema keys agent_id/agent_name instead of the required from_agent/to_agent. The files are legitimate routed handoffs whose true from_agent/to_agent values are recoverable (agent_id maps directly to from_agent/to_agent of the same step), but correcting 15 historical files would require rewriting audit-trail records; this run's disposition (per WF-03 task instruction) is permanent acknowledgment of the 30 H007 findings as historical record, not correction. Accepted as permanent historical record."
   },
   "issues": [
     {
@@ -1201,7 +1202,7 @@
     {
       "file": "handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json|started_at (2026-06-11T08:05:11Z) precedes created_at (2026-06-11T08:08:15Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json|started_at (2026-06-11T08:05:11Z) precedes created_at (2026-06-11T08:08:15Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1209,7 +1210,7 @@
     {
       "file": "handoffs/WF02-api05-20260523/step-03-test-designer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-03-test-designer.json|started_at (2026-05-22T21:29:16Z) precedes created_at (2026-05-23T08:30:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-03-test-designer.json|started_at (2026-05-22T21:29:16Z) precedes created_at (2026-05-23T08:30:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1217,7 +1218,7 @@
     {
       "file": "handoffs/WF02-api05-20260523/step-04-test-runner.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-04-test-runner.json|started_at (2026-05-22T21:39:46Z) precedes created_at (2026-05-23T08:45:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-04-test-runner.json|started_at (2026-05-22T21:39:46Z) precedes created_at (2026-05-23T08:45:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1225,7 +1226,7 @@
     {
       "file": "handoffs/WF02-api05-20260523/step-05-release-validator.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-05-release-validator.json|started_at (2026-05-22T21:42:36Z) precedes created_at (2026-05-23T09:00:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-api05-20260523/step-05-release-validator.json|started_at (2026-05-22T21:42:36Z) precedes created_at (2026-05-23T09:00:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1233,7 +1234,7 @@
     {
       "file": "handoffs/WF02-dsl12-20260528/step-01-code-designer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-01-code-designer.json|started_at (2026-05-27T20:15:56Z) precedes created_at (2026-05-28T02:14:20Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-01-code-designer.json|started_at (2026-05-27T20:15:56Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1241,7 +1242,7 @@
     {
       "file": "handoffs/WF02-dsl12-20260528/step-02-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-02-backend-dev.json|started_at (2026-05-27T20:19:26Z) precedes created_at (2026-05-28T02:14:20Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-02-backend-dev.json|started_at (2026-05-27T20:19:26Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1249,7 +1250,7 @@
     {
       "file": "handoffs/WF02-dsl12-20260528/step-03-test-designer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-03-test-designer.json|started_at (2026-05-27T20:27:03Z) precedes created_at (2026-05-28T02:14:20Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-03-test-designer.json|started_at (2026-05-27T20:27:03Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1257,7 +1258,7 @@
     {
       "file": "handoffs/WF02-dsl12-20260528/step-04-test-runner.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-04-test-runner.json|started_at (2026-05-27T20:30:01Z) precedes created_at (2026-05-28T02:14:20Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-04-test-runner.json|started_at (2026-05-27T20:30:01Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1265,7 +1266,7 @@
     {
       "file": "handoffs/WF02-ee03-20260522/step-02-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-02-backend-dev.json|started_at (2026-05-21T18:52:18Z) precedes created_at (2026-05-22T09:35:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-02-backend-dev.json|started_at (2026-05-21T18:52:18Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1273,7 +1274,7 @@
     {
       "file": "handoffs/WF02-ee03-20260522/step-03-test-designer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-03-test-designer.json|started_at (2026-05-21T19:25:49Z) precedes created_at (2026-05-22T09:35:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-03-test-designer.json|started_at (2026-05-21T19:25:49Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1281,7 +1282,7 @@
     {
       "file": "handoffs/WF02-ee03-20260522/step-04-test-runner.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-04-test-runner.json|started_at (2026-05-21T20:01:06Z) precedes created_at (2026-05-22T09:35:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-04-test-runner.json|started_at (2026-05-21T20:01:06Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1289,7 +1290,7 @@
     {
       "file": "handoffs/WF02-ee03-20260522/step-05-release-validator.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-05-release-validator.json|started_at (2026-05-21T20:06:06Z) precedes created_at (2026-05-22T09:35:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-05-release-validator.json|started_at (2026-05-21T20:06:06Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1297,7 +1298,7 @@
     {
       "file": "handoffs/WF02-ee03-20260522/step-06-doc-updater.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-06-doc-updater.json|started_at (2026-05-21T20:08:53Z) precedes created_at (2026-05-22T09:35:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee03-20260522/step-06-doc-updater.json|started_at (2026-05-21T20:08:53Z) precedes created_at (2026-05-22T09:35:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1305,7 +1306,7 @@
     {
       "file": "handoffs/WF02-ee10-20260522/step-05-release-validator.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-ee10-20260522/step-05-release-validator.json|started_at (2026-05-22T12:29:31Z) precedes created_at (2026-05-22T12:30:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee10-20260522/step-05-release-validator.json|started_at (2026-05-22T12:29:31Z) precedes created_at (2026-05-22T12:30:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1313,7 +1314,7 @@
     {
       "file": "handoffs/WF02-ee10-20260522/step-06-doc-updater.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-ee10-20260522/step-06-doc-updater.json|started_at (2026-05-22T12:32:26Z) precedes created_at (2026-05-22T12:37:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-ee10-20260522/step-06-doc-updater.json|started_at (2026-05-22T12:32:26Z) precedes created_at (2026-05-22T12:37:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1321,7 +1322,7 @@
     {
       "file": "handoffs/WF02-idn02-20260524/step-04b-test-runner-rework1.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-idn02-20260524/step-04b-test-runner-rework1.json|started_at (2026-05-24T06:40:45Z) precedes created_at (2026-05-24T06:43:20Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-idn02-20260524/step-04b-test-runner-rework1.json|started_at (2026-05-24T06:40:45Z) precedes created_at (2026-05-24T06:43:20Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1329,7 +1330,7 @@
     {
       "file": "handoffs/WF02-lua01-05-20260528/step-00-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-00-backend-dev.json|started_at (2026-05-28T02:07:03Z) precedes created_at (2026-05-28T18:30:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-00-backend-dev.json|started_at (2026-05-28T02:07:03Z) precedes created_at (2026-05-28T18:30:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1337,7 +1338,7 @@
     {
       "file": "handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json|started_at (2026-05-28T02:26:34Z) precedes created_at (2026-05-28T18:30:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json|started_at (2026-05-28T02:26:34Z) precedes created_at (2026-05-28T18:30:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1345,7 +1346,7 @@
     {
       "file": "handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json|started_at (2026-05-28T02:26:34Z) precedes created_at (2026-05-28T18:30:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json|started_at (2026-05-28T02:26:34Z) precedes created_at (2026-05-28T18:30:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1353,7 +1354,7 @@
     {
       "file": "handoffs/WF02-obs04-20260525/step-05-release-validator.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-obs04-20260525/step-05-release-validator.json|started_at (2026-05-25T03:50:16Z) precedes created_at (2026-05-25T15:05:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs04-20260525/step-05-release-validator.json|started_at (2026-05-25T03:50:16Z) precedes created_at (2026-05-25T15:05:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1361,7 +1362,7 @@
     {
       "file": "handoffs/WF02-obs05-20260525/step-02b-backend-dev-rework1.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-02b-backend-dev-rework1.json|started_at (2026-05-25T16:37:48Z) precedes created_at (2026-05-25T16:40:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-02b-backend-dev-rework1.json|started_at (2026-05-25T16:37:48Z) precedes created_at (2026-05-25T16:40:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1369,7 +1370,7 @@
     {
       "file": "handoffs/WF02-obs05-20260525/step-03-test-designer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-03-test-designer.json|started_at (2026-05-25T16:49:33Z) precedes created_at (2026-05-25T16:50:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-03-test-designer.json|started_at (2026-05-25T16:49:33Z) precedes created_at (2026-05-25T16:50:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1377,7 +1378,7 @@
     {
       "file": "handoffs/WF02-obs05-20260525/step-06-doc-updater.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-06-doc-updater.json|started_at (2026-05-25T17:09:33Z) precedes created_at (2026-05-25T17:10:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-obs05-20260525/step-06-doc-updater.json|started_at (2026-05-25T17:09:33Z) precedes created_at (2026-05-25T17:10:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1385,7 +1386,7 @@
     {
       "file": "handoffs/WF02-wasm01-14-20260528/step-03-test-designer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-wasm01-14-20260528/step-03-test-designer.json|started_at (2026-05-28T04:29:19Z) precedes created_at (2026-05-28T10:00:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-wasm01-14-20260528/step-03-test-designer.json|started_at (2026-05-28T04:29:19Z) precedes created_at (2026-05-28T10:00:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1393,7 +1394,7 @@
     {
       "file": "handoffs/WF02-wasm01-14-20260528/step-final-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-wasm01-14-20260528/step-final-backend-dev.json|started_at (2026-05-28T04:39:00Z) precedes created_at (2026-05-28T10:00:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-wasm01-14-20260528/step-final-backend-dev.json|started_at (2026-05-28T04:39:00Z) precedes created_at (2026-05-28T10:00:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1401,7 +1402,7 @@
     {
       "file": "handoffs/WF03-ISS-0128-20260807/step-02b-code-design-validator.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-02b-code-design-validator.json|started_at (2026-08-07T08:06:39Z) precedes created_at (2026-08-07T08:09:27Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-02b-code-design-validator.json|started_at (2026-08-07T08:06:39Z) precedes created_at (2026-08-07T08:09:27Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1409,7 +1410,7 @@
     {
       "file": "handoffs/WF03-ISS-0128-20260807/step-07-doc-updater.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-07-doc-updater.json|started_at (2026-08-07T08:31:50Z) precedes created_at (2026-08-07T08:35:19Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-07-doc-updater.json|started_at (2026-08-07T08:31:50Z) precedes created_at (2026-08-07T08:35:19Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1417,7 +1418,7 @@
     {
       "file": "handoffs/WF03-ISS-0128-20260807/step-final-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-final-backend-dev.json|started_at (2026-08-07T08:35:03Z) precedes created_at (2026-08-07T08:36:29Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ISS-0128-20260807/step-final-backend-dev.json|started_at (2026-08-07T08:35:03Z) precedes created_at (2026-08-07T08:36:29Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1425,7 +1426,7 @@
     {
       "file": "handoffs/WF03-ext01-intfix-20260525/step-01c-issue-fixer-rework2.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-ext01-intfix-20260525/step-01c-issue-fixer-rework2.json|started_at (2026-05-25T10:10:28Z) precedes created_at (2026-05-25T21:10:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-ext01-intfix-20260525/step-01c-issue-fixer-rework2.json|started_at (2026-05-25T10:10:28Z) precedes created_at (2026-05-25T21:10:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1433,7 +1434,7 @@
     {
       "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-01-issue-fixer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-f3a-inui02-fix-20260529/step-01-issue-fixer.json|started_at (2026-05-29T18:48:33Z) precedes created_at (2026-05-29T21:26:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-f3a-inui02-fix-20260529/step-01-issue-fixer.json|started_at (2026-05-29T18:48:33Z) precedes created_at (2026-05-29T21:26:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1441,7 +1442,7 @@
     {
       "file": "handoffs/WF03-gh364-20260801/step-03c-code-designer-blockers.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-gh364-20260801/step-03c-code-designer-blockers.json|started_at (2026-08-01T05:11:53Z) precedes created_at (2026-08-01T05:18:09Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-gh364-20260801/step-03c-code-designer-blockers.json|started_at (2026-08-01T05:11:53Z) precedes created_at (2026-08-01T05:18:09Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1449,7 +1450,7 @@
     {
       "file": "handoffs/WF03-gh375-20260801/step-05d-issue-fixer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-gh375-20260801/step-05d-issue-fixer.json|started_at (2026-08-01T12:09:25Z) precedes created_at (2026-08-01T12:15:49Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-gh375-20260801/step-05d-issue-fixer.json|started_at (2026-08-01T12:09:25Z) precedes created_at (2026-08-01T12:15:49Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1457,7 +1458,7 @@
     {
       "file": "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-issue-fixer.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-issue-fixer.json|started_at (2026-05-28T19:02:21Z) precedes created_at (2026-05-29T00:01:20Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-issue-fixer.json|started_at (2026-05-28T19:02:21Z) precedes created_at (2026-05-29T00:01:20Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1465,7 +1466,7 @@
     {
       "file": "handoffs/WF04-full-20260523/step-01b-test-runner.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF04-full-20260523/step-01b-test-runner.json|started_at (2026-05-23T06:15:34Z) precedes created_at (2026-05-23T06:20:00Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF04-full-20260523/step-01b-test-runner.json|started_at (2026-05-23T06:15:34Z) precedes created_at (2026-05-23T06:20:00Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1513,7 +1514,7 @@
     {
       "file": "handoffs/ADHOC-fix-integration-20260528/step-03-issue-fixer-dsl.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/ADHOC-fix-integration-20260528/step-03-issue-fixer-dsl.json|status is PENDING but 2 later step(s) in run ADHOC-fix-integration-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/ADHOC-fix-integration-20260528/step-04-issue-fixer-store-logic.json,handoffs/ADHOC-fix-integration-20260528/step-05-issue-fixer-audit.json",
+      "matching_key": "MAJOR|H009|handoffs/ADHOC-fix-integration-20260528/step-03-issue-fixer-dsl.json|status is PENDING but 2 later step(s) in run ADHOC-fix-integration-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/ADHOC-fix-integration-20260528/step-04-issue-fixer-store-logic.json,handoffs/ADHOC-fix-integration-20260528/step-05-issue-fixer-audit.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1521,7 +1522,7 @@
     {
       "file": "handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-backend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-backend-dev.json|status is PENDING but 6 later step(s) in run ADHOC-iss103-audit-resource-id-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-02-test-designer.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-04-test-runner.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-04b-test-runner-rerun.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-05-release-validator.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-06-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-backend-dev.json|status is PENDING but 6 later step(s) in run ADHOC-iss103-audit-resource-id-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/ADHOC-iss103-audit-resource-id-20260611/step-01-rework-1-backend-dev.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-02-test-designer.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-04-test-runner.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-04b-test-runner-rerun.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-05-release-validator.json,handoffs/ADHOC-iss103-audit-resource-id-20260611/step-06-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1529,7 +1530,7 @@
     {
       "file": "handoffs/WF02-dsl05-20260527/step-06-doc-updater.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-dsl05-20260527/step-06-doc-updater.json|status is IN_PROGRESS but 1 later step(s) in run WF02-dsl05-20260527 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-dsl05-20260527/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-dsl05-20260527/step-06-doc-updater.json|status is IN_PROGRESS but 1 later step(s) in run WF02-dsl05-20260527 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-dsl05-20260527/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1537,7 +1538,7 @@
     {
       "file": "handoffs/WF02-dsl13-20260528/step-02-backend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-dsl13-20260528/step-02-backend-dev.json|status is PENDING but 3 later step(s) in run WF02-dsl13-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-dsl13-20260528/step-03-test-designer.json,handoffs/WF02-dsl13-20260528/step-04-test-runner.json,handoffs/WF02-dsl13-20260528/step-final-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-dsl13-20260528/step-02-backend-dev.json|status is PENDING but 3 later step(s) in run WF02-dsl13-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-dsl13-20260528/step-03-test-designer.json,handoffs/WF02-dsl13-20260528/step-04-test-runner.json,handoffs/WF02-dsl13-20260528/step-final-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1545,7 +1546,7 @@
     {
       "file": "handoffs/WF02-exp201-202-20260612/step-03-test-designer.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-exp201-202-20260612/step-03-test-designer.json|status is PENDING but 5 later step(s) in run WF02-exp201-202-20260612 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-exp201-202-20260612/step-03b-test-design-validator-rework2.json,handoffs/WF02-exp201-202-20260612/step-04-test-runner-rework.json,handoffs/WF02-exp201-202-20260612/step-05-release-validator-rework.json,handoffs/WF02-exp201-202-20260612/step-06-doc-updater-rework.json,handoffs/WF02-exp201-202-20260612/step-final-backend-dev-rework.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-exp201-202-20260612/step-03-test-designer.json|status is PENDING but 5 later step(s) in run WF02-exp201-202-20260612 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-exp201-202-20260612/step-03b-test-design-validator-rework2.json,handoffs/WF02-exp201-202-20260612/step-04-test-runner-rework.json,handoffs/WF02-exp201-202-20260612/step-05-release-validator-rework.json,handoffs/WF02-exp201-202-20260612/step-06-doc-updater-rework.json,handoffs/WF02-exp201-202-20260612/step-final-backend-dev-rework.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1553,7 +1554,7 @@
     {
       "file": "handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation4-test-design-validator.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation4-test-design-validator.json|status is PENDING but 3 later step(s) in run WF02-exp3-async-effects-20260613 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-exp3-async-effects-20260613/step-04-test-runner.json,handoffs/WF02-exp3-async-effects-20260613/step-05-release-validator.json,handoffs/WF02-exp3-async-effects-20260613/step-06-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation4-test-design-validator.json|status is PENDING but 3 later step(s) in run WF02-exp3-async-effects-20260613 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-exp3-async-effects-20260613/step-04-test-runner.json,handoffs/WF02-exp3-async-effects-20260613/step-05-release-validator.json,handoffs/WF02-exp3-async-effects-20260613/step-06-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1561,7 +1562,7 @@
     {
       "file": "handoffs/WF02-f2a-canvas-batch1-20260528/step-05-frontend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-f2a-canvas-batch1-20260528/step-05-frontend-dev.json|status is PENDING but 3 later step(s) in run WF02-f2a-canvas-batch1-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-f2a-canvas-batch1-20260528/step-05-release-validator.json,handoffs/WF02-f2a-canvas-batch1-20260528/step-06-doc-updater.json,handoffs/WF02-f2a-canvas-batch1-20260528/step-final-frontend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-f2a-canvas-batch1-20260528/step-05-frontend-dev.json|status is PENDING but 3 later step(s) in run WF02-f2a-canvas-batch1-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-f2a-canvas-batch1-20260528/step-05-release-validator.json,handoffs/WF02-f2a-canvas-batch1-20260528/step-06-doc-updater.json,handoffs/WF02-f2a-canvas-batch1-20260528/step-final-frontend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1569,7 +1570,7 @@
     {
       "file": "handoffs/WF02-f4-task-inbox-20260530/step-03-test-designer.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-f4-task-inbox-20260530/step-03-test-designer.json|status is PENDING but 7 later step(s) in run WF02-f4-task-inbox-20260530 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-f4-task-inbox-20260530/step-03-rework1-test-designer.json,handoffs/WF02-f4-task-inbox-20260530/step-03b-test-design-validator.json,handoffs/WF02-f4-task-inbox-20260530/step-04-test-runner-final.json,handoffs/WF02-f4-task-inbox-20260530/step-04-test-runner.json,handoffs/WF02-f4-task-inbox-20260530/step-05-release-validator.json,handoffs/WF02-f4-task-inbox-20260530/step-06-doc-updater.json,handoffs/WF02-f4-task-inbox-20260530/step-final-frontend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-f4-task-inbox-20260530/step-03-test-designer.json|status is PENDING but 7 later step(s) in run WF02-f4-task-inbox-20260530 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-f4-task-inbox-20260530/step-03-rework1-test-designer.json,handoffs/WF02-f4-task-inbox-20260530/step-03b-test-design-validator.json,handoffs/WF02-f4-task-inbox-20260530/step-04-test-runner-final.json,handoffs/WF02-f4-task-inbox-20260530/step-04-test-runner.json,handoffs/WF02-f4-task-inbox-20260530/step-05-release-validator.json,handoffs/WF02-f4-task-inbox-20260530/step-06-doc-updater.json,handoffs/WF02-f4-task-inbox-20260530/step-final-frontend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1577,7 +1578,7 @@
     {
       "file": "handoffs/WF02-iss101-20260611/step-06-doc-updater.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss101-20260611/step-06-doc-updater.json|status is PENDING but 1 later step(s) in run WF02-iss101-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss101-20260611/step-final-backend-dev-merge.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss101-20260611/step-06-doc-updater.json|status is PENDING but 1 later step(s) in run WF02-iss101-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss101-20260611/step-final-backend-dev-merge.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1585,7 +1586,7 @@
     {
       "file": "handoffs/WF02-iss105-token-model-20260611/step-03-test-designer.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-03-test-designer.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-03-test-designer.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1593,7 +1594,7 @@
     {
       "file": "handoffs/WF02-iss105-token-model-20260611/step-04-test-runner.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-04-test-runner.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-04-test-runner.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1601,7 +1602,7 @@
     {
       "file": "handoffs/WF02-iss105-token-model-20260611/step-05-release-validator.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-05-release-validator.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-05-release-validator.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1609,7 +1610,7 @@
     {
       "file": "handoffs/WF02-iss105-token-model-20260611/step-06-doc-updater.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-06-doc-updater.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-06-doc-updater.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1617,7 +1618,7 @@
     {
       "file": "handoffs/WF02-iss105-token-model-20260611/step-3b-test-design-validator.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-3b-test-design-validator.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss105-token-model-20260611/step-3b-test-design-validator.json|status is PENDING but 1 later step(s) in run WF02-iss105-token-model-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss105-token-model-20260611/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1625,7 +1626,7 @@
     {
       "file": "handoffs/WF02-iss204-206-20260611/step-00-backend-dev-gitsetup.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-00-backend-dev-gitsetup.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-00-backend-dev-gitsetup.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1633,7 +1634,7 @@
     {
       "file": "handoffs/WF02-iss204-206-20260611/step-01-code-designer.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-01-code-designer.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-01-code-designer.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1641,7 +1642,7 @@
     {
       "file": "handoffs/WF02-iss204-206-20260611/step-01b-code-design-validator.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-01b-code-design-validator.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss204-206-20260611/step-01b-code-design-validator.json|status is PENDING but 4 later step(s) in run WF02-iss204-206-20260611 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss204-206-20260611/step-02a-backend-dev.json,handoffs/WF02-iss204-206-20260611/step-03-test-designer.json,handoffs/WF02-iss204-206-20260611/step-03b-test-design-validator.json,handoffs/WF02-iss204-206-20260611/step-04-test-runner.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1649,7 +1650,7 @@
     {
       "file": "handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev-gitsetup.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev-gitsetup.json|status is PENDING but 4 later step(s) in run WF02-iss501-504-epic5-20260612 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev.json,handoffs/WF02-iss501-504-epic5-20260612/step-01-code-designer.json,handoffs/WF02-iss501-504-epic5-20260612/step-01b-code-design-validator.json,handoffs/WF02-iss501-504-epic5-20260612/step-02a-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev-gitsetup.json|status is PENDING but 4 later step(s) in run WF02-iss501-504-epic5-20260612 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev.json,handoffs/WF02-iss501-504-epic5-20260612/step-01-code-designer.json,handoffs/WF02-iss501-504-epic5-20260612/step-01b-code-design-validator.json,handoffs/WF02-iss501-504-epic5-20260612/step-02a-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1657,7 +1658,7 @@
     {
       "file": "handoffs/WF02-iss503-continuation-20260730/step-05-release-validator.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-iss503-continuation-20260730/step-05-release-validator.json|status is PENDING but 1 later step(s) in run WF02-iss503-continuation-20260730 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss503-continuation-20260730/step-final-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-iss503-continuation-20260730/step-05-release-validator.json|status is PENDING but 1 later step(s) in run WF02-iss503-continuation-20260730 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-iss503-continuation-20260730/step-final-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1665,7 +1666,7 @@
     {
       "file": "handoffs/WF02-lua01-05-20260528/step-03-test-designer.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-lua01-05-20260528/step-03-test-designer.json|status is PENDING but 4 later step(s) in run WF02-lua01-05-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-lua01-05-20260528/step-04-test-runner.json,handoffs/WF02-lua01-05-20260528/step-05-release-validator.json,handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json,handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-lua01-05-20260528/step-03-test-designer.json|status is PENDING but 4 later step(s) in run WF02-lua01-05-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-lua01-05-20260528/step-04-test-runner.json,handoffs/WF02-lua01-05-20260528/step-05-release-validator.json,handoffs/WF02-lua01-05-20260528/step-06-doc-updater.json,handoffs/WF02-lua01-05-20260528/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1673,7 +1674,7 @@
     {
       "file": "handoffs/WF02-oidc35-20260528/step-2a-backend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-oidc35-20260528/step-2a-backend-dev.json|status is PENDING but 4 later step(s) in run WF02-oidc35-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-oidc35-20260528/step-03-test-designer.json,handoffs/WF02-oidc35-20260528/step-04-test-runner.json,handoffs/WF02-oidc35-20260528/step-05-release-validator.json,handoffs/WF02-oidc35-20260528/step-06-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-oidc35-20260528/step-2a-backend-dev.json|status is PENDING but 4 later step(s) in run WF02-oidc35-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-oidc35-20260528/step-03-test-designer.json,handoffs/WF02-oidc35-20260528/step-04-test-runner.json,handoffs/WF02-oidc35-20260528/step-05-release-validator.json,handoffs/WF02-oidc35-20260528/step-06-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1681,7 +1682,7 @@
     {
       "file": "handoffs/WF02-oidc35-20260528/step-3b-test-design-validator.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-oidc35-20260528/step-3b-test-design-validator.json|status is PENDING but 3 later step(s) in run WF02-oidc35-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-oidc35-20260528/step-04-test-runner.json,handoffs/WF02-oidc35-20260528/step-05-release-validator.json,handoffs/WF02-oidc35-20260528/step-06-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-oidc35-20260528/step-3b-test-design-validator.json|status is PENDING but 3 later step(s) in run WF02-oidc35-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-oidc35-20260528/step-04-test-runner.json,handoffs/WF02-oidc35-20260528/step-05-release-validator.json,handoffs/WF02-oidc35-20260528/step-06-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1689,7 +1690,7 @@
     {
       "file": "handoffs/WF02-tenant-dashboard-20260616/step-00-backend-dev-gitsetup.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-tenant-dashboard-20260616/step-00-backend-dev-gitsetup.json|status is PENDING but 6 later step(s) in run WF02-tenant-dashboard-20260616 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-tenant-dashboard-20260616/step-01-code-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-01b-code-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-03-test-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-03b-test-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-04-test-runner.json,handoffs/WF02-tenant-dashboard-20260616/step-final-backend-dev-gitmerge.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-tenant-dashboard-20260616/step-00-backend-dev-gitsetup.json|status is PENDING but 6 later step(s) in run WF02-tenant-dashboard-20260616 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-tenant-dashboard-20260616/step-01-code-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-01b-code-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-03-test-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-03b-test-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-04-test-runner.json,handoffs/WF02-tenant-dashboard-20260616/step-final-backend-dev-gitmerge.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1697,7 +1698,7 @@
     {
       "file": "handoffs/WF02-tenant-dashboard-20260616/step-02b-frontend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-tenant-dashboard-20260616/step-02b-frontend-dev.json|status is PENDING but 4 later step(s) in run WF02-tenant-dashboard-20260616 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-tenant-dashboard-20260616/step-03-test-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-03b-test-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-04-test-runner.json,handoffs/WF02-tenant-dashboard-20260616/step-final-backend-dev-gitmerge.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-tenant-dashboard-20260616/step-02b-frontend-dev.json|status is PENDING but 4 later step(s) in run WF02-tenant-dashboard-20260616 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-tenant-dashboard-20260616/step-03-test-designer.json,handoffs/WF02-tenant-dashboard-20260616/step-03b-test-design-validator.json,handoffs/WF02-tenant-dashboard-20260616/step-04-test-runner.json,handoffs/WF02-tenant-dashboard-20260616/step-final-backend-dev-gitmerge.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1705,7 +1706,7 @@
     {
       "file": "handoffs/WF02-xc01-06-20260528/step-02-rework2-backend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-xc01-06-20260528/step-02-rework2-backend-dev.json|status is PENDING but 8 later step(s) in run WF02-xc01-06-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-xc01-06-20260528/step-02-rework3-final-backend-dev.json,handoffs/WF02-xc01-06-20260528/step-03-rework1-test-designer.json,handoffs/WF02-xc01-06-20260528/step-03-test-designer.json,handoffs/WF02-xc01-06-20260528/step-04-final-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-rework1-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-test-runner.json,handoffs/WF02-xc01-06-20260528/step-3b-rework1-test-design-validator.json,handoffs/WF02-xc01-06-20260528/step-3b-test-design-validator.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-xc01-06-20260528/step-02-rework2-backend-dev.json|status is PENDING but 8 later step(s) in run WF02-xc01-06-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-xc01-06-20260528/step-02-rework3-final-backend-dev.json,handoffs/WF02-xc01-06-20260528/step-03-rework1-test-designer.json,handoffs/WF02-xc01-06-20260528/step-03-test-designer.json,handoffs/WF02-xc01-06-20260528/step-04-final-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-rework1-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-test-runner.json,handoffs/WF02-xc01-06-20260528/step-3b-rework1-test-design-validator.json,handoffs/WF02-xc01-06-20260528/step-3b-test-design-validator.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1713,7 +1714,7 @@
     {
       "file": "handoffs/WF02-xc01-06-20260528/step-2a-backend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF02-xc01-06-20260528/step-2a-backend-dev.json|status is PENDING but 8 later step(s) in run WF02-xc01-06-20260528 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-xc01-06-20260528/step-02-rework3-final-backend-dev.json,handoffs/WF02-xc01-06-20260528/step-03-rework1-test-designer.json,handoffs/WF02-xc01-06-20260528/step-03-test-designer.json,handoffs/WF02-xc01-06-20260528/step-04-final-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-rework1-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-test-runner.json,handoffs/WF02-xc01-06-20260528/step-3b-rework1-test-design-validator.json,handoffs/WF02-xc01-06-20260528/step-3b-test-design-validator.json",
+      "matching_key": "MAJOR|H009|handoffs/WF02-xc01-06-20260528/step-2a-backend-dev.json|status is PENDING but 8 later step(s) in run WF02-xc01-06-20260528 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-xc01-06-20260528/step-02-rework3-final-backend-dev.json,handoffs/WF02-xc01-06-20260528/step-03-rework1-test-designer.json,handoffs/WF02-xc01-06-20260528/step-03-test-designer.json,handoffs/WF02-xc01-06-20260528/step-04-final-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-rework1-test-runner.json,handoffs/WF02-xc01-06-20260528/step-04-test-runner.json,handoffs/WF02-xc01-06-20260528/step-3b-rework1-test-design-validator.json,handoffs/WF02-xc01-06-20260528/step-3b-test-design-validator.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1721,7 +1722,7 @@
     {
       "file": "handoffs/WF03-GH542-20260807/step-04-test-runner.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-GH542-20260807/step-04-test-runner.json|status is PENDING but 3 later step(s) in run WF03-GH542-20260807 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-GH542-20260807/step-05-issue-fixer.json,handoffs/WF03-GH542-20260807/step-07-doc-updater.json,handoffs/WF03-GH542-20260807/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-GH542-20260807/step-04-test-runner.json|status is PENDING but 3 later step(s) in run WF03-GH542-20260807 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-GH542-20260807/step-05-issue-fixer.json,handoffs/WF03-GH542-20260807/step-07-doc-updater.json,handoffs/WF03-GH542-20260807/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1729,7 +1730,7 @@
     {
       "file": "handoffs/WF03-ext02-auditfix-20260525/step-01-issue-fixer.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-ext02-auditfix-20260525/step-01-issue-fixer.json|status is IN_PROGRESS but 1 later step(s) in run WF03-ext02-auditfix-20260525 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-ext02-auditfix-20260525/step-02-test-runner.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-ext02-auditfix-20260525/step-01-issue-fixer.json|status is IN_PROGRESS but 1 later step(s) in run WF03-ext02-auditfix-20260525 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-ext02-auditfix-20260525/step-02-test-runner.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1737,7 +1738,7 @@
     {
       "file": "handoffs/WF03-f2b-testfixes-20260529/step-00-frontend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-f2b-testfixes-20260529/step-00-frontend-dev.json|status is PENDING but 6 later step(s) in run WF03-f2b-testfixes-20260529 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-f2b-testfixes-20260529/step-01-issue-fixer.json,handoffs/WF03-f2b-testfixes-20260529/step-02-test-runner.json,handoffs/WF03-f2b-testfixes-20260529/step-03-issue-fixer-rework.json,handoffs/WF03-f2b-testfixes-20260529/step-04-test-runner-retest.json,handoffs/WF03-f2b-testfixes-20260529/step-05-issue-fixer-rework2.json,handoffs/WF03-f2b-testfixes-20260529/step-06-test-runner-final.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-f2b-testfixes-20260529/step-00-frontend-dev.json|status is PENDING but 6 later step(s) in run WF03-f2b-testfixes-20260529 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-f2b-testfixes-20260529/step-01-issue-fixer.json,handoffs/WF03-f2b-testfixes-20260529/step-02-test-runner.json,handoffs/WF03-f2b-testfixes-20260529/step-03-issue-fixer-rework.json,handoffs/WF03-f2b-testfixes-20260529/step-04-test-runner-retest.json,handoffs/WF03-f2b-testfixes-20260529/step-05-issue-fixer-rework2.json,handoffs/WF03-f2b-testfixes-20260529/step-06-test-runner-final.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1745,7 +1746,7 @@
     {
       "file": "handoffs/WF03-gh391-20260801/step-04b-test-design-validator.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-gh391-20260801/step-04b-test-design-validator.json|status is PENDING but 3 later step(s) in run WF03-gh391-20260801 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh391-20260801/step-05a-adhoc-backend-dev-services.json,handoffs/WF03-gh391-20260801/step-07-doc-updater.json,handoffs/WF03-gh391-20260801/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-gh391-20260801/step-04b-test-design-validator.json|status is PENDING but 3 later step(s) in run WF03-gh391-20260801 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh391-20260801/step-05a-adhoc-backend-dev-services.json,handoffs/WF03-gh391-20260801/step-07-doc-updater.json,handoffs/WF03-gh391-20260801/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1753,7 +1754,7 @@
     {
       "file": "handoffs/WF03-gh391-20260801/step-05-test-runner.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-gh391-20260801/step-05-test-runner.json|status is IN_PROGRESS but 3 later step(s) in run WF03-gh391-20260801 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh391-20260801/step-05a-adhoc-backend-dev-services.json,handoffs/WF03-gh391-20260801/step-07-doc-updater.json,handoffs/WF03-gh391-20260801/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-gh391-20260801/step-05-test-runner.json|status is IN_PROGRESS but 3 later step(s) in run WF03-gh391-20260801 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh391-20260801/step-05a-adhoc-backend-dev-services.json,handoffs/WF03-gh391-20260801/step-07-doc-updater.json,handoffs/WF03-gh391-20260801/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1761,7 +1762,7 @@
     {
       "file": "handoffs/WF03-gh406-20260803/step-3-backend-dev-implementation.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-gh406-20260803/step-3-backend-dev-implementation.json|status is PENDING but 4 later step(s) in run WF03-gh406-20260803 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh406-20260803/step-5-final2-test-runner.json,handoffs/WF03-gh406-20260803/step-5-test-runner.json,handoffs/WF03-gh406-20260803/step-6-doc-updater.json,handoffs/WF03-gh406-20260803/step-final-backend-dev.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-gh406-20260803/step-3-backend-dev-implementation.json|status is PENDING but 4 later step(s) in run WF03-gh406-20260803 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-gh406-20260803/step-5-final2-test-runner.json,handoffs/WF03-gh406-20260803/step-5-test-runner.json,handoffs/WF03-gh406-20260803/step-6-doc-updater.json,handoffs/WF03-gh406-20260803/step-final-backend-dev.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1769,7 +1770,7 @@
     {
       "file": "handoffs/WF03-iss0100-20260731/step-02-code-designer.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-02-code-designer.json|status is PENDING but 11 later step(s) in run WF03-iss0100-20260731 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-02b-code-design-validator.json,handoffs/WF03-iss0100-20260731/step-02d-code-design-validator-rework.json,handoffs/WF03-iss0100-20260731/step-02e-code-designer-iss0105.json,handoffs/WF03-iss0100-20260731/step-02f-code-design-validator-iss0105.json,handoffs/WF03-iss0100-20260731/step-03a-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03b-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-02-code-designer.json|status is PENDING but 11 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-02b-code-design-validator.json,handoffs/WF03-iss0100-20260731/step-02d-code-design-validator-rework.json,handoffs/WF03-iss0100-20260731/step-02e-code-designer-iss0105.json,handoffs/WF03-iss0100-20260731/step-02f-code-design-validator-iss0105.json,handoffs/WF03-iss0100-20260731/step-03a-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03b-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1777,7 +1778,7 @@
     {
       "file": "handoffs/WF03-iss0100-20260731/step-02c-code-designer-rework.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-02c-code-designer-rework.json|status is PENDING but 10 later step(s) in run WF03-iss0100-20260731 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-02d-code-design-validator-rework.json,handoffs/WF03-iss0100-20260731/step-02e-code-designer-iss0105.json,handoffs/WF03-iss0100-20260731/step-02f-code-design-validator-iss0105.json,handoffs/WF03-iss0100-20260731/step-03a-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03b-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-02c-code-designer-rework.json|status is PENDING but 10 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-02d-code-design-validator-rework.json,handoffs/WF03-iss0100-20260731/step-02e-code-designer-iss0105.json,handoffs/WF03-iss0100-20260731/step-02f-code-design-validator-iss0105.json,handoffs/WF03-iss0100-20260731/step-03a-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03b-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1785,7 +1786,7 @@
     {
       "file": "handoffs/WF03-iss0100-20260731/step-03c-backend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-03c-backend-dev.json|status is PENDING but 5 later step(s) in run WF03-iss0100-20260731 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-03c-backend-dev.json|status is PENDING but 5 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-03d-backend-dev.json,handoffs/WF03-iss0100-20260731/step-03e-backend-dev-rework.json,handoffs/WF03-iss0100-20260731/step-03f-backend-dev-iss0105.json,handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1793,7 +1794,7 @@
     {
       "file": "handoffs/WF03-iss0100-20260731/step-05-test-runner.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-05-test-runner.json|status is PENDING but 2 later step(s) in run WF03-iss0100-20260731 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-iss0100-20260731/step-05-test-runner.json|status is PENDING but 2 later step(s) in run WF03-iss0100-20260731 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-iss0100-20260731/step-05b-test-runner-final.json,handoffs/WF03-iss0100-20260731/step-final-doc-updater.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1801,7 +1802,7 @@
     {
       "file": "handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-07-issue-fixer-c2.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-07-issue-fixer-c2.json|status is PENDING but 1 later step(s) in run WF03-tenant-onboarding-saga-loop3-20260608 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-06-test-runner-c1.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-07-issue-fixer-c2.json|status is PENDING but 1 later step(s) in run WF03-tenant-onboarding-saga-loop3-20260608 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-tenant-onboarding-saga-loop3-20260608/step-06-test-runner-c1.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1809,7 +1810,7 @@
     {
       "file": "handoffs/WF03-uat-onboarding-realm-sync-20260616/step-03b-frontend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-uat-onboarding-realm-sync-20260616/step-03b-frontend-dev.json|status is PENDING but 2 later step(s) in run WF03-uat-onboarding-realm-sync-20260616 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-uat-onboarding-realm-sync-20260616/step-04-test-designer.json,handoffs/WF03-uat-onboarding-realm-sync-20260616/step-04b-test-design-validator.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-uat-onboarding-realm-sync-20260616/step-03b-frontend-dev.json|status is PENDING but 2 later step(s) in run WF03-uat-onboarding-realm-sync-20260616 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-uat-onboarding-realm-sync-20260616/step-04-test-designer.json,handoffs/WF03-uat-onboarding-realm-sync-20260616/step-04b-test-design-validator.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-08T23:57:55Z",
       "acknowledged_by": "WF03-GH596-20260808 / tools/generate_lint_handoffs_baseline.py"
@@ -1889,7 +1890,7 @@
     {
       "file": "handoffs/ADHOC-f3-gitclean-20260529/step-01-backend-dev-git-clean.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/ADHOC-f3-gitclean-20260529/step-01-backend-dev-git-clean.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/ADHOC-f3-gitclean-20260529/step-01-backend-dev-git-clean.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1897,7 +1898,7 @@
     {
       "file": "handoffs/WF02-adp01-20260526/step-01-code-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-01-code-designer.json|completed_at is 3.9h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-01-code-designer.json|completed_at is 3.9h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1905,7 +1906,7 @@
     {
       "file": "handoffs/WF02-adp01-20260526/step-04-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-04-test-runner.json|completed_at is 3.9h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-04-test-runner.json|completed_at is 3.9h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1913,7 +1914,7 @@
     {
       "file": "handoffs/WF02-adp01-20260526/step-04b-test-runner-rework1.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-04b-test-runner-rework1.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-04b-test-runner-rework1.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1921,7 +1922,7 @@
     {
       "file": "handoffs/WF02-adp01-20260526/step-05-release-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-05-release-validator.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-05-release-validator.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1929,7 +1930,7 @@
     {
       "file": "handoffs/WF02-adp01-20260526/step-06-doc-updater.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-06-doc-updater.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp01-20260526/step-06-doc-updater.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1937,7 +1938,7 @@
     {
       "file": "handoffs/WF02-adp02-20260526/step-03-test-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-03-test-designer.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-03-test-designer.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1945,7 +1946,7 @@
     {
       "file": "handoffs/WF02-adp02-20260526/step-04-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-04-test-runner.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-04-test-runner.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1953,7 +1954,7 @@
     {
       "file": "handoffs/WF02-adp02-20260526/step-05-release-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-05-release-validator.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-05-release-validator.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1961,7 +1962,7 @@
     {
       "file": "handoffs/WF02-adp02-20260526/step-06-doc-updater.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-06-doc-updater.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-adp02-20260526/step-06-doc-updater.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1969,7 +1970,7 @@
     {
       "file": "handoffs/WF02-ee02-20260522/step-02a-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-ee02-20260522/step-02a-backend-dev.json|completed_at is 7.0h before started_at \u2014 very close to a whole-hour offset (7h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-ee02-20260522/step-02a-backend-dev.json|completed_at is 7.0h before started_at — very close to a whole-hour offset (7h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1977,7 +1978,7 @@
     {
       "file": "handoffs/WF02-ee02-20260522/step-02b-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-ee02-20260522/step-02b-backend-dev.json|completed_at is 8.0h before started_at \u2014 very close to a whole-hour offset (8h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-ee02-20260522/step-02b-backend-dev.json|completed_at is 8.0h before started_at — very close to a whole-hour offset (8h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1985,7 +1986,7 @@
     {
       "file": "handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json|completed_at is 11.1h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json|completed_at is 11.1h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -1993,7 +1994,7 @@
     {
       "file": "handoffs/WF02-f3a-batch1-20260529/step-00-frontend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-00-frontend-dev.json|completed_at is 3.9h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-00-frontend-dev.json|completed_at is 3.9h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2001,7 +2002,7 @@
     {
       "file": "handoffs/WF02-f3a-batch1-20260529/step-01-code-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-01-code-designer.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-01-code-designer.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2009,7 +2010,7 @@
     {
       "file": "handoffs/WF02-f3a-batch1-20260529/step-01b-code-design-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-01b-code-design-validator.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-01b-code-design-validator.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2017,7 +2018,7 @@
     {
       "file": "handoffs/WF02-f3a-batch1-20260529/step-04-rework2-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-04-rework2-test-runner.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-04-rework2-test-runner.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2025,7 +2026,7 @@
     {
       "file": "handoffs/WF02-f3a-batch1-20260529/step-04-rework3-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-04-rework3-test-runner.json|completed_at is 3.9h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-f3a-batch1-20260529/step-04-rework3-test-runner.json|completed_at is 3.9h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2033,7 +2034,7 @@
     {
       "file": "handoffs/WF02-obs04-20260525/step-03-test-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs04-20260525/step-03-test-designer.json|completed_at is 9.9h before started_at \u2014 very close to a whole-hour offset (10h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs04-20260525/step-03-test-designer.json|completed_at is 9.9h before started_at — very close to a whole-hour offset (10h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2041,7 +2042,7 @@
     {
       "file": "handoffs/WF02-obs04-20260525/step-04-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs04-20260525/step-04-test-runner.json|completed_at is 10.1h before started_at \u2014 very close to a whole-hour offset (10h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs04-20260525/step-04-test-runner.json|completed_at is 10.1h before started_at — very close to a whole-hour offset (10h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2049,7 +2050,7 @@
     {
       "file": "handoffs/WF02-obs04-20260525/step-04d-test-runner-rework3.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs04-20260525/step-04d-test-runner-rework3.json|completed_at is 11.0h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs04-20260525/step-04d-test-runner-rework3.json|completed_at is 11.0h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2057,7 +2058,7 @@
     {
       "file": "handoffs/WF02-obs06-20260525/step-01-code-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-01-code-designer.json|completed_at is 11.0h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-01-code-designer.json|completed_at is 11.0h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2065,7 +2066,7 @@
     {
       "file": "handoffs/WF02-obs06-20260525/step-02-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-02-backend-dev.json|completed_at is 10.9h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-02-backend-dev.json|completed_at is 10.9h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2073,7 +2074,7 @@
     {
       "file": "handoffs/WF02-obs06-20260525/step-03-test-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-03-test-designer.json|completed_at is 10.9h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-03-test-designer.json|completed_at is 10.9h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2081,7 +2082,7 @@
     {
       "file": "handoffs/WF02-obs06-20260525/step-04-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-04-test-runner.json|completed_at is 11.1h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-04-test-runner.json|completed_at is 11.1h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2089,7 +2090,7 @@
     {
       "file": "handoffs/WF02-obs06-20260525/step-04b-test-runner-rework1.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-04b-test-runner-rework1.json|completed_at is 10.9h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-04b-test-runner-rework1.json|completed_at is 10.9h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2097,7 +2098,7 @@
     {
       "file": "handoffs/WF02-obs06-20260525/step-04c-test-runner-rework2.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-04c-test-runner-rework2.json|completed_at is 11.0h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-04c-test-runner-rework2.json|completed_at is 11.0h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2105,7 +2106,7 @@
     {
       "file": "handoffs/WF02-obs06-20260525/step-05-release-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-05-release-validator.json|completed_at is 11.1h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-obs06-20260525/step-05-release-validator.json|completed_at is 11.1h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2113,7 +2114,7 @@
     {
       "file": "handoffs/WF02-oidc01-20260527/step-05-release-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc01-20260527/step-05-release-validator.json|completed_at is 5.0h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc01-20260527/step-05-release-validator.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2121,7 +2122,7 @@
     {
       "file": "handoffs/WF02-oidc16-26-20260528/step-00-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-00-backend-dev.json|completed_at is 1.9h before started_at \u2014 very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-00-backend-dev.json|completed_at is 1.9h before started_at — very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2129,7 +2130,7 @@
     {
       "file": "handoffs/WF02-oidc16-26-20260528/step-01-code-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-01-code-designer.json|completed_at is 1.9h before started_at \u2014 very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-01-code-designer.json|completed_at is 1.9h before started_at — very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2137,7 +2138,7 @@
     {
       "file": "handoffs/WF02-oidc16-26-20260528/step-04-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-04-test-runner.json|completed_at is 1.9h before started_at \u2014 very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-04-test-runner.json|completed_at is 1.9h before started_at — very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2145,7 +2146,7 @@
     {
       "file": "handoffs/WF02-oidc16-26-20260528/step-04b-backend-dev-bench-env.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-04b-backend-dev-bench-env.json|completed_at is 2.0h before started_at \u2014 very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-04b-backend-dev-bench-env.json|completed_at is 2.0h before started_at — very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2153,7 +2154,7 @@
     {
       "file": "handoffs/WF02-oidc16-26-20260528/step-05-release-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-05-release-validator.json|completed_at is 2.0h before started_at \u2014 very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-05-release-validator.json|completed_at is 2.0h before started_at — very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2161,7 +2162,7 @@
     {
       "file": "handoffs/WF02-oidc16-26-20260528/step-06-doc-updater.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-06-doc-updater.json|completed_at is 2.0h before started_at \u2014 very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-06-doc-updater.json|completed_at is 2.0h before started_at — very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2169,7 +2170,7 @@
     {
       "file": "handoffs/WF02-oidc16-26-20260528/step-final-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-final-backend-dev.json|completed_at is 2.0h before started_at \u2014 very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-oidc16-26-20260528/step-final-backend-dev.json|completed_at is 2.0h before started_at — very close to a whole-hour offset (2h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2177,7 +2178,7 @@
     {
       "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-00-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-00-backend-dev.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-00-backend-dev.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2185,7 +2186,7 @@
     {
       "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-01-issue-fixer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-01-issue-fixer.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-01-issue-fixer.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2193,7 +2194,7 @@
     {
       "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-02-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-02-test-runner.json|completed_at is 3.9h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-02-test-runner.json|completed_at is 3.9h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2201,7 +2202,7 @@
     {
       "file": "handoffs/WF03-f3a-integration-regression-fix-20260530/step-final-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-final-backend-dev.json|completed_at is 4.0h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-f3a-integration-regression-fix-20260530/step-final-backend-dev.json|completed_at is 4.0h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2209,7 +2210,7 @@
     {
       "file": "handoffs/WF03-gh401-20260803/step-00-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-00-backend-dev.json|completed_at is 4.9h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-00-backend-dev.json|completed_at is 4.9h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2217,7 +2218,7 @@
     {
       "file": "handoffs/WF03-gh401-20260803/step-005-issue-fixer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-005-issue-fixer.json|completed_at is 4.9h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-005-issue-fixer.json|completed_at is 4.9h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2225,7 +2226,7 @@
     {
       "file": "handoffs/WF03-gh401-20260803/step-02b-code-design-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-02b-code-design-validator.json|completed_at is 5.0h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-02b-code-design-validator.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2233,7 +2234,7 @@
     {
       "file": "handoffs/WF03-gh401-20260803/step-07-doc-updater.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-07-doc-updater.json|completed_at is 5.0h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh401-20260803/step-07-doc-updater.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2241,7 +2242,7 @@
     {
       "file": "handoffs/WF03-gh414-20260804/step-0.5-issue-fixer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-0.5-issue-fixer.json|completed_at is 4.9h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-0.5-issue-fixer.json|completed_at is 4.9h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2249,7 +2250,7 @@
     {
       "file": "handoffs/WF03-gh414-20260804/step-00-backend-dev.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-00-backend-dev.json|completed_at is 5.0h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-00-backend-dev.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2257,7 +2258,7 @@
     {
       "file": "handoffs/WF03-gh414-20260804/step-1-issue-fixer-diagnosis.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-1-issue-fixer-diagnosis.json|completed_at is 4.9h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-1-issue-fixer-diagnosis.json|completed_at is 4.9h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2265,7 +2266,7 @@
     {
       "file": "handoffs/WF03-gh414-20260804/step-2-code-designer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-2-code-designer.json|completed_at is 5.0h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-2-code-designer.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2273,7 +2274,7 @@
     {
       "file": "handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json|completed_at is 4.9h before started_at \u2014 very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json|completed_at is 4.9h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2281,7 +2282,7 @@
     {
       "file": "handoffs/WF03-obs04-e2eauth-20260525/step-01-issue-fixer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-obs04-e2eauth-20260525/step-01-issue-fixer.json|completed_at is 11.0h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-obs04-e2eauth-20260525/step-01-issue-fixer.json|completed_at is 11.0h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2289,7 +2290,7 @@
     {
       "file": "handoffs/WF03-obs04-fixes-20260525/step-01-issue-fixer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-obs04-fixes-20260525/step-01-issue-fixer.json|completed_at is 10.0h before started_at \u2014 very close to a whole-hour offset (10h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-obs04-fixes-20260525/step-01-issue-fixer.json|completed_at is 10.0h before started_at — very close to a whole-hour offset (10h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2297,7 +2298,7 @@
     {
       "file": "handoffs/WF03-obs06-testenv-20260525/step-01-issue-fixer.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-obs06-testenv-20260525/step-01-issue-fixer.json|completed_at is 10.9h before started_at \u2014 very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-obs06-testenv-20260525/step-01-issue-fixer.json|completed_at is 10.9h before started_at — very close to a whole-hour offset (11h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2305,7 +2306,7 @@
     {
       "file": "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-02-test-runner.json",
       "code": "H013",
-      "matching_key": "BLOCKER|H013|handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-02-test-runner.json|completed_at is 4.1h before started_at \u2014 very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "matching_key": "BLOCKER|H013|handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-02-test-runner.json|completed_at is 4.1h before started_at — very close to a whole-hour offset (4h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
       "reason_ref": "H013",
       "acknowledged_at": "2026-08-09T21:14:51Z",
       "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627 H013 subset)"
@@ -2313,10 +2314,10 @@
     {
       "file": "handoffs/WF02-dsl12-20260528/step-final-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-final-backend-dev.json|started_at (2026-05-27T20:32:17Z) precedes created_at (2026-05-28T02:14:20Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF02-dsl12-20260528/step-final-backend-dev.json|started_at (2026-05-27T20:32:17Z) precedes created_at (2026-05-28T02:14:20Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-09T21:14:51Z",
-      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file \u2014 same unrecoverable-history category as the rest of H004)"
+      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file — same unrecoverable-history category as the rest of H004)"
     },
     {
       "file": "handoffs/WF02-ee02-20260522/step-03-test-designer.json",
@@ -2324,12 +2325,12 @@
       "matching_key": "BLOCKER|H005|handoffs/WF02-ee02-20260522/step-03-test-designer.json|status is COMPLETED but completed_at is unset.",
       "reason_ref": "H005",
       "acknowledged_at": "2026-08-09T21:14:51Z",
-      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file \u2014 same unrecoverable-history category as the rest of H005)"
+      "acknowledged_by": "WF03-GH596-20260810 (GitHub #596 / ISS-0627, revealed by this run's own H001 JSON-syntax fix on the same file — same unrecoverable-history category as the rest of H005)"
     },
     {
       "file": "handoffs/WF03-GH631-20260809/step-00-backend-dev.json",
       "code": "H004",
-      "matching_key": "BLOCKER|H004|handoffs/WF03-GH631-20260809/step-00-backend-dev.json|started_at (2026-08-09T12:26:24Z) precedes created_at (2026-08-09T12:26:49Z) \u2014 the step began before it was routed.",
+      "matching_key": "BLOCKER|H004|handoffs/WF03-GH631-20260809/step-00-backend-dev.json|started_at (2026-08-09T12:26:24Z) precedes created_at (2026-08-09T12:26:49Z) — the step began before it was routed.",
       "reason_ref": "H004",
       "acknowledged_at": "2026-08-10T07:26:14Z",
       "acknowledged_by": "WF03-GH666-20260810 (GitHub #666 / ISS-0656)"
@@ -2337,10 +2338,338 @@
     {
       "file": "handoffs/WF03-GH360-20260809/step-00-backend-dev.json",
       "code": "H009",
-      "matching_key": "MAJOR|H009|handoffs/WF03-GH360-20260809/step-00-backend-dev.json|status is IN_PROGRESS but 3 later step(s) in run WF03-GH360-20260809 are COMPLETED \u2014 the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-GH360-20260809/step-0.5-issue-fixer.json,handoffs/WF03-GH360-20260809/step-07-doc-updater.json,handoffs/WF03-GH360-20260809/step-1-issue-fixer.json",
+      "matching_key": "MAJOR|H009|handoffs/WF03-GH360-20260809/step-00-backend-dev.json|status is IN_PROGRESS but 3 later step(s) in run WF03-GH360-20260809 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF03-GH360-20260809/step-0.5-issue-fixer.json,handoffs/WF03-GH360-20260809/step-07-doc-updater.json,handoffs/WF03-GH360-20260809/step-1-issue-fixer.json",
       "reason_ref": "H009",
       "acknowledged_at": "2026-08-10T07:26:14Z",
       "acknowledged_by": "WF03-GH666-20260810 (GitHub #666 / ISS-0656)"
+    },
+    {
+      "file": "handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json|completed_at (2026-08-14T14:39:42Z) is earlier than started_at (2026-08-14T19:37:32Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json|completed_at (2026-08-14T14:42:36Z) is earlier than started_at (2026-08-14T19:40:29Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json|completed_at (2026-08-14T15:11:44Z) is earlier than started_at (2026-08-14T20:09:14Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json|completed_at (2026-08-14T15:13:39Z) is earlier than started_at (2026-08-14T20:12:34Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json",
+      "code": "H003",
+      "matching_key": "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json|completed_at (2026-08-14T15:02:01Z) is earlier than started_at (2026-08-14T19:59:45Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+      "reason_ref": "H003",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework1.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework1.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework1.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework1.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework2.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework2.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework2.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework2.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework1.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework1.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework1.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework1.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01-code-designer.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01-code-designer.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework1.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework1.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework1.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework1.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json|Missing required schema key: 'from_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json",
+      "code": "H007",
+      "matching_key": "MAJOR|H007|handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json|Missing required schema key: 'to_agent'",
+      "reason_ref": "H007-prm-agent-id-schema",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json",
+      "code": "H009",
+      "matching_key": "MAJOR|H009|handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json|status is IN_PROGRESS but 7 later step(s) in run WF02-prm-batch2-20260814 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-prm-batch2-20260814/step-02b-frontend-dev.json,handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json,handoffs/WF02-prm-batch2-20260814/step-03b-test-design-validator.json,handoffs/WF02-prm-batch2-20260814/step-04-test-runner.json,handoffs/WF02-prm-batch2-20260814/step-05-release-validator.json,handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json,handoffs/WF02-prm-batch2-20260814/step-final-backend-dev.json",
+      "reason_ref": "H009",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json",
+      "code": "H013",
+      "matching_key": "BLOCKER|H013|handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "reason_ref": "H013",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json",
+      "code": "H013",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "reason_ref": "H013",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json",
+      "code": "H013",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "reason_ref": "H013",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json",
+      "code": "H013",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "reason_ref": "H013",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    {
+      "file": "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json",
+      "code": "H013",
+      "matching_key": "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "reason_ref": "H013",
+      "acknowledged_at": "2026-08-16T00:30:53Z",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
     }
   ]
 }
