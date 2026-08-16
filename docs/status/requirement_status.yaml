@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-15T23:28:31Z'
+last_updated: '2026-08-16T08:21:22Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -5082,20 +5082,65 @@ requirements:
     priority: MUST
     title: Sandbox release, reclaim, and claim audit
   VLD-01:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Typed environment from definition context
+    implemented_in:
+    - src/validation/mod.zig
+    - src/validation/env.zig
+    - src/validation/scope.zig
+    - src/validation/typecheck.zig
+    - src/validation/site.zig
+    - src/validation/pd06.zig
+    - src/validation/finding.zig
+    - src/validation/wire.zig
+    - tests/integration/validation_vld_unit_test.zig
+    - tests/integration/validation_vld_http_test.zig
+    - tests/specs/vld-01-03-stage-16-validation.spec.md
+    released_at: '2026-08-16T08:21:15Z'
+    note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
+      fix verified 40/40 + 14/14 + 5/5).'
   VLD-02:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Expression compile and type check
+    implemented_in:
+    - src/validation/mod.zig
+    - src/validation/env.zig
+    - src/validation/scope.zig
+    - src/validation/typecheck.zig
+    - src/validation/site.zig
+    - src/validation/pd06.zig
+    - src/validation/finding.zig
+    - src/validation/wire.zig
+    - tests/integration/validation_vld_unit_test.zig
+    - tests/integration/validation_vld_http_test.zig
+    - tests/specs/vld-01-03-stage-16-validation.spec.md
+    released_at: '2026-08-16T08:21:16Z'
+    note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
+      fix verified 40/40 + 14/14 + 5/5).'
   VLD-03:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Aggregated validation diagnostics
+    implemented_in:
+    - src/validation/mod.zig
+    - src/validation/env.zig
+    - src/validation/scope.zig
+    - src/validation/typecheck.zig
+    - src/validation/site.zig
+    - src/validation/pd06.zig
+    - src/validation/finding.zig
+    - src/validation/wire.zig
+    - tests/integration/validation_vld_unit_test.zig
+    - tests/integration/validation_vld_http_test.zig
+    - tests/specs/vld-01-03-stage-16-validation.spec.md
+    released_at: '2026-08-16T08:21:17Z'
+    note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
+      fix verified 40/40 + 14/14 + 5/5).'
   VLD-04:
     status: DRAFT
     stage: '16'

@@ -1,0 +1,54 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-7-doc-updater",
+  "agent_id": "DOC-UPDATER",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "7",
+  "created_at": "2026-08-16T08:24:32Z",
+  "summary": "WF-03 Step 7 / WF-02 Step 06: Marked VLD-01/02/03 RELEASED. Verified release decision APPROVED (docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml, decision=APPROVED, approved_requirements=[VLD-01,VLD-02,VLD-03], date 2026-08-16T08:17:28Z). Advanced VLD-01/02/03 DRAFT->RELEASED in docs/requirements.yaml via reqctl.py set-status with --note (release run ref) and --implemented-in (src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig, tests/integration/validation_vld_unit_test.zig, tests/integration/validation_vld_http_test.zig, tests/specs/vld-01-03-stage-16-validation.spec.md); released_at/last_updated clock-stamped by reqctl (08:21:15/16/17Z). Regenerated docs/status/requirement_status.yaml via reqctl.py render-status (463 entries; VLD-01/02/03 now RELEASED, consistent). reqctl validate exit 0 (BLOCKER 0; 4 MAJOR + 8 MINOR pre-existing baseline unrelated to VLD). Prepended a '## [Unreleased] - 2026-08-16' section to CHANGELOG.md with the VLD-01/02/03 Stage 16 release entry (per-requirement prose, gate results, ISS-0709/GH #799 fix refs 844c2016 + 1c3a6065, release-decision file ref). Did NOT run Step Final (no push, no merge) per task constraint - Step Final is a separate dispatch. No estimation file -> no retrospective (WF-03 run).",
+  "files_created": [
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-7-doc-updater-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/requirements.yaml",
+    "docs/status/requirement_status.yaml",
+    "CHANGELOG.md",
+    "handoffs/WF03-vld-impl-bugs-20260816/step-7-doc-updater.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "reqctl.py show VLD-01/02/03",
+      "status": "pass",
+      "detail": "confirmed status=RELEASED with released_at stamped for all three"
+    },
+    {
+      "name": "reqctl.py validate",
+      "status": "pass",
+      "detail": "exit 0; BLOCKER 0, MAJOR 4 + MINOR 8 all pre-existing baseline (OIDC/TD-UI/SPT/TM/WH-UI) - none VLD-related"
+    },
+    {
+      "name": "reqctl.py render-status",
+      "status": "pass",
+      "detail": "regenerated docs/status/requirement_status.yaml (463 entries); VLD-01/02/03 RELEASED + implemented_in present"
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass-on-handoff",
+      "detail": "no NEW issues on this handoff (repo-wide pre-existing baseline unchanged; will run after completion)"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "reqctl validate reports 4 MAJOR (OIDC-F-06/TD-UI-01/TD-UI-02 cross-refs to unknown IDs, WH-UI-03 vague language) + 8 MINOR (SPT/TM/UAT-TM no prose body) - all pre-existing baseline unrelated to VLD-01/02/03; exit 0 so non-blocking."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Working tree has a pre-existing uncommitted zig-fmt whitespace change to src/validation/mod.zig (not mine; per session note, untouched). It will remain unstaged and NOT included in this handoff's commit."
+    }
+  ],
+  "next_steps": [
+    "Route to ORCH: Step Final dispatch (PR, squash-merge, branch deletion, return to clean main) - this Step 7 dispatch did not push per constraint"
+  ],
+  "blockers": []
+}
