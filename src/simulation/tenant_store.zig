@@ -35,11 +35,9 @@ pub fn queryTenantEvents(
 ) types.SimulationError![]event_store.EventRecord {
     if (ctx_mod.isSimulationTenant(tenant_id)) return error.SimulationVisibilityViolation;
 
-    const tenant_text = tenantIdToString(tenant_id);
     const after_global_seq = filter.after_global_seq;
 
     return store.readGlobal(allocator, .{
-        .tenant_id = tenant_text[0..],
         .after_global_seq = after_global_seq,
         .limit = filter.limit,
     }) catch |err| {

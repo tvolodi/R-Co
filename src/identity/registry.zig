@@ -223,6 +223,7 @@ pub const Registry = struct {
         tenant_id: []const u8,
         input: CreateUserInput,
     ) RegistryError!User {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the insert; the users.tenant_id column is gone from public.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -254,12 +255,11 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
-            \\VALUES ($1::uuid, $2, $3, $4, $5::boolean, $6, $7)
+            \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+            \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
             &[_][]const u8{
-                tenant_id,
                 input.email,
                 input.display_name,
                 "__API_ONLY__",
@@ -618,6 +618,7 @@ pub const Registry = struct {
         user_id: []const u8,
         status: UserStatus,
     ) RegistryError!User {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -633,11 +634,11 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             \\UPDATE users
-            \\SET status = $3, is_active = $4::boolean, updated_at = NOW()
-            \\WHERE id = $1::uuid AND tenant_id = $2::uuid
+            \\SET status = $2, is_active = $3::boolean, updated_at = NOW()
+            \\WHERE id = $1::uuid
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
-            &[_][]const u8{ user_id, tenant_id, status_str, active_str },
+            &[_][]const u8{ user_id, status_str, active_str },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -657,6 +658,7 @@ pub const Registry = struct {
         tenant_id: []const u8,
         user_id: []const u8,
     ) RegistryError!?UserStatus {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -665,8 +667,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            "SELECT status, is_active::text FROM users WHERE id = $1::uuid AND tenant_id = $2::uuid",
-            &[_][]const u8{ user_id, tenant_id },
+            "SELECT status, is_active::text FROM users WHERE id = $1::uuid",
+            &[_][]const u8{ user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -694,6 +696,7 @@ pub const Registry = struct {
         tenant_id: []const u8,
         user_id: []const u8,
     ) RegistryError!?User {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -704,10 +707,10 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, username, display_name, email, status, created_at::text
             \\FROM users
-            \\WHERE id = $1::uuid AND tenant_id = $2::uuid
+            \\WHERE id = $1::uuid
             \\LIMIT 1
         ,
-            &[_][]const u8{ user_id, tenant_id },
+            &[_][]const u8{ user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -727,6 +730,7 @@ pub const Registry = struct {
         tenant_id: []const u8,
         params: ListUsersParams,
     ) RegistryError!UserListPage {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -744,11 +748,10 @@ pub const Registry = struct {
             allocator,
             \\SELECT COUNT(*)::text
             \\FROM users
-            \\WHERE tenant_id = $1::uuid
-            \\  AND ($2 = '' OR username ILIKE '%' || $2 || '%' OR display_name ILIKE '%' || $2 || '%' OR email ILIKE '%' || $2 || '%')
-            \\  AND ($3 = '' OR status = $3)
+            \\WHERE ($1 = '' OR username ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
+            \\  AND ($2 = '' OR status = $2)
         ,
-            &[_][]const u8{ tenant_id, search_text, status_text },
+            &[_][]const u8{ search_text, status_text },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -767,14 +770,13 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, username, display_name, email, status, created_at::text
             \\FROM users
-            \\WHERE tenant_id = $1::uuid
-            \\  AND ($2 = '' OR username ILIKE '%' || $2 || '%' OR display_name ILIKE '%' || $2 || '%' OR email ILIKE '%' || $2 || '%')
-            \\  AND ($3 = '' OR status = $3)
+            \\WHERE ($1 = '' OR username ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
+            \\  AND ($2 = '' OR status = $2)
             \\ORDER BY created_at DESC, id DESC
-            \\OFFSET $4::int
-            \\LIMIT $5::int
+            \\OFFSET $3::int
+            \\LIMIT $4::int
         ,
-            &[_][]const u8{ tenant_id, search_text, status_text, offset_text, limit_text },
+            &[_][]const u8{ search_text, status_text, offset_text, limit_text },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -810,6 +812,7 @@ pub const Registry = struct {
         external_realm: []const u8,
         external_id: []const u8,
     ) RegistryError!?User {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -820,12 +823,11 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, username, display_name, email, status, created_at::text
             \\FROM users
-            \\WHERE tenant_id = $1::uuid
-            \\  AND external_realm = $2
-            \\  AND external_id = $3
+            \\WHERE external_realm = $1
+            \\  AND external_id = $2
             \\LIMIT 1
         ,
-            &[_][]const u8{ tenant_id, external_realm, external_id },
+            &[_][]const u8{ external_realm, external_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -865,7 +867,6 @@ pub const Registry = struct {
         const inserted = conn.queryRow(
             allocator,
             \\INSERT INTO users (
-            \\    tenant_id,
             \\    email,
             \\    display_name,
             \\    password_hash,
@@ -876,12 +877,11 @@ pub const Registry = struct {
             \\    external_realm,
             \\    external_id
             \\)
-            \\VALUES ($1::uuid, $2, $3, $4, $5::boolean, $6, $7, 'oidc', $8, $9)
+            \\VALUES ($1, $2, $3, $4::boolean, $5, $6, 'oidc', $7, $8)
             \\ON CONFLICT (external_realm, external_id) WHERE external_id IS NOT NULL DO NOTHING
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
             &[_][]const u8{
-                tenant_id,
                 input.email,
                 input.display_name,
                 "__OIDC_ONLY__",
@@ -923,6 +923,7 @@ pub const Registry = struct {
         email: []const u8,
         status: UserStatus,
     ) RegistryError!User {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -938,12 +939,12 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             \\UPDATE users
-            \\SET display_name = $3, email = $4, status = $5,
-            \\    is_active = $6::boolean, updated_at = NOW()
-            \\WHERE id = $1::uuid AND tenant_id = $2::uuid
+            \\SET display_name = $2, email = $3, status = $4,
+            \\    is_active = $5::boolean, updated_at = NOW()
+            \\WHERE id = $1::uuid
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
-            &[_][]const u8{ user_id, tenant_id, display_name, email, status_str, active_str },
+            &[_][]const u8{ user_id, display_name, email, status_str, active_str },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1087,6 +1088,7 @@ pub const Registry = struct {
         display_name: []const u8,
         description: ?[]const u8,
     ) RegistryError!Group {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the insert.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -1095,8 +1097,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\INSERT INTO groups (tenant_id, name, display_name, description, is_system)
-            \\VALUES ($1::uuid, $2, $3, $4, false)
+            \\INSERT INTO groups (name, display_name, description, is_system)
+            \\VALUES ($1, $2, $3, false)
             \\ON CONFLICT (name) DO NOTHING
             \\RETURNING id::text,
             \\          name,
@@ -1106,7 +1108,7 @@ pub const Registry = struct {
             \\          created_at::text,
             \\          '0'
         ,
-            &[_][]const u8{ tenant_id, name, display_name, description orelse "" },
+            &[_][]const u8{ name, display_name, description orelse "" },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1125,6 +1127,7 @@ pub const Registry = struct {
         allocator: std.mem.Allocator,
         tenant_id: []const u8,
     ) RegistryError!GroupListPage {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -1142,11 +1145,10 @@ pub const Registry = struct {
             \\       COUNT(gm.user_id)::text
             \\FROM groups g
             \\LEFT JOIN group_members gm ON gm.group_id = g.id
-            \\WHERE g.tenant_id = $1::uuid
             \\GROUP BY g.id, g.name, g.display_name, g.description, g.is_system, g.created_at
             \\ORDER BY g.name ASC
         ,
-            &[_][]const u8{tenant_id},
+            &.{},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1179,6 +1181,7 @@ pub const Registry = struct {
         tenant_id: []const u8,
         group_id: []const u8,
     ) RegistryError!bool {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -1188,8 +1191,7 @@ pub const Registry = struct {
         const deleted = conn.queryRow(
             allocator,
             \\DELETE FROM groups g
-            \\WHERE g.tenant_id = $1::uuid
-            \\  AND g.id = $2::uuid
+            \\WHERE g.id = $1::uuid
             \\  AND NOT EXISTS (
             \\      SELECT 1
             \\      FROM group_members gm
@@ -1197,7 +1199,7 @@ pub const Registry = struct {
             \\  )
             \\RETURNING 1::text
         ,
-            &[_][]const u8{ tenant_id, group_id },
+            &[_][]const u8{ group_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1220,6 +1222,7 @@ pub const Registry = struct {
         tenant_id: []const u8,
         group_id: []const u8,
     ) RegistryError!bool {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -1228,8 +1231,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            "SELECT id::text FROM groups WHERE id = $1::uuid AND tenant_id = $2::uuid LIMIT 1",
-            &[_][]const u8{ group_id, tenant_id },
+            "SELECT id::text FROM groups WHERE id = $1::uuid LIMIT 1",
+            &[_][]const u8{ group_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1250,6 +1253,7 @@ pub const Registry = struct {
         group_id: []const u8,
         user_id: []const u8,
     ) RegistryError!struct { member: GroupMember, created: bool } {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -1261,14 +1265,12 @@ pub const Registry = struct {
             \\INSERT INTO group_members (group_id, user_id)
             \\SELECT g.id, u.id
             \\FROM groups g
-            \\JOIN users u ON u.id = $3::uuid
-            \\WHERE g.id = $2::uuid
-            \\  AND g.tenant_id = $1::uuid
-            \\  AND u.tenant_id = $1::uuid
+            \\JOIN users u ON u.id = $2::uuid
+            \\WHERE g.id = $1::uuid
             \\ON CONFLICT (group_id, user_id) DO NOTHING
             \\RETURNING group_id::text, user_id::text, added_at::text
         ,
-            &[_][]const u8{ tenant_id, group_id, user_id },
+            &[_][]const u8{ group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1288,12 +1290,10 @@ pub const Registry = struct {
             \\FROM group_members gm
             \\JOIN groups g ON g.id = gm.group_id
             \\JOIN users u ON u.id = gm.user_id
-            \\WHERE gm.group_id = $2::uuid
-            \\  AND gm.user_id = $3::uuid
-            \\  AND g.tenant_id = $1::uuid
-            \\  AND u.tenant_id = $1::uuid
+            \\WHERE gm.group_id = $1::uuid
+            \\  AND gm.user_id = $2::uuid
         ,
-            &[_][]const u8{ tenant_id, group_id, user_id },
+            &[_][]const u8{ group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1314,6 +1314,7 @@ pub const Registry = struct {
         group_id: []const u8,
         user_id: []const u8,
     ) RegistryError!void {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         _ = allocator;
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
@@ -1324,12 +1325,11 @@ pub const Registry = struct {
         _ = conn.exec(
             \\DELETE FROM group_members gm
             \\USING groups g
-            \\WHERE gm.group_id = $2::uuid
-            \\  AND gm.user_id = $3::uuid
+            \\WHERE gm.group_id = $1::uuid
+            \\  AND gm.user_id = $2::uuid
             \\  AND g.id = gm.group_id
-            \\  AND g.tenant_id = $1::uuid
         ,
-            &[_][]const u8{ tenant_id, group_id, user_id },
+            &[_][]const u8{ group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1349,6 +1349,7 @@ pub const Registry = struct {
         cursor_user_id: ?[]const u8,
         page_size: u16,
     ) RegistryError![]GroupMemberRecord {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -1364,9 +1365,6 @@ pub const Registry = struct {
 
         params.append(a, group_id) catch return error.PersistenceFailed;
         conditions.append(a, "gm.group_id = $1::uuid") catch return error.PersistenceFailed;
-        params.append(a, tenant_id) catch return error.PersistenceFailed;
-        conditions.append(a, "g.tenant_id = $2::uuid") catch return error.PersistenceFailed;
-        conditions.append(a, "u.tenant_id = $2::uuid") catch return error.PersistenceFailed;
 
         if (cursor_added_at_us) |added_at_us| {
             if (cursor_user_id) |cur_user_id| {
@@ -1453,6 +1451,7 @@ pub const Registry = struct {
         group_id: []const u8,
         user_id: []const u8,
     ) RegistryError!bool {
+        _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query.
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -1465,14 +1464,12 @@ pub const Registry = struct {
             \\FROM group_members gm
             \\JOIN users u ON u.id = gm.user_id
             \\JOIN groups g ON g.id = gm.group_id
-            \\WHERE g.tenant_id = $1::uuid
-            \\  AND u.tenant_id = $1::uuid
-            \\  AND gm.group_id = $2::uuid
-            \\  AND gm.user_id = $3::uuid
+            \\WHERE gm.group_id = $1::uuid
+            \\  AND gm.user_id = $2::uuid
             \\  AND u.status = 'ACTIVE'
             \\LIMIT 1
         ,
-            &[_][]const u8{ tenant_id, group_id, user_id },
+            &[_][]const u8{ group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,

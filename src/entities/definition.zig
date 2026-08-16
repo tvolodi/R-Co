@@ -38,7 +38,6 @@ pub const EntityDefinitionError = error{
 
 pub const DefinitionRecord = struct {
     id: []const u8,
-    tenant_id: []const u8,
     name: []const u8,
     display_name: []const u8,
     description: ?[]const u8,
@@ -52,7 +51,6 @@ pub const DefinitionRecord = struct {
 
     pub fn deinit(self: *DefinitionRecord, allocator: std.mem.Allocator) void {
         allocator.free(self.id);
-        allocator.free(self.tenant_id);
         allocator.free(self.name);
         allocator.free(self.display_name);
         if (self.description) |d| allocator.free(d);
@@ -69,11 +67,9 @@ pub const CreateDefinitionParams = struct {
     description: ?[]const u8,
     definition_json: []const u8,
     created_by: []const u8,
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
 };
 
 pub const ListDefinitionsOpts = struct {
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     status: ?[]const u8 = null,
     cursor: ?[]const u8 = null,
     page_size: u16 = 50,
@@ -116,11 +112,11 @@ pub fn createDefinition(
     defer allocator.free(hash_hex);
 
     // Check for existing definition with same name+hash (idempotent)
-    const existing = findByNameAndHash(allocator, pool, params.tenant_id, params.name, hash_hex) catch null;
+    const existing = findByNameAndHash(allocator, pool, params.name, hash_hex) catch null;
     if (existing) |rec| return rec;
 
-    // Compute next logical_shape_version for this (tenant, name)
-    const next_version = getNextShapeVersion(allocator, pool, params.tenant_id, params.name) catch 1;
+    // Compute next logical_shape_version for this (name)
+    const next_version = getNextShapeVersion(allocator, pool, params.name) catch 1;
     const ver_str = std.fmt.allocPrint(allocator, "{d}", .{next_version}) catch return EntityDefinitionError.OutOfMemory;
     defer allocator.free(ver_str);
 
@@ -131,11 +127,10 @@ pub fn createDefinition(
     defer pool.release(conn);
 
     const row = conn.queryRow(allocator,
-        \\INSERT INTO entity_definitions (tenant_id, name, display_name, description, definition_json, content_hash, logical_shape_version, created_by, status)
-        \\VALUES ($1, $2, $3, $4, $5::jsonb, decode($6, 'hex'), $7::integer, $8::uuid, 'DRAFT')
-        \\RETURNING id::text, tenant_id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
+        \\INSERT INTO entity_definitions (name, display_name, description, definition_json, content_hash, logical_shape_version, created_by, status)
+        \\VALUES ($1, $2, $3, $4::jsonb, decode($5, 'hex'), $6::integer, $7::uuid, 'DRAFT')
+        \\RETURNING id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
     , &[_][]const u8{
-        params.tenant_id,
         params.name,
         params.display_name,
         params.description orelse "",
@@ -166,7 +161,7 @@ pub fn getDefinition(
     defer pool.release(conn);
 
     const row = conn.queryRow(allocator,
-        \\SELECT id::text, tenant_id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
+        \\SELECT id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
         \\FROM entity_definitions WHERE id = $1::uuid
     , &[_][]const u8{definition_id}) catch |err| switch (err) {
         PoolError.ExhaustedPool => return EntityDefinitionError.PoolExhausted,
@@ -178,11 +173,11 @@ pub fn getDefinition(
     return try parseDefinitionRow(allocator, row.?);
 }
 
-/// Get the active definition by entity type name for a tenant.
+/// Get the active definition by entity type name (schema-scoped via the pool's
+/// per-request search_path).
 pub fn getDefinitionByName(
     allocator: std.mem.Allocator,
     pool: *Pool,
-    tenant_id: []const u8,
     name: []const u8,
 ) EntityDefinitionError!DefinitionRecord {
     const conn = pool.acquire() catch |err| switch (err) {
@@ -192,12 +187,12 @@ pub fn getDefinitionByName(
     defer pool.release(conn);
 
     const row = conn.queryRow(allocator,
-        \\SELECT id::text, tenant_id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
+        \\SELECT id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
         \\FROM entity_definitions
-        \\WHERE tenant_id = $1 AND name = $2 AND status = 'ACTIVE'
+        \\WHERE name = $1 AND status = 'ACTIVE'
         \\ORDER BY logical_shape_version DESC
         \\LIMIT 1
-    , &[_][]const u8{ tenant_id, name }) catch |err| switch (err) {
+    , &[_][]const u8{ name }) catch |err| switch (err) {
         PoolError.ExhaustedPool => return EntityDefinitionError.PoolExhausted,
         else => return EntityDefinitionError.TransactionFailed,
     };
@@ -226,9 +221,8 @@ pub fn listDefinitions(
     var sql: std.ArrayList(u8) = .empty;
     errdefer sql.deinit(allocator);
     sql.appendSlice(allocator,
-        \\SELECT id::text, tenant_id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
+        \\SELECT id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
         \\FROM entity_definitions
-        \\WHERE tenant_id = $1
     ) catch return EntityDefinitionError.OutOfMemory;
 
     var params = std.ArrayList([]const u8).initCapacity(allocator, 8) catch return EntityDefinitionError.OutOfMemory;
@@ -236,7 +230,6 @@ pub fn listDefinitions(
         sql.deinit(allocator);
         params.deinit(allocator);
     }
-    params.append(allocator, opts.tenant_id) catch return EntityDefinitionError.OutOfMemory;
 
     if (has_status) {
         const param_idx = params.items.len + 1;
@@ -295,7 +288,7 @@ pub fn activateDefinition(
     const row = conn.queryRow(allocator,
         \\UPDATE entity_definitions SET status = 'ACTIVE', updated_at = NOW()
         \\WHERE id = $1::uuid
-        \\RETURNING id::text, tenant_id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
+        \\RETURNING id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
     , &[_][]const u8{definition_id}) catch |err| switch (err) {
         PoolError.ExhaustedPool => return EntityDefinitionError.PoolExhausted,
         else => return EntityDefinitionError.TransactionFailed,
@@ -313,7 +306,6 @@ pub fn activateDefinition(
 fn findByNameAndHash(
     allocator: std.mem.Allocator,
     pool: *Pool,
-    tenant_id: []const u8,
     name: []const u8,
     hash_hex: []const u8,
 ) EntityDefinitionError!?DefinitionRecord {
@@ -321,11 +313,11 @@ fn findByNameAndHash(
     defer pool.release(conn);
 
     const row = conn.queryRow(allocator,
-        \\SELECT id::text, tenant_id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
+        \\SELECT id::text, name, display_name, description, definition_json::text, encode(content_hash, 'hex'), logical_shape_version::text, status, created_by::text, extract(epoch from created_at)::bigint * 1000000 as created_at, extract(epoch from updated_at)::bigint * 1000000 as updated_at
         \\FROM entity_definitions
-        \\WHERE tenant_id = $1 AND name = $2 AND content_hash = decode($3, 'hex')
+        \\WHERE name = $1 AND content_hash = decode($2, 'hex')
         \\ORDER BY logical_shape_version DESC LIMIT 1
-    , &[_][]const u8{ tenant_id, name, hash_hex }) catch return null;
+    , &[_][]const u8{ name, hash_hex }) catch return null;
     if (row == null) return null;
     defer freeRow(allocator, row.?);
 
@@ -335,7 +327,6 @@ fn findByNameAndHash(
 fn getNextShapeVersion(
     allocator: std.mem.Allocator,
     pool: *Pool,
-    tenant_id: []const u8,
     name: []const u8,
 ) !u32 {
     const conn = pool.acquire() catch return 1;
@@ -344,8 +335,8 @@ fn getNextShapeVersion(
     const row = conn.queryRow(allocator,
         \\SELECT (COALESCE(MAX(logical_shape_version), 0) + 1)::text as next_ver
         \\FROM entity_definitions
-        \\WHERE tenant_id = $1 AND name = $2
-    , &[_][]const u8{ tenant_id, name }) catch return 1;
+        \\WHERE name = $1
+    , &[_][]const u8{ name }) catch return 1;
     if (row == null) return 1;
     defer freeRow(allocator, row.?);
     if (row.?[0] == null) return 1;
@@ -355,17 +346,16 @@ fn getNextShapeVersion(
 fn parseDefinitionRow(allocator: std.mem.Allocator, row: []?[]u8) EntityDefinitionError!DefinitionRecord {
     return DefinitionRecord{
         .id = allocator.dupe(u8, row[0] orelse "") catch return EntityDefinitionError.OutOfMemory,
-        .tenant_id = allocator.dupe(u8, row[1] orelse DEFAULT_TENANT_ID) catch return EntityDefinitionError.OutOfMemory,
-        .name = allocator.dupe(u8, row[2] orelse "unknown") catch return EntityDefinitionError.OutOfMemory,
-        .display_name = allocator.dupe(u8, row[3] orelse "Unknown") catch return EntityDefinitionError.OutOfMemory,
-        .description = if (row[4]) |d| allocator.dupe(u8, d) catch return EntityDefinitionError.OutOfMemory else null,
-        .definition_json = allocator.dupe(u8, row[5] orelse "{}") catch return EntityDefinitionError.OutOfMemory,
-        .content_hash = allocator.dupe(u8, row[6] orelse "") catch return EntityDefinitionError.OutOfMemory,
-        .logical_shape_version = std.fmt.parseInt(u32, row[7] orelse "1", 10) catch 1,
-        .status = allocator.dupe(u8, row[8] orelse "DRAFT") catch return EntityDefinitionError.OutOfMemory,
-        .created_by = allocator.dupe(u8, row[9] orelse "") catch return EntityDefinitionError.OutOfMemory,
-        .created_at = std.fmt.parseInt(i64, row[10] orelse "0", 10) catch 0,
-        .updated_at = std.fmt.parseInt(i64, row[11] orelse "0", 10) catch 0,
+        .name = allocator.dupe(u8, row[1] orelse "unknown") catch return EntityDefinitionError.OutOfMemory,
+        .display_name = allocator.dupe(u8, row[2] orelse "Unknown") catch return EntityDefinitionError.OutOfMemory,
+        .description = if (row[3]) |d| allocator.dupe(u8, d) catch return EntityDefinitionError.OutOfMemory else null,
+        .definition_json = allocator.dupe(u8, row[4] orelse "{}") catch return EntityDefinitionError.OutOfMemory,
+        .content_hash = allocator.dupe(u8, row[5] orelse "") catch return EntityDefinitionError.OutOfMemory,
+        .logical_shape_version = std.fmt.parseInt(u32, row[6] orelse "1", 10) catch 1,
+        .status = allocator.dupe(u8, row[7] orelse "DRAFT") catch return EntityDefinitionError.OutOfMemory,
+        .created_by = allocator.dupe(u8, row[8] orelse "") catch return EntityDefinitionError.OutOfMemory,
+        .created_at = std.fmt.parseInt(i64, row[9] orelse "0", 10) catch 0,
+        .updated_at = std.fmt.parseInt(i64, row[10] orelse "0", 10) catch 0,
     };
 }
 

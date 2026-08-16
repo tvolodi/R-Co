@@ -584,11 +584,10 @@ pub fn restoreTenantWithWaitReconciliation(
     pool: *Pool,
     tenant_id: Uuid,
 ) ReconstructionError!RestoreReconciliationResult {
+    _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query; the column predicate is gone.
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
     const a = arena.allocator();
-
-    const tenant_hex = uuidToHex(a, tenant_id) catch return ReconstructionError.OutOfMemory;
 
     const conn = pool.acquire() catch |err| switch (err) {
         PoolError.ExhaustedPool => return ReconstructionError.PoolExhausted,
@@ -600,10 +599,9 @@ pub fn restoreTenantWithWaitReconciliation(
         a,
         \\SELECT instance_id::text
         \\FROM instance_projections
-        \\WHERE tenant_id = $1::uuid
         \\ORDER BY instance_id ASC
     ,
-        &.{tenant_hex},
+        &.{},
     ) catch return ReconstructionError.QueryFailed;
     defer rows.deinit();
 

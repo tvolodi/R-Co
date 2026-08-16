@@ -136,7 +136,6 @@ pub const PlatformAppendParams = struct {
 };
 
 pub const ReadOpts = struct {
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Return events with sequence_number ≤ value; null = no upper limit (ES-06).
     up_to_sequence: ?i64,
     /// Return events with created_at ≤ value (UTC µs); null = no upper limit (ES-06).
@@ -145,7 +144,6 @@ pub const ReadOpts = struct {
 };
 
 pub const GlobalReadOpts = struct {
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Resume cursor: return events with global_seq > value; null = from start (ES-04).
     after_global_seq: ?i64,
     /// Optional correlation filter for ADP-06 metadata propagation.
@@ -155,7 +153,6 @@ pub const GlobalReadOpts = struct {
 };
 
 pub const HistoryReadOpts = struct {
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Optional: filter to a specific event_type name. Null = all types.
     event_type: ?[]const u8,
     /// Optional: inclusive lower bound on created_at (UTC µs). Null = no lower bound.
@@ -331,18 +328,18 @@ pub const Store = struct {
         const insert_sql_events =
             \\INSERT INTO events
             \\  (event_id, instance_id, event_type, payload, actor_id,
-            \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
+            \\   sequence_number, idempotency_key, metadata, global_seq)
             \\VALUES
             \\  ($1::uuid, $2::uuid, $3, $4::jsonb, $5::uuid,
-            \\   0, $6, '{}'::jsonb, $7::uuid, nextval('events_global_seq'))
+            \\   0, $6, '{}'::jsonb, nextval('events_global_seq'))
         ;
         const insert_sql_ephemeral =
             \\INSERT INTO events_ephemeral
             \\  (event_id, instance_id, event_type, payload, actor_id,
-            \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
+            \\   sequence_number, idempotency_key, metadata, global_seq)
             \\VALUES
             \\  ($1::uuid, $2::uuid, $3, $4::jsonb, $5::uuid,
-            \\   0, $6, '{}'::jsonb, $7::uuid, nextval('events_global_seq'))
+            \\   0, $6, '{}'::jsonb, nextval('events_global_seq'))
         ;
         const insert_sql = if (std.mem.eql(u8, target_table, "events_ephemeral"))
             insert_sql_ephemeral
@@ -356,7 +353,6 @@ pub const Store = struct {
             params.payload,
             platform.PLATFORM_ACTOR_ID,
             params.idempotency_key,
-            platform.PLATFORM_TENANT_ID,
         }) catch {
             conn.exec("ROLLBACK", &.{}) catch {};
             return StoreError.TransactionFailed;
@@ -728,16 +724,15 @@ pub const Store = struct {
         const events_insert_sql =
             \\INSERT INTO events
             \\  (event_id, instance_id, event_type, payload, actor_id,
-            \\sequence_number, idempotency_key, metadata, tenant_id,
+            \\sequence_number, idempotency_key, metadata,
             \\   global_seq)
             \\VALUES
-            \\  ($10::uuid, $1, $2, $3::jsonb, $4,
+            \\  ($9::uuid, $1, $2, $3::jsonb, $4,
             \\   $5, $6,
             \\   CASE
-            \\     WHEN $9::text = '' THEN $7::jsonb
-            \\     ELSE jsonb_set($7::jsonb, '{pipeline_run_id}', to_jsonb($9::text), true)
+            \\     WHEN $8::text = '' THEN $7::jsonb
+            \\     ELSE jsonb_set($7::jsonb, '{pipeline_run_id}', to_jsonb($8::text), true)
             \\   END,
-            \\   $8::uuid,
             \\   nextval('events_global_seq'))
             \\RETURNING
             \\  event_id, instance_id, event_type, payload, actor_id,
@@ -747,16 +742,15 @@ pub const Store = struct {
         const events_ephemeral_insert_sql =
             \\INSERT INTO events_ephemeral
             \\  (event_id, instance_id, event_type, payload, actor_id,
-            \\sequence_number, idempotency_key, metadata, tenant_id,
+            \\sequence_number, idempotency_key, metadata,
             \\   global_seq)
             \\VALUES
-            \\  ($10::uuid, $1, $2, $3::jsonb, $4,
+            \\  ($9::uuid, $1, $2, $3::jsonb, $4,
             \\   $5, $6,
             \\   CASE
-            \\     WHEN $9::text = '' THEN $7::jsonb
-            \\     ELSE jsonb_set($7::jsonb, '{pipeline_run_id}', to_jsonb($9::text), true)
+            \\     WHEN $8::text = '' THEN $7::jsonb
+            \\     ELSE jsonb_set($7::jsonb, '{pipeline_run_id}', to_jsonb($8::text), true)
             \\   END,
-            \\   $8::uuid,
             \\   nextval('events_global_seq'))
             \\RETURNING
             \\  event_id, instance_id, event_type, payload, actor_id,
@@ -780,7 +774,6 @@ pub const Store = struct {
                 intToStr(param_alloc, sequence_number) catch return StoreError.TransactionFailed,
                 params.idempotency_key,
                 metadata,
-                params.tenant_id,
                 effective_pipeline_run_id,
                 generated_event_id,
             },
@@ -939,13 +932,11 @@ pub const Store = struct {
                 \\       sequence_number, idempotency_key, metadata, global_seq
                 \\FROM events
                 \\WHERE instance_id = $1
-                \\  AND tenant_id = $2::uuid
-                \\  AND sequence_number <= $3::bigint
+                \\  AND sequence_number <= $2::bigint
                 \\ORDER BY sequence_number ASC
             ,
                 &.{
                     uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed,
-                    opts.tenant_id,
                     intToStr(param_alloc, opts.up_to_sequence.?) catch return StoreError.TransactionFailed,
                 },
             ) catch return StoreError.TransactionFailed;
@@ -964,13 +955,11 @@ pub const Store = struct {
                 \\       sequence_number, idempotency_key, metadata, global_seq
                 \\FROM events
                 \\WHERE instance_id = $1
-                \\  AND tenant_id = $2::uuid
-                \\  AND (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $3
+                \\  AND (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $2
                 \\ORDER BY sequence_number ASC
             ,
                 &.{
                     uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed,
-                    opts.tenant_id,
                     intToStr(param_alloc, opts.up_to_timestamp.?) catch return StoreError.TransactionFailed,
                 },
             ) catch return StoreError.TransactionFailed;
@@ -988,12 +977,11 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\       sequence_number, idempotency_key, metadata, global_seq
             \\FROM events
-            \\WHERE instance_id = $1 AND tenant_id = $2::uuid
+            \\WHERE instance_id = $1
             \\ORDER BY sequence_number ASC
         ,
             &.{
                 uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed,
-                opts.tenant_id,
             },
         ) catch return StoreError.TransactionFailed;
         defer {
@@ -1036,14 +1024,13 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\       sequence_number, idempotency_key, metadata, global_seq
             \\FROM events
-            \\WHERE global_seq > $1 AND tenant_id = $2::uuid
-            \\  AND ($4::text = '' OR metadata->>'pipeline_run_id' = $4)
+            \\WHERE global_seq > $1
+            \\  AND ($3::text = '' OR metadata->>'pipeline_run_id' = $3)
             \\ORDER BY global_seq ASC
-            \\LIMIT $3
+            \\LIMIT $2
         ,
             &.{
                 intToStr(param_alloc, cursor) catch return StoreError.TransactionFailed,
-                opts.tenant_id,
                 uintToStr(param_alloc, page_size) catch return StoreError.TransactionFailed,
                 pipeline_filter,
             },
@@ -1118,45 +1105,42 @@ pub const Store = struct {
         // $1 = instance_id
         params_list.append(allocator, instance_hex) catch return StoreError.TransactionFailed;
 
-        // $2 = tenant_id
-        params_list.append(allocator, opts.tenant_id) catch return StoreError.TransactionFailed;
-
-        // event_type filter ($3 for events, reused for archive)
+        // event_type filter ($2 for events, reused for archive)
         if (opts.event_type) |et| {
             params_list.append(allocator, et) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // from filter ($4 for events, reused for archive)
+        // from filter ($3 for events, reused for archive)
         if (opts.from) |f| {
             params_list.append(allocator, intToStr(param_alloc, f) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // to filter ($5 for events, reused for archive)
+        // to filter ($4 for events, reused for archive)
         if (opts.to) |t| {
             params_list.append(allocator, intToStr(param_alloc, t) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // pipeline_run_id filter ($6)
+        // pipeline_run_id filter ($5)
         if (opts.pipeline_run_id) |prid| {
             params_list.append(allocator, prid) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // after_sequence cursor ($7)
+        // after_sequence cursor ($6)
         if (opts.after_sequence) |as| {
             params_list.append(allocator, intToStr(param_alloc, as) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // limit ($8) — fetch page_size + 1 to detect next page
+        // limit ($7) — fetch page_size + 1 to detect next page
         const fetch_limit: u16 = if (opts.limit < 200) opts.limit + 1 else opts.limit;
         params_list.append(allocator, intToStr(param_alloc, @as(i64, fetch_limit)) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
 
@@ -1174,25 +1158,23 @@ pub const Store = struct {
             \\           created_at, sequence_number, idempotency_key, metadata, global_seq
             \\    FROM events
             \\    WHERE instance_id = $1
-            \\      AND tenant_id = $2::uuid
-            \\      AND ($3::text = '' OR event_type = $3)
-            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $4::bigint)
-            \\      AND ($5::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $5::bigint)
-            \\      AND ($6::text = '' OR metadata->>'pipeline_run_id' = $6)
+            \\      AND ($2::text = '' OR event_type = $2)
+            \\      AND ($3::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $3::bigint)
+            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $4::bigint)
+            \\      AND ($5::text = '' OR metadata->>'pipeline_run_id' = $5)
             \\    UNION ALL
             \\    SELECT event_id, instance_id, event_type, payload, actor_id,
             \\           created_at, sequence_number, idempotency_key, metadata, global_seq
             \\    FROM events_archive
             \\    WHERE instance_id = $1
-            \\      AND tenant_id = $2::uuid
-            \\      AND ($3::text = '' OR event_type = $3)
-            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $4::bigint)
-            \\      AND ($5::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $5::bigint)
-            \\      AND ($6::text = '' OR metadata->>'pipeline_run_id' = $6)
+            \\      AND ($2::text = '' OR event_type = $2)
+            \\      AND ($3::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $3::bigint)
+            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $4::bigint)
+            \\      AND ($5::text = '' OR metadata->>'pipeline_run_id' = $5)
             \\) AS combined
-            \\WHERE ($7::text = '' OR sequence_number > $7::bigint)
+            \\WHERE ($6::text = '' OR sequence_number > $6::bigint)
             \\ORDER BY sequence_number ASC
-            \\LIMIT $8
+            \\LIMIT $7
         ;
 
         const rows = conn.query(

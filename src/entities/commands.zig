@@ -94,7 +94,7 @@ pub fn createRecord(
     defer pool.release(conn);
 
     // 1. Load active entity definition
-    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -195,7 +195,7 @@ pub fn updateRecord(
     defer pool.release(conn);
 
     // Load active definition
-    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -269,7 +269,7 @@ pub fn deleteRecord(
     defer pool.release(conn);
 
     // Load active definition
-    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -424,14 +424,14 @@ fn getOrCreateEntityTypeInstance(
     // Only the schema name — derived from the tenant UUID by schemaNameForTenant,
     // never raw user input — is interpolated. All values are bound as $N.
     const query_sql = std.fmt.allocPrint(allocator,
-        \\INSERT INTO {s}.entity_type_instances (entity_type, tenant_id, instance_id)
-        \\VALUES ($1, $2::uuid, gen_random_uuid())
-        \\ON CONFLICT (entity_type) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
+        \\INSERT INTO {s}.entity_type_instances (entity_type, instance_id)
+        \\VALUES ($1, gen_random_uuid())
+        \\ON CONFLICT (entity_type) DO NOTHING
         \\RETURNING instance_id::text
     , .{schema_name}) catch return error.OutOfMemory;
     defer allocator.free(query_sql);
 
-    const row = (conn.queryRow(allocator, query_sql, &.{ entity_type, tenant_id }) catch return error.TransactionFailed) orelse return error.TransactionFailed;
+    const row = (conn.queryRow(allocator, query_sql, &.{entity_type}) catch return error.TransactionFailed) orelse return error.TransactionFailed;
     defer {
         if (row[0]) |v| allocator.free(v);
         allocator.free(row);
@@ -440,7 +440,7 @@ fn getOrCreateEntityTypeInstance(
     const id_str = row[0] orelse return error.TransactionFailed;
     const instance_id = try entities_mod.parseUuid(id_str);
 
-    try ensureEntityInstanceProjection(allocator, conn, schema_name, tenant_id, id_str);
+    try ensureEntityInstanceProjection(allocator, conn, schema_name, id_str);
 
     return instance_id;
 }
@@ -451,21 +451,20 @@ fn ensureEntityInstanceProjection(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
     schema_name: []const u8,
-    tenant_id: []const u8,
     instance_id_str: []const u8,
 ) !void {
     const sql = std.fmt.allocPrint(allocator,
         \\INSERT INTO {s}.instance_projections
-        \\    (tenant_id, instance_id, definition_id, correlation_key,
+        \\    (instance_id, definition_id, correlation_key,
         \\     status, variables, current_nodes, started_at, updated_at)
         \\VALUES
-        \\    ($1::uuid, $2::uuid, $3::uuid, NULL,
+        \\    ($1::uuid, $2::uuid, NULL,
         \\     'ACTIVE', '{{}}'::jsonb, '[]'::jsonb, NOW(), NOW())
         \\ON CONFLICT (instance_id) DO NOTHING
     , .{schema_name}) catch return error.OutOfMemory;
     defer allocator.free(sql);
 
-    conn.exec(sql, &.{ tenant_id, instance_id_str, ENTITY_STREAM_DEFINITION_ID }) catch return error.TransactionFailed;
+    conn.exec(sql, &.{ instance_id_str, ENTITY_STREAM_DEFINITION_ID }) catch return error.TransactionFailed;
 }
 
 fn updateProjection(
@@ -488,8 +487,8 @@ fn updateProjection(
     const schema_name = db.schemaNameForTenant(tenant_id, &schema_buf);
 
     const sql = std.fmt.allocPrint(std.heap.page_allocator,
-        \\INSERT INTO {s}.entity_record_latest (tenant_id, entity_type, record_id, current_state, version_seq, entity_def_version, updated_at, deleted_at)
-        \\VALUES ($1, $2, $3, $4::jsonb, $5, $6, NOW(), {s})
+        \\INSERT INTO {s}.entity_record_latest (entity_type, record_id, current_state, version_seq, entity_def_version, updated_at, deleted_at)
+        \\VALUES ($1, $2, $3::jsonb, $4, $5, NOW(), {s})
         \\ON CONFLICT (entity_type, record_id)
         \\DO UPDATE SET current_state = EXCLUDED.current_state,
         \\          version_seq = EXCLUDED.version_seq,
@@ -499,7 +498,7 @@ fn updateProjection(
     , .{ schema_name, deleted_at, deleted_at }) catch return error.OutOfMemory;
     defer std.heap.page_allocator.free(sql);
 
-    conn.exec(sql, &.{ tenant_id, entity_type, record_id, field_values, seq_str, def_ver_str }) catch return error.TransactionFailed;
+    conn.exec(sql, &.{ entity_type, record_id, field_values, seq_str, def_ver_str }) catch return error.TransactionFailed;
 }
 
 fn fetchRecordResult(
@@ -515,11 +514,11 @@ fn fetchRecordResult(
     const query_sql = try std.fmt.allocPrint(allocator,
         \\SELECT record_id::text, entity_type, current_state::text, version_seq::text
         \\FROM {s}.entity_record_latest
-        \\WHERE entity_type = $1 AND record_id = $2 AND tenant_id = $3
+        \\WHERE entity_type = $1 AND record_id = $2
     , .{schema_name});
     defer allocator.free(query_sql);
 
-    const row = (conn.queryRow(allocator, query_sql, &.{ entity_type, record_id, tenant_id }) catch return error.TransactionFailed) orelse return error.InvalidRecord;
+    const row = (conn.queryRow(allocator, query_sql, &.{ entity_type, record_id }) catch return error.TransactionFailed) orelse return error.InvalidRecord;
     defer {
         for (row) |col| if (col) |v| allocator.free(v);
         allocator.free(row);

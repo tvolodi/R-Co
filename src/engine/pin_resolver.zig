@@ -354,7 +354,7 @@ pub const PinResolver = struct {
     // parameterized $2::uuid against service_catalog.owner_tenant_id, NOT
     // via the dropped bpm_effective_tenant_id() SQL function (removed by the
     // LEGACY_RLS-to-SCHEMA cutover migrations GBL-116/123/130/131) and NOT
-    // via a session GUC (SCHEMA mode never sets bpm.tenant_id — see
+    // via a session GUC (SCHEMA mode never sets the tenant session variable — see
     // src/db/pool.zig applyRequestStorageRouting()). service_catalog lives
     // in the shared `public` schema in both storage modes, so this bound
     // predicate is the only correct tenant scope here. Mirrors

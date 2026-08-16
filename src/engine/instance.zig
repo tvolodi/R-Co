@@ -615,7 +615,7 @@ pub const InstanceStore = struct {
         // 584408611586c) after a later merge/rebase silently reintroduced
         // this predicate. Do not reintroduce a per-tenant-schema copy of
         // bpm_effective_tenant_id() either — that variant falls back to
-        // current_setting('bpm.tenant_id', true), which SCHEMA mode never
+        // current_setting('tenant', true), which SCHEMA mode never
         // sets (src/db/pool.zig applyRequestStorageRouting(), SCHEMA branch),
         // so it would silently resolve to the zero UUID rather than error.
         const def_id_hex = uuidToHex(a, definition_id) catch
@@ -894,7 +894,7 @@ pub const InstanceStore = struct {
         // bpm_effective_tenant_id() (dropped from public by the
         // LEGACY_RLS-to-SCHEMA cutover; a per-tenant-schema copy still
         // exists but falls back to the zero UUID in SCHEMA mode since
-        // bpm.tenant_id is never set there — see the Step b comment above).
+        // the tenant session variable is never set there — see the Step b comment above).
         // instance_projections.tenant_id still exists as a NOT NULL column
         // under each per-tenant schema (confirmed via \d against bpm_test),
         // so it must be supplied explicitly rather than dropped from the

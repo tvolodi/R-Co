@@ -236,10 +236,10 @@ pub fn computePackUpdatePlan(
                     allocator,
                     \\SELECT graph::text
                     \\FROM process_definitions
-                    \\WHERE tenant_id = $1::uuid AND name = $2
+                    \\WHERE name = $1
                     \\LIMIT 1
                 ,
-                    &[_][]const u8{ tenant_id, ia.artefact_id },
+                    &[_][]const u8{ ia.artefact_id },
                 ) catch null;
                 if (theirs_row) |r| {
                     defer {

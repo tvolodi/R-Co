@@ -274,6 +274,7 @@ pub fn getPreviousChainHash(
     pool: *db.Pool,
     tenant_id: []const u8,
 ) AuditError!?[64]u8 {
+    _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query; the column predicate is gone.
     const conn = pool.acquire() catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
@@ -283,10 +284,10 @@ pub fn getPreviousChainHash(
     var rows = conn.query(allocator,
         \\SELECT chain_hash
         \\FROM audit_entries
-        \\WHERE tenant_id = $1::uuid AND chain_hash IS NOT NULL
+        \\WHERE chain_hash IS NOT NULL
         \\ORDER BY "timestamp" DESC, audit_id DESC
         \\LIMIT 1
-    , &.{tenant_id}) catch |err| switch (err) {
+    , &.{}) catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
     };
@@ -313,6 +314,7 @@ pub fn validateAuditChain(
     pool: *db.Pool,
     tenant_id: []const u8,
 ) AuditError!bool {
+    _ = tenant_id; // SPT-03: schema-per-tenant search_path scopes the query; the column predicate is gone.
     const conn = pool.acquire() catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
@@ -336,9 +338,9 @@ pub fn validateAuditChain(
         \\  payload_full::text,
         \\  trace_id::text
         \\FROM audit_entries
-        \\WHERE tenant_id = $1::uuid AND chain_hash IS NOT NULL
+        \\WHERE chain_hash IS NOT NULL
         \\ORDER BY "timestamp" ASC, audit_id ASC
-    , &.{tenant_id}) catch |err| switch (err) {
+    , &.{}) catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
     };
@@ -389,12 +391,12 @@ pub fn validateAuditChain(
 /// and computes this row's chain hash. FOR UPDATE is not needed here because the
 /// chain-hash query is part of the same serializable transaction.
 ///
-/// ISS-0688 / GH-745: `tenant_id` is bound as an explicit $N parameter — the
-/// caller supplies it (e.g. from the request's tenant_context) rather than
-/// this function reading it from the dropped bpm_effective_tenant_id() SQL
-/// function. audit_entries.tenant_id still exists as a NOT NULL column under
-/// each per-tenant schema (SCHEMA-mode routing does not drop it, only the
-/// public copy was dropped), so it must be supplied explicitly.
+/// SPT-03: the tenant_id column reference is removed from the INSERT — the
+/// per-tenant schema is the isolation boundary, and the tenant schema's
+/// audit_entries.tenant_id NOT NULL column (dropped only from the public copy
+/// by migration 062) is filled by its bpm_effective_tenant_id() default, which
+/// falls back to the all-zeros UUID when the legacy tenant session variable is
+/// unset (as it is under SPT-03 schema-only routing).
 pub fn writeAuditInTx(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
@@ -408,6 +410,7 @@ pub fn writeAuditInTx(
     trace_id_param: ?[]const u8,
     pipeline_run_id_param: ?[]const u8,
 ) AuditError![]const u8 {
+    _ = tenant_id; // SPT-03: tenant context is established via the pool's search_path; not an INSERT column anymore.
     // Generate a fresh UUID v4 for audit_id.
     var audit_bytes: [16]u8 = undefined;
     {
@@ -437,19 +440,18 @@ pub fn writeAuditInTx(
     // Security: all values bound as $N params — no SQL string interpolation.
     conn.exec(
         \\INSERT INTO audit_entries
-        \\    (tenant_id, audit_id, actor_id, action, resource_type,
+        \\    (audit_id, actor_id, action, resource_type,
         \\     resource_id, before_state, after_state, trace_id, pipeline_run_id)
         \\VALUES
-        \\    ($1::uuid, $2::uuid,
-        \\     NULLIF($3, '')::uuid,
-        \\     $4, $5, $6,
+        \\    ($1::uuid,
+        \\     NULLIF($2, '')::uuid,
+        \\     $3, $4, $5,
+        \\     NULLIF($6, '')::jsonb,
         \\     NULLIF($7, '')::jsonb,
-        \\     NULLIF($8, '')::jsonb,
-        \\     NULLIF($9, ''),
-        \\     NULLIF($10, '')::uuid)
+        \\     NULLIF($8, ''),
+        \\     NULLIF($9, '')::uuid)
     ,
         &.{
-            tenant_id,
             audit_id_hex,
             actor_param,
             action,
