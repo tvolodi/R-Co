@@ -1,0 +1,72 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-04-unblock-backend-dev",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "04-unblock",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-spt02-04-20260816/step-04-unblock-backend-dev.json",
+  "created_at": "2026-08-16T19:14:39Z",
+  "started_at": "2026-08-16T19:14:55Z",
+  "completed_at": "2026-08-16T19:26:20Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-04-test-runner",
+      "WF02-spt02-04-20260816-02a-backend-dev"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/integration/adp06_pipeline_run_correlation_test.zig",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "TEST-RUNNER Step 4 FAIL (branch-introduced regression): commit 27ec5d6c (SPT-03, step 02a) removed tenant_id from event_store.store.ReadOpts/GlobalReadOpts/PlatformAppendParams, but tests/integration/event_store_integration_test.zig:1543 and :1655 still set .tenant_id = bpm.store.DEFAULT_TENANT_ID → compile error, test-integration-event-store EXIT 1. Verified branch-introduced (base HEAD~5 still had the field). Fix route recorded by TEST-RUNNER: drop the two ReadOpts.tenant_id initializers (tenant now resolved via search_path), re-run test-integration-event-store. TEST-RUNNER also flagged adp06_pipeline_run_correlation_test.zig:217/318 as the same latent break but unwired in build.zig (not a gate today) — since it is the same branch-introduced break in a test file, fix it too so the branch does not ship a broken test file; report both."
+  },
+  "task": {
+    "description": "Fix the branch-introduced test regression blocking Step 4 (TEST-RUNNER FAIL) for run WF02-spt02-04-20260816. (1) tests/integration/event_store_integration_test.zig:1543 and :1655 — drop the two .tenant_id = bpm.store.DEFAULT_TENANT_ID initializers on ReadOpts (tenant now resolved via search_path); (2) tests/integration/adp06_pipeline_run_correlation_test.zig:217 and :318 — same class of branch-introduced break (ReadOpts.tenant_id removed by SPT-03), fix identically so the branch ships no broken test file; (3) verify: zig build test-integration-event-store exits 0; zig build test-integration-spt still 16/16; zig build exits 0. Run python tools/lint_handoffs.py and report its exit code.",
+    "acceptance_criteria": [
+      "event_store_integration_test.zig compiles and test-integration-event-store passes",
+      "adp06_pipeline_run_correlation_test.zig fixed (same class) — no broken test file on the branch",
+      "test-integration-spt still 16/16 PASS",
+      "zig build exits 0",
+      "lint_handoffs.py exit code reported"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed branch-introduced SPT-03 event-store regression blocking Step 4. Dropped ReadOpts.tenant_id at event_store_integration_test.zig:1543/1655 (+1679 alt_events, needed for compile) and adp06:217/318 (GlobalReadOpts/HistoryReadOpts). Discovered + fixed second SPT-03 runtime regression: events_ephemeral.tenant_id had no column default so delete-class appends inserted NULL (sqlstate 23502, TC-ADP-11-02) — new migration 1163 gives it the same DEFAULT as events (parent + existing partitions). Verified: test-integration-event-store 29/29 EXIT 0 (Build Summary 6/6); test-integration-spt 16/16 EXIT 0; zig build EXIT 0 (4/4, no error-set output); lint_migration_schema 0 violations; lint_sql_table_refs OK. lint_handoffs exit code reported in final summary.",
+    "artifacts_out": [
+      "tests/integration/event_store_integration_test.zig",
+      "tests/integration/adp06_pipeline_run_correlation_test.zig",
+      "migrations/1163_events_ephemeral_tenant_id_default.sql",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-04-unblock-backend-dev-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Second SPT-03 regression discovered and fixed in this unblock: events_ephemeral.tenant_id is NOT NULL with no column default (migration 1149) while SPT-03 removed tenant_id from the ephemeral INSERT — every delete-class append inserted NULL (sqlstate 23502), breaking TC-ADP-11-02 at runtime (latent because the file never compiled on the branch). Fixed via migration 1163 (parent + existing partitions get the same DEFAULT as events). Resolved within the run; no open issue required."
+      },
+      {
+        "severity": "MINOR",
+        "description": "adp06_pipeline_run_correlation_test.zig remains unwired in build.zig (never a gate); its removed-field break is fixed so no broken test file ships on the branch — wiring it is a follow-up SPT batch candidate."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4 re-run) to confirm the SPT-02/03/04 regression families all green; then Step Final."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
