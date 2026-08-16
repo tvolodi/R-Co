@@ -100,7 +100,7 @@ pub const EnvInput = struct {
 // Public error set
 // ---------------------------------------------------------------------------
 
-pub const ValidationError = error{ OutOfMemory };
+pub const ValidationError = error{OutOfMemory};
 
 // ---------------------------------------------------------------------------
 // validateDefinition — the single entry point (VLD-01/02/03)
@@ -413,7 +413,7 @@ test "validateDefinition: variable_schema declares unknown type -> UnknownVariab
     const input = EnvInput{
         .graph = graph_mod.DefinitionGraph{
             .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
-            .edges = &[_]graph_mod.GraphEdge{ e1 },
+            .edges = &[_]graph_mod.GraphEdge{e1},
         },
         .variable_schema = &[_]VariableSchemaEntry{
             .{ .name = "weird", .var_type = "uuid" },

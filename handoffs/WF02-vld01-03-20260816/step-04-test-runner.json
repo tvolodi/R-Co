@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "handoff_id": "WF02-vld01-03-20260816-04-test-runner",
+  "workflow_id": "WF02",
+  "run_id": "WF02-vld01-03-20260816",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "stage": "Step 04 - test execution",
+  "created_at": "2026-08-16T03:07:28Z",
+  "started_at": "2026-08-16T03:07:28Z",
+  "completed_at": "2026-08-16T03:57:45Z",
+  "status": "COMPLETED",
+  "rework_count": 0,
+  "max_rework": 2,
+  "task": {
+    "description": "Execute the integration test suite for VLD-01/02/03. The test specification is at tests/specs/vld-01-03-stage-16-validation.spec.md. Tests to run: zig build test (unit) and zig build test-integration-tm (integration). Goal: every MUST AC test passes. Write a structured test report to tests/reports/WF02-vld01-03-20260816-test-report.md. If any test fails, classify the failure: SPEC_DEVIATION (spec wrong), IMPL_BUG (impl broken), ENV_ISSUE (env problem). Return PASS only if all MUST AC tests are green.",
+    "fn": "test-run",
+    "branch_name": "feature/wf02-vld01-03-20260816",
+    "commit_sha_under_test": "31482edb",
+    "spec": "tests/specs/vld-01-03-stage-16-validation.spec.md",
+    "bench_env_status": "HEALTHY (10/10 checks)",
+    "must_ac_count": 15,
+    "report_path": "tests/reports/WF02-vld01-03-20260816-test-report.md",
+    "commands": [
+      "zig build test",
+      "zig build test-integration-tm"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Two blocking failures. (1) SPEC_DEVIATION: tests/integration/validation_vld_unit_test.zig and tests/integration/validation_vld_http_test.zig do NOT exist on the branch (spec §1 + §5.1 mandate them; Step 03 TEST-DESIGNER was responsible). No validation_vld wiring in build.zig or main_test.zig either. 0/15 MUST ACs executed because spec test files are missing. (2) IMPL_BUG: zig build test on commit 31482edb returns 1 with 10 failing in-file unit tests inside src/validation/{site,pd06,typecheck,mod}_test.zig; strongest signal is mod.test.validateDefinition clean-path returning 3 findings where 0 are expected. The implementation is broken end-to-end and would not pass the spec tests even if they existed. ENV is HEALTHY (10/10). Routing: ORCH must redispatch Step 03 TEST-DESIGNER to write the spec files + build.zig/main_test.zig wiring, AND dispatch BACKEND-DEV to fix the 10 failing in-file src/validation/* unit tests, AND widen Step 03b evidence list to require file-existence checks. TEST-RUNNER cannot create the spec test files (out of scope per dispatch instructions) and cannot fix the implementation (out of scope per TEST-RUNNER role).",
+    "artifacts_out": [
+      "tests/reports/WF02-vld01-03-20260816-test-report.md"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "classification": "SPEC_DEVIATION",
+        "description": "Spec mandates tests/integration/validation_vld_unit_test.zig (12 blocks) and tests/integration/validation_vld_http_test.zig (5 blocks) plus build.zig addTest + test-integration-vld-unit/http narrow steps plus main_test.zig imports. NONE of these exist on branch feature/wf02-vld01-03-20260816 at commit 31482edb (verified via Get-ChildItem + grep + git log --all). 0/15 MUST ACs can be executed. Step 03 (TEST-DESIGNER) failed to produce its deliverable; Step 03b (TEST-DESIGN-VALIDATOR) approved spec-only without verifying file existence.",
+        "next_step": "Re-dispatch TEST-DESIGNER to produce the two spec files + wiring; re-dispatch TEST-DESIGN-VALIDATOR with widened file-existence evidence list."
+      },
+      {
+        "severity": "BLOCKER",
+        "classification": "IMPL_BUG",
+        "description": "zig build test exit 1; 10 failing in-file unit tests in src/validation/{site,pd06,typecheck,mod}_test.zig. Clean-path test (mod.test.validateDefinition: clean linear definition with one guard) expects 0 findings but returns 3. Helper modules (site.zig, pd06.zig, typecheck.zig) all fail their own unit tests. The validation route wired by 31482edb (src/api/routes/validation.zig) depends on these helpers and cannot satisfy VLD-01/02/03 ACs end-to-end until the helpers pass their own tests.",
+        "next_step": "Re-dispatch BACKEND-DEV to fix src/validation/{site,pd06,typecheck,mod}.zig until zig build test is green on this branch."
+      }
+    ],
+    "test_report_path": "tests/reports/WF02-vld01-03-20260816-test-report.md",
+    "failures": [
+      {
+        "classification": "SPEC_DEVIATION",
+        "description": "Spec §1 + §5.1 mandate tests/integration/validation_vld_unit_test.zig (12 blocks) + tests/integration/validation_vld_http_test.zig (5 blocks). Files do not exist on branch, in working tree, or in git history. Wiring into build.zig and main_test.zig is also absent.",
+        "mitigation": "Re-dispatch Step 03 TEST-DESIGNER. Re-run Step 03b with file-existence evidence list. Re-dispatch Step 04."
+      },
+      {
+        "classification": "IMPL_BUG",
+        "description": "zig build test exit 1: 10 failing in-file tests in src/validation/{site,pd06,typecheck,mod}_test.zig. Clean-path test reports 3 findings where 0 are expected.",
+        "mitigation": "Re-dispatch BACKEND-DEV. Once zig build test is green, re-run Step 04 TEST-RUNNER."
+      }
+    ],
+    "test_counts": {
+      "zig_build_test": "95/107 steps succeeded; 981/1056 tests passed (69 skip, 4 fail, 2 crash)",
+      "zig_build_test_integration_tm": "NOT EXECUTED (no VLD-targeted step wired)",
+      "spec_ac_count_target": 15,
+      "spec_ac_count_executed": 0,
+      "in_file_vld_unit_test_failures": 10
+    },
+    "next_action": "Route back to ORCH for re-dispatch: Step 03 (TEST-DESIGNER) for spec file authoring + wiring, BACKEND-DEV for IMPL_BUG fixes, Step 03b (TEST-DESIGN-VALIDATOR) with widened evidence list, then re-dispatch Step 04 (TEST-RUNNER)."
+  }
+}

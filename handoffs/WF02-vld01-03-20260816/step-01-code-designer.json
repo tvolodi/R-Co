@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "handoff_id": "WF02-vld01-03-20260816-01-code-designer",
+  "workflow_id": "WF02",
+  "run_id": "WF02-vld01-03-20260816",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "stage": "Step 01 - design artefact (rework #1 applied)",
+  "created_at": "2026-08-16T00:49:07Z",
+  "started_at": "2026-08-16T00:49:07Z",
+  "completed_at": "2026-08-16T01:32:13Z",
+  "status": "COMPLETED",
+  "rework_count": 1,
+  "max_rework": 2,
+  "task": {
+    "description": "REWORK applied to original design: rename §9 heading from 'Error kinds — full taxonomy' to 'Error taxonomy' to satisfy lint_design_artefact.py E010. All 15 ACs unchanged, no other edits.",
+    "fn": "design",
+    "requirements": [
+      {
+        "id": "VLD-01",
+        "title": "Typed environment from definition context",
+        "stage": "16",
+        "priority": "MUST",
+        "status": "DRAFT",
+        "acceptance_criteria": [
+          "GIVEN variable_schema declares a type name outside the mapping table, WHEN the environment is built, THEN the platform returns HTTP 422 UnknownVariableType naming the variable and the type.",
+          "GIVEN a SERVICE_TASK references a catalog entry that declares no result schema, WHEN the environment is built, THEN the platform returns HTTP 422 UndeclaredResultSchema naming the node and the reference.",
+          "GIVEN two form fields in one human task scope declare the same name with different types, WHEN the environment is built, THEN the platform returns HTTP 422 ConflictingFieldType naming both declarations.",
+          "The environment is derived from declarations only; no instance variable value contributes a type.",
+          "A node output type is visible only to expression sites on nodes reachable after that node, and a form field type only inside its own human task scope."
+        ],
+        "see": [
+          "PD-06",
+          "EE-05",
+          "REPO-07",
+          "SVC-01",
+          "PLC-01",
+          "VLD-02"
+        ]
+      },
+      {
+        "id": "VLD-02",
+        "title": "Expression compile and type check",
+        "stage": "16",
+        "priority": "MUST",
+        "status": "DRAFT",
+        "acceptance_criteria": [
+          "GIVEN a transition guard that compiles to a type other than bool, WHEN it is checked, THEN the platform records TypeMismatch naming bool as expected and the compiled type as actual.",
+          "GIVEN an expression referencing an identifier absent from the environment, WHEN it is compiled, THEN the platform records UnknownVariable naming the identifier.",
+          "GIVEN an expression adding a string operand to a number operand, WHEN it is compiled, THEN the platform records OperandTypeError naming the operator and both operand types.",
+          "GIVEN the PD-06 syntax check fails, WHEN validation runs, THEN semantic compilation does not execute and the response carries the PD-06 diagnostics only.",
+          "GIVEN an expression site holding an empty or whitespace-only string, WHEN it is checked, THEN the platform records EmptyExpression rather than passing the site."
+        ],
+        "see": [
+          "PD-02",
+          "PD-06",
+          "EE-05",
+          "VLD-01",
+          "VLD-03",
+          "VLD-04"
+        ]
+      },
+      {
+        "id": "VLD-03",
+        "title": "Aggregated validation diagnostics",
+        "stage": "16",
+        "priority": "MUST",
+        "status": "DRAFT",
+        "acceptance_criteria": [
+          "GIVEN a definition with three failing expression sites, WHEN validation runs, THEN one HTTP 422 response contains three findings; validation does not stop at the first failure.",
+          "GIVEN any finding, WHEN it is serialised, THEN it carries node_id, expression_path, source, error_kind and message.",
+          "GIVEN a finding of kind UnknownVariable, WHEN the message is built, THEN it names the referenced identifier and the nearest declared identifier by edit distance.",
+          "Findings are ordered by node_id then expression_path, so two validations of the same definition produce identical ordering.",
+          "No error_kind value outside the enumerated set is emitted."
+        ],
+        "see": [
+          "VLD-01",
+          "VLD-02",
+          "VLD-04",
+          "PD-06"
+        ]
+      }
+    ],
+    "constraints": [
+      "Design under src/design/ (path convention from existing designs)",
+      "NO implementation code (Zig, TypeScript, SQL)",
+      "Cover EVERY acceptance criterion from EVERY requirement (count: 15 ACs across 3 reqs)",
+      "Name the design file consistently with existing convention (e.g. vld-01-03-stage-16-validation.md or similar)",
+      "Identify the CEL compile integration point — what existing module owns expression compilation today?",
+      "Identify the data model changes needed in migrations/ if any (env, scope map, finding shape)",
+      "Identify API surface changes: validation endpoint contract (HTTP 422 with findings array)",
+      "Identify error_kind enum values: UnknownVariable, TypeMismatch, OperandTypeError, UnknownVariableType, UndeclaredResultSchema, ConflictingFieldType, EmptyExpression"
+    ],
+    "branch_name": "feature/wf02-vld01-03-20260816",
+    "base_commit_sha": "d30005043f63b3cbb8fd38d90998a5ef4f3cf886",
+    "rework_summary": {
+      "rework_number": 1,
+      "triggered_by": "CODE-DESIGN-VALIDATOR FAIL on E010 heading-phrasing false positive",
+      "fix_applied": "Renamed §9 heading '## 9. Error kinds — full taxonomy' → '## 9. Error taxonomy' at L597 of src/design/vld-01-03-stage-16-validation.md",
+      "diff_scope": "1 line heading text only; rest of 642-line file byte-identical",
+      "lint_after_fix": "lint_design_artefact.py: OK - 1 file(s) checked, no issues",
+      "validator_gate_predicted": "PASS (all 15 ACs unchanged, all 7 completeness items unchanged)"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E prose design produced at src/design/vld-01-03-stage-16-validation.md covering all 15 acceptance criteria across VLD-01 (typed environment from variable_schema, service-catalog response_schema, module interface_schema.outputs, and human-task form fields), VLD-02 (per-site semantic compile against the per-site env slice with PD-06 as a hard gate), and VLD-03 (RFC 9457 aggregation with the closed 7-variant ErrorKind enum, deterministic ordering by node_id then expression_path, and edit-distance suggestion for UnknownVariable). The design introduces a new src/validation/ module (mod.zig, env.zig, scope.zig, typecheck.zig, site.zig, pd06.zig, finding.zig, wire.zig) but no new migrations — VLD-01/02/03 are storage-free; the optional semantically_valid verdict row is VLD-04 territory and explicitly excluded. Existing precedents followed: PD-06 isValidCelSyntax reused for the VLD-02 AC4 syntax gate, SPC-01/PLC-01 interface_schema already validated by SPC-02, expr/ast.zig and expr/types.zig reused unchanged, and the SPC-01/PLC-01 collection-all-violations pattern transfers to the gathering Finding list. All 15 ACs are explicitly mapped in the design section 16 acceptance-criteria-coverage table (VLD-01 5/5, VLD-02 5/5, VLD-03 5/5). The lego-catalog classification is Type E only: handler requires multi-step orchestration (env build + per-site compile + finding collection) that overflows the CUSTOM-block template, and the requirements body specifies no new persistent table.",
+    "artifacts_out": [
+      "src/design/vld-01-03-stage-16-validation.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) for design-lint and AC coverage verification",
+    "acceptance_criteria_coverage": {
+      "VLD-01": "5/5",
+      "VLD-02": "5/5",
+      "VLD-03": "5/5"
+    },
+    "design_type": "Type E",
+    "parameter_files": [],
+    "migrations_added": [],
+    "rework_applied": true,
+    "rework_number": 1,
+    "rework_fix_verified": "lint_design_artefact.py: OK - 1 file(s) checked, no issues"
+  }
+}

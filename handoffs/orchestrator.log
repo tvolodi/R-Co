@@ -1793,3 +1793,4 @@
 2026-08-16T08:13:32Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-006 | ORCH -> RELEASE-VALIDATOR | PENDING | STEP 6: release decision VLD-01/02/03 (BLOCKER severity)
 2026-08-16T08:19:22Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-007 | ORCH -> DOC-UPDATER | PENDING | STEP 7: mark VLD-01/02/03 RELEASED + changelog
 2026-08-16T08:24:32Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 007 | DOC-UPDATER | PASS | Step 7: mark VLD-01/02/03 RELEASED + changelog (reqctl set-status + render-status + CHANGELOG [Unreleased] 2026-08-16)
+2026-08-16T08:27:04Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-008-final | ORCH -> BACKEND-DEV | PENDING | STEP Final: git-merge feature branch to main

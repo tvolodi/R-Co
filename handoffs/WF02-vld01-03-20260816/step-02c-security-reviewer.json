@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "handoff_id": "WF02-vld01-03-20260816-02c-security-reviewer",
+  "workflow_id": "WF02",
+  "run_id": "WF02-vld01-03-20260816",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "stage": "Step 02c - security review RE-VERIFY after rework",
+  "created_at": "2026-08-16T02:55:38Z",
+  "started_at": "2026-08-16T02:55:38Z",
+  "completed_at": "2026-08-16T02:57:01Z",
+  "status": "COMPLETED",
+  "rework_count": 1,
+  "max_rework": 2,
+  "previous_attempts": [
+    {
+      "attempt": 1,
+      "result_status": "FAIL",
+      "completed_at": "2026-08-16T02:44:33Z",
+      "result_summary": "BLOCKER-1: validation_routes.handleValidate imported but never invoked in src/main.zig (grep returned 0 hits). BLOCKER-2: handleValidate signature has no tenant_id parameter.",
+      "blocker_issues": [
+        "Route not wired into serveRequest",
+        "handleValidate signature missing tenant_id"
+      ]
+    },
+    {
+      "attempt": "1-fix",
+      "commit_sha": "31482edb",
+      "fix_summary": "BACKEND-DEV wired the route (src/main.zig:762-773) and added tenant_id parameter to handleValidate (src/api/routes/validation.zig:55-96). Sets api_tenant_context before store.getById with defer clear. Cross-tenant reads return DefinitionNotFound (404)."
+    }
+  ],
+  "task": {
+    "description": "RE-VERIFY the security review after the two BLOCKERs were addressed in commit 31482edb. Confirm: (1) the route IS now invoked (grep 'validation_routes\\.' src/main.zig must return at least 1 hit in serveRequest), (2) tenant_id IS threaded to the store, (3) cross-tenant reads still return 404/403 (not 200 with another tenant's data). If both fixes are correctly applied, return PASS.",
+    "fn": "security-review-rework-1",
+    "branch_name": "feature/wf02-vld01-03-20260816",
+    "commit_sha_under_review": "31482edb",
+    "files_changed_in_rework": [
+      "src/main.zig (added serveRequest branch for POST /validate)",
+      "src/api/routes/validation.zig (added tenant_id parameter, ambient context set/clear)"
+    ],
+    "constraints_to_reverify": [
+      "BLOCKER-1: grep 'validation_routes\\.' src/main.zig >= 1 hit",
+      "BLOCKER-2: handleValidate signature includes tenant_id, store.getById called with ambient tenant context set",
+      "Auth required on the new endpoint (preserved from prior review)",
+      "Error messages do not include unrelated definition content (preserved)",
+      "ErrorKind enum is closed (preserved)",
+      "UnknownVariable suggestion scope (preserved)",
+      "Order is deterministic (preserved)"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "RE-VERIFY after commit 31482edb: BLOCKER-1 and BLOCKER-2 both fixed. (1) BLOCKER-1: grep \"validation_routes.\" src/main.zig returns 1 hit at line 772 inside the POST /validate branch (src/main.zig:762-773); handleValidate is invoked with (def_store, req_alloc, validate_tenant, seg4) where validate_tenant is resolved from authenticated_ctx.tenant_id (with DEFAULT_TENANT_ID fallback). (2) BLOCKER-2: handleValidate signature now includes tenant_id: [36]u8 as the 3rd parameter (src/api/routes/validation.zig:55-62); api_tenant_context.set(tenant_id[0..]) is called before store.getById with defer api_tenant_context.clear() at validation.zig:79-83. Defence in depth: process_definitions has FORCE ROW LEVEL SECURITY with tenant_id = bpm_effective_tenant_id() predicate (migrations/028_adp02_tenant_scope_persistence.sql), and the ambient context assertion in the handler closes the gap if a future refactor caches/reuses connections across tenant boundaries. Cross-tenant reads return DefinitionNotFound (404) -- the store.getById (store.zig:326-368) does not accept a tenant_id override and relies on ambient context, so a request with tenant_id_A asking for a definition belonging to tenant_id_B returns 0 rows -> 404. Preserved constraints spot-checked: auth required (middleware runs before serveRequest so the new branch cannot bypass it at main.zig:558, dispatch at 772); error messages do not include unrelated definition content (validation.zig errorResult only formats the literal message string and status); ErrorKind enum closed and UnknownVariable suggestion scope unchanged on validation/finding.zig and validation/env.zig from prior commit a90797e7; order deterministic from finding.zig sort logic unchanged in this rework. All applicable invariants (INV-1, INV-2, INV-5, INV-7) are satisfied: INV-1 PASS (no new migration tables, scope is per-schema), INV-2 PASS (handleValidate reads only the definition the caller tenant_id entitles; error bodies are status + message only, no field-leakage), INV-5 PASS (cross-tenant reads uniformly return 404; the handler does not distinguish \"not found\" from \"wrong tenant\" -- both fall through as DefinitionNotFound), INV-7 PASS (store.getById binds id as $1::uuid -- no string interpolation; the env builder has no SQL). INV-3, INV-4, INV-6, INV-8 are not applicable to this diff (no new Lua/Wasm host APIs, no secret material, no new catch unreachable on realistic failure paths).",
+    "artifacts_out": [],
+    "issues": [],
+    "fixes_verified": [
+      "wire_route: src/main.zig:762-773 dispatches to validation_routes.handleValidate",
+      "tenant_id: handleValidate signature includes tenant_id, store.getById runs under set/clear ambient context"
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  }
+}

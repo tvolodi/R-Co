@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "handoff_id": "WF02-vld01-03-20260816-03-test-designer-rework-1",
+  "workflow_id": "WF02",
+  "run_id": "WF02-vld01-03-20260816",
+  "step": "03-rework",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "stage": "Step 03 REWORK #2 - fix build.zig regression + complete wiring + commit",
+  "created_at": "2026-08-16T03:59:30Z",
+  "started_at": "2026-08-16T03:59:30Z",
+  "completed_at": "2026-08-16T05:37:53Z",
+  "status": "COMPLETED",
+  "rework_count": 2,
+  "max_rework": 2,
+  "previous_attempts": [
+    {
+      "attempt": 1,
+      "result_status": "PASS",
+      "result_summary": "Spec at tests/specs/vld-01-03-stage-16-validation.spec.md (453 lines, 15/15 ACs). TEST-RUNNER reported spec files missing — TEST-DESIGNER's step-03 deliverable was spec-only.",
+      "missing_deliverables": [
+        "tests/integration/validation_vld_unit_test.zig (12 test blocks)",
+        "tests/integration/validation_vld_http_test.zig (5 test blocks)",
+        "build.zig wiring (addTest + narrow steps test-integration-vld-unit + test-integration-vld-http)",
+        "tests/integration/main_test.zig imports"
+      ]
+    },
+    {
+      "attempt": "2-partial",
+      "result_status": "INTERRUPTED",
+      "result_summary": "Files produced on disk (validation_vld_unit_test.zig 14 blocks, validation_vld_http_test.zig 5 blocks) but agent response lost to network. Incomplete: build.zig transition_mod lost root_source_file (build broken: module root depends on non-existent module transition); main_test.zig has NO validation_vld imports; no test-integration-vld-* narrow steps; nothing committed.",
+      "needs_fix": true
+    }
+  ],
+  "task": {
+    "description": "REWORK #2 (recovery of a lost-response partial run): The previous rework dispatch DID write the two test files to disk (tests/integration/validation_vld_unit_test.zig — 14 test blocks; tests/integration/validation_vld_http_test.zig — 5 test blocks), but its response was lost to a network failure before it could complete. The work on disk is INCOMPLETE and BROKEN. You must verify/fix and COMPLETE the rework:\n\n(1) REPAIR build.zig: the current working tree has `transition_mod` missing `.root_source_file = b.path(\"src/engine/transition.zig\")` and `.target = target` (an accidental regression). `zig build` currently fails with 'module root depends on non-existent module transition'. RESTORE those two lines so transition_mod matches the committed baseline (check git show HEAD:build.zig for the correct lines).\n\n(2) VERIFY the two test files compile and are wired: tests/integration/validation_vld_unit_test.zig (14 blocks) and tests/integration/validation_vld_http_test.zig (5 blocks) must be reachable. Check `git status` — they are currently untracked. Confirm each file is complete (proper imports, no truncation, no error.SkipZigTest, no hardcoded UUIDs). Fix any defects.\n\n(3) WIRE into tests/integration/main_test.zig using the existing SPC-01 import-as-comptime pattern (e.g. `const _vld_unit = @import(\"validation_vld_unit_test.zig\"); const _vld_http = @import(\"validation_vld_http_test.zig\");`).\n\n(4) WIRE into build.zig: add addTest entries for both files and add narrow steps test-integration-vld-unit and test-integration-vld-http per the spec §5 wiring plan. Match the existing integration test wiring pattern (look at an existing narrow step like test-integration-exp401-exp402).\n\n(5) VERIFY: `zig build` must exit 0. `zig build test-integration-vld-unit` and `zig build test-integration-vld-http` must run (tests may fail with the known IMPL_BUG — that is a SEPARATE WF-03 workflow; the wiring itself must succeed and the build must be green).\n\n(6) COMMIT on the feature branch with a conventional message (e.g. `test(validation): wire VLD-01/02/03 spec tests into integration suite`). Include the two test files, build.zig fix+wiring, main_test.zig wiring, and any supporting shims needed to make the tests reach the handler (e.g. the src/bpm.zig validation_routes re-export if present).\n\n(7) Update this handoff file with status=COMPLETED, result.status=PASS, result.artifacts_out (test files + build.zig + main_test.zig + commit SHA), result.test_count_produced=19 (14+5), completed_at=now via python tools/utcnow.py.\n\nReturn PASS only if: zig build exits 0 AND both test files exist and are reachable AND main_test.zig + build.zig wiring present AND commit created.",
+    "fn": "test-design-rework-2",
+    "branch_name": "feature/wf02-vld01-03-20260816",
+    "spec": "tests/specs/vld-01-03-stage-16-validation.spec.md",
+    "deliverables_to_produce": [
+      "tests/integration/validation_vld_unit_test.zig",
+      "tests/integration/validation_vld_http_test.zig",
+      "build.zig wiring (addTest entries + narrow test-integration-vld-* steps)",
+      "tests/integration/main_test.zig imports",
+      "git commit on feature branch"
+    ],
+    "constraints": [
+      "Each test must be self-sufficient (no reliance on previous test ordering)",
+      "Each test must have its own definition JSON fixture (no shared mutable state)",
+      "Tests follow the existing pattern in tests/integration/definition_test.zig",
+      "Use no_skip_zigtest pattern (don't call error.SkipZigTest on missing env; instead skip via assertion or omit)",
+      "Use the SPC-01 import-as-comptime pattern for main_test.zig"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "VLD-01/02/03 integration test files verified, repaired and fully wired (REWORK #2 recovery). build.zig: restored transition_mod .root_source_file/.target (build was broken with 'module root depends on non-existent module transition'); added validation to integration_imports and graph/sub_process_interface/validation to bpm_src_mod (needed by bpm.definition/store.zig @import(\"graph\") and bpm.validation_routes); added addTest roots + narrow steps test-integration-vld-unit and test-integration-vld-http (exp401-exp402 pattern) wired into test_integration_others_step umbrella. main_test.zig: comptime imports for both VLD files. src/bpm.zig: validation_routes re-export shim retained. Repaired validation_vld_http_test.zig: removed unused local pool2, fixed conn.exec &.{} arg, fixed tenant_b as [36]u8 (replaced undefined randomTenantStr with randomUuidStr). zig build exits 0. Both narrow steps compile and run (unit 5/14 pass, http 1/5 pass; remaining failures are the known src/validation IMPL_BUG - separate WF-03). lint_test_isolation.py: 0 issues on 179 files.",
+    "artifacts_out": [
+      "tests/integration/validation_vld_unit_test.zig",
+      "tests/integration/validation_vld_http_test.zig",
+      "tests/specs/vld-01-03-stage-16-validation.spec.md",
+      "build.zig",
+      "tests/integration/main_test.zig",
+      "src/bpm.zig",
+      "commit 92f17c07 (feature/wf02-vld01-03-20260816)"
+    ],
+    "test_count_produced": 19,
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-16T08:24:32Z",
+  "last_updated": "2026-08-16T08:27:04Z",
   "entries": [
     {
       "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
@@ -31778,7 +31778,7 @@
       "created_at": "2026-08-16T04:00:18Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-005",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-005",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "0.5",
@@ -31790,7 +31790,7 @@
       "created_at": "2026-08-16T04:00:18Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-001",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-001",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "1",
@@ -31803,7 +31803,7 @@
       "completed_at": "2026-08-16T05:44:34Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-002",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-002",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "2",
@@ -31815,7 +31815,7 @@
       "created_at": "2026-08-16T05:48:37Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-002b",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-002b",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "2b",
@@ -31827,7 +31827,7 @@
       "created_at": "2026-08-16T05:58:04Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-003",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-003",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "3",
@@ -31841,7 +31841,7 @@
       "result_status": "FAIL"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-002-r1",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-002-r1",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "2-r1",
@@ -31855,7 +31855,7 @@
       "result_status": "PASS"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-002b-r1",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-002b-r1",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "2b-r1",
@@ -31869,7 +31869,7 @@
       "result_status": "PASS"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-003-r1",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-003-r1",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "3-r1",
@@ -31883,7 +31883,7 @@
       "result_status": "PASS"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-004-r1",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-004-r1",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "4-r1",
@@ -31895,7 +31895,7 @@
       "created_at": "2026-08-16T06:50:55Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-003-r2",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-003-r2",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "3-r2",
@@ -31909,7 +31909,7 @@
       "result_status": "PASS"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-004-r2",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-004-r2",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "4-r2",
@@ -31921,7 +31921,7 @@
       "created_at": "2026-08-16T07:09:14Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-004b",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-004b",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "4b",
@@ -31935,7 +31935,7 @@
       "result_status": "PASS"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-005-r",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-005-r",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "5",
@@ -31949,7 +31949,7 @@
       "result_status": "PASS"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-006",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-006",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "6",
@@ -31961,7 +31961,7 @@
       "created_at": "2026-08-16T08:13:32Z"
     },
     {
-      "handoff_id": "WF03-vld-impl-bugs-20260816-007",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-007",
       "workflow_id": "WF03",
       "run_id": "WF03-vld-impl-bugs-20260816",
       "step": "7",
@@ -31973,6 +31973,18 @@
       "created_at": "2026-08-16T08:19:22Z",
       "completed_at": "2026-08-16T08:24:32Z",
       "result_status": "PASS"
+    },
+    {
+      "handoff_id": "wf03-vld-impl-bugs-20260816-008-final",
+      "workflow_id": "WF03",
+      "run_id": "WF03-vld-impl-bugs-20260816",
+      "step": "Final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "status": "PENDING",
+      "rework_count": 0,
+      "max_rework": 2,
+      "created_at": "2026-08-16T08:27:04Z"
     }
   ],
   "version": "1"
