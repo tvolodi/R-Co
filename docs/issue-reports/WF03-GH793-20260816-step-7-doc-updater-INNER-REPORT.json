@@ -1,0 +1,45 @@
+{
+  "report_id": "WF03-GH793-20260816-step-7-doc-updater",
+  "agent_id": "DOC-UPDATER",
+  "run_id": "WF03-GH793-20260816",
+  "step": "7",
+  "created_at": "2026-08-16T06:07:43Z",
+  "summary": "WF-03 Step 7 (DOC-UPDATER) for ISS-0708/GH-793 on branch feature/WF03-GH793-20260816. fn:update-changelog: added the [Unreleased] 2026-08-16 entry for the PRM-06/07 integration-test fixture fixes (TC-PRM-06-03 requested_by NOT NULL, TC-PRM-07-01 teardown UPDATE schema-qualification, TC-PRM-07-03 defensive parent-row seed) in tests/integration/prm-06-07-promotion-assertion.test.zig; test-code only, no production changes. fn:update-issue: set docs/issues/ISS-0708.json status RESOLVED with resolved_at 2026-08-16T06:04:54Z, resolved_by DOC-UPDATER, resolution (three test-setup patches, 9/9 integration tests green per Step-05 TEST-RUNNER PASS), prevention (three actions: keep fixtures in sync with schema migrations adding NOT NULL/FK columns; schema-qualify manual UPDATEs to the same schema as the INSERT/SELECT; keep PRM fixtures in the combined file and cite migrations 096/1156), and corrected the stale citations per CODE-DESIGN-VALIDATOR (fix_file/scope/affected_areas/description/investigation_notes/fix_line/fix_diff/symptom/reproduction now reference the combined test file + migrations 096/1156, not the non-existent split files + migrations 1144/1145). docs/issues/issue_index.json updated: ISS-0708 status RESOLVED with resolved_at. GitHub issue #793 intentionally NOT closed by this step — left open for Step Final (release.py --close-github-issue). All edited JSON validated (json.load OK); stale-reference scan of ISS-0708.json clean (no prm-06-promotion-assertion.test.zig, prm-07-assertion-rerun.test.zig, migrations/1144, migrations/1145, test-integration-prm-06, test-integration-prm-07).",
+  "files_created": [
+    "docs/issue-reports/WF03-GH793-20260816-step-7-doc-updater-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "CHANGELOG.md",
+    "docs/issues/ISS-0708.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH793-20260816/step-07-doc-updater.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0; 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010 registry debt), 332 ACKNOWLEDGED"
+    },
+    {
+      "name": "python -c 'import json; json.load(...)' on docs/issues/ISS-0708.json and docs/issues/issue_index.json",
+      "status": "pass",
+      "detail": "Both edited JSON files parse as valid JSON; ISS-0708.json status=RESOLVED, resolved_at/resolution/prevention present, stale-citation scan clean"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "docs/issues/issue_index.json ISS-0708 affected_areas still lists the historical split-file names (tests/integration/prm-06-promotion-assertion.test.zig, tests/integration/prm-07-assertion-rerun.test.zig). Task scoped the index change to status+resolved_at only, so the canonical ISS-0708.json was corrected but the index's affected_areas was left as-is per the explicit instruction. Flagged here for awareness; a later maintenance pass may want to mirror the corrected paths."
+    },
+    {
+      "severity": "MINOR",
+      "description": "fn:register-inner-report.md specifies inner reports as .json but core-directives.md requires .yaml (authoritative). Pre-existing drift, re-flagged (same as prior steps in this run)."
+    }
+  ],
+  "next_steps": [
+    "Route to Step Final (release.py --close-github-issue) to close GH-793, squash-merge feature/WF03-GH793-20260816, and return the repo to clean main."
+  ],
+  "blockers": []
+}
