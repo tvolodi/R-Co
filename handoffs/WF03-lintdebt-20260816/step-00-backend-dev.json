@@ -1,0 +1,56 @@
+{
+  "handoff_id": "wf03-lintdebt-20260816-00-backend-dev",
+  "run_id": "WF03-lintdebt-20260816",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-lintdebt-20260816/step-00-backend-dev.json",
+  "created_at": "2026-08-16T00:08:24Z",
+  "started_at": "2026-08-16T00:08:50Z",
+  "completed_at": "2026-08-16T00:09:54Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_SETUP.md",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md"
+    ],
+    "branch_name": "feature/WF03-lintdebt-20260816"
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md for WF-03 run WF03-lintdebt-20260816 (lint_handoffs baseline debt acknowledgment + H010 registry repair). Create feature branch feature/WF03-lintdebt-20260816 from a freshly pulled main, push it to origin as the coordination signal, and confirm the local repo is on that branch with tip == origin/main. Record branch_name, base_commit_sha, and push_status in your result.",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exited 0",
+      "git branch --show-current outputs feature/WF03-lintdebt-20260816",
+      "git push -u origin feature/WF03-lintdebt-20260816 exited 0",
+      "result.git_evidence.branch_name == feature/WF03-lintdebt-20260816, base_commit_sha set, push_status ok"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup executed per GIT_SETUP.md for WF-03 run WF03-lintdebt-20260816. Pulled main fast-forward from origin, created feature branch feature/WF03-lintdebt-20260816 from origin/main tip (ae9854f47d0ce6b33cf0dff7ad97908f922bc024), verified local tip == origin/main, and pushed the branch to origin as the coordination signal (PUSH_EXIT=0). No source files modified.",
+    "artifacts_out": [
+      "branch: feature/WF03-lintdebt-20260816",
+      "docs/issue-reports/WF03-lintdebt-20260816-step-00-backend-dev-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-lintdebt-20260816",
+      "base_commit_sha": "ae9854f47d0ce6b33cf0dff7ad97908f922bc024",
+      "push_status": "ok",
+      "tip_matches_origin_main": true
+    },
+    "next_action": "ORCH routes to ISSUE-FIXER (Step 0.5) once Step 00 returns PASS"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
