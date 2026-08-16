@@ -1,0 +1,100 @@
+{
+  "handoff_id": "wf03-gh792-20260816-01-issue-fixer",
+  "run_id": "WF03-GH792-20260816",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH792-20260816/step-01-issue-fixer.json",
+  "created_at": "2026-08-16T08:55:59Z",
+  "started_at": "2026-08-16T08:56:16Z",
+  "completed_at": "2026-08-16T09:10:42Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 1 -- root-cause diagnosis",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
+    "iss_id": "ISS-0707",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh792-20260816-00-backend-dev",
+      "wf03-gh792-20260816-005-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0707.json",
+      "tests/integration/prm-09-pack-update.test.zig",
+      "migrations/1157_prm09_solution_pack_update.sql"
+    ],
+    "branch_name": "feature/WF03-GH792-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 1 for run WF03-GH792-20260816: root-cause diagnosis (diagnosis-as-design) for the prm-09 pack-update test failure (ISS-0707 / GH-792). CONFIRM the diagnosis documented in ISS-0707 and the GH-792 body by reading the ACTUAL test file tests/integration/prm-09-pack-update.test.zig and migrations/1157_prm09_solution_pack_update.sql (which carries -- scope: tenant_only per the GH-785 fix): the test issues INSERT/SELECT against unqualified solution_pack_installs, which now resolves against the per-tenant search_path to tenant_default.solution_pack_installs (a different column layout from public.solution_pack_installs) -> sqlstate 42703 on all 4 TC-PRM-09 tests. Confirm the exact occurrences of the unqualified name in the test file and identify the correct target schema (public.). DEFINE the fix spec for Step 3 precisely: qualify every solution_pack_installs reference in the test file with the public. schema prefix; verify no test setup depends on a tenant-side solution_pack_installs row; confirm the verification target name in build.zig (the issue cites test-integration-prm-09 \u2014 confirm the exact target, e.g. test-integration-prm09 or test-integration-prm-09). SCOPE: test-code only, no migrations, no production code. Do NOT implement the fix yourself.",
+    "acceptance_criteria": [
+      "Root cause confirmed against the ACTUAL prm-09 test file (all unqualified solution_pack_installs occurrences identified)",
+      "Correct target schema confirmed (public.) and fix spec for Step 3 fully specified (public. prefix on every reference)",
+      "Verification target name confirmed in build.zig",
+      "SCOPE explicit: test-code only, no migrations/production",
+      "No fix implemented (Step 3 only)",
+      "Work on branch feature/WF03-GH792-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 1 diagnosis for GH-792/ISS-0707 confirmed (with corrections). Root cause: unqualified solution_pack_installs resolves via the per-tenant search_path to tenant_default.solution_pack_installs (migration 1158 SOL-02, different column layout) instead of the intended public.solution_pack_installs (migration 1157) -> sqlstate 42703 on all 4 TC-PRM-09 tests on fresh-migration DBs. Verified empirically that the current warm bpm_test :5453 masks the bug (legacy 1157-layout shadow; compiled test binary passes 4/4 today). SCOPE CORRECTION (MAJOR): the SUT src/definition/pack_update.zig also queries solution_pack_installs/artefact_bases unqualified (lines 117/179) and would 42703 on a fresh DB, so a test-code-only fix is insufficient; the fix must also qualify those two public-schema tables in pack_update.zig. process_definitions stays unqualified (tenant-side). Full fix spec in result.fix_spec. No fix implemented (Step 1 only).",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH792-20260816-step-1-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Documented 'test-code only' scope insufficient: src/definition/pack_update.zig (SUT) queries solution_pack_installs (L117) and solution_pack_artefact_bases (L179) unqualified; on a fresh-migration DB the SUT itself raises 42703, so a test-file-only fix would still fail all 4 tests. Fix must include pack_update.zig."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Issue-cited verification target 'test-integration-prm-09' does not exist; actual build.zig:3164 step is 'test-integration-prm09'."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0707 states migration 1157 is 'scope: tenant_only per the GH-785 fix'; actual 1157 header is '-- scope: public.' with public.-qualified DDL (GH-785 51170eed). The tenant_default shadow is migration 1158 (SOL-02)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0707 reproduction cites BPM_TEST_DB_URL port 5434; this workspace's test DB is :5453."
+      }
+    ],
+    "fix_spec": {
+      "diagnosis": "Unqualified solution_pack_installs resolves to the tenant_default shadow (migration 1158, SOL-02, tenant_only) under the per-tenant search_path 'tenant_default,public' (pool applyRequestStorageRouting, zero-UUID tenant + SCHEMA mode), instead of the PRM-09 intended public.solution_pack_installs (migration 1157, scope public). On a fresh migration replay the tenant_default shadow has the 1158 layout (id, pack_id, pack_version, schema_version, installed_by, installed_at) which lacks tenant_id/installed_version -> sqlstate 42703 on all 4 TC-PRM-09 tests. Warm bpm_test :5453 currently masks the bug (legacy 1157-layout shadow), so the test passes 4/4 locally today; the fix must still be applied for fresh/CI DBs.",
+      "target_schema": "public.",
+      "test_file": "tests/integration/prm-09-pack-update.test.zig",
+      "test_occurrences_to_qualify": [
+        "L98  INSERT INTO solution_pack_installs            -> public.solution_pack_installs",
+        "L119 SELECT id::text FROM solution_pack_installs   -> public.solution_pack_installs",
+        "L164 DELETE FROM solution_pack_installs            -> public.solution_pack_installs",
+        "L128 INSERT INTO solution_pack_artefact_bases      -> public.solution_pack_artefact_bases (defensive; no tenant shadow exists today but consistent with SUT)"
+      ],
+      "test_references_to_leave_unqualified": [
+        "L145 / L160 process_definitions (tenant-side table; test inserts and SUT reads both target tenant_default.process_definitions)",
+        "L248 test-name string (not SQL)"
+      ],
+      "production_file": "src/definition/pack_update.zig",
+      "production_occurrences_to_qualify": [
+        "L117 FROM solution_pack_installs      -> FROM public.solution_pack_installs",
+        "L179 FROM solution_pack_artefact_bases -> FROM public.solution_pack_artefact_bases"
+      ],
+      "production_references_to_leave_unqualified": [
+        "L235 FROM process_definitions (tenant-side table)"
+      ],
+      "no_test_setup_depends_on_tenant_side_row": "Verified: test fixtures insert the tenant into public.tenant (qualified) and pack-install rows into the PRM-09 table; the SOL-02 tenant_default.solution_pack_installs is a different feature's table and is not part of the PRM-09 fixture contract. Qualifying to public. preserves fixture semantics.",
+      "verification_target": "test-integration-prm09 (build.zig:3164; NOT test-integration-prm-09)",
+      "verification_command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 (4/4). Warm DB currently passes pre-fix due to masking; additionally validate on a fresh migration replay or assert the public. qualification statically.",
+      "scope": "Test-code + exactly one production file (src/definition/pack_update.zig). No migrations, no other production files. This EXPANDS the documented 'test-code only' scope (see MAJOR issue)."
+    },
+    "next_action": "Route to CODE-DESIGNER / BACKEND-DEV (WF-03 Steps 2-3) to implement the fix per result.fix_spec (qualify solution_pack_installs + solution_pack_artefact_bases with public. in the test file L98/119/164/128 AND in src/definition/pack_update.zig L117/179; leave process_definitions unqualified); verify test-integration-prm09 4/4."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
