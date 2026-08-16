@@ -1795,3 +1795,6 @@
 2026-08-16T06:13:43Z | LOOP | WF03-GH793-20260816 | --- | ORCH | claim released (r-co:GH-793 DONE, gh-793 closed, task/current.json empty) - continuing loop
 2026-08-16T06:13:57Z | ROUTE | ADHOC | adhoc-prm08-fixture-defect-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (file incidental prm-08 fixture defect)
 2026-08-16T06:16:34Z | COMPLETE | ADHOC-prm08-fixture-defect-20260816 | adhoc-prm | ISSUE-FIXER | PASS - Step 0.5 filed incidental prm-08 fixture defect: ISS-0711 registered + GitHub issue #802 (bug) created; no fix (claimable loop item)
+2026-08-16T06:18:35Z | ROUTE | WF-03 | wf03-gh802-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T06:20:59Z | ROUTE | WF-03 | wf03-gh802-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T06:25:42Z | COMPLETE | WF03-GH802-20260816 | wf03-gh80 | ISSUE-FIXER | PASS - Step 0.5 verified ISS-0711 correct for GH-802, updated workflow_id/run_id/handoff_id + handoff_history to WF03-GH802-20260816, index consistent (next_issue_id 712); no fix (deferred to Step 3)

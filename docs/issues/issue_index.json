@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-16T06:15:25Z",
+  "last_updated": "2026-08-16T06:24:05Z",
   "next_issue_id": 712,
   "issues": [
     {
@@ -2727,8 +2727,8 @@
       "severity": "MAJOR",
       "status": "OPEN",
       "title": "tests/integration prm-08-rollback-sandbox.test.zig: insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan (latent sqlstate 23502; same class as ISS-0708/GH-793 Cluster A)",
-      "run_id": "ADHOC-prm08-fixture-defect-20260816",
-      "handoff_id": "adhoc-prm08-fixture-defect-20260816-005-issue-fixer",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-005-issue-fixer",
       "category": "integration-test-failure/not-null-fixture",
       "affected_areas": [
         "tests/integration/prm-08-rollback-sandbox.test.zig",
@@ -2736,7 +2736,8 @@
       ],
       "created_at": "2026-08-16T06:15:25Z",
       "step_0.5_completed_at": "2026-08-16T06:15:25Z",
-      "github_issue_confirmed": true
+      "github_issue_confirmed": true,
+      "branch": "feature/WF03-GH802-20260816"
     }
   ]
 }
