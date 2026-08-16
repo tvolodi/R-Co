@@ -1,0 +1,79 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-03b-test-design-validator",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "03b",
+  "created_at": "2026-08-16T18:59:16Z",
+  "summary": "TEST-DESIGN-VALIDATOR (WF-02 Step 3b HARD GATE) validated the TEST-DESIGNER output for SPT-02/SPT-03/SPT-04 and returns PASS. All 16 MUST ACs (SPT-02:6, SPT-03:5, SPT-04:5) have runnable integration tests; spec count (16 TCs) == implementation count (16 `test` blocks) in tests/integration/spt02_03_04_schema_tenant_migration_test.zig. No error.SkipZigTest on any MUST-covering block (only the self-referential assertion literal in TC-SPT-04-02). Fixtures are isolated (per-test random v4 UUIDs via randomUuidStr, no hardcoded UUIDs/magic strings, no shared module state) and self-sufficient (testDbUrl() fails with error.MissingTestDatabaseUrl when BPM_TEST_DB_URL is absent — no silent skip). Every provisioning test pairs with defer dropTestTenantSchema cleanup; post-run DB check shows only tenant_default remains (1 tenant_schemas row, 0 dangling) — no schema leakage. SPT-03 AC1 tests match the design's scoped interpretation (OQ-1 ruling, design 8.3): TC-SPT-03-01 asserts no `bpm.tenant_id` literal in src/ (verified: src/ currently carries none) plus no Class-B tenant_id column in public. Build wiring verified in build.zig: narrow step `test-integration-spt` (clean_test_db + Run artifact) plus the ISS-0106 pattern — the SPT binary is chained BEHIND the test-integration-others barrier for the umbrella run and re-attached to `test-integration` via its own after-others Run artifact; `test-integration-spt01-iss68` step also present. Blocker fix confirmed: commit 3ec8832e (HEAD on feature/WF02-spt02-04-20260816) removed the PARTIAL condition — my own `zig build test-integration-spt` runs exit 0 (twice), the unblock agent's direct-binary log (scratch/spt_direct.log) shows 16/16 OK (0 FAIL, 'All 16 tests passed'), all 6 previously-blocked tests (TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04) now pass, and `zig build test-integration-spt01-iss68` exits 0 (3/3). Lints: lint_test_isolation.py (SPT files) exit 0, lint_test_isolation.py (full tests/integration, 180 files) exit 0, lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACKNOWLEDGED). TEST-RUNNER may proceed (Step 4/5).",
+  "files_created": [
+    "docs/issue-reports/WF02-spt02-04-20260816-step-03b-test-design-validator-INNER-REPORT.json",
+    "scratch/spt_validator_db_check.py"
+  ],
+  "files_modified": [
+    "handoffs/WF02-spt02-04-20260816/step-03b-test-design-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-spt (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)",
+      "status": "pass",
+      "detail": "EXIT=0 (verified twice). All 16 SPT test blocks run to completion; the step fails if any test fails. Cross-checked against unblock agent's direct-binary log scratch/spt_direct.log: 16/16 OK, 0 FAIL, 'All 16 tests passed.'"
+    },
+    {
+      "name": "Direct-binary per-test evidence (scratch/spt_direct.log, produced by step-03-unblock)",
+      "status": "pass",
+      "detail": "All 16 tests OK incl. the 6 previously-blocked: TC-SPT-02-02 (2/16), TC-SPT-03-02 (8/16), TC-SPT-03-03 (9/16), TC-SPT-03-04 (10/16), TC-SPT-03-05 (11/16), TC-SPT-04-04 (15/16)."
+    },
+    {
+      "name": "zig build test-integration-spt01-iss68 (SPT-01 provisioning)",
+      "status": "pass",
+      "detail": "EXIT=0 — SPT-01 provisioning 3/3 PASS; the ISS-0715 blocker fix did not regress the released provisioning suite."
+    },
+    {
+      "name": "python tools/lint_test_isolation.py tests/integration/spt02_03_04_schema_tenant_migration_test.zig tests/integration/helpers.zig",
+      "status": "pass",
+      "detail": "EXIT=0 — no isolation issues (no T010 hardcoded UUIDs, no T020 module var, no T040 SkipZigTest, BPM_TEST_DB_URL referenced)."
+    },
+    {
+      "name": "python tools/lint_test_isolation.py tests/integration",
+      "status": "pass",
+      "detail": "EXIT=0 — 180 files checked, no isolation issues (117 baseline-suppressed)."
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "EXIT=0 — 3018 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010 registry-index absence), 332 ACKNOWLEDGED."
+    },
+    {
+      "name": "Post-run DB leakage probe (scratch/spt_validator_db_check.py)",
+      "status": "pass",
+      "detail": "tenant schemas: ['tenant_default'] only; tenant_schemas rows: 1; dangling (schema-missing) rows: 0 — no fixture leakage after the suite."
+    },
+    {
+      "name": "src/ scan for bpm.tenant_id (SPT-03 AC1 source-assertion precondition)",
+      "status": "pass",
+      "detail": "grep across src/**/*.zig for `bpm.tenant_id` / `set_config('bpm.tenant_id'` returned zero matches — the SPT-03 implementation has landed, so TC-SPT-03-01 is runnable and green."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "TC-SPT-04-04 invokes dropTestTenantSchema explicitly (not via `defer`). On the failure path before the drop (e.g. a schema_before/ts_before assertion fails), the provisioned schema would leak. Post-run state confirms no leak in practice, but wrapping the drop in `defer` would make the failure path leak-free. Recommend a follow-up hardening; does not block PASS."
+    },
+    {
+      "severity": "MINOR",
+      "description": "SPT-04 AC1 broad suite rework (the ~118 legacy-model tests/integration/ files — adp02/adp03/env*/par06/pin01/prm01/svc04 etc.) is a documented follow-up SPT batch per SECURITY-REVIEWER Step 2c and design OQ-1 precedent. This run's SPT suite introduces the schema-isolated pattern and covers all 16 ACs under the scoped interpretation; the legacy files remain green at runtime. Recorded for ORCH; does not block PASS."
+    },
+    {
+      "severity": "MINOR",
+      "description": "reqctl legal statuses (DEPRECATED/DRAFT/IMPLEMENTED/INFORMATIONAL/IN_PROGRESS/PENDING/RELEASED/TESTED/UNTRACKED/VALIDATED) do NOT include TEST-DESIGN-REVIEWED, and no prior requirement uses that note convention in docs/requirements.yaml. Per task instruction ('where the tooling allows, else record the exact reqctl/status commands'), the exact commands for DOC-UPDATER are recorded in the handoff result rather than setting a non-legal status."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route WF02-spt02-04-20260816 to TEST-RUNNER (Step 4/5) — the SPT suite is validated 16/16 green and SPT-01 provisioning is green (3/3); the Step 3b gate blocker is cleared.",
+    "DOC-UPDATER (Step Final): set SPT-02/03/04 requirement status via reqctl using a legal status + --note 'TEST-DESIGN-REVIEWED by WF02-spt02-04-20260816 step-03b' (exact commands in the handoff result); close GitHub #812 / ISS-0715 referencing commit 3ec8832e (020 schema-aware DROP-then-CREATE + 094 tenant_id-index guard).",
+    "Follow-up SPT batch: rework the remaining legacy-model tests/integration/ files to per-test provisioned schemas (design 9.2) and harden TC-SPT-04-04 cleanup to `defer`."
+  ],
+  "blockers": []
+}

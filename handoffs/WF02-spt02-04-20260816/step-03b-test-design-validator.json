@@ -1,0 +1,78 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-03b-test-design-validator",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-spt02-04-20260816/step-03b-test-design-validator.json",
+  "created_at": "2026-08-16T18:51:39Z",
+  "started_at": "2026-08-16T18:51:56Z",
+  "completed_at": "2026-08-16T18:59:16Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-03-test-designer",
+      "WF02-spt02-04-20260816-03-unblock-backend-dev"
+    ],
+    "artifacts_in": [
+      "src/design/spt-02-03-04-schema-per-tenant-migration.md",
+      "tests/specs/SPT-02.md",
+      "tests/specs/SPT-03.md",
+      "tests/specs/SPT-04.md",
+      "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+      "tests/integration/helpers.zig",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-03-test-designer-INNER-REPORT.json",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-03-unblock-backend-dev-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Step 3 TEST-DESIGNER wrote specs + 16 test blocks (one per MUST AC) but returned PARTIAL because 6/16 were blocked by ISS-0715/GH-812 (pre-existing migration 094/020 provisioning defect). Step 3-unblock BACKEND-DEV fixed it (commit 3ec8832e): migration 094 tenant_id-dependent public indexes now guarded behind an information_schema column-exists check; migration 020 made schema-aware (DROP-then-CREATE in current schema). Verified: test-integration-spt 16/16 PASS, SPT-01 provisioning 3/3, zig build/migrate exit 0. The test design is now fully executable — validate it as the hard gate before TEST-RUNNER."
+  },
+  "task": {
+    "description": "Validate the TEST-DESIGNER output (WF-02 Step 3b hard gate) for requirements SPT-02, SPT-03, SPT-04. Verify: (1) every MUST requirement has a runnable integration test (16/16 ACs); (2) no SkipZigTest on MUST tests without a counterpart; (3) fixtures are isolated and tests self-sufficient (per-test provisioned schemas, cleanup, no leakage); (4) the SPT-03 AC1 tests are written against the design's scoped interpretation (validator OQ-1 ruling); (5) the test chain is wired correctly in build.zig (test-integration-spt and barrier chaining). Confirm the blocker fix (step-03-unblock) removed the PARTIAL condition — all 16 tests now pass. On PASS set requirement status to TEST-DESIGN-REVIEWED where the tooling allows (else record the exact reqctl/status commands in your result for DOC-UPDATER).",
+    "acceptance_criteria": [
+      "Every MUST AC (16/16) has a runnable integration test (spec count == implementation count)",
+      "No SkipZigTest on MUST tests without a counterpart",
+      "Fixtures isolated, tests self-sufficient, schemas cleaned up (no leakage)",
+      "SPT-03 AC1 tests match the scoped interpretation",
+      "Test chain wired correctly in build.zig",
+      "result.status == PASS only if TEST-RUNNER may proceed"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for SPT-02/SPT-03/SPT-04 validated (WF-02 Step 3b HARD GATE) — all 16 MUST ACs have runnable integration tests (spec count == implementation count), no SkipZigTest on MUST coverage, fixtures isolated (per-test UUIDs, defer dropTestTenantSchema, no leakage), tests self-sufficient (BPM_TEST_DB_URL required, no silent skip), SPT-03 AC1 matches the design's scoped interpretation (OQ-1), build.zig wiring uses the ISS-0106 barrier pattern, and the ISS-0715 blocker fix (commit 3ec8832e) removed the PARTIAL condition — test-integration-spt 16/16 PASS, test-integration-spt01-iss68 3/3 PASS. lint_test_isolation.py exit 0 (SPT files and full tests/integration); lint_handoffs.py exit 0 (0 BLOCKER / 0 MAJOR). TEST-RUNNER may proceed.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-spt02-04-20260816-step-03b-test-design-validator-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "TC-SPT-04-04 invokes dropTestTenantSchema explicitly rather than via defer; a failure before the drop would leak the fixture. Post-run DB state confirms no leak in practice; harden to defer in a follow-up. Does not block PASS."
+      },
+      {
+        "severity": "MINOR",
+        "description": "SPT-04 AC1 broad suite rework (~118 legacy-model tests/integration files) is a documented follow-up SPT batch per SECURITY-REVIEWER Step 2c + design OQ-1; this run's suite covers all 16 ACs under the scoped interpretation. Does not block PASS."
+      },
+      {
+        "severity": "MINOR",
+        "description": "reqctl legal statuses do not include TEST-DESIGN-REVIEWED (no prior note convention either). Requirement status NOT set here; exact reqctl commands for DOC-UPDATER recorded in next_action/summary."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4/5). DOC-UPDATER at Step Final: set SPT-02/03/04 to a legal reqctl status with --note 'TEST-DESIGN-REVIEWED by WF02-spt02-04-20260816 step-03b', e.g. `python tools/reqctl.py set-status SPT-02 IMPLEMENTED --note \"TEST-DESIGN-REVIEWED by WF02-spt02-04-20260816 step-03b\"` (repeat for SPT-03, SPT-04); close GitHub #812 / ISS-0715 referencing commit 3ec8832e."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

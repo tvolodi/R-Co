@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-16T18:26:15Z",
+  "last_updated": "2026-08-16T18:51:39Z",
   "entries": [
     {
       "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
@@ -33671,6 +33671,46 @@
       ],
       "stage": "Schema-Per-Tenant Migration",
       "completed_at": "2026-08-16T18:50:10Z"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-03b-test-design-validator",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+      "step": "03b",
+      "created_at": "2026-08-16T18:51:39Z",
+      "started_at": "2026-08-16T18:51:56Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T18:59:16Z",
+      "result": {
+        "status": "PASS",
+        "summary": "Test design for SPT-02/SPT-03/SPT-04 validated (WF-02 Step 3b HARD GATE) — all 16 MUST ACs have runnable integration tests (spec count == implementation count), no SkipZigTest on MUST coverage, fixtures isolated (per-test UUIDs, defer dropTestTenantSchema, no leakage), tests self-sufficient (BPM_TEST_DB_URL required, no silent skip), SPT-03 AC1 matches the design's scoped interpretation (OQ-1), build.zig wiring uses the ISS-0106 barrier pattern, and the ISS-0715 blocker fix (commit 3ec8832e) removed the PARTIAL condition — test-integration-spt 16/16 PASS, test-integration-spt01-iss68 3/3 PASS. lint_test_isolation.py exit 0 (SPT files and full tests/integration); lint_handoffs.py exit 0 (0 BLOCKER / 0 MAJOR). TEST-RUNNER may proceed.",
+        "artifacts_out": [
+          "docs/issue-reports/WF02-spt02-04-20260816-step-03b-test-design-validator-INNER-REPORT.json"
+        ],
+        "issues": [
+          {
+            "severity": "MINOR",
+            "description": "TC-SPT-04-04 invokes dropTestTenantSchema explicitly rather than via defer; a failure before the drop would leak the fixture. Post-run DB state confirms no leak in practice; harden to defer in a follow-up. Does not block PASS."
+          },
+          {
+            "severity": "MINOR",
+            "description": "SPT-04 AC1 broad suite rework (~118 legacy-model tests/integration files) is a documented follow-up SPT batch per SECURITY-REVIEWER Step 2c + design OQ-1; this run's suite covers all 16 ACs under the scoped interpretation. Does not block PASS."
+          },
+          {
+            "severity": "MINOR",
+            "description": "reqctl legal statuses do not include TEST-DESIGN-REVIEWED (no prior note convention either). Requirement status NOT set here; exact reqctl commands for DOC-UPDATER recorded in next_action/summary."
+          }
+        ],
+        "next_action": "Route to TEST-RUNNER (Step 4/5). DOC-UPDATER at Step Final: set SPT-02/03/04 to a legal reqctl status with --note 'TEST-DESIGN-REVIEWED by WF02-spt02-04-20260816 step-03b', e.g. `python tools/reqctl.py set-status SPT-02 IMPLEMENTED --note \"TEST-DESIGN-REVIEWED by WF02-spt02-04-20260816 step-03b\"` (repeat for SPT-03, SPT-04); close GitHub #812 / ISS-0715 referencing commit 3ec8832e."
+      }
     }
   ],
   "version": "1"
