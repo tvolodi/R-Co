@@ -2000,3 +2000,4 @@
 2026-08-16T20:32:20Z | COMPLETED | WF02-batch-7-20260816 | 4dec6570 | RELEASE-VALIDATOR | step-05 release validation done; decision PARTIAL (DDL-04/OBP-04/ORD-03 RELEASED, VLD-04 TESTED via ISS-0715/GH-813); filed ISS-0715/GH-813 + ISS-0716/GH-814; release decision docs/status/release-stage16-WF02-batch-7-20260816.yaml
 2026-08-16T20:33:34Z | ROUTE | WF-02 | fa7637f7 | ORCH -> BACKEND-DEV | PENDING | Step 2a-rework2 wire VLD-04 gate into handlers (ISS-0715/GH-813)
 2026-08-16T21:25:08Z | COMPLETE | WF02-batch-7-20260816 | fa7637f7 | BACKEND-DEV | PASS (REWORK-2 VLD-04 gate wired into handlers; vld04-gate 7/7, vld-http 5/5, prm suites green; commit da4761fc) -> TEST-DESIGNER/TEST-RUNNER
+2026-08-16T21:33:38Z | ROUTE | WF-02 | 58683e55 | ORCH -> TEST-RUNNER | PENDING | Step 04-rework2 re-verify VLD-04 handler wiring (AC1/AC2)
