@@ -4,7 +4,7 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
   "github_issue_confirmed": true,
   "title": "tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs \u2014 sqlstate 42703 (INC-001 from WF03-GH785-20260815 step-5)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "workflow_id": "WF03-GH792-20260816",
   "run_id": "WF03-GH792-20260816",
@@ -23,21 +23,22 @@
     "bug",
     "issue"
   ],
-  "scope": "tests/integration/prm-09-pack-update.test.zig \u2014 qualifies `solution_pack_installs` without `public.` schema prefix; unresolved against per-tenant search_path lands on tenant_default.solution_pack_installs with mismatched columns.",
+  "scope": "tests/integration/prm-09-pack-update.test.zig AND production src/definition/pack_update.zig \u2014 both referenced `solution_pack_installs` / `solution_pack_artefact_bases` without the `public.` schema prefix; unresolved against the per-tenant search_path the name lands on tenant_default.solution_pack_installs (migration 1158, SOL-02, `-- scope: tenant_only`) with a different column layout, raising sqlstate 42703 on a fresh-migration DB. Migration 1157 (the intended public tables) is PUBLIC-scoped (`-- scope: public.`); the tenant_default shadow is 1158, not 1157.",
   "affected_areas": [
     "tests/integration/prm-09-pack-update.test.zig",
-    "migrations/1157_prm09_solution_pack_update.sql",
-    "migrations/1158_sol02_solution_pack_installs.sql"
+    "src/definition/pack_update.zig (PRODUCTION \u2014 SUT Step 1 Vb load / Step 2 base load)",
+    "migrations/1157_prm09_solution_pack_update.sql (public-scoped; the intended destination)",
+    "migrations/1158_sol02_solution_pack_installs.sql (tenant_only; the tenant_default shadow)"
   ],
-  "description": "All four TC-PRM-09-NN tests fail with sqlstate 42703 because the test file issues INSERT/SELECT against unqualified `solution_pack_installs`. After WF02-plc-batch-a-20260815 migration chain, the unqualified name resolves against the per-tenant search_path and lands on `tenant_default.solution_pack_installs` (introduced by migration 1158 with the `-- scope: tenant_only.` header), which has a column layout that does not match the test's parameter list. `public.solution_pack_installs` (introduced by migration 1157 also with `-- scope: tenant_only.` per the GH-785 fix) is the actually-intended destination \u2014 but the per-tenant search_path wins. Pre-existing, NOT a GH-785 regression; out of scope for WF03-GH785-20260815. To be picked up by its own WF-03 cycle.",
+  "description": "All four TC-PRM-09-NN tests fail with sqlstate 42703 because the test file AND the production SUT (`src/definition/pack_update.zig`) issue INSERT/SELECT against unqualified `solution_pack_installs` / `solution_pack_artefact_bases`. After the WF02-plc-batch-a-20260815 migration chain, the unqualified name resolves against the per-tenant search_path and lands on `tenant_default.solution_pack_installs` (introduced by migration 1158 with the `-- scope: tenant_only` header), which has a column layout that does not match the PRM-09 parameter list. `public.solution_pack_installs` / `public.solution_pack_artefact_bases` (introduced by migration 1157 with `-- scope: public.` \u2014 PUBLIC-scoped, not tenant_only; the tenant_default shadow is 1158) are the actually-intended destination \u2014 but the per-tenant search_path wins. The SUT would also 42703 on a fresh DB (the shadow's different column layout) because it relied on search_path fallback too. Pre-existing, NOT a GH-785 regression; out of scope for WF03-GH785-20260815. Picked up by its own WF-03 cycle (GH-792).",
   "symptom": "zig build test-integration-prm-09 against BPM_TEST_DB_URL: 4/4 FAIL with `[42703] column X does not exist` against `tenant_default.solution_pack_installs`.",
   "discovered_at": "2026-08-15T21:03:33Z",
   "discovered_by": "TEST-RUNNER (WF03-GH785-20260815 step-5 incidental-finding INC-001)",
-  "investigation_notes": "GH-785 verification confirmed the PLC suite (27/27) is green \u2014 the failure surfaces only in the optional targeted PRM-09 run that TEST-RUNNER performed after passing the PLC suite. Direct psql reproduction confirms that `INSERT INTO solution_pack_installs` from a `SET search_path = tenant_default, public` session fails because the tenant-side table has different columns from the public-side table. The test was written against the public-side table. The fix is to qualify every reference to `solution_pack_installs` with `public.`. No production-code change required.",
+  "investigation_notes": "GH-785 verification confirmed the PLC suite (27/27) is green \u2014 the failure surfaces only in the optional targeted PRM-09 run that TEST-RUNNER performed after passing the PLC suite. Direct psql reproduction confirms that `INSERT INTO solution_pack_installs` from a `SET search_path = tenant_default, public` session fails because the tenant-side table has different columns from the public-side table. The test was written against the public-side table. The fix is to qualify every reference to `solution_pack_installs` / `solution_pack_artefact_bases` with `public.`. NOTE (scope correction flagged by CODE-DESIGN-VALIDATOR): this DOES require a production-code change \u2014 `src/definition/pack_update.zig` (the SUT) also issues unqualified SELECTs against the two public tables (Step 1 Vb load, Step 2 base load) that would sqlstate 42703 on a fresh DB because the tenant_default shadow (1158) has a different column layout; the earlier record's claims of 'no production-code change required' and that migration 1157 is tenant_only were both wrong.",
   "reproduction": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-prm-09 -> 4/4 FAIL. Reading tests/reports/report-2026-08-15-WF03-GH785-20260815-step05-verify.yaml section INC-001 confirms the same root cause.",
-  "fix_file": "tests/integration/prm-09-pack-update.test.zig",
-  "fix_line": "TBD \u2014 qualifier every reference (find each INSERT/SELECT on solution_pack_installs and prefix with public.)",
-  "fix_diff": "Replace `solution_pack_installs` with `public.solution_pack_installs` at every test reference. Verify test setup does not depend on tenant-side rows; if it does, qualify selects the same way and shape the setup inserts accordingly.",
+  "fix_file": "tests/integration/prm-09-pack-update.test.zig + src/definition/pack_update.zig (production)",
+  "fix_line": "test file L98/L119/L128/L164 (public. qualifiers); production src/definition/pack_update.zig L120 (Step 1 Vb load) / L182 (Step 2 base load); doc comment L102-107 updated. process_definitions left unqualified (test L145/L160, SUT L238).",
+  "fix_diff": "Applied: every DML/SELECT reference to `solution_pack_installs` / `solution_pack_artefact_bases` in BOTH files now carries the `public.` prefix (test L98/L119/L128/L164; production pack_update.zig L120/L182), and the pack_update.zig doc comment now states explicit public. qualification. `process_definitions` references are unchanged and remain unqualified (tenant-side). The static qualification check is the authoritative proof because the warm :5453 DB carries the legacy 1157-layout shadow and masks the runtime 42703.",
   "pr_url": null,
   "pr_merged_at": null,
   "pr_merge_commit": null,
@@ -68,7 +69,27 @@
       "status": "COMPLETED",
       "completed_at": "2026-08-16T08:54:16Z",
       "summary": "WF-03 Step 0.5 for GH-792: verified ISS-0707 is the correct, non-colliding local record for GitHub issue #792 (github_issue match; title/severity/status/labels consistent; GH-792 confirmed OPEN via gh issue view 792 with labels bug, issue, claimed-by-r-co-2-loop; only ISS-0707 references /792 in the index). No new ISS number and no new GitHub issue (GH-792 already exists and is filed). Updated workflow_id/run_id/handoff_id to the active fix run WF03-GH792-20260816 and recorded this run in handoff_history. issue_index.json confirmed consistent (ISS-0707 present once; next_issue_id 714 = correct). Fix implementation deferred to Step 3 per WF-03."
+    },
+    {
+      "step": "step-07-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH792-20260816",
+      "handoff_id": "wf03-gh792-20260816-07-doc-updater",
+      "status": "RESOLVED",
+      "completed_at": "2026-08-16T09:32:28Z",
+      "summary": "WF-03 Step 7 for GH-792: CHANGELOG.md updated under [Unreleased] 2026-08-16 with the prm-09 public-schema qualification fix entry (public. qualifiers in tests/integration/prm-09-pack-update.test.zig L98/L119/L128/L164 AND production src/definition/pack_update.zig L120/L182; migration 1157 public-scoped, the tenant_default shadow is 1158; process_definitions stays tenant-scoped). ISS-0707 marked RESOLVED with resolved_at / resolution / prevention; stale scope prose corrected per CODE-DESIGN-VALIDATOR flag (production pack_update.zig now included in fix_file/scope/affected_areas; 1157 noted public-scoped). docs/issues/issue_index.json updated (ISS-0707 RESOLVED with resolved_at). GitHub issue #792 intentionally NOT closed by this step \u2014 left open for Step Final (release.py --close-github-issue) per the loop-mode instruction."
     }
   ],
-  "handoff_id": "wf03-gh792-20260816-005-issue-fixer"
+  "handoff_id": "wf03-gh792-20260816-005-issue-fixer",
+  "resolved_at": "2026-08-16T09:32:28Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH792-20260816 step-07)",
+  "prevention": {
+    "actions": [
+      "When a test fixture OR the production SUT issues DML/SELECT against a public-scoped table (migration header `-- scope: public.`), it must reference the table with the explicit `public.` schema prefix rather than relying on search_path fallback \u2014 under the pool's SCHEMA-mode routing the search path is tenant_default-first, so an unqualified name silently resolves to a same-named tenant-side table with a different column layout (sqlstate 42703 on a fresh DB).",
+      "Tenant-side tables (e.g. process_definitions) stay unqualified \u2014 they are reached exactly through the per-tenant search path; qualifying them with public. would route reads to a non-existent relation.",
+      "When a public-scoped migration (e.g. 1157) shares a table name with a tenant_only migration (e.g. 1158), verify every consumer in both tests/ and src/ that reads the public table is explicitly public.-qualified \u2014 check src/ call sites, not just the test file (the SUT itself was broken here).",
+      "Prefer the static qualification check (grep every DML/SELECT reference for the public. prefix) as the authoritative proof when the warm DB masks the runtime 42703; a warm-DB test pass alone does not prove the fix."
+    ]
+  },
+  "resolution": "RESOLVED via run WF03-GH792-20260816 (branch feature/WF03-GH792-20260816). Step 2 (CODE-DESIGNER) produced src/design/iss0707-gh792-prm09-public-qualify-fix.md; Step 3 (BACKEND-DEV) implemented the fix in exactly two files: tests/integration/prm-09-pack-update.test.zig (L98 INSERT / L119 SELECT / L128 INSERT / L164 DELETE now public.-qualified) and production src/definition/pack_update.zig (L120 Step 1 Vb load FROM public.solution_pack_installs; L182 Step 2 base load FROM public.solution_pack_artefact_bases; doc comment L102-107 updated to state explicit public. qualification). process_definitions stays tenant-scoped/unqualified (test L145/L160, SUT L238). Migration 1157 is public-scoped (`-- scope: public.`) and creates the intended tables; the tenant_default shadow is migration 1158 (SOL-02, tenant_only) with a different column layout. Step 5 (TEST-RUNNER) independent verification PASS (tests/reports/report-20260816-WF03-GH792-20260816.yaml): (a) static qualification check AUTHORITATIVE \u2014 every solution_pack_installs / solution_pack_artefact_bases DML/SELECT in both files carries public., every process_definitions reference stays unqualified; (b) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 (direct, NOT the stale-5433 wrapper) exit 0 with 4/4 passing (TC-PRM-09-01..04); (c) lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR, 332 ACK); (d) change-scope audit \u2014 diff confined to the two files, no migrations/, no sol02/sol03; (e) test-env-verify exit 0 HEALTHY 10/10; (f) zig build exit 0. Pre-existing warm-DB SOL-02/SOL-03 legacy-state 42703 (src/solution/store.zig, tenant_default legacy 1157 layout) documented as expected, NOT caused by this fix; dual-schema shadow remediation tracked as ISS-0185 (out of scope). Step 7 (DOC-UPDATER) updated CHANGELOG.md under [Unreleased] 2026-08-16 and marked ISS-0707 RESOLVED. GitHub issue #792 left OPEN for Step Final (release.py --close-github-issue, loop-mode)."
 }

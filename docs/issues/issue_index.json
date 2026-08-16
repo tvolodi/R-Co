@@ -1,7 +1,12 @@
 {
   "schema_version": "1.0",
+<<<<<<< ours
   "last_updated": "2026-08-16T09:29:12Z",
   "next_issue_id": 715,
+=======
+  "last_updated": "2026-08-16T09:32:28Z",
+  "next_issue_id": 714,
+>>>>>>> theirs
   "issues": [
     {
       "id": "ISS-0702",
@@ -2622,7 +2627,7 @@
       "id": "ISS-0707",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
       "severity": "MAJOR",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "title": "tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs \u2014 sqlstate 42703 (INC-001)",
       "run_id": "WF03-GH792-20260816",
       "workflow_id": "WF03-GH792-20260816",
@@ -2636,10 +2641,12 @@
       "category": "integration-test-failure/unqualified-table-ref",
       "affected_areas": [
         "tests/integration/prm-09-pack-update.test.zig",
-        "migrations/1157_prm09_solution_pack_update.sql",
-        "migrations/1158_sol02_solution_pack_installs.sql"
+        "src/definition/pack_update.zig (PRODUCTION \u2014 SUT Step 1 Vb load / Step 2 base load)",
+        "migrations/1157_prm09_solution_pack_update.sql (public-scoped; the intended destination)",
+        "migrations/1158_sol02_solution_pack_installs.sql (tenant_only; the tenant_default shadow)"
       ],
-      "handoff_id": "wf03-gh792-20260816-005-issue-fixer"
+      "handoff_id": "wf03-gh792-20260816-005-issue-fixer",
+      "resolved_at": "2026-08-16T09:32:28Z"
     },
     {
       "id": "ISS-0708",
