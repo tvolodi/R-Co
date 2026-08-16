@@ -1761,3 +1761,6 @@
 2026-08-16T01:37:06Z | DONE | WF03-lintdebt-20260816 | --- | PIPELINE COMPLETE | lint_handoffs baseline debt RESOLVED (GH #796 / ISS-0709; PR #798 squash-merged 6f806042; lint_handoffs.py exit 0 -- 0 BLOCKER, 0 MAJOR, 332 ACKNOWLEDGED)
 2026-08-16T01:37:06Z | GIT  | WF03-lintdebt-20260816 | feature/WF03-lintdebt-20260816 | 6f806042 | PR: https://github.com/tvolodi/R-Co/pull/798
 2026-08-16T04:00:49Z | ROUTE | WF-03 | wf03-gh797-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T04:04:48Z | ROUTE | WF-03 | wf03-gh797-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T04:14:31Z | SUBAGENT_SPAWN_FAIL | WF03-GH797-20260816 | wf03-gh797-20260816-005-issue-fixer | ORCH | 4x ECONNRESET dispatching ISSUE-FIXER (Step 0.5) - step-00 PASS, branch feature/WF03-GH797-20260816 pushed, handoff PENDING in registry - run paused, resumable
+2026-08-16T04:43:23Z | HANDOFF_COMPLETE | WF03-GH797-20260816 | wf03-gh7 | ISSUE-FIXER | step-0.5 PASS: registered ISS-0710 for GH-797, corrected GH-797 body ISS-0709->ISS-0710, next_issue_id 710->711; fix deferred to Step 3
