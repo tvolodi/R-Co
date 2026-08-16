@@ -1,0 +1,63 @@
+{
+  "handoff_id": "wf03-lintdebt-20260816-01-issue-fixer",
+  "run_id": "WF03-lintdebt-20260816",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-lintdebt-20260816/step-01-issue-fixer.json",
+  "created_at": "2026-08-16T00:22:27Z",
+  "started_at": "2026-08-16T00:22:45Z",
+  "completed_at": "2026-08-16T00:27:10Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-lintdebt-20260816-00-backend-dev",
+      "wf03-lintdebt-20260816-005-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0709.json",
+      "tools/lint_handoffs.baseline.json",
+      "tools/repair_handoff_bookkeeping.py",
+      "src/design/iss0627-lint-handoffs-acknowledgment.md",
+      "src/design/iss0626-handoff-bookkeeping-repair.md"
+    ],
+    "branch_name": "feature/WF03-lintdebt-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 1 for run WF03-lintdebt-20260816: root-cause diagnosis (diagnosis-as-design). The root cause was largely documented in Step 0.5 (ISS-0709 / GH #796): 42 unacknowledged lint_handoffs findings (10 BLOCKER H003/H013, 31 MAJOR H007/H009, 1 MINOR H010) on out-of-band runs ADHOC-prm-env-20260814, WF02-prm-batch2-20260814, WF02-plc-batch-a-20260815 (2026-08-14/15). The affected handoff files use a non-canonical schema (agent_id/agent_name instead of from_agent/to_agent; duplicate completed_at key; local-time-labelled-Z timestamps; orphaned step; registry absence). CONFIRM and refine this diagnosis by reading the affected files, then DEFINE the fix approach for Step 3 (BACKEND-DEV) precisely: (a) append the 41 findings (H003 x5, H013 x5, H007 x30, H009 x1) to tools/lint_handoffs.baseline.json with correct matching_key values (from lint_handoffs.py's matching_key_for / the exact finding messages) and reason_refs (reuse H003/H013/H009 reason keys; add a new reason key for the H007 agent_id/agent_name schema-variant case), preserving ALL existing baseline entries (do NOT regenerate via generate_lint_handoffs_baseline.py which would drop H013/H007); (b) fix the 1 MINOR H010 (71 handoffs absent from registry) via tools/repair_handoff_bookkeeping.py --category h010 (in repair scope). Document this in the handoff result as the fix spec for Step 3. Do NOT implement the fix yourself.",
+    "acceptance_criteria": [
+      "Root cause confirmed/refined against the affected handoff files",
+      "Fix approach for Step 3 fully specified (baseline append with matching_key/reason_ref details + H010 repair command)",
+      "Explicitly preserves all existing baseline entries",
+      "No fix implemented (Step 3 only)"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 1 (diagnosis-as-design) PASS: confirmed/refined the root cause of the 42 unacknowledged lint_handoffs findings (ISS-0709 / GH #796) against the 15 affected handoff files: out-of-band runs 2026-08-14/15 used agent_id/agent_name instead of from_agent/to_agent (H007 x30), local-time-labelled-Z completed_at (H003 x5, H013 x5, uniform 5.0h offset), step-02a left IN_PROGRESS past 7 COMPLETED steps (H009 x1), and 71 handoffs absent from registry (H010 MINOR). Computed the exact matching_key for all 41 baseline-bound findings. Fix spec for Step 3 defined: append 41 entries to tools/lint_handoffs.baseline.json (reuse H003/H013/H009 reasons, add new H007-prm-agent-id-schema reason; preserve all 291 existing entries; do NOT regenerate via generate_lint_handoffs_baseline.py), and run python tools/repair_handoff_bookkeeping.py --category h010 --apply --now <utcnow> (backfills 67 of 71; residual 4 non-backfillable remain MINOR and non-gating). Full spec + exact keys in docs/issue-reports/WF03-lintdebt-20260816-step-01-issue-fixer-INNER-REPORT.json. No fix implemented (Step 3 only).",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-lintdebt-20260816-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ADHOC-prm-env-20260814/step-00-backend-dev.json has a duplicate top-level 'completed_at' key (null then value); json.loads keeps the last value, producing its H003/H013 pair. Acknowledged-in-baseline per disposition, not corrected."
+      },
+      {
+        "severity": "MINOR",
+        "description": "After H010 repair, 4 handoffs remain registry-absent and non-backfillable: ADHOC-prm-env-20260814/step-00-backend-dev.json, WF02-plc-batch-a-20260815/step-04-issue-fixer.json, WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json (missing from_agent/to_agent — agent_id/agent_name schema) and WF02-iss201-event-return-20260611/step-final-backend-dev.json (missing created_at, separate pre-existing debt). Residual H010 is MINOR and does not red the gate."
+      }
+    ],
+    "next_action": "ORCH routes to CODE-DESIGNER (Step 2) then BACKEND-DEV (Step 3) to implement the fix per the fix spec in the inner report."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

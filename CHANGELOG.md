@@ -2,6 +2,13 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-16
+
+### fix(process): lint_handoffs baseline debt acknowledged — GH-796/ISS-0709 (RESOLVED)
+
+- **fix(process): GH-796/ISS-0709 — `lint_handoffs.py` baseline debt RESOLVED.** The global handoff-lint gate (`python tools/lint_handoffs.py`) was red on 42 unacknowledged findings on handoff files/registry produced by three out-of-band WF-02 runs dated 2026-08-14/15 (`ADHOC-prm-env-20260814`, `WF02-prm-batch2-20260814`, `WF02-plc-batch-a-20260815`) that post-dated the 2026-08-10 baseline regeneration. Per the ISS-0627 acknowledgment convention, the 41 correctable/recorded findings were acknowledged in `tools/lint_handoffs.baseline.json` (291 → 332 entries; all 291 prior entries preserved, verified by full-key diff against the committed pre-fix baseline): 10 BLOCKER — 5× H003 (`completed_at` precedes `started_at`, non-whole-hour) + 5× H013 (5.0h whole-hour local-time-labelled-Z offset, the `.ToUniversalTime()` omission signature) — 30 MAJOR H007 (missing `from_agent`/`to_agent` schema keys across 15 files; new reason key `H007-prm-agent-id-schema`) — 1 MAJOR H009 (`WF02-prm-batch2-20260814/step-02a-backend-dev.json` left `IN_PROGRESS` while 7 later steps COMPLETED). The H010 registry gap was repaired by backfilling the missing entries into `handoffs/registry.json` (67/71 backfilled via `tools/repair_handoff_bookkeeping.py --category h010`); the residual 1 MINOR H010 (4 of 2918 handoffs, 0.1%, non-backfillable) is documented and non-gating. `python tools/lint_handoffs.py` now exits 0: `2918 handoffs checked — 0 BLOCKER, 0 MAJOR, 1 MINOR, 332 ACKNOWLEDGED`. No production code change — pure bookkeeping/audit-trail debt, resolved per the "never satisfy a gate by editing what it measures" rule (acknowledging = documenting the honest gap, not deleting the detector).
+- Verification: `tests/reports/WF03-lintdebt-20260816-step05-verification.yaml` (Step-05 TEST-RUNNER PASS; `lint_handoffs.py` selftest + `repair_handoff_bookkeeping.py` selftest exit 0; H010 dry-run idempotent, 0 would-add). Run `WF03-lintdebt-20260816`, branch `feature/WF03-lintdebt-20260816`. GitHub issue #796 closed as completed; Step-Final squash-merge is handled by BACKEND-DEV in its own dispatch.
+
 ## [Unreleased] — 2026-08-15
 
 ### feat(prm): Stage 16 — PRM-02/03/04/05 RELEASED (WF02-prm02-05-20260816)
