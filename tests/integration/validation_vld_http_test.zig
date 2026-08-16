@@ -42,6 +42,7 @@ const GraphEdge = bpm.definition.GraphEdge;
 const DefinitionGraph = bpm.definition.DefinitionGraph;
 
 const handleValidateFn = bpm.validation_routes.handleValidate;
+const build_options = @import("build_options");
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -124,6 +125,23 @@ fn cleanupDefinition(pool: *Pool, name: []const u8, version: []const u8) void {
     ) catch {};
 }
 
+/// ISS-0709 B3: drop tenant B's provisioned schema + its registry rows so the
+/// test leaves no tenant_<uuid> schema or public.tenant / public.tenant_schemas
+/// rows behind. Runs after handleValidate's `defer api_tenant_context.clear()`
+/// has emptied the ambient context, so the no-tenant branch routes search_path
+/// to `public` and the public.* DELETEs + DROP SCHEMA resolve. Matches
+/// idn05_role_registry_test.zig's cleanupTenantSchema pattern. The schema name
+/// is derived from a validated UUID (schemaNameForTenant), never user input.
+fn cleanupTenantSchema(allocator: std.mem.Allocator, pool: *Pool, tenant_id: []const u8, schema_name_str: []const u8) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+    const drop_sql = std.fmt.allocPrint(allocator, "DROP SCHEMA IF EXISTS {s} CASCADE", .{schema_name_str}) catch return;
+    defer allocator.free(drop_sql);
+    conn.exec(drop_sql, &.{}) catch {};
+    conn.exec("DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{tenant_id}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE id = $1::uuid", &.{tenant_id}) catch {};
+}
+
 // GH-512: generate the creator UUID per-test via the platform CSPRNG
 // (lint_test_isolation T010 — runtime UUID, no hardcoded fixture literal).
 fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
@@ -159,6 +177,27 @@ const happy_edges = [_]GraphEdge{
 };
 
 const happy_graph = DefinitionGraph{ .nodes = &happy_nodes, .edges = &happy_edges };
+
+// ---------------------------------------------------------------------------
+// Canonical fixture A2 — clean linear definition with LITERAL-ONLY guards
+// (ISS-0709 B2). The HTTP handler (handleValidate) passes an EMPTY env —
+// Definition has no variable_schemas column yet (VLD-04 will pre-fetch) —
+// so any condition referencing a variable (e.g. "amount > 0") resolves to an
+// UnknownVariable finding -> HTTP 422. A literal-only guard ("1 > 0" /
+// "1 <= 0") type-checks to .bool with no env lookups -> genuinely 0 findings
+// -> HTTP 200. Used ONLY by int_vld_03_http_200; the shared happy_graph
+// (variable-based conditions) stays for int_vld_03_02 (UnknownVariable
+// findings) and int_vld_03_cross_tenant_404 (graph content is irrelevant —
+// the handler 404s on the tenant-scoped read before validation).
+// ---------------------------------------------------------------------------
+
+const happy_literal_edges = [_]GraphEdge{
+    .{ .id = "e1", .source = "S", .target = "gw", .condition = null },
+    .{ .id = "e2", .source = "gw", .target = "yes", .condition = "1 > 0" },
+    .{ .id = "e3", .source = "gw", .target = "no", .condition = "1 <= 0" },
+};
+
+const happy_literal_graph = DefinitionGraph{ .nodes = &happy_nodes, .edges = &happy_literal_edges };
 
 // ---------------------------------------------------------------------------
 // Fixture D — PD-06 malformed guard (VLD-02 AC4)
@@ -426,11 +465,15 @@ test "int_vld_03_http_200: validateDefinition on a clean definition returns 200 
     const actor_uuid_str = try randomUuidStr(alloc);
     defer alloc.free(actor_uuid_str);
     const actor_id = try parseTestUuid(alloc, actor_uuid_str);
+    // ISS-0709 B2: happy_literal_graph carries literal-only conditions
+    // ("1 > 0" / "1 <= 0") that yield 0 findings under the handler's empty
+    // env -> HTTP 200 + semantically_valid. happy_graph's variable-based
+    // conditions would emit UnknownVariable -> 422.
     const created = try def_store.create(alloc, CreateParams{
         .name = name,
         .version = version,
         .description = null,
-        .graph = happy_graph,
+        .graph = happy_literal_graph,
         .created_by = actor_id,
     });
     defer created.deinit(alloc);
@@ -563,6 +606,24 @@ test "int_vld_03_cross_tenant_404: tenant B's validate request for tenant A's de
     defer alloc.free(tenant_b_src);
     var tenant_b: [36]u8 = undefined;
     @memcpy(tenant_b[0..], tenant_b_src);
+
+    // ISS-0709 B3: the tenant-scoped read (getById under tenant B) relies on
+    // SCHEMA-mode routing — the pool resolves tenant B's storage_mode from
+    // public.tenant / public.tenant_schemas and sets search_path to
+    // `tenant_<b>,public`. An unprovisioned tenant falls through to
+    // LEGACY_RLS (search_path = public), where `process_definitions` does not
+    // exist (sqlstate 42P01) -> HTTP 500 instead of 404. Provision tenant B's
+    // physical schema (idempotent; same pattern as
+    // idn05_role_registry_test.zig) BEFORE the cross-tenant read so it routes
+    // to the empty tenant_<b> schema and getById returns DefinitionNotFound
+    // -> HTTP 404. The handler sets the ambient tenant context to tenant B for
+    // the duration of the read itself; provisioning runs under the default
+    // context so the pool can still reach public.* tables.
+    var schema_buf_b: [80]u8 = undefined;
+    const tenant_b_schema = bpm.pool.schemaNameForTenant(tenant_b[0..], &schema_buf_b);
+    try bpm.provisioning.provisionTenantSchema(alloc, &pool, tenant_b[0..], build_options.migrations_dir);
+    defer cleanupTenantSchema(alloc, &pool, tenant_b[0..], tenant_b_schema);
+
     const handler_result = handleValidateFn(&store_for_handler, alloc, tenant_b, created_hex);
     defer alloc.free(handler_result.body);
 
