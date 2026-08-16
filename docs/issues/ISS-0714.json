@@ -7,7 +7,7 @@
   "github_issue_confirmed": true,
   "github_issue_filed_at": "2026-08-16T09:29:12Z",
   "title": "bench env: dev DB default-tenant schema provisioning fails (tenant_schemas.migrations_applied_at NULL) blocks WF-04",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "classification": "ENV_ISSUE",
   "severity": "MAJOR",
   "workflow_id": "WF03-vld-impl-bugs-20260816",
@@ -78,7 +78,12 @@
   "fix_file": null,
   "fix_line": null,
   "fix_diff": null,
-  "resolution": null,
+  "resolution": {
+    "summary": "dev-DB ledger reconciliation executed; zig build migrate + zig build bench (WF-04 full NFR) green, all GH #809 ACs met.",
+    "evidence": "tests/reports/WF03-iss0714-bench-env-20260816-verification.md (TEST-RUNNER independent PASS, 5/5 gates); handoffs/WF03-iss0714-bench-env-20260816/step-3-backend-dev.json (D-1..D-7); handoffs/WF03-iss0714-bench-env-20260816/step-5-test-runner.json",
+    "root_cause": "STATE MISMATCH on the dev/bench DB (BPM_DB_URL -> postgres://bpm:bpm@localhost:5442/bpm_dev): tenant_default was already provisioned with the modern table shape (events PARTITIONED BY RANGE (created_at) from 1147_par01) yet public.schema_migrations had ZERO rows for schema_name=tenant_default and public.tenant_schemas.migrations_applied_at was NULL, so provisionTenantSchema() re-applied the full migration set from scratch and 001_event_store.sql CREATE UNIQUE INDEX uq_event_idempotency failed with SQLSTATE 42P16 (unique constraint on partitioned table must include all partitioning columns) -- runForSchema -> MigrationFailed -> migrate.zig leg-(d) post-condition abort.",
+    "fix": "dev-DB-only reconciliation -- NO src/*.zig or migrations/*.sql change. Reconcile public.schema_migrations for schema_name=tenant_default to the canonical 111 rows (test-DB 5434 ground truth + 98-file completeness guard from the current migrations/ dir; 209 statements / 111 unique versions, INSERT ... ON CONFLICT DO NOTHING in one BEGIN/COMMIT with ON_ERROR_STOP=1) and stamp public.tenant_schemas.migrations_applied_at = NOW() for the default tenant. After repair: zig build migrate against 5442 exits 0 with provisioning fast-pathing and the leg-(d) post-condition passing (public backlog GBL-116..143 + 1134..1162 = 59 applied); zig build bench (WF-04 full NFR) runs to completion exit 0 with NFR_BENCH_SUMMARY overall_passed=true; no test-DB regression (5434/bpm_test still 147/147 public + 111 tenant_default)."
+  },
   "prevention": null,
   "pr_url": null,
   "pr_merged_at": null,
@@ -109,7 +114,14 @@
     "fix_approach": "Repair the dev DB ledger + registry ONLY — NO migration-set change and NO src/*.zig change required. (a) Populate public.schema_migrations for schema_name='tenant_default' with the 111 non-public-only/non-tenant_only migrations of the current set (canonical reference = the healthy test DB's tenant_default ledger, which exactly matches the current migrations/ dir; derive via migrationScope over the on-disk set if preferred). (b) SET public.tenant_schemas.migrations_applied_at = NOW() for the default tenant. (c) Spot-check that reconciled ledger versions correspond to objects actually present in tenant_default (verified: modern shape present). After repair, `zig build migrate` on 5442 fast-paths provisioning (Step-2 idempotency now passes), the leg-(d) post-condition passes, then the public pass applies the pending GBL-116..143 + 1134..1162 backlog; exit 0 and `zig build bench` proceeds. IMPORTANT: simply re-running `zig build migrate` does NOT fix it — 001 will keep failing against the partitioned events until the ledger is reconciled. Alternative (more invasive, not preferred): DROP tenant_default + delete the tenant_schemas row and let provisioning rebuild from scratch — destructive; only acceptable if the bench DB's tenant_default data is disposable.",
     "repair_dev_db_only_or_migration_fix": "repair_dev_db_only — dev DB ledger reconciliation (populate tenant_default rows in public.schema_migrations + stamp migrations_applied_at) suffices; no migration-set fix and no code change needed (migration set proven correct by the test DB)."
   },
-  "last_updated": "2026-08-16T10:57:18Z",
-  "updated_at": "2026-08-16T10:57:18Z",
-  "diagnosis_completed_at": "2026-08-16T10:57:18Z"
+  "last_updated": "2026-08-16T11:39:45Z",
+  "updated_at": "2026-08-16T11:39:45Z",
+  "diagnosis_completed_at": "2026-08-16T10:57:18Z",
+  "resolved_at": "2026-08-16T11:39:45Z",
+  "resolved_by": "DOC-UPDATER (WF03-iss0714-bench-env-20260816 step-7)",
+  "close_references": [
+    "tests/reports/WF03-iss0714-bench-env-20260816-verification.md",
+    "handoffs/WF03-iss0714-bench-env-20260816/step-7-doc-updater.json",
+    "src/design/fix-ISS-0714-bench-env.md"
+  ]
 }
