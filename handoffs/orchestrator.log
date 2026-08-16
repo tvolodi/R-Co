@@ -1901,3 +1901,9 @@
 2026-08-16T09:30:57Z | COMPLETE | WF03-vld-impl-bugs-20260816 | wf03-vld | ISSUE-FIXER | filed ISS-0714/GH-809 (dev/bench DB default-tenant provisioning, migrations_applied_at NULL, blocks WF-04); file-only, no fix; registry 714->715
 2026-08-16T09:33:00Z | DONE | WF02-vld01-03-20260816 | --- | PIPELINE COMPLETE | VLD-01/02/03 RELEASED via PR #808 (91a48040); ISS-0709/GH#799 fixed (R1-R10+B1-B3); 15/15 ACs (40/40+14/14+5/5); incidental ISS-0714/GH#809 filed
 2026-08-16T09:33:00Z | GIT | WF02-vld01-03-20260816 | feature/wf02-vld01-03-20260816 | 91a48040 | PR: https://github.com/tvolodi/R-Co/pull/808
+2026-08-16T08:49:38Z | DONE | WF03-GH803-20260816 | --- | PIPELINE COMPLETE | GH-803 CLOSED (ISS-0712 RESOLVED, rollback.zig supersede fix landed; prm-08 suite now 4/4 green)
+2026-08-16T08:49:38Z | GIT  | WF03-GH803-20260816 | feature/WF03-GH803-20260816 | e5dbb40b | PR: https://github.com/tvolodi/R-Co/pull/807
+2026-08-16T08:49:38Z | LOOP | WF03-GH803-20260816 | --- | ORCH | claim released (r-co:GH-803 DONE, gh-803 closed, task/current.json empty) - prm-08 cluster fully resolved (GH-802/804/803) - continuing loop
+2026-08-16T08:50:19Z | ROUTE | WF-03 | wf03-gh792-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T08:52:44Z | ROUTE | WF-03 | wf03-gh792-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T08:54:16Z | complete-handoff | WF03-GH792-20260816 | wf03-gh7 | ISSUE-FIXER | Step 0.5 PASS - ISS-0707 verified correct for GH-792; record updated to WF03-GH792-20260816 (workflow_id/run_id/handoff_id + handoff_history); issue_index consistent (next_issue_id 714); no new ISS/GitHub issue; no fix (Step 3)

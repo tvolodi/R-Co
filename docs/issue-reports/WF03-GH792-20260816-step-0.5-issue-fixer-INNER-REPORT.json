@@ -1,0 +1,49 @@
+{
+  "report_id": "WF03-GH792-20260816-step-0.5-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH792-20260816",
+  "step": "0.5",
+  "created_at": "2026-08-16T08:54:16Z",
+  "summary": "WF-03 Step 0.5 for GH-792/ISS-0707 (test-code bug: tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs -> resolves to tenant_default (different column layout) -> sqlstate 42703 on all 4 TC-PRM-09 tests). Verified ISS-0707 is the correct, non-colliding local record for GitHub issue #792 (github_issue match; title/severity/status/labels consistent; GH-792 confirmed OPEN via gh issue view 792 with labels bug, issue, claimed-by-r-co-2-loop; only index entry referencing /792 is ISS-0707). No new ISS and no new GitHub issue (GH-792 already exists/filed); no fix implemented (deferred to Step 3). Updated ISS-0707.json workflow_id/run_id/handoff_id to the active fix run WF03-GH792-20260816 and appended a step-0.5 handoff_history entry (existing history retained: step-5 test-runner FAIL + step-7 doc-updater FILED from WF03-GH785-20260815). issue_index.json confirmed consistent: ISS-0707 present once, next_issue_id 714 (correct), ISS-0707 entry run_id/workflow_id/handoff_id/branch mirrored, last_updated bumped. All 5 acceptance criteria MET.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH792-20260816-step-0.5-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/issues/ISS-0707.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH792-20260816/step-005-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "gh issue view 792 (state/labels)",
+      "status": "pass",
+      "detail": "state OPEN, labels [bug, issue, claimed-by-r-co-2-loop], title matches ISS-0707"
+    },
+    {
+      "name": "fn:search-issues equivalent (index + GitHub collision check)",
+      "status": "pass",
+      "detail": "only ISS-0707 references GH-792 (/792) in docs/issues/; no new ISS needed; GH-792 already filed"
+    },
+    {
+      "name": "issue_index.json consistency",
+      "status": "pass",
+      "detail": "ISS-0707 present once; next_issue_id == 714; ISS-0707 entry run_id/workflow_id/handoff_id/branch mirrored to WF03-GH792-20260816"
+    },
+    {
+      "name": "JSON validity (ISS-0707.json / issue_index.json / handoff)",
+      "status": "pass",
+      "detail": "valid UTF-8 JSON; utf-8-sig read tolerated; write utf-8 no BOM; handoff_history has 3 entries"
+    },
+    {
+      "name": "git branch check",
+      "status": "pass",
+      "detail": "on feature/WF03-GH792-20260816"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 3) to implement the ISS-0707/GH-792 fix: qualify every reference to solution_pack_installs with public. in tests/integration/prm-09-pack-update.test.zig (INSERT/SELECT against the intended public.solution_pack_installs, not tenant_default via search_path). Verify with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration-prm-09 (4/4)."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,56 @@
+{
+  "handoff_id": "wf03-gh792-20260816-005-issue-fixer",
+  "run_id": "WF03-GH792-20260816",
+  "workflow_id": "WF-03",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH792-20260816/step-005-issue-fixer.json",
+  "created_at": "2026-08-16T08:52:44Z",
+  "started_at": "2026-08-16T08:53:00Z",
+  "completed_at": "2026-08-16T08:54:16Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh792-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/ISSUE_QUEUE.md",
+      "docs/issues/ISS-0707.json",
+      "docs/issues/issue_index.json"
+    ],
+    "branch_name": "feature/WF03-GH792-20260816",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/792"
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 for run WF03-GH792-20260816: registry lookup + confirm/update the ISS record + confirm GitHub filing. The claimed item is GitHub issue #792 (OPEN, labels: bug, issue, claimed-by-r-co-2-loop): test-code bug \u2014 tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs -> resolves to tenant_default (different column layout) -> sqlstate 42703 on all 4 TC-PRM-09 tests. The local ISS record ALREADY exists and is correct: docs/issues/ISS-0707.json (github_issue https://github.com/tvolodi/R-Co/issues/792, status OPEN). Verify ISS-0707 is the correct, non-colliding record; update it if workflow_id / handoff_history fields are absent or stale (record this run WF03-GH792-20260816 in handoff_history); confirm issue_index.json has ISS-0707 with next_issue_id consistent. NO new ISS number needed and NO new GitHub issue to file (GH-792 already exists). Do NOT implement the fix (that is Step 3).",
+    "acceptance_criteria": [
+      "ISS-0707 verified as the correct record for GH-792 (no collision, content matches)",
+      "ISS-0707.json updated with this run's workflow_id/handoff_history if absent/stale (or confirmed current)",
+      "issue_index.json consistent (ISS-0707 present, next_issue_id correct)",
+      "No new GitHub issue filed (GH-792 already exists) and no fix implemented",
+      "Work on branch feature/WF03-GH792-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Verified ISS-0707 is the correct, non-colliding record for GH-792 (gh issue view 792 OPEN, labels [bug, issue, claimed-by-r-co-2-loop], title matches; only ISS-0707 maps to /792). Updated ISS-0707.json workflow_id/run_id/handoff_id to WF03-GH792-20260816 and appended this run to handoff_history; issue_index.json confirmed consistent (ISS-0707 present, next_issue_id 714). No new ISS, no new GitHub issue, no fix (deferred to Step 3).",
+    "artifacts_out": [
+      "docs/issues/ISS-0707.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-GH792-20260816-step-0.5-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3) to implement the GH-792 fix (qualify solution_pack_installs with public. in tests/integration/prm-09-pack-update.test.zig)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
