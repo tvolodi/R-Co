@@ -1540,7 +1540,6 @@ test "TC-ADP-01-01: default-tenant behavior remains backward compatible" {
     }
 
     const explicit_default = try store.read(alloc, inst_uuid, ReadOpts{
-        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
@@ -1652,7 +1651,6 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
     defer discard_result_13.record.deinit(alloc);
 
     const default_events = try store.read(alloc, inst_uuid, ReadOpts{
-        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
@@ -1665,18 +1663,14 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
         alloc.free(default_events);
     }
 
-    // Unlike store.append() (which issues its own `SET LOCAL search_path`
-    // scoped to params.tenant_id), store.read() uses opts.tenant_id only as
-    // a row-level filter (`AND tenant_id = $N`) -- it trusts the pool
-    // connection's *already-active* search_path for which schema's `events`
-    // table it queries. The alt-tenant row was written into
-    // tenant_<alt_tenant_hex>.events by store.append() above (which does
-    // its own routing internally), so reading it back requires switching
-    // the threadlocal tenant context to alt_tenant first, matching the
-    // schema store.append() used to write it.
+    // store.read() resolves the tenant via the pool connection's active
+    // search_path (SPT-03: ReadOpts no longer carries tenant_id). The
+    // alt-tenant row was written into tenant_<alt_tenant_hex>.events by
+    // store.append() above (which does its own routing internally), so
+    // reading it back requires switching the threadlocal tenant context to
+    // alt_tenant first, matching the schema store.append() used to write it.
     bpm.api_tenant_context.set(alt_tenant);
     const alt_events = try store.read(alloc, inst_uuid, ReadOpts{
-        .tenant_id = alt_tenant,
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
