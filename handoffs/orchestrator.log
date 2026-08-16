@@ -1784,3 +1784,6 @@
 2026-08-16T06:50:55Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-004-r1 | ORCH -> TEST-DESIGNER | PENDING | STEP 4-r1: R7/R10 fixtures (parallel)
 2026-08-16T06:55:51Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 003-r1 | BACKEND-DEV | PASS | Step 3-r1: R6/R8/R9 impl (ISS-0709/GH#799), commit 22b69578
 2026-08-16T07:06:49Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 004-r1 | TEST-DESIGNER | FAIL | Step 4-r1: R7/R10 fixtures (ISS-0709/GH#799), commit 491f35a5 - gates not met (B1 typecheck cmp_expr gap / B2 http_200 empty-env fixture / B3 cross_tenant tenant-B provisioning)
+2026-08-16T07:09:14Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-003-r2 | ORCH -> BACKEND-DEV | PENDING | B1 cmp_expr operand compat
+2026-08-16T07:09:14Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-004-r2 | ORCH -> TEST-DESIGNER | PENDING | B2/B3 http fixture+harness (parallel)
+2026-08-16T07:15:14Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 003-r2 | BACKEND-DEV | PASS | Step 3-r2: B1 operand-compat in cmp_expr (ISS-0709/GH#799), commit 844c2016
