@@ -1787,3 +1787,4 @@
 2026-08-16T07:09:14Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-003-r2 | ORCH -> BACKEND-DEV | PENDING | B1 cmp_expr operand compat
 2026-08-16T07:09:14Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-004-r2 | ORCH -> TEST-DESIGNER | PENDING | B2/B3 http fixture+harness (parallel)
 2026-08-16T07:15:14Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 003-r2 | BACKEND-DEV | PASS | Step 3-r2: B1 operand-compat in cmp_expr (ISS-0709/GH#799), commit 844c2016
+2026-08-16T07:37:15Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 004-r2 | TEST-DESIGNER | PASS | Step 4-r2: B2/B3 http fixture+harness (ISS-0709/GH#799), commit 1c3a6065 - vld-http 5/5, 0 leaks, no 42P01; vld-unit 14/14
