@@ -276,3 +276,127 @@ Final acceptance gate (matches ISS-0709 `acceptance_criteria`):
 - **Not addressed here (tracked separately in ISS-0709 context):** the earlier `SPEC_DEVIATION` note (spec integration files absent at diagnosis time) is moot — `tests/integration/validation_vld_unit_test.zig` (14 blocks) and `validation_vld_http_test.zig` (5 blocks) now exist and are wired into `build.zig` (`test-integration-vld-unit`, `test-integration-vld-http`). They are exercised by the verification above, not changed by this fix.
 
 **Open questions:** none blocking. The R3 sibling-name decisions (`duration`/bare `list`/bare `map` not added) and the R4a decision (per-site gate = `expr.parse`, `graph.zig` untouched) are recorded here as resolved; if REQ-ANALYST later wants `duration` in the declared-type set, that is a separate taxonomy change (new `TypeTag`) and must go through CODE-DESIGNER + VLD-03 AC5 review.
+
+---
+
+# SCOPE EXPANSION R6-R10 — post-implementation integration blockers (Step 2 REWORK 1)
+
+**Run ID:** WF03-vld-impl-bugs-20260816 (WF-03 Step 2 REWORK 1)
+**Trigger:** BACKEND-DEV step-3 (handoff `wf03-vld-impl-bugs-20260816-003`, commit `6c079980`) implemented R1-R5 — `test-validation` is green (38/38, 0 fail, 0 crash, 0 leaks) — but the integration gates are not met: `test-integration-vld-unit` 9/14 and `test-integration-vld-http` 2/5 (+95 leaks). The five remaining blockers were classified by BACKEND-DEV as outside the R1-R5 scope. This section classifies each blocker and specifies the exact change. **Sections §1–§3, §6, §7 above are unchanged and remain in force.**
+
+**Empirical basis:** all five blocker signatures below were re-confirmed on `feature/wf02-vld01-03-20260816` @ `90207259` (HEAD) against a live `bpm_test` DB (`BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test`) on 2026-08-16: `test-integration-vld-unit` → 9/14 (int_vld_01_04, int_vld_02_01, int_vld_02_05, int_vld_03_01, int_vld_03_04); `test-integration-vld-http` → 2/5 + 95 leaks.
+
+## R6-R10 classification summary
+
+| Block | Blocker | Classification | Routing |
+|---|---|---|---|
+| R6 | int_vld_01_04 — `scope.zig envForSite` empty env when a service_result/module_output producer is absent from the graph | **(a) implementation defect** | BACKEND-DEV |
+| R7 | int_vld_02_01 — arithmetic ops (`+ - * /`) listed as "positive" on a bool-expecting gateway guard | **(b) test-fixture defect** | TEST-DESIGNER |
+| R8 | int_vld_02_05 — `emitEmptyExpression` dups `""` instead of preserving the whitespace source | **(a) implementation defect** | BACKEND-DEV |
+| R9 | int_vld_03_01/03_04 (+ the same gate that also blocks int_vld_02_05) — `validateEdgeConditions` flags empty/whitespace gateway conditions as `EDGE_MISSING_CONDITION`/`EDGE_INVALID_CEL`, so the PD-06 gate fires instead of the semantic findings | **(c) design-intent clarification → (a) implementation defect at the VLD boundary** | BACKEND-DEV |
+| R10 | test-integration-vld-http 42P01 (`DELETE FROM process_definitions` → public search_path) + 95 leaks + int_vld_03_02 five-fields assertion on an empty-findings body | **(b) test-harness / fixture defect** | TEST-DESIGNER (re-verified by TEST-RUNNER) |
+
+---
+
+## R6 — Blocker 1: `scope.zig envForSite` must not empty the whole per-site env for an absent producer (int_vld_01_04)
+
+**Classification:** implementation defect (a). The fixture is correct — its stated intent is declaration-only: an entry whose producer node is absent from the graph must simply contribute nothing, while `variable_schema` rows remain visible. The implementation is wrong: it discards the entire per-site env.
+
+**Empirical signal:** `expected 0, found 2` at `validation_vld_unit_test.zig:379` — `fail_a.findings.len == 2` (two `UnknownVariable` on `amount > 0` / `amount <= 0`) because `envForSite` returned an empty env for the gateway site, hiding the `amount` variable.
+
+**Root cause:** in `src/validation/scope.zig` `envForSite`, the `.service_result, .module_output` filter branch has two early `return TypedEnv{ .entries = &.{} }` bail-outs:
+- `reachableFrom(reach, src) orelse return …` — fires when the entry's `source_node_id` producer is **not in the graph** (as in `int_vld_01_04`: producer `svc_a` / `sub_b` does not exist in `happy_graph`);
+- `indexOf(reach.node_order, site_walking_node_id) orelse return …` — fires when the walker node is absent.
+
+Each bail-out returns an **empty** env for the whole site instead of skipping just that entry.
+
+**Exact behavior `envForSite` must have:** a per-entry scope-filter miss is a *skip*, never a whole-site bail-out. For every entry:
+- `variable_schema` → visible (unchanged);
+- `service_result` / `module_output` whose producer is reachable from the walker node → visible; whose producer is **absent from the graph** (or whose walker node is absent) → **not visible for that entry only**; all other entries remain in the returned env;
+- `form_field` → unchanged.
+
+**Exact change (BACKEND-DEV, `src/validation/scope.zig` `envForSite` only):** replace both `orelse return TypedEnv{ .entries = &.{} }` inside the `.service_result, .module_output` branch with `orelse break :blk false` (fall through to "not visible", continue the loop). `computeReachability`, `reachableFrom`, and the `variable_schema`/`form_field` branches are unchanged.
+
+**Routing:** BACKEND-DEV. **Verification:** `int_vld_01_04` yields 0 findings for both instances; the four existing `scope.zig` in-file tests still pass (their graphs contain every producer and every walker node, so no skip-path behaviour changes).
+
+---
+
+## R7 — Blocker 2: int_vld_02_01 fixture defect — arithmetic ops on a bool-expecting gateway guard (fixture fix, TEST-DESIGNER)
+
+**Classification:** test-fixture defect (b). The implementation is correct: `+ - * /` infer `number`, and a gateway edge-condition site expects `bool` (VLD-02 AC1), so `a + b` legitimately yields `TypeMismatch`.
+
+**Empirical signal:** `expected 0, found 1` at `validation_vld_unit_test.zig:568` — the loop over `operator_cases` fails on the first arithmetic case (`a + b`).
+
+**Exact fixture change (TEST-DESIGNER, `tests/integration/validation_vld_unit_test.zig` `int_vld_02_01`):** the four arithmetic operators must not be exercised as "positive" cases on a bool-expecting gateway guard. Choose one:
+- **(a) preferred — relocate to a number-expecting site:** drive the four arithmetic expressions at a `HUMAN_TASK` form `computed_from` site whose field declares `type: "number"` (the site walker sets `expected_type` to the field's declared type; `computed_from` is a first-class site), or at a `SERVICE_TASK` `input_mapping` value site. Assert 0 findings for all four. This preserves the spec's "every operator positive on number/number" intent and exercises each operator at its natural result type.
+- (b) alternative — wrap each arithmetic expression in a comparison so it yields bool on the gateway guard: `(a + b) > 0`, `(a - b) > 0`, `(a * b) > 0`, `(a / b) > 0`.
+
+The eight bool-producing cases (`== != < <= > >= && ||`) and the negative case (`s > 0` → `OperandTypeError`) are unchanged. No implementation change.
+
+**Routing:** TEST-DESIGNER. **Verification:** all twelve cases yield 0 findings at their own expected-type site; the negative case still yields `OperandTypeError`.
+
+---
+
+## R8 — Blocker 3: `emitEmptyExpression` must preserve the verbatim source (int_vld_02_05)
+
+**Classification:** implementation defect (a). Spec VLD-03 AC2 and spec §3.8 (Fixture H) require the `EmptyExpression` finding's `source` to be the verbatim empty/whitespace string (`"   "`), not a normalised `""`.
+
+**Empirical signal:** int_vld_02_05 currently fails **earlier** at `expect(failure.findings.len >= 1)` (`validation_vld_unit_test.zig:718`) because the PD-06 gate fires on the whitespace condition — that half is R9. After R9 lands, the remaining assertion `f.source == "   "` will fail because `emitEmptyExpression` dups `""`. Both R8 and R9 are required for int_vld_02_05.
+
+**Exact change (BACKEND-DEV, `src/validation/typecheck.zig` `emitEmptyExpression`):** replace `const source_dup = try allocator.dupe(u8, "");` with `const source_dup = try allocator.dupe(u8, site.source);` so the finding carries the site's verbatim source. Update the surrounding comments that claim "source is empty literal `""` per VLD-03 AC2 contract" — the contract is preservation. Update the `source` field doc in `src/validation/finding.zig` (currently "For `EmptyExpression` this is `\"\"`") to state that the verbatim empty/whitespace source is preserved. No change to `checkSite`, `isEmptyOrWhitespace`, or the `EmptyExpression` short-circuit ordering.
+
+**Routing:** BACKEND-DEV. **Verification:** int_vld_02_05 `preserved_source` passes (`f.source == "   "`); the in-file `typecheck.checkSite: empty source -> EmptyExpression` test still passes (it does not assert `source`).
+
+---
+
+## R9 — Blocker 4: the VLD gate must defer empty/whitespace edge conditions to VLD-02 AC5 (int_vld_03_01 / int_vld_03_04, and the shared gate that also blocks int_vld_02_05)
+
+**Classification:** design-intent clarification that resolves to an implementation defect at the VLD boundary (a). The spec is authoritative and unambiguous: §3.8 Fixture H designs a whitespace gateway condition (`"   "`) → `EmptyExpression` with `source == "   "`; §3.10 Fixture J designs an empty gateway condition (`""`) → `EmptyExpression` as one of three aggregated findings. So VLD-02 AC5 — not the graph-level PD-06 structural gate — owns empty/whitespace expression sites.
+
+**Empirical signal:** int_vld_03_01 `expected 3, found 0` (`validation_vld_unit_test.zig:741`); int_vld_03_04 `expect(findings.len >= 3)` fails (`:841`); int_vld_02_05 `expect(findings.len >= 1)` fails (`:718`). All three fire the gate because `pd06.zig runSyntaxCheck`'s graph-level block calls `graph.validateEdgeConditions`, which flags the empty condition (`""`) as `EDGE_MISSING_CONDITION` (CHK-EC-03) and the whitespace condition (`"   "`) as `EDGE_INVALID_CEL` (CHK-EC-06 — `isValidCelSyntax` rejects whitespace-only input). The gate short-circuits before the per-site typecheck loop can emit `EmptyExpression`.
+
+**Decision (option b):** the validation layer runs semantic checks even when edge conditions are empty/whitespace. This mirrors the rule the per-site loop already applies (`if (site_mod.isEmptyOrWhitespace(s.source)) continue; // VLD-02 AC5 owns empties`). **`src/definition/graph.zig` stays out of scope** — its `validateEdgeConditions` remains the pre-existing structural PD-06 check for the `Store.create()` path; the fix is confined to the VLD boundary in `src/validation/pd06.zig`.
+
+**Exact change (BACKEND-DEV, `src/validation/pd06.zig` `runSyntaxCheck`, graph-level block only):** apply the same "AC5 owns empties" rule to the lifted `validateEdgeConditions` violations:
+1. Precompute the set `S` of edge ids whose condition is **present and empty-or-whitespace**: `S = { e.id : e.condition != null AND site_mod.isEmptyOrWhitespace(e.condition.?) }`.
+2. When appending `cond.violations`, skip any violation with `code == "EDGE_MISSING_CONDITION"` or `code == "EDGE_INVALID_CEL"` whose edge id (the first single-quoted token in `v.message`, e.g. `'e2'`) is in `S`.
+3. `validateEdgeTransforms` is unchanged (it already trims and skips empty/whitespace transforms).
+
+**Behaviour contract after fix:**
+- A gateway edge with a **present** (`condition != null`) empty or whitespace string yields an `EmptyExpression` semantic finding (VLD-02 AC5) via the per-site typecheck loop; it does **not** short-circuit the gate.
+- A gateway edge with `condition == null` on a non-default edge still yields `EDGE_MISSING_CONDITION` (unchanged): a null condition enumerates no site, so no `EmptyExpression` can carry it — the structural gate is the only signal.
+- Genuinely malformed non-empty conditions (e.g. `"amount >"`) still fire `CEL_SYNTAX_INVALID` via the per-site `expr.parse` gate (R4a) and `EDGE_INVALID_CEL` where applicable — unchanged.
+
+**Routing:** BACKEND-DEV (`pd06.zig` only). **Verification:** int_vld_02_05 reaches the source-preservation assertion (with R8); int_vld_03_01 returns exactly 3 findings (`EmptyExpression` + `OperandTypeError` + `UnknownVariable`) ordered by `(node_id, expression_path)`; int_vld_03_04 returns two byte-identical runs with `len >= 3`; int_vld_02_04 (genuine PD-06 failure `amount >`) still returns empty findings + non-null `pd06_diagnostics`; the `pd06`/`site` in-file tests still pass.
+
+---
+
+## R10 — Blocker 5: test-integration-vld-http — three harness defects (42P01 + 95 leaks + int_vld_03_02 five-fields assertion)
+
+**Classification:** test-harness / fixture defect (b). No change to `src/validation/*.zig` or `src/definition/*.zig`. All fixes are in `tests/integration/validation_vld_http_test.zig`.
+
+**Empirical signals (2/5 + 95 leaks):**
+1. `int_vld_03_02` fails at `:286` — `"source":` absent. The test drives `bad_syntax_graph` (a PD-06 violation), which short-circuits to **empty findings**, so the response body carries no finding fields (`node_id`, `expression_path`, `source`, `error_kind`, `message`) to assert. The test's own header even states "findings is empty" on the PD-06 path — the five-mandatory-fields assertion targets the wrong fixture.
+2. **95 leaked allocations** across `int_vld_03_02` / `int_vld_03_05` / `int_vld_03_cross_tenant_404`: every block calls `def_store.create(...)` but never `created.deinit(alloc)`. `create` returns an owned `Definition` whose graph `nodes`/`edges` were copied in `store.zig parseGraphJson` (leak trace: `create → rowToDefinition → rowToDefinitionFromFields → parseGraphJson`).
+3. `[pool] exec failed; sqlstate=42P01 … DELETE FROM process_definitions WHERE name = $1 AND version = $2` (logged by `cleanupDefinition`): the unqualified DELETE runs on a pool connection acquired **after** `handleValidate`'s `defer api_tenant_context.clear()` emptied the tenant context, so the pool routes `search_path` to `public`, where `process_definitions` does not exist (it lives in `tenant_default`).
+
+**Exact fixes (TEST-DESIGNER):**
+1. **int_vld_03_02:** drive a graph that produces semantic Findings — e.g. the `UnknownVariable` fixture (`amont > 0` against an env declaring `amount`) or any clean-syntax semantic-error fixture — so the 422 body contains real findings with all five fields; keep a separate, correctly-asserted check on the PD-06 short-circuit body only for the `pd06_diagnostics` shape (`code` + `message`).
+2. **Leaks:** after each `def_store.create(...)` in all five blocks, add `defer created.deinit(alloc);` (the `Definition` and its graph copies are allocator-owned; `Definition.deinit` frees them via `DefinitionGraph.deinit`).
+3. **42P01 cleanup:** make `cleanupDefinition` re-establish the default tenant context before acquiring its pool connection — `bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000")` at the top of the helper — so the acquired connection routes to `tenant_default,public`. (The unit-test file's `cleanupDefinition` is unaffected: nothing clears the tenant context there.)
+
+**Routing:** TEST-DESIGNER (fixture/harness); TEST-RUNNER re-verifies against a fully-migrated `bpm_test` DB (default tenant `storage_mode = 'SCHEMA'` per migrations 087/1135 so pool connections route to `tenant_default`). **Verification:** `test-integration-vld-http` 5/5 with 0 leaks and no 42P01 log.
+
+---
+
+## Routing and sequencing after R6-R10
+
+| Step | Change owner | Scope |
+|---|---|---|
+| R6, R8, R9 | BACKEND-DEV | `src/validation/scope.zig`, `src/validation/typecheck.zig`, `src/validation/pd06.zig`, `src/validation/finding.zig` (doc only) |
+| R7, R10 | TEST-DESIGNER | `tests/integration/validation_vld_unit_test.zig`, `tests/integration/validation_vld_http_test.zig` |
+| Re-verify | TEST-RUNNER | `zig build test-validation` (38/38), `test-integration-vld-unit` (14/14), `test-integration-vld-http` (5/5, 0 leaks), full `zig build test` |
+
+**Out-of-scope confirmations:** `src/definition/graph.zig` remains unmodified (R9 keeps the structural PD-06 check at the VLD boundary only); `src/api/routes/validation.zig` remains unmodified; `src/validation/mod.zig`, `site.zig`, `env.zig` receive no further change beyond R1-R5. No migration, no wire-format change, no requirement change.
+
+**Open questions (R6-R10):** none blocking. The R9 decision to keep `EDGE_MISSING_CONDITION` for `condition == null` (as opposed to also deferring null to AC5) is recorded as resolved; it preserves pre-existing structural behaviour and is not exercised by any current test. The R10 int_vld_03_02 fixture replacement (option "semantic-error graph" vs "PD-06 fixture + separate findings call") is left to TEST-DESIGNER's discretion as long as the five-fields assertion runs against a response that actually carries findings.
