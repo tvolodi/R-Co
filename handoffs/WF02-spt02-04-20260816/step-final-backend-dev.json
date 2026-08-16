@@ -1,0 +1,50 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-final-backend-dev",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-spt02-04-20260816/step-final-backend-dev.json",
+  "created_at": "2026-08-16T21:53:12Z",
+  "started_at": "2026-08-16T21:53:31Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-06-doc-updater",
+      "WF02-spt02-04-20260816-05-release-validator-rerun"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "docs/status/release-decision-WF02-spt02-04-20260816.yaml"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "All WF-02 steps PASS (design, security, test-design, test run, release APPROVED, docs/status RELEASED). Step Final: fn:git-merge per docs/agents/protocols/GIT_MERGE.md — squash-merge feature/WF02-spt02-04-20260816 into main, delete the feature branch, return to a clean main, and record branch_name/commit_sha_list/remote_branch/pr_url/push_status. Confirm the local repo is on main with a clean working tree before writing PASS."
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for WF-02 run WF02-spt02-04-20260816 (SPT-02/03/04 RELEASED). Squash-merge feature branch feature/WF02-spt02-04-20260816 into main, delete the feature branch locally and remotely, push main, and confirm the local repo is on main with a clean working tree. Record in your result: branch_name, commit_sha_list (at least one entry), remote_branch, pr_url (or pr_create_error), push_status: ok. Run python tools/lint_handoffs.py and report its exit code.",
+    "acceptance_criteria": [
+      "feature branch squash-merged into main via PR",
+      "Feature branch deleted locally and remotely",
+      "Local repo on main with clean working tree",
+      "result.git_evidence: branch_name, commit_sha_list, remote_branch, pr_url, push_status ok",
+      "lint_handoffs.py exit code reported"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
