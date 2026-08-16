@@ -1,0 +1,44 @@
+{
+  "report_id": "WF03-GH792-20260816-step-2b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-GH792-20260816",
+  "step": "2b",
+  "created_at": "2026-08-16T09:17:56Z",
+  "summary": "WF-03 Step 2b (HARD GATE) for ISS-0707/GH-792: validated the Type E design artefact at src/design/iss0707-gh792-prm09-public-qualify-fix.md against all 8 task acceptance criteria. All 7 per-check gates (a)-(g) PASS. tools/lint_design_artefact.py exits 0 with BLOCKER=0 MAJOR=0 (15x MINOR E030 schema-qualified-name flags are inherent to a qualification-fix design and informational only). Every exact-line claim in the design was verified against the actual sources: test file L98/L119/L164 (solution_pack_installs) and L128 (solution_pack_artefact_bases) match; pack_update.zig L117/L179 match; process_definitions stays unqualified (test L145/L160, SUT L235); migration facts verified against migrations/1157 (-- scope: public., tenant_id/installed_version layout) and 1158 (tenant_only, pack_version/schema_version layout). Blast-radius claims verified via grep: store.zig L324/347, sol02_install_test L73/80/130, sol03_role_gate_test L68/74 all remain unqualified tenant-side and are correctly excluded from the 2-file scope. Design is patch-shape only (no implementation code), verification plan complete (static qualification check authoritative + test-integration-prm09 + fresh-replay + sol02/sol03 collateral). Result: PASS — Step 3 (BACKEND-DEV) may start.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH792-20260816-step-2b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH792-20260816/step-2b-code-design-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/iss0707-gh792-prm09-public-qualify-fix.md",
+      "status": "pass",
+      "detail": "EXIT=0, BLOCKER=0, MAJOR=0, MINOR=15 (all E030 schema-qualified-name flags — expected for a schema-qualification design; informational)"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "lint_design_artefact.py reports 15x E030 MINOR (schema-qualified name). Inherent to the design's topic (the fix IS schema qualification) and non-blocking; gate is BLOCKER=0 MAJOR=0."
+    },
+    {
+      "severity": "MINOR",
+      "description": "ISS-0707 prose (description/investigation_notes/fix_file) understates scope: it says migration 1157 is 'tenant_only' scope and 'No production-code change required'. The design correctly identifies migration 1157 as '-- scope: public.' (verified against migrations/1157 file) and that the production SUT pack_update.zig L117/L179 ALSO needs public. qualification. Recommend ISSUE-FIXER/DOC-UPDATER update ISS-0707 fix_file/fix_diff to include src/definition/pack_update.zig for traceability."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Build-target naming: the issue-cited target 'test-integration-prm-09' does not exist; the real target is 'test-integration-prm09' (build.zig:3164). The design correctly flags this; Step 3 must use the correct target name."
+    }
+  ],
+  "next_steps": [
+    "Route PASS to ORCH; Step 3 (BACKEND-DEV) may implement the 2-file public. qualification per the design patch shape.",
+    "BACKEND-DEV to update the doc comment at pack_update.zig:102-105 per the design's flagged Step 3 instruction.",
+    "TEST-RUNNER to run test-integration-prm09 (4/4) plus fresh-migration replay (authoritative proof) and sol02/sol03 collateral re-run.",
+    "Consider updating ISS-0707 fix_file/fix_diff to include the production file (traceability)."
+  ],
+  "blockers": []
+}

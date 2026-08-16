@@ -99,9 +99,12 @@ pub fn computePackUpdatePlan(
     incoming_version: []const u8,
     incoming_artefacts: []const IncomingArtefact,
 ) PackUpdateError!PackUpdatePlan {
-    // Public-schema tables (solution_pack_installs, artefact_bases) are found
-    // via search_path fallback when a tenant context is active (tenant_default,public).
-    // Tenant-side tables (process_definitions) need the active tenant context.
+    // Public-schema tables (solution_pack_installs, artefact_bases) are
+    // explicitly `public.`-qualified in the SQL below — they no longer rely on
+    // search_path fallback, because the pool's per-tenant search path
+    // (tenant_default, public) would resolve the bare names to the SOL-02
+    // tenant_default shadow first (migration 1158 layout). Tenant-side tables
+    // (process_definitions) need the active tenant context and stay unqualified.
     // Do NOT clear tenant context here.
 
     const conn = pool.acquire() catch |err| return switch (err) {
@@ -114,7 +117,7 @@ pub fn computePackUpdatePlan(
     const install_row = conn.queryRow(
         allocator,
         \\SELECT id::text, installed_version
-        \\FROM solution_pack_installs
+        \\FROM public.solution_pack_installs
         \\WHERE tenant_id = $1::uuid AND pack_id = $2
         \\ORDER BY installed_at DESC
         \\LIMIT 1
@@ -176,7 +179,7 @@ pub fn computePackUpdatePlan(
             const base_row = conn.queryRow(
                 allocator,
                 \\SELECT base_content::text
-                \\FROM solution_pack_artefact_bases
+                \\FROM public.solution_pack_artefact_bases
                 \\WHERE install_id = $1::uuid AND artefact_id = $2
                 \\LIMIT 1
             ,

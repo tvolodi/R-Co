@@ -1,0 +1,71 @@
+{
+  "report_id": "WF03-GH792-20260816-step-1-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH792-20260816",
+  "step": "1",
+  "created_at": "2026-08-16T09:08:45Z",
+  "summary": "WF-03 Step 1 root-cause diagnosis (diagnosis-as-design) for GH-792/ISS-0707 (prm-09 pack-update 42703). CONFIRMED the ISS-0707 diagnosis for fresh-migration DBs, with two corrections. Root cause: the PRM-09 intended table is public.solution_pack_installs (migration 1157, '-- scope: public.' with public.-qualified DDL after the GH-785 fix 51170eed); a DIFFERENT feature's table tenant_default.solution_pack_installs (migration 1158, '-- scope: tenant_only', SOL-02, columns id/pack_id/pack_version/schema_version/installed_by/installed_at — NO tenant_id/installed_version) shadows it for unqualified references under the per-tenant search_path 'tenant_default,public' that the pool applies for the zero-UUID tenant context (SCHEMA mode, pool.zig applyRequestStorageRouting). On a fresh migration replay the unqualified INSERT/SELECT in the test file -> 42703 on all 4 TC-PRM-09 tests (matches ISS-0707's 4/4 FAIL). VERIFIED EMPIRICALLY: on this workspace's current warm bpm_test (:5453) tenant_default.solution_pack_installs currently has the 1157 column layout (a legacy artifact from the ORIGINAL 1157 at commit 47d4c7c9, whose unrecognized '-- Scope:' capital-S header defaulted to all-schema scope and whose DDL was unqualified), so the compiled prm-09 test binary currently PASSES 4/4 (masked) — the 42703 WILL reproduce on any clean replay (CI), so the fix must not rely on the warm-DB state. SCOPE CORRECTION (MAJOR): the SUT src/definition/pack_update.zig ALSO issues unqualified queries (line 117 'FROM solution_pack_installs' with WHERE tenant_id, line 179 'FROM solution_pack_artefact_bases'), so on a fresh DB the SUT itself raises 42703 and a test-code-only fix is INSUFFICIENT — Step 3 must ALSO qualify the two public-schema tables in pack_update.zig. process_definitions must remain unqualified (tenant-side table, lines 145/160 in the test and 235 in pack_update.zig). Fix spec, verification target (test-integration-prm09), and the corrected DB URL (:5453) documented in result.fix_spec. No fix implemented (Step 1 only).",
+  "files_created": [
+    "docs/issue-reports/WF03-GH792-20260816-step-1-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH792-20260816/step-01-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "live DB probe (psycopg2, bpm_test :5453): default tenant row + both table layouts + 42703 repro under search_path tenant_default,public vs public",
+      "status": "pass",
+      "detail": "default tenant row EXISTS with storage_mode=SCHEMA (-> pool search_path = tenant_default,public). Warm tenant_default.solution_pack_installs cols = id,tenant_id,pack_id,installed_version,installed_at,installed_by (1157 layout); public.solution_pack_installs cols = same. Unqualified SELECT under tenant_default,public currently OK (no 42703) because warm shadow has 1157 layout. Migration 1158 (SOL-02) defines a DIFFERENT layout (pack_version/schema_version, no tenant_id) -> fresh replay produces 42703."
+    },
+    {
+      "name": "run compiled prm-09 test binary (BPM_TEST_DB_URL=:5453)",
+      "status": "pass",
+      "detail": "4/4 OK ('All 4 tests passed.', exit 0) on the current warm DB — confirms the warm-DB masking; does NOT invalidate the fresh-DB diagnosis."
+    },
+    {
+      "name": "zig build test-integration-prm09 (with clean_test_db)",
+      "status": "pass",
+      "detail": "exit 0; clean_test_db cleans DATA only (no schema reset) so warm-DB masking persists. Confirms build target exists and runs."
+    },
+    {
+      "name": "git history of migrations 1157/1158 + migrationScope parser",
+      "status": "pass",
+      "detail": "1157 original (47d4c7c9): '-- Scope: public.' capital-S (unrecognized -> default all-schema) + UNQUALIFIED DDL -> created 1157-layout shadow in tenant_default on warm DBs. 1157 current (51170eed GH-785 fix): '-- scope: public.' + public.-qualified DDL -> public_only. 1158 (99ad43db, SOL-02) always tenant_only. Fresh replay -> tenant_default gets 1158 layout -> 42703."
+    },
+    {
+      "name": "build.zig verification target lookup",
+      "status": "pass",
+      "detail": "build.zig:3164 defines the step 'test-integration-prm09' (root_source_file = tests/integration/prm-09-pack-update.test.zig). The issue-cited name 'test-integration-prm-09' does NOT exist."
+    },
+    {
+      "name": "git branch check",
+      "status": "pass",
+      "detail": "on feature/WF03-GH792-20260816"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "Documented 'test-code only, no production code' scope is INSUFFICIENT. src/definition/pack_update.zig (SUT computePackUpdatePlan) queries solution_pack_installs unqualified (line 117) and solution_pack_artefact_bases unqualified (line 179). On a fresh-migration DB the SUT itself raises 42703 (tenant_id/installed_version columns missing in the 1158-layout tenant_default shadow), so a test-file-only fix would still leave all 4 TC-PRM-09 tests failing. Fix spec expanded to include pack_update.zig (exactly one production file)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "ISS-0707 / issue-cited verification target 'test-integration-prm-09' does not exist; the actual build.zig:3164 step is 'test-integration-prm09' (test file header comment agrees)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "ISS-0707 describes migration 1157 as 'scope: tenant_only per the GH-785 fix'. Actual 1157 header is '-- scope: public.' with public.-qualified DDL (GH-785 commit 51170eed). The tenant_default shadowing table is migration 1158 (SOL-02, '-- scope: tenant_only')."
+    },
+    {
+      "severity": "MINOR",
+      "description": "ISS-0707 reproduction cites BPM_TEST_DB_URL port 5434; this workspace's test DB is :5453 (.env BPM_TEST_DB_PORT). Also psql on PATH is a Copilot debugCommand .cmd shim that mangles arguments (always returns 1) — DB probes must use python+psycopg2 or the real psql.exe."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGNER / BACKEND-DEV (WF-03 Steps 2-3): implement the fix per result.fix_spec — qualify solution_pack_installs and solution_pack_artefact_bases with public. in tests/integration/prm-09-pack-update.test.zig (lines 98/119/164 for solution_pack_installs, line 128 for solution_pack_artefact_bases) AND in src/definition/pack_update.zig (lines 117/179); LEAVE process_definitions unqualified (tenant-side, test lines 145/160, pack_update.zig line 235). No migrations, no other production files.",
+    "Verify with: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 (4/4). NOTE: the warm DB masks the bug (currently passes pre-fix); to prove the fix, also validate on a fresh migration replay or assert the public. qualification statically.",
+    "Reflect the corrected diagnosis (SCOPE CORRECTION + 1157/1158 scope facts + test-integration-prm09 target + :5453 URL) in ISS-0707.json (fn:update-issue) before marking RESOLVED, per the MAJOR finding above."
+  ],
+  "blockers": []
+}

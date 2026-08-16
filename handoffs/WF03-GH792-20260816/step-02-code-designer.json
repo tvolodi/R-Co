@@ -1,0 +1,59 @@
+{
+  "handoff_id": "wf03-gh792-20260816-02-code-designer",
+  "run_id": "WF03-GH792-20260816",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH792-20260816/step-02-code-designer.json",
+  "created_at": "2026-08-16T09:11:25Z",
+  "started_at": "2026-08-16T09:11:43Z",
+  "completed_at": "2026-08-16T09:14:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2 -- fix design",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
+    "iss_id": "ISS-0707",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh792-20260816-00-backend-dev",
+      "wf03-gh792-20260816-005-issue-fixer",
+      "wf03-gh792-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0707.json",
+      "docs/issue-reports/WF03-GH792-20260816-step-1-issue-fixer-INNER-REPORT.json",
+      "tests/integration/prm-09-pack-update.test.zig",
+      "src/definition/pack_update.zig",
+      "migrations/1157_prm09_solution_pack_update.sql",
+      "migrations/1158_*.sql"
+    ],
+    "branch_name": "feature/WF03-GH792-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 2: produce the design artefact for ISS-0707 / GH-792 \u2014 the prm-09 schema-qualification fix. IMPORTANT SCOPE CORRECTION from Step 1: the fix requires qualifying solution_pack_installs and solution_pack_artefact_bases with the public. prefix in BOTH files \u2014 tests/integration/prm-09-pack-update.test.zig (test code) AND src/definition/pack_update.zig (PRODUCTION code, because the SUT also issues unqualified queries that would 42703 on a fresh DB). Leave process_definitions unqualified (tenant-side). Design artefact to src/design/iss0707-gh792-prm09-public-qualify-fix.md covering: the exact lines to change in both files (per the Step 1 fix spec: test file L98/L119/L164 solution_pack_installs -> public., L128 solution_pack_artefact_bases -> public.; pack_update.zig L117 solution_pack_installs -> public., L179 solution_pack_artefact_bases -> public.), why the qualification is correct (migration 1157 is public-scoped; 1158 creates the tenant_default shadow), why process_definitions stays unqualified, blast radius of the production change (pack_update.zig callers), and the verification plan (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 \u2014 NOTE: the warm test DB currently masks the bug (4/4 passes), so verification must ALSO confirm the public. qualification statically and ideally on a fresh-migration replay).",
+    "acceptance_criteria": [
+      "src/design/iss0707-gh792-prm09-public-qualify-fix.md created and passes tools/lint_design_artefact.py (BLOCKER=0 MAJOR=0) if the linter applies (check first)",
+      "Design covers the exact public. qualification in BOTH files (test + production pack_update.zig) per the Step 1 fix spec",
+      "Blast radius of the production change documented; why process_definitions stays unqualified",
+      "No implementation code written (design only; implementation is Step 3)",
+      "Verification plan documented (test-integration-prm09 + static qualification check + fresh-replay note)"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ISS-0707/GH-792 prm-09 public-schema qualification fix (type E prose). Covers the exact public. qualification in BOTH tests/integration/prm-09-pack-update.test.zig (L98/L119/L164 solution_pack_installs, L128 solution_pack_artefact_bases) and PRODUCTION src/definition/pack_update.zig (L117 solution_pack_installs, L179 solution_pack_artefact_bases), leaves process_definitions unqualified, documents why qualification is correct (1157 public-scoped; 1158 tenant_default shadow), blast radius (no production callers of computePackUpdatePlan; store.zig/sol02/sol03 must stay unqualified), and verification plan (test-integration-prm09 + static qualification check + fresh-replay). Linter BLOCKER=0 MAJOR=0.",
+    "artifacts_out": [
+      "src/design/iss0707-gh792-prm09-public-qualify-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b), then BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

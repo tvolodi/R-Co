@@ -1,0 +1,35 @@
+{
+  "report_id": "WF03-GH792-20260816-step-7-doc-updater",
+  "agent_id": "DOC-UPDATER",
+  "run_id": "WF03-GH792-20260816",
+  "step": "7",
+  "created_at": "2026-08-16T09:34:12Z",
+  "summary": "WF-03 Step 7 for GH-792/ISS-0707 (loop-mode run). fn:update-changelog: CHANGELOG.md updated under [Unreleased] 2026-08-16 with the prm-09 public-schema qualification fix entry \u2014 solution_pack_installs / solution_pack_artefact_bases are now explicitly public.-qualified in BOTH tests/integration/prm-09-pack-update.test.zig (L98/L119/L128/L164) and production src/definition/pack_update.zig (L120 Step 1 Vb load / L182 Step 2 base load; doc comment L102-107 updated); migration 1157 is public-scoped and the tenant_default shadow is migration 1158; process_definitions stays tenant-scoped/unqualified; fixes all 4 TC-PRM-09 tests on fresh migration (Step-05 TEST-RUNNER PASS, 4/4). fn:update-issue: docs/issues/ISS-0707.json set to status RESOLVED with resolved_at 2026-08-16T09:32:28Z, resolution, prevention, and the stale scope prose corrected per CODE-DESIGN-VALIDATOR flag \u2014 fix_file/scope/affected_areas now include production src/definition/pack_update.zig and note migration 1157 is public-scoped (the tenant_default shadow is 1158); handoff_history appended with this step. docs/issues/issue_index.json updated (ISS-0707 RESOLVED with resolved_at; last_updated bumped). GitHub issue #792 intentionally NOT closed by this step \u2014 left open for Step Final (release.py --close-github-issue).",
+  "files_created": [
+    "docs/issue-reports/WF03-GH792-20260816-step-7-doc-updater-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "CHANGELOG.md",
+    "docs/issues/ISS-0707.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH792-20260816/step-07-doc-updater.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Pre-existing warm-DB SOL-02/SOL-03 legacy-state failure (sqlstate 42703 in src/solution/store.zig, tenant_default.solution_pack_installs carrying the legacy 1157 layout) \u2014 documented as expected in the TEST-RUNNER report and design Open Questions, NOT caused by this fix; dual-schema shadow remediation tracked as ISS-0185 (out of scope for GH-792)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "docs/issues/issue_index.json contains a pre-existing entry that lacks an 'id' key (surfaced while verifying the ISS-0707 update); not touched by this step, present before this run."
+    }
+  ],
+  "next_steps": [
+    "Step Final: release.py --close-github-issue to close GitHub issue #792 (this step deliberately left it open).",
+    "Step Final: squash-merge feature/WF03-GH792-20260816 to main and delete the branch.",
+    "Return repo to clean main after the merge."
+  ],
+  "blockers": []
+}

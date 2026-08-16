@@ -1,0 +1,46 @@
+{
+  "report_id": "WF03-GH792-20260816-step-3-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF03-GH792-20260816",
+  "step": "3",
+  "created_at": "2026-08-16T09:23:57Z",
+  "summary": "Implemented the public.-qualification fix for ISS-0707/GH-792 in exactly two files per the validated design (src/design/iss0707-gh792-prm09-public-qualify-fix.md): tests/integration/prm-09-pack-update.test.zig (L98 INSERT, L119 SELECT, L128 INSERT, L164 DELETE -> public. prefixes) and src/definition/pack_update.zig (PRODUCTION: L117->L120 FROM public.solution_pack_installs, L179->L182 FROM public.solution_pack_artefact_bases) plus the doc comment at the old L102-105 updated to state explicit public. qualification instead of search_path fallback. process_definitions references left unqualified (tenant-side) in both files; no migrations and no other files touched (sol02/sol03 tenant-side code untouched). zig build exits 0; error-set validation clean; test-integration-prm09 runs 4/4 PASS on the warm :5453 DB (static qualification check is the authoritative proof since the warm DB masks the 42703); lint_handoffs exits 0.",
+  "files_created": [],
+  "files_modified": [
+    "src/definition/pack_update.zig",
+    "tests/integration/prm-09-pack-update.test.zig"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "exit 0; no 'error set' output in stderr (error-set validation clean)"
+    },
+    {
+      "name": "test-integration-prm09 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test)",
+      "status": "pass",
+      "detail": "direct binary run: TC-PRM-09-01..04 all OK, 'All 4 tests passed', exit 0 (warm DB; static check is authoritative)"
+    },
+    {
+      "name": "test-integration-sol02 (no-collateral check)",
+      "status": "fail",
+      "detail": "1/5 passed; 4 failed with sqlstate 42703 on SELECT id::text FROM solution_pack_installs WHERE pack_id=$1 AND pack_version=$2 (src/solution/store.zig:324). PRE-EXISTING + environmental: warm :5453 bpm_test tenant_default.solution_pack_installs carries the legacy 1157 layout (no pack_version/schema_version). store.zig and sol02 test file are untouched by this change (git diff --name-only), sol02 does not import pack_update. Passes on a fresh-migration DB where the shadow has the true 1158 layout. Not collateral from this fix."
+    },
+    {
+      "name": "test-integration-sol03 (no-collateral check)",
+      "status": "fail",
+      "detail": "1/3 passed; 2 failed with sqlstate 42703 on the same tenant-side shadow SELECT. Same pre-existing environmental warm-DB cause as sol02; file untouched by this change."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Warm :5453 bpm_test DB's tenant_default.solution_pack_installs carries the legacy 1157 layout (verified via information_schema: id, tenant_id, pack_id, installed_version, installed_at, installed_by — no pack_version/schema_version), so SOL-02/SOL-03 integration tests fail 4/4+2/... with 42703 on this DB. Pre-existing and environmental (documented as 'Warm-DB legacy state' and accepted in the design's Open Questions). Fix is out of scope (dual-schema shadow remediation tracked as ISS-0185); fresh-DB confirmation is the authoritative runtime proof and is delegated to Step 5 TEST-RUNNER per design verification plan steps 3/4."
+    }
+  ],
+  "next_steps": [
+    "TEST-RUNNER (Step 5): run test-integration-prm09 against a fresh-migration database (true 1158-layout shadow) to confirm 4/4 — the authoritative runtime proof of the fix; also confirm sol02/sol03 pass on the fresh DB (no collateral).",
+    "ORCH: verify static qualification check (all solution_pack_installs / solution_pack_artefact_bases in the two files public.-qualified; process_definitions unqualified)."
+  ],
+  "blockers": []
+}

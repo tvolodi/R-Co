@@ -95,7 +95,7 @@ fn insertPackInstall(
     defer pool.release(conn);
     // installed_by = tenant_id as placeholder; unique on (tenant_id, pack_id, installed_version).
     try conn.exec(
-        \\INSERT INTO solution_pack_installs
+        \\INSERT INTO public.solution_pack_installs
         \\    (tenant_id, pack_id, installed_version, installed_by)
         \\VALUES ($1::uuid, $2, $3, $1::uuid)
         \\ON CONFLICT (tenant_id, pack_id, installed_version) DO NOTHING
@@ -116,7 +116,7 @@ fn insertPackArtefactBase(
     // Resolve install_id by looking up the most recent install for this tenant+pack.
     const row = try conn.queryRow(
         std.testing.allocator,
-        "SELECT id::text FROM solution_pack_installs WHERE tenant_id = $1::uuid AND pack_id = $2 LIMIT 1",
+        "SELECT id::text FROM public.solution_pack_installs WHERE tenant_id = $1::uuid AND pack_id = $2 LIMIT 1",
         &[_][]const u8{ tenant_id, pack_id },
     );
     defer if (row) |r| {
@@ -125,7 +125,7 @@ fn insertPackArtefactBase(
     };
     const install_id = if (row) |r| (r[0] orelse return) else return;
     try conn.exec(
-        \\INSERT INTO solution_pack_artefact_bases (install_id, artefact_id, artefact_kind, base_content)
+        \\INSERT INTO public.solution_pack_artefact_bases (install_id, artefact_id, artefact_kind, base_content)
         \\VALUES ($1::uuid, $2, 'process_definition', $3::jsonb)
         \\ON CONFLICT (install_id, artefact_id) DO UPDATE SET base_content = EXCLUDED.base_content
     ,
@@ -161,7 +161,7 @@ fn dropTenantFixtures(pool: *Pool, tenant_id: []const u8) void {
         &[_][]const u8{tenant_id},
     ) catch {};
     _ = conn.exec(
-        "DELETE FROM solution_pack_installs WHERE tenant_id = $1::uuid",
+        "DELETE FROM public.solution_pack_installs WHERE tenant_id = $1::uuid",
         &[_][]const u8{tenant_id},
     ) catch {};
     _ = conn.exec(

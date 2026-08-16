@@ -1,0 +1,120 @@
+{
+  "handoff_id": "wf03-gh792-20260816-2b-code-design-validator",
+  "run_id": "WF03-GH792-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH792-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T09:15:47Z",
+  "started_at": "2026-08-16T09:16:04Z",
+  "completed_at": "2026-08-16T09:17:56Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2b -- design validation (hard gate)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
+    "iss_id": "ISS-0707",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh792-20260816-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0707-gh792-prm09-public-qualify-fix.md",
+      "docs/issues/ISS-0707.json",
+      "tests/integration/prm-09-pack-update.test.zig",
+      "src/definition/pack_update.zig"
+    ],
+    "design_artefact": "src/design/iss0707-gh792-prm09-public-qualify-fix.md",
+    "branch_name": "feature/WF03-GH792-20260816",
+    "hard_gate": true
+  },
+  "task": {
+    "description": "Step 2b — Design Validation (HARD GATE). Validate the design artefact at src/design/iss0707-gh792-prm09-public-qualify-fix.md (Type E — schema-qualification fix covering one test file + one PRODUCTION file) against the WF-02 Step 1b checks applied to a fix design. Step 3 (implementation) MUST NOT start until this returns PASS. Checks: (a) design addresses the diagnosed root_cause from ISS-0707 (unqualified solution_pack_installs resolves to the tenant_default shadow with a different column layout -> sqlstate 42703; SUT src/definition/pack_update.zig also unqualified -> production fix required too); (b) the exact public. qualifications are precise and confined to the two files (test file L98/L119/L164/L128; pack_update.zig L117/L179), with process_definitions left unqualified; (c) blast radius documented (no production callers; sol02/sol03 tenant-side code must stay unqualified); (d) no implementation code in the design beyond the patch shape; (e) tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0); (f) verification plan documented (test-integration-prm09 + static qualification check as authoritative + fresh-replay + sol02/sol03 collateral re-run); (g) fix scope <= 5 files (exactly 2).",
+    "expected_outputs": [
+      "Validation report (PASS or FAIL) for src/design/iss0707-gh792-prm09-public-qualify-fix.md"
+    ],
+    "acceptance_criteria": [
+      "Design addresses root_cause from ISS-0707 (including the production SUT requirement)",
+      "Exact public. qualifications precise and confined to the two files (process_definitions unqualified)",
+      "Blast radius documented (sol02/sol03 tenant-side code stays unqualified)",
+      "No implementation code in design (patch shape only)",
+      "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+      "Verification plan documented (test-integration-prm09 + static qualification check + fresh-replay + collateral)",
+      "Fix scope <= 5 files",
+      "Step 3 MUST NOT start until PASS"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design artefact src/design/iss0707-gh792-prm09-public-qualify-fix.md validated against all 8 acceptance criteria — all 7 gates (a)-(g) PASS. Linter BLOCKER=0 MAJOR=0 (exit 0). Every exact-line and blast-radius claim verified against the actual sources (test L98/L119/L128/L164, pack_update.zig L117/L179, migrations 1157 public-scoped vs 1158 tenant_only shadow). Design correctly expands scope to the production SUT (pack_update.zig), documents process_definitions staying unqualified, and is patch-shape only.",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH792-20260816-step-2b-code-design-validator-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "lint_design_artefact.py reports 15x E030 MINOR (schema-qualified name) — inherent to a schema-qualification design; gate (BLOCKER=0 MAJOR=0) satisfied."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0707 prose understates scope ('No production-code change required'; 1157 described as tenant_only). Design correctly requires production SUT qualification (pack_update.zig L117/L179) and 1157 is -- scope: public. Recommend updating ISS-0707 fix_file/fix_diff for traceability."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Build-target naming: issue-cited 'test-integration-prm-09' does not exist; real target is 'test-integration-prm09' (build.zig:3164). Design flags it; Step 3 must use the correct name."
+      }
+    ],
+    "next_action": "Route PASS to ORCH — Step 3 (BACKEND-DEV) may implement the 2-file public. qualification per the design patch shape",
+    "checks": [
+      {
+        "id": "a",
+        "name": "Design addresses root_cause from ISS-0707 (incl. production SUT requirement)",
+        "result": "PASS",
+        "evidence": "Module purpose + 'Why the qualification is correct' + data-flow diagram explain unqualified names resolving to tenant_default shadow (1158/SOL-02 layout) -> sqlstate 42703 on fresh DB. Production SUT requirement covered: pack_update.zig L117 (solution_pack_installs) and L179 (solution_pack_artefact_bases) both qualified public. Verified against source (both currently unqualified)."
+      },
+      {
+        "id": "b",
+        "name": "Exact public. qualifications precise and confined to the two files (process_definitions unqualified)",
+        "result": "PASS",
+        "evidence": "All 6 SQL changes verified at exact lines: test L98/L119/L164 (solution_pack_installs -> public.), L128 (solution_pack_artefact_bases -> public.); pack_update.zig L117/L179. process_definitions stays unqualified (test L145/L160, SUT L235). Test-name strings L248/296 prose-only correctly excluded. Doc comment L102-105 update flagged to Step 3."
+      },
+      {
+        "id": "c",
+        "name": "Blast radius documented (sol02/sol03 tenant-side code stays unqualified)",
+        "result": "PASS",
+        "evidence": "Design documents: no production callers of computePackUpdatePlan (only src/bpm.zig re-export); warm-DB behavior unchanged; store.zig L324/347, sol02_install_test L73/80/130, sol03_role_gate_test L68/74 must remain unqualified. Verified via grep that all listed references are unqualified tenant-side and excluded from scope."
+      },
+      {
+        "id": "d",
+        "name": "No implementation code in design (patch shape only)",
+        "result": "PASS",
+        "evidence": "Design contains only prose, a before/after patch-shape literal table, and a mermaid data-flow diagram. No function bodies, no SQL DDL, no Zig/JSX code. Type E classification correct per templates/lego-catalog (surgical SQL-text fix to existing module; no A-D codegen applies)."
+      },
+      {
+        "id": "e",
+        "name": "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+        "result": "PASS",
+        "evidence": "Ran: python tools/lint_design_artefact.py src/design/iss0707-gh792-prm09-public-qualify-fix.md -> EXIT=0, BLOCKER=0, MAJOR=0, MINOR=15 (all E030 schema-qualified-name flags, inherent to the qualification-fix topic; informational)."
+      },
+      {
+        "id": "f",
+        "name": "Verification plan documented (test-integration-prm09 + static qualification check + fresh-replay + collateral)",
+        "result": "PASS",
+        "evidence": "Design lists all 4: (1) static qualification check (deterministic, authoritative); (2) build/run test-integration-prm09 (necessary not sufficient; correct target at build.zig:3164, issue-cited name flagged non-existent); (3) fresh-migration replay (authoritative runtime proof, TEST-RUNNER fallback flagged); (4) sol02/sol03 collateral re-run."
+      },
+      {
+        "id": "g",
+        "name": "Fix scope <= 5 files",
+        "result": "PASS",
+        "evidence": "Design states fix touches exactly 2 files: tests/integration/prm-09-pack-update.test.zig + src/definition/pack_update.zig. No other files. <= 5 satisfied."
+      }
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
