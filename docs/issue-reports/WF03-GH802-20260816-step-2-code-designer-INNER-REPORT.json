@@ -1,0 +1,47 @@
+{
+  "report_id": "WF03-GH802-20260816-step-2-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-GH802-20260816",
+  "step": "2",
+  "created_at": "2026-08-16T06:37:53Z",
+  "summary": "WF-03 Step 2 (fix design) for ISS-0711 / GH-802. Classified the task Type E (novel cross-cutting test-fixture fix; no Type A-D template applies) and produced src/design/iss0711-gh802-prm08-fixture-fix.md covering the prm-08 fixture patch with exact before/after shapes in the single target file tests/integration/prm-08-rollback-sandbox.test.zig. Helper insertPromotionReviewsRow (lines 233-258) gains a requested_by param + requested_by/def_type/serialised_plan INSERT columns (mirror of the validated ISS-0708/GH-793 Cluster A patch in prm-06-07-promotion-assertion.test.zig lines 99-118); the single call site (line 466 in TC-PRM-08-03) passes a fresh randomUuidStr(alloc). Verified migration 096 (requested_by uuid NOT NULL / def_type text NOT NULL / serialised_plan text NOT NULL, no CHECK on the latter two) and the build target test-integration-prm08 at build.zig:3147. Out-of-scope statement explicit: no production rollback.zig change (ISS-0712/GH-803) and no seed tenant/def_id logic change (ISS-0713/GH-804). Verification plan documents BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 with the 23502 expected gone and residual TC-PRM-08-03 failures attributed to GH-803 (42883) / GH-804 (seed mismatch). Design linter tools/lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=0). No implementation code written (Step 3 is the implementer).",
+  "files_created": [
+    "src/design/iss0711-gh802-prm08-fixture-fix.md",
+    "docs/issue-reports/WF03-GH802-20260816-step-2-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH802-20260816/step-02-code-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "python tools/lint_design_artefact.py src/design/iss0711-gh802-prm08-fixture-fix.md",
+      "status": "pass",
+      "detail": "Exit 0. BLOCKER=0 MAJOR=0 MINOR=0 ('OK — 1 file(s) checked, no issues'). Acceptance criterion AC1 satisfied."
+    },
+    {
+      "name": "python tools/lint_handoffs.py (post-completion gate)",
+      "status": "pass",
+      "detail": "Exit 0 after the completion chain (fn:register-inner-report -> fn:complete-handoff). H-gate hard requirement."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "ISS-0712/GH-803 (production src/definition/rollback.zig Step 5 supersede def_id = $3::uuid vs TEXT column -> 42883, swallowed by catch null) and ISS-0713/GH-804 (TC-PRM-08-03 seed tenant/def_id mismatch) remain open and block the FULL 'superseded' assertion of TC-PRM-08-03 after this fix. Both are explicitly out of scope for GH-802; ORCH must sequence them (recommend GH-804 as test-only, GH-803 as its own production WF-03 cycle)."
+    },
+    {
+      "severity": "MINOR",
+      "description": ".vscode/run-zig-test-integration.ps1 + zig-test-integration-cmd task hardcode stale port 5433; Step 3 must use BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test explicitly and not rely on those tasks."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 2b gate) to validate the Type E design artefact, then to BACKEND-DEV/ISSUE-FIXER Step 3 to implement the single-file fixture patch per this design.",
+    "Verify after implementation: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 — the sqlstate 23502 at helper line 240 must be gone; residual TC-PRM-08-03 'superseded' assertion failures are attributed to GH-803/GH-804, not GH-802.",
+    "ORCH: sequence ISS-0712/GH-803 (production 42883 supersede) and ISS-0713/GH-804 (fixture seed tenant/def_id) as their own runs so the full TC-PRM-08-03 AC4 assertion can pass."
+  ],
+  "blockers": [
+    "None for Step 2 (design complete). NOTE for downstream: the full TC-PRM-08-03 'superseded' assertion cannot pass with ONLY the Cluster A mirror because ISS-0712 (production 42883) and ISS-0713 (seed mismatch) also fail it; GH-802's scope is the 23502 fixture elimination, which this design fully specifies."
+  ]
+}
