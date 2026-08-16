@@ -1,0 +1,73 @@
+{
+  "handoff_id": "wf03-iss0714-bench-env-20260816-003",
+  "run_id": "WF03-iss0714-bench-env-20260816",
+  "workflow_id": "WF-03",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0714-bench-env-20260816/step-3-backend-dev.json",
+  "created_at": "2026-08-16T11:14:08Z",
+  "started_at": "2026-08-16T11:14:08Z",
+  "completed_at": "2026-08-16T11:26:27Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 3 — Execute dev-DB reconciliation (ISS-0714 / GH #809)",
+    "requirement_ids": [],
+    "related_handoff_ids": ["wf03-iss0714-bench-env-20260816-002b", "wf03-iss0714-bench-env-20260816-002"],
+    "artifacts_in": [
+      "src/design/fix-ISS-0714-bench-env.md (§3 reconciliation SQL + §5 verification gates D-1..D-7)",
+      "docs/issues/ISS-0714.json (root_cause_analysis)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 3: Execute the dev-DB reconciliation exactly per the validated design src/design/fix-ISS-0714-bench-env.md §3 (SQL steps A-C) and run verification gates D-1..D-7 from §5. The design is the authority. This is a dev-DB-only data repair against BPM_DB_URL (postgres://bpm:bpm@localhost:5442/bpm_dev): reconcile the tenant_default schema_migrations ledger (test-DB 5434 canonical 111 rows + union with current migrations/ dir 98 non-public-only files), stamp public.tenant_schemas.migrations_applied_at for the default tenant, then verify (ledger count, 98-file coverage, registry stamped, spot-checks, zig build migrate exit 0 with leg-(d) post-condition passing, zig build bench proceeds, no test-DB regression). NO src/*.zig or migrations/*.sql changes.",
+    "acceptance_criteria": [
+      "Step A: advisory lock on the default-tenant key taken (matches provisionTenantSchema key)",
+      "Step B: tenant_default schema_migrations ledger populated (test-DB 111 rows + union with 98 current files, ON CONFLICT DO NOTHING, in one BEGIN/COMMIT with ON_ERROR_STOP=1)",
+      "Step C: public.tenant_schemas.migrations_applied_at = NOW() for the default tenant",
+      "D-1: ledger count >= 111",
+      "D-2: all 98 current non-public-only files covered in the ledger",
+      "D-3: registry stamped (=1 row)",
+      "D-4: spot-checks pass (events relkind 'p', 1147_par01 recorded, 58 tables)",
+      "D-5: zig build migrate against BPM_DB_URL exits 0 (provisioning fast-paths, leg-(d) post-condition passes, public backlog applies)",
+      "D-6: zig build bench proceeds (WF-04 NFR)",
+      "D-7: no test-DB regression (5434/bpm_test migrate still 147/147)",
+      "No src/*.zig or migrations/*.sql changed",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": ["fn:implement-fix", "fn:check-zig-build"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Dev-DB reconciliation executed exactly per design src/design/fix-ISS-0714-bench-env.md S3 (Steps A-C) and all verification gates D-1..D-7 PASS. ISS-0714 / GH #809 unblocked: tenant_default ledger reconciled to canonical 111 rows (test-DB 5434 ground truth + 98-file completeness guard), public.tenant_schemas.migrations_applied_at stamped for default tenant, zig build migrate against BPM_DB_URL exits 0 (provisioning fast-paths; leg-(d) post-condition passes; public backlog GBL-116..143 + 1134..1162 = 59 applied), zig build bench (full NFR) runs to completion exit 0, no test-DB regression (147/147 + 111). No src/*.zig or migrations/*.sql changed.",
+    "verification": {
+      "step_A_advisory_lock": "PASS - session-scoped pg_advisory_lock on key 'bpm.provisioning.provisionTenantSchema:'||default-tenant (exact provisionTenantSchema key); held across BEGIN/COMMIT; pg_advisory_unlock=true at end",
+      "step_B_ledger_populated": "PASS - 111 canonical rows exported from test DB 5434 (B-1, count asserted =111) + 98-file completeness guard from migrations/ (B-3, count asserted =98); INSERT ... ON CONFLICT (schema_name, version) DO NOTHING in one BEGIN/COMMIT with ON_ERROR_STOP=1; 209 statements / 111 unique versions",
+      "step_C_registry_stamped": "PASS - UPDATE public.tenant_schemas SET migrations_applied_at=NOW() WHERE tenant_id='00000000-0000-0000-0000-000000000000'::uuid in same transaction as Step B; committed",
+      "D-1": "PASS - SELECT count(*) FROM public.schema_migrations WHERE schema_name='tenant_default' = 111 (>=111)",
+      "D-2": "PASS - 0 missing: all 98 current non-public-only migrations/*.sql files covered (diff B-3 list vs ledger)",
+      "D-3": "PASS - registry stamped = 1 row with migrations_applied_at IS NOT NULL for default tenant",
+      "D-4": "PASS - events relkind='p' (partitioned); 1147_par01_events_partitioning.sql recorded = 1; 58 BASE TABLEs in tenant_default (+1 view v_active_configs; design '58 tables' = base-table breadth)",
+      "D-5": "PASS - zig build migrate against BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev exit 0; provisioning fast-paths (001-1111 all skip, no runForSchema replay, no 42P16); leg-(d) post-condition passes; public backlog GBL-116..143 + 1134..1162 = 59 migration(s) applied; re-run stable ('No new migrations to apply')",
+      "D-6": "PASS - zig build bench (full NFR suite via .vscode/run-zig-bench.ps1 -Precheck) runs to completion exit 0 (BENCH_MIGRATE_URL_INFO|source=BPM_DB_URL; migrate pre-condition fast-paths)",
+      "D-7": "PASS - zig build migrate against BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test exit 0; test DB unchanged 147/147 public + 111 tenant_default, registry stamped = 1",
+      "no_src_migration_changes": "PASS - git status shows no src/*.zig or migrations/*.sql modifications (only handoffs/* bookkeeping)",
+      "lint_handoffs": "PASS - python tools/lint_handoffs.py exit 0; 3006 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010 registry), 332 ACKNOWLEDGED; no NEW issues on this run"
+    },
+    "dev_db_reconciled": true,
+    "artifacts_out": [
+      "scratch/reconcile_iss0714.sql (executed reconciliation script: Step A advisory lock + Step B 209 INSERTs / 111 unique tenant_default ledger versions + Step C UPDATE, in one BEGIN/COMMIT + unlock)"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "code": "DESIGN-1143-INTERACTION",
+        "text": "Design S4 claimed the public backlog would NOT modify the reconciled tenant-default ledger, but 1143_iss0646_fix_gbl133_ledger_poisoning.sql deleted the 5 rows 1107..1111 (iss0122/audit-chain, all_schemas) from tenant_default during the first migrate. Root cause: design B-2 inserts all 111 rows in one transaction sharing a single NOW() applied_at, which exactly matches the GBL-133 poisoning signature (>=2 of the 5 target rows sharing one timestamp) that 1143 is designed to delete. On the healthy test DB these 5 rows have DISTINCT timestamps (genuine per-file applies) so 1143 leaves them; the dev-DB removal was a false positive. Resolved within design intent: re-ran the idempotent reconciliation (S3.6) to restore the canonical 111; 1143's public + tenant_default rows are recorded and the default tenant is stamped, so the restored rows persist (confirmed stable across a second migrate). Suggest a design note: B-2 should stamp distinct applied_at values or document the 1143 interaction."
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR / TEST-RUNNER to re-run zig build bench (WF-04 full NFR) on the repaired dev/bench DB; bench already verified to proceed (exit 0)."
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}
