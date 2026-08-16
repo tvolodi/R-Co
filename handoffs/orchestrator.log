@@ -1951,3 +1951,6 @@
 2026-08-16T18:26:15Z | UNBLOCK | WF-02 | WF02-spt02-04-20260816-03-unblock-backend-dev | ORCH → BACKEND-DEV | PENDING | ISS-0715/GH-812 migration-020 blocker fix (in-run Unblock-Everything)
 2026-08-16T18:51:39Z | ROUTE | WF-02 | WF02-spt02-04-20260816-03b-test-design-validator | ORCH → TEST-DESIGN-VALIDATOR | PENDING
 2026-08-16T18:59:16Z | step-completed | WF02-spt02-04-20260816 | WF02-spt | TEST-DESIGN-VALIDATOR | PASS: SPT-02/03/04 test design validated 16/16, fixtures isolated, ISS-0715 fix confirmed, lint exits 0
+2026-08-16T19:00:45Z | BENCH_ENV_CHECK | WF02-spt02-04-20260816 | --- | ORCH | CLEARED — zig build test-env-verify exit 0 (HEALTHY 10/10) — dispatching TEST-RUNNER Step 4
+2026-08-16T19:00:45Z | ROUTE | WF-02 | WF02-spt02-04-20260816-04-test-runner | ORCH → TEST-RUNNER | PENDING
+2026-08-16T19:13:28Z | complete | WF02-spt02-04-20260816 | WF02-spt | TEST-RUNNER | status=FAILED result.status=FAIL: spt 16/16, spt01 3/3, unit 0 failed; event-store compile regression (ReadOpts.tenant_id) routed to BACKEND-DEV
