@@ -1,0 +1,68 @@
+{
+  "handoff_id": "wf03-gh792-20260816-05-test-runner",
+  "run_id": "WF03-GH792-20260816",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH792-20260816/step-05-test-runner.json",
+  "created_at": "2026-08-16T09:25:34Z",
+  "started_at": "2026-08-16T09:25:52Z",
+  "completed_at": "2026-08-16T09:28:55Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 5 -- independent verification",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
+    "iss_id": "ISS-0707",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh792-20260816-00-backend-dev",
+      "wf03-gh792-20260816-005-issue-fixer",
+      "wf03-gh792-20260816-01-issue-fixer",
+      "wf03-gh792-20260816-02-code-designer",
+      "wf03-gh792-20260816-2b-code-design-validator",
+      "wf03-gh792-20260816-03-backend-dev"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH792-20260816/step-03-backend-dev.json",
+      "src/design/iss0707-gh792-prm09-public-qualify-fix.md",
+      "tests/integration/prm-09-pack-update.test.zig",
+      "src/definition/pack_update.zig"
+    ],
+    "branch_name": "feature/WF03-GH792-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 5 for run WF03-GH792-20260816: independently verify the prm-09 public.-qualification fix (ISS-0707 / GH-792) on branch feature/WF03-GH792-20260816. The fix (Step 3) qualified solution_pack_installs and solution_pack_artefact_bases with public. in tests/integration/prm-09-pack-update.test.zig AND src/definition/pack_update.zig. Verify: (a) STATIC qualification check (authoritative, since the warm DB masks the bug) \u2014 every solution_pack_installs / solution_pack_artefact_bases DML/SELECT reference in the two files carries the public. prefix, and process_definitions stays unqualified; (b) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 (direct, NOT the stale-5433 wrapper) exits 0 with 4/4 passing; (c) python tools/lint_handoffs.py exits 0; (d) the change is confined to the two files (git diff --name-only against the Step-00 base b8fa5672 \u2014 no migrations, no sol02/sol03 files); (e) zig build test-env-verify exit 0; (f) zig build exit 0. Document the pre-existing warm-DB SOL-02/03 legacy-state failure (sqlstate 42703 in src/solution/store.zig:324, tenant_default legacy 1157 layout) as expected/not-caused-by-this-fix. Produce a structured verification report in tests/reports/ as .yaml. Return PASS only if all checks pass.",
+    "acceptance_criteria": [
+      "Static qualification check: all solution_pack_installs / solution_pack_artefact_bases references in the two files carry public.; process_definitions unqualified",
+      "test-integration-prm09 exits 0 with 4/4 passing",
+      "python tools/lint_handoffs.py exits 0",
+      "Change confined to the two files (no migrations, no sol02/sol03)",
+      "zig build test-env-verify exit 0; zig build exit 0",
+      "Pre-existing warm-DB SOL-02/03 legacy-state failure documented as expected",
+      "Verification report written to tests/reports/ as .yaml"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently verified the prm-09 public.-qualification fix for ISS-0707/GH-792 on branch feature/WF03-GH792-20260816 (base b8fa5672, head c930c51c). All checks PASS: (a) STATIC qualification check (authoritative, warm DB masks the 42703) \u2014 every solution_pack_installs / solution_pack_artefact_bases DML/SELECT reference in tests/integration/prm-09-pack-update.test.zig (L98/L119/L128/L164) and src/definition/pack_update.zig (L120/L182) carries the public. prefix, process_definitions stays unqualified (test L145/L160, pack_update L238); (b) test-integration-prm09 (direct :5453, NOT the stale-5433 wrapper) exit 0, 4/4 passing (TC-PRM-09-01..04 confirmed via direct binary run); (c) python tools/lint_handoffs.py exit 0 (2973 handoffs, 0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR, 332 ACK); (d) change confined to the two files \u2014 no migrations, no sol02/sol03; (e) zig build test-env-verify exit 0 (10/10 HEALTHY); (f) zig build exit 0. Pre-existing warm-DB SOL-02/SOL-03 legacy-state failure (sqlstate 42703 in src/solution/store.zig, tenant_default legacy 1157 layout) observed and documented as expected/not-caused-by-this-fix. Verification report written to tests/reports/report-20260816-WF03-GH792-20260816.yaml.",
+    "artifacts_out": [
+      "tests/reports/report-20260816-WF03-GH792-20260816.yaml",
+      "docs/issue-reports/WF03-GH792-20260816-step-5-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing warm-DB SOL-02/SOL-03 legacy-state failure: tenant_default.solution_pack_installs on the warm :5453 bpm_test DB carries the legacy 1157 layout (verified via pg_catalog: id, tenant_id, pack_id, installed_version, installed_at, installed_by \u2014 no pack_version/schema_version), so SOL-02/SOL-03 integration tests fail with sqlstate 42703 at src/solution/store.zig installPack (SELECT ... WHERE pack_id=$1 AND pack_version=$2). Environmental and documented as expected (design Open Questions 'Warm-DB legacy state'); passes on a fresh-migration DB (true 1158 layout). store.zig + sol02/sol03 test files are untouched by this fix; sol02/sol03 do not import pack_update, so no collateral. Dual-schema shadow remediation tracked as ISS-0185 (out of scope for GH-792)."
+      }
+    ],
+    "next_action": "Route to next WF-03 step (Step Final / merge) for GH-792"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

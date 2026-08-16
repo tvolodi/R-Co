@@ -1,0 +1,60 @@
+{
+  "report_id": "WF03-GH792-20260816-step-5-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF03-GH792-20260816",
+  "step": "5",
+  "created_at": "2026-08-16T09:28:55Z",
+  "summary": "Independently verified the prm-09 public.-qualification fix (ISS-0707 / GH-792) on branch feature/WF03-GH792-20260816, base b8fa5672, head c930c51c. All acceptance criteria PASS. (a) STATIC qualification check (authoritative, since the warm DB masks the 42703): every solution_pack_installs / solution_pack_artefact_bases DML/SELECT reference in tests/integration/prm-09-pack-update.test.zig (L98/L119/L128/L164) and src/definition/pack_update.zig (L120/L182) carries the public. prefix; process_definitions stays unqualified (test L145/L160, pack_update L238). (b) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 (direct, NOT the stale-5433 wrapper) exits 0; direct binary run confirmed 4/4 (TC-PRM-09-01..04 OK). (c) python tools/lint_handoffs.py exits 0 (2973 handoffs, 0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR, 332 ACK). (d) change confined to the two files — git diff --name-only b8fa5672..HEAD shows no migrations/, no sol02/sol03 files; remaining diffs are workflow artefacts only. (e) zig build test-env-verify exit 0 (10/10 HEALTHY). (f) zig build exit 0. Pre-existing warm-DB SOL-02/SOL-03 legacy-state failure documented as expected and not caused by this fix: observed directly — sol03 (TC-SOL03-01/02) and sol02 (TC-SOL02-01..04) fail with sqlstate 42703 on SELECT id::text FROM solution_pack_installs WHERE pack_id=$1 AND pack_version=$2 at src/solution/store.zig installPack, because tenant_default.solution_pack_installs carries the legacy 1157 layout (verified via pg_catalog; no pack_version/schema_version). store.zig + sol02/sol03 files untouched by this fix; sol02/sol03 do not import pack_update. Structured verification report written to tests/reports/report-20260816-WF03-GH792-20260816.yaml.",
+  "files_created": [
+    "tests/reports/report-20260816-WF03-GH792-20260816.yaml"
+  ],
+  "files_modified": [],
+  "tests_run": [
+    {
+      "name": "Static qualification check (authoritative)",
+      "status": "pass",
+      "detail": "Every DML/SELECT reference to solution_pack_installs / solution_pack_artefact_bases in the two target files is public.-qualified (test L98/L119/L128/L164; pack_update L120/L182); every process_definitions reference remains unqualified (test L145/L160; pack_update L238). Remaining matches are comments/test-name prose only. Correct per design."
+    },
+    {
+      "name": "test-integration-prm09 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test)",
+      "status": "pass",
+      "detail": "zig build test-integration-prm09 exits 0; direct binary (.zig-cache/o/aeafa05080a8d35fb039f937b14dafbc/test.exe) per-test output: TC-PRM-09-01 OK, TC-PRM-09-02 OK, TC-PRM-09-03 OK, TC-PRM-09-04 OK; exit 0. (Warm DB — pass is necessary-not-sufficient; static check (a) is authoritative.)"
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0 — 2973 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR, 332 ACKNOWLEDGED. Re-verified after handoff completion."
+    },
+    {
+      "name": "Change-scope audit (git diff --name-only b8fa5672..HEAD)",
+      "status": "pass",
+      "detail": "Code changes confined to exactly two files: src/definition/pack_update.zig + tests/integration/prm-09-pack-update.test.zig. No migrations/ files, no sol02/sol03 files. All other diff entries are workflow artefacts (handoffs/, docs/issue-reports/, docs/issues/, src/design/, registry.json, orchestrator.log)."
+    },
+    {
+      "name": "zig build test-env-verify",
+      "status": "pass",
+      "detail": "exit 0 — verify_test_env: HEALTHY, 10 checks passed (C0-C9), db_test healthy on :5453, 147/147 migrations applied."
+    },
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "exit 0 — workspace compiles clean."
+    },
+    {
+      "name": "SOL-02/SOL-03 warm-DB legacy-state failure (expected environmental, no-collateral evidence)",
+      "status": "pass",
+      "detail": "Observed directly and documented as EXPECTED, not caused by this fix: aggregate binary (71f3260c.../test.exe) TC-SOL03-01/02 FAIL (PersistenceFailed, 42703); sol02 binary (c022bb26.../test.exe) TC-SOL02-01..04 FAIL (42703), TC-SOL02-05 PASS. Cause: warm :5453 tenant_default.solution_pack_installs carries legacy 1157 layout (pg_catalog-verified: id, tenant_id, pack_id, installed_version, installed_at, installed_by — no pack_version/schema_version), so store.zig's pack_version SELECT raises 42703. Fresh-migration DB has the true 1158 layout (SOL-02/03 pass). store.zig + sol02/sol03 files untouched by this fix (diff verified); sol02/sol03 do not import pack_update."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Pre-existing warm-DB SOL-02/SOL-03 legacy-state failure: tenant_default.solution_pack_installs on :5453 bpm_test carries the legacy 1157 layout (no pack_version/schema_version), so SOL-02/SOL-03 integration tests fail with sqlstate 42703 at src/solution/store.zig installPack on this warm DB. Environmental and documented as expected (design Open Questions 'Warm-DB legacy state'); passes on a fresh-migration DB. Not caused by and no collateral from the GH-792 prm-09 fix; dual-schema shadow remediation tracked as ISS-0185 (out of scope)."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route WF03-GH792-20260816 to completion (fix verified PASS). For a full authoritative runtime confirmation the prm-09 suite can be re-run against a fresh-migration DB (true 1158-layout shadow) at CI/release time; on the warm DB the static qualification check stands as the proof.",
+    "Optionally file/track the warm-DB legacy-shadow state under ISS-0185 (dual-schema remediation) so a future schema reset clears the masking."
+  ],
+  "blockers": []
+}
