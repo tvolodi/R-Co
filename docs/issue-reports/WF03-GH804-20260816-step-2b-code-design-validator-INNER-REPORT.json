@@ -1,0 +1,34 @@
+{
+  "report_id": "WF03-GH804-20260816-step-2b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-GH804-20260816",
+  "step": "2b",
+  "created_at": "2026-08-16T07:26:27Z",
+  "summary": "WF-03 Step 2b (HARD GATE) for ISS-0713/GH-804: validated the Type E test-code-only design artefact src/design/iss0713-gh804-prm08-seed-fix.md against all 8 acceptance criteria. All checks PASS. Cross-checked every factual claim against the working tree: helper insertPromotionReviewsRow at tests/integration/prm-08-rollback-sandbox.test.zig:233 has exactly one call site (line 472); call site passes random tenant_id + helper hardcodes zero-UUID def_id; production supersede UPDATE at src/definition/rollback.zig:289-291 predicates WHERE tenant_id=$2 AND def_id=$3 AND status IN ('applied','approved') with $2=DEFAULT_TENANT_ID and $3=current_active_id (=def_id_v2 in TC-PRM-08-03); migration 096_promotion_reviews.sql:27 defines def_id as TEXT, so the proposed $4::text binding is correct. tools/lint_design_artefact.py exits 0 (no issues, no BLOCKER/MAJOR). Fix scope is 1 file (<=5). Design explicitly scopes out production code (GH-803 / ISS-0712 sqlstate 42883 cast fix) and documents the verification plan (:5453 test DB, test-integration-prm08 target at build.zig:3147, GH-803 dependency for 4/4 green). Result: PASS — Step 3 may start.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH804-20260816-step-2b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH804-20260816/step-2b-code-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/iss0713-gh804-prm08-seed-fix.md",
+      "status": "pass",
+      "detail": "Exit 0, 'OK — 1 file(s) checked, no issues.' No BLOCKER/MAJOR/MINOR. Type E requires lint only (no codegen per lego-catalog.md §How CODE-DESIGN-VALIDATOR uses this catalog)."
+    },
+    {
+      "name": "Static cross-check of design claims against working tree",
+      "status": "pass",
+      "detail": "Helper @233 with hardcoded zero-UUID def_id and (pool,tenant_id,review_id,requested_by) signature; single call site @472 passing random tenant_id; def_id_v2 local @453 and V2 definition seeded under DEFAULT_TENANT_ID @464; assertion @504 expectEqualStrings('superseded',...); rollback called with DEFAULT_TENANT_ID @478-481; production supersede WHERE @rollback.zig:289-291 with params [event_id, tenant_id, current_active_id]; migration 096 def_id TEXT @096_promotion_reviews.sql:27; test-integration-prm08 target @build.zig:3147. All design line numbers and predicate claims confirmed."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV / ISSUE-FIXER (Step 3) to implement the patch: add def_id param to insertPromotionReviewsRow, seed at call site with DEFAULT_TENANT_ID + def_id_v2.",
+    "ORCH must sequence GH-803 (ISS-0712 production 42883 cast fix in src/definition/rollback.zig Step 5) — full 4/4 green for test-integration-prm08 requires both GH-804 and GH-803.",
+    "Step 3 must run the integration target directly with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test and must NOT use .vscode/run-zig-test-integration.ps1 (stale :5433 port)."
+  ],
+  "blockers": []
+}
