@@ -1992,3 +1992,5 @@
 2026-08-16T18:11:35Z | ROUTE | WF-02 | 65c4029b | ORCH -> SECURITY-REVIEWER | PENDING | Step 2c security hard gate (DDL-04, OBP-04, ORD-03, VLD-04)
 2026-08-16T18:16:37Z | ROUTE | WF-02 | 7f50bdd7 | ORCH -> TEST-DESIGNER | PENDING | Step 03 test design (DDL-04, OBP-04, ORD-03, VLD-04)
 2026-08-16T19:06:00Z | ROUTE | WF-02 | ddcf3706 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | Step 03b HARD GATE test-design validation (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T19:10:57Z | ROUTE | WF-02 | 7d471c16 | ORCH -> BACKEND-DEV | PENDING | Step 2a-rework1 fix 3 BLOCKERs (ORD-03 sweeper +1, DDL-04 stall reachable, VLD-04 heap corruption)
+2026-08-16T20:04:39Z | handoff-completed | WF02-batch-7-20260816 | 7d471c16 | BACKEND-DEV | step-2a-rework1 REWORK-1 fixed ORD-03 sweeper +1, DDL-04 stall loop, VLD-04 gate/test UAF + pg large-column read; ord03 9/9 obp04 6/6 ddl04 6/6 vld04 7/7

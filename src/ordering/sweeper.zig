@@ -48,9 +48,12 @@ pub fn sweepStalledCorrelations(
     const timeout_text = std.fmt.allocPrint(allocator, "{d}", .{gap_timeout_seconds}) catch return error.OutOfMemory;
     defer allocator.free(timeout_text);
 
-    // Stalled correlations: lowest PENDING sequence_no ahead of the cursor
-    // (predecessor absent) AND that row older than the gap timeout.
-    // SELECT DISTINCT ON picks the lowest-sequence PENDING row per correlation.
+    // Stalled correlations: lowest PENDING sequence_no strictly AHEAD of the
+    // next expected sequence (applied_seq + 1) — i.e. the predecessor is
+    // genuinely absent — AND that row older than the gap timeout. A completion
+    // at exactly applied_seq + 1 is the NEXT expected one (slow-but-present)
+    // and must NOT be swept (ORD-03 AC5). SELECT DISTINCT ON picks the
+    // lowest-sequence PENDING row per correlation.
     const stalled = conn.query(
         allocator,
         \\SELECT p.correlation_id::text, p.lowest_seq::text
@@ -62,7 +65,7 @@ pub fn sweepStalledCorrelations(
         \\  ORDER BY correlation_id, sequence_no
         \\) p
         \\JOIN plat_correlation_cursor c ON c.correlation_id = p.correlation_id
-        \\WHERE p.lowest_seq > c.applied_seq
+        \\WHERE p.lowest_seq > c.applied_seq + 1
         \\  AND p.received_at <= now() - make_interval(secs => $1)
     ,
         &.{timeout_text},

@@ -295,8 +295,13 @@ pub fn runBackfill(
 
         conn.commit() catch return error.PersistenceFailed;
 
-        // Loop end: an iteration reports zero updated rows.
-        if (rows_updated == 0) break;
+        // Loop end (DDL-04 AC5): a zero-row iteration is NOT an immediate
+        // stop — it is a no-progress iteration counted against the stall
+        // threshold. The loop terminates normally only when the table is
+        // genuinely empty (0 remaining IS NULL rows). This makes the stall
+        // policy reachable: previously the early break on the first 0-row
+        // iteration bypassed the AC5 branch entirely.
+        if (rows_updated == 0 and rows_remaining == 0) break;
 
         // AC4: a batch > batch_timeout_ms halves the next batch (floor 500).
         if (elapsed_ms > config.batch_timeout_ms) {
@@ -308,7 +313,8 @@ pub fn runBackfill(
             }
         }
 
-        // AC5: ten consecutive zero-progress iterations -> stop + escalate.
+        // AC5: ten consecutive no-progress iterations (0 rows updated while
+        // rows remain) -> stop and escalate with the remaining IS NULL count.
         if (rows_updated == 0) {
             stall_count += 1;
             if (stall_count >= config.stall_threshold_iterations) {

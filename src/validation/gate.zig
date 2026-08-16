@@ -318,6 +318,12 @@ pub fn runSemanticGate(
             .compiled_sites = &.{},
         } };
     }
+    // Ownership follows the design contract ("the caller owns the failure"):
+    // the invalid path below detaches `failure.findings` / `pd06_diagnostics`
+    // and transfers them to the caller BEFORE this deferred deinit runs, so
+    // the deinit frees only the (now-empty) slices plus the verdict-stamp
+    // strings — never the borrowed findings. The timeout branch deinits
+    // explicitly above (before this defer is registered).
     defer failure.deinit(allocator);
 
     const now_iso = try dbNowIso(allocator, conn);
@@ -339,11 +345,50 @@ pub fn runSemanticGate(
     if (clean) {
         return GateResult{ .valid = verdict };
     }
-    return GateResult{ .invalid = .{
+    // Finding path: transfer ownership of findings / pd06 to the caller. The
+    // previous implementation returned `failure.findings` / `pd06_diagnostics`
+    // while `defer failure.deinit(allocator)` freed them at return — a
+    // use-after-free that corrupted the heap (garbage reads, nondeterministic
+    // segfaults/leaks). Detach first so the deferred deinit frees only the
+    // empty slices and the verdict-stamp strings.
+    const invalid = GateResult{ .invalid = .{
         .verdict = verdict,
         .findings = failure.findings,
         .pd06_diagnostics = failure.pd06_diagnostics,
     } };
+    failure.findings = &.{};
+    failure.pd06_diagnostics = null;
+    return invalid;
+}
+
+/// Free a caller-owned `.invalid` GateResult returned by runSemanticGate.
+///
+/// On the invalid path the gate transfers ownership of `findings` /
+/// `pd06_diagnostics` to the caller (design: "the caller owns the failure"),
+/// and `verdict.compiler_version` / `validated_at` are always caller-owned.
+/// The caller MUST free all of them — via this helper or by hand — or the
+/// integration suites leak under std.testing.allocator. `.valid` results only
+/// need their two verdict slices freed; `.timeout` carries no caller-owned
+/// allocations today (`compiled_sites` is a static empty slice).
+pub fn freeInvalid(allocator: std.mem.Allocator, inv: anytype) void {
+    if (inv.verdict.compiler_version) |c| allocator.free(c);
+    if (inv.verdict.validated_at) |va| allocator.free(va);
+    for (inv.findings) |f| {
+        allocator.free(f.node_id);
+        allocator.free(f.expression_path);
+        allocator.free(f.source);
+        allocator.free(f.message);
+    }
+    allocator.free(inv.findings);
+    if (inv.pd06_diagnostics) |diags| {
+        for (diags) |d| {
+            // `code` is a static string literal (see pd06.zig) — never freed.
+            allocator.free(d.message);
+            if (d.node_id) |n| allocator.free(n);
+            if (d.expression_path) |p| allocator.free(p);
+        }
+        allocator.free(diags);
+    }
 }
 
 // ---------------------------------------------------------------------------
