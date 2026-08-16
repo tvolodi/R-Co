@@ -24,6 +24,7 @@
 | TC-SPT-02-04 | 063 re-issues `DROP POLICY IF EXISTS` for every known policy (belt-and-suspenders) | SPT-02 AC4 |
 | TC-SPT-02-05 | Re-running 061/062/063 raises no error and leaves state unchanged (idempotency) | SPT-02 AC5 |
 | TC-SPT-02-06 | Interrupted copy detected via `public.tenant_schemas.data_migrated_at IS NULL`; 062 pre-flight gates | SPT-02 AC6 |
+| TC-SPT-02-07 | 062 drops Class-B `tenant_id` even when a public view (`v_active_configs` from 052) depends on it — view dropped before `DROP COLUMN`, recreated after without the `tenant_id` projection; `tenant_default` copy keeps `tenant_id` | SPT-02 AC3 / release-blocker regression (GH-812 precursor) |
 
 ### TC-SPT-02-01: N distinct tenant IDs → N `tenant_schemas` rows and N schemas
 
@@ -72,3 +73,11 @@
 **Then:** Execution fails with a server error (the 062 pre-flight `RAISE EXCEPTION` aborts the migration) — proving the partially-migrated tenant is detected via the `tenant_schemas` row; the transaction is rolled back so nothing persists, and a subsequent re-attempt (with the marker set) proceeds cleanly without duplicating rows.
 **Layer:** integration
 **Acceptance criterion mapped:** SPT-02 AC6 — interrupted copy detected via `public.tenant_schemas` row; clean retry without duplicating rows.
+
+### TC-SPT-02-07: 062 drops Class-B `tenant_id` even when a public view (`v_active_configs` from 052) depends on it (view-dependency regression)
+
+**Given:** The fresh-DB pre-062 state is reproduced in a controlled transaction: `tenant_id` is re-added to `public.artifact_activations` and `public.v_active_configs` is recreated with its migration-052 definition (which projects `aa.tenant_id`) — the exact dependent-view state that aborted 062 with `cannot drop column tenant_id of table artifact_activations because other objects depend on it — view v_active_configs depends on column tenant_id` on every fresh database (052 order 52 runs before 062 order 62, while GBL-123/1123 drops the legacy tables ~1000 order-units later).
+**When:** Migration 062's raw SQL text is executed inside that transaction (the 052-style dependent view present).
+**Then:** (1) 062 applies cleanly — no `cannot drop column ... because other objects depend on it` server error (the dependent view is dropped before `DROP COLUMN` and recreated after); (2) `public.v_active_configs` exists afterwards with its post-062 definition — the version-chain traversal (`artifact_activations -> artifact_versions -> repository_artifacts`) is preserved but the `tenant_id` projection column is removed, and `public.artifact_activations` no longer carries `tenant_id`; (3) `tenant_default.v_active_configs` (052's tenant-schema copy) still exists and keeps its `tenant_id` column. The transaction is rolled back so the shared `bpm_test` database is returned to its real migrated state.
+**Layer:** integration
+**Acceptance criterion mapped:** SPT-02 AC3 — 062 leaves no Class-B `tenant_id` column in `public` while preserving dependent-view semantics; release-blocker regression for the view-dependency class of defect.

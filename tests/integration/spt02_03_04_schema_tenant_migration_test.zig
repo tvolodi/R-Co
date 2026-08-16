@@ -27,7 +27,7 @@
 //! its public-schema DDL transactions never run concurrently with a sibling.
 //!
 //! Requirement traceability:
-//!   SPT-02 -> TC-SPT-02-01 .. TC-SPT-02-06
+//!   SPT-02 -> TC-SPT-02-01 .. TC-SPT-02-07
 //!   SPT-03 -> TC-SPT-03-01 .. TC-SPT-03-05
 //!   SPT-04 -> TC-SPT-04-01 .. TC-SPT-04-05
 
@@ -512,6 +512,107 @@ test "TC-SPT-02-06: 062 pre-flight gates on an unmarked tenant_schemas row and p
     try testing.expectEqual(@as(i64, 0), leftover);
 }
 
+// TC-SPT-02-07 (SPT-02 release-blocker regression): migration 062 must be able
+// to drop Class-B tenant_id columns even when a public view (v_active_configs
+// from migration 052) depends on them — the dependent view is dropped BEFORE
+// the DROP COLUMN and recreated AFTER with its original definition semantics
+// minus the removed tenant_id projection. This reproduces the exact state
+// RELEASE-VALIDATOR hit on the fresh-DB path (migration order 052 < 062 <
+// GBL-123/1123): before the BACKEND-DEV fix, 062 aborted with 'cannot drop
+// column tenant_id of table artifact_activations because other objects depend
+// on it — view v_active_configs depends on column tenant_id'.
+test "TC-SPT-02-07: 062 applies cleanly when public.v_active_configs depends on a Class-B tenant_id column" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var conn = try pg.Conn.connectUrl(std.testing.io, alloc, url);
+    defer conn.close();
+
+    const sql_062 = try readMigrationSql(std.testing.io, alloc, migration_062_filename);
+    defer alloc.free(sql_062);
+
+    // Reproduce the fresh-DB pre-062 state inside a transaction. The shared
+    // bpm_test is already fully migrated (062 already dropped the column and
+    // recreated the view without tenant_id), so we restore the pre-062 state:
+    // (a) re-add tenant_id to public.artifact_activations, and (b) recreate
+    // public.v_active_configs with its migration-052 definition (which projects
+    // aa.tenant_id). This is the exact dependent-view state 062 must handle.
+    try conn.exec("BEGIN", &.{});
+    try conn.exec(
+        "ALTER TABLE public.artifact_activations ADD COLUMN tenant_id uuid",
+        &.{},
+    );
+    try conn.exec("DROP VIEW IF EXISTS public.v_active_configs", &.{});
+    try conn.exec(
+        \\CREATE VIEW public.v_active_configs AS
+        \\SELECT
+        \\    aa.tenant_id,
+        \\    aa.artifact_kind,
+        \\    aa.artifact_name,
+        \\    aa.active_version_id,
+        \\    encode(ra.content_hash, 'hex') AS content_hash_hex,
+        \\    aa.activated_at
+        \\FROM public.artifact_activations aa
+        \\JOIN public.artifact_versions av
+        \\    ON aa.active_version_id = av.version_id
+        \\JOIN public.repository_artifacts ra
+        \\    ON av.content_hash = ra.content_hash
+        \\WHERE aa.artifact_kind = 'config'
+    , &.{});
+
+    // Pre-assert the dependent-view state is actually reproduced — the test
+    // must exercise the failure path, not silently pass on a no-op setup.
+    const aa_tid_pre = try count(alloc, &conn,
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'artifact_activations' AND column_name = 'tenant_id'",
+        &.{});
+    try testing.expectEqual(@as(i64, 1), aa_tid_pre);
+    var def_buf: [4096]u8 = undefined;
+    const viewdef_pre = (try scalarText(alloc, &conn,
+        "SELECT pg_get_viewdef('public.v_active_configs'::regclass, true)", &.{}, &def_buf)) orelse "";
+    try testing.expect(std.mem.indexOf(u8, viewdef_pre, "tenant_id") != null);
+
+    // (1) Migration 062 must apply cleanly over the dependent view. A server
+    //     error here — the pre-fix 'cannot drop column tenant_id of table
+    //     artifact_activations because other objects depend on it' — fails the
+    //     test via the propagated PgError.
+    try conn.simpleQuery(sql_062);
+
+    // (2) public.v_active_configs exists after with its post-062 definition:
+    //     the version-chain traversal is preserved but the tenant_id projection
+    //     is gone (public business tables no longer carry it).
+    const pub_reg = try count(alloc, &conn,
+        "SELECT count(*) FROM pg_class WHERE relname = 'v_active_configs' AND relnamespace = 'public'::regnamespace AND relkind = 'v'",
+        &.{});
+    try testing.expectEqual(@as(i64, 1), pub_reg);
+
+    const viewdef_post = (try scalarText(alloc, &conn,
+        "SELECT pg_get_viewdef('public.v_active_configs'::regclass, true)", &.{}, &def_buf)) orelse "";
+    try testing.expect(std.mem.indexOf(u8, viewdef_post, "tenant_id") == null);
+    try testing.expect(std.mem.indexOf(u8, viewdef_post, "artifact_activations") != null);
+
+    const aa_tid_post = try count(alloc, &conn,
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'artifact_activations' AND column_name = 'tenant_id'",
+        &.{});
+    try testing.expectEqual(@as(i64, 0), aa_tid_post);
+
+    // (3) tenant_default.v_active_configs (052's tenant-schema copy) keeps
+    //     tenant_id — schema isolation is the tenant boundary going forward,
+    //     and 062 must leave the tenant-schema copies untouched.
+    const td_reg = try count(alloc, &conn,
+        "SELECT count(*) FROM pg_class WHERE relname = 'v_active_configs' AND relnamespace = 'tenant_default'::regnamespace AND relkind = 'v'",
+        &.{});
+    try testing.expectEqual(@as(i64, 1), td_reg);
+    const td_tid = try count(alloc, &conn,
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'tenant_default' AND table_name = 'v_active_configs' AND column_name = 'tenant_id'",
+        &.{});
+    try testing.expectEqual(@as(i64, 1), td_tid);
+
+    // ROLLBACK: the shared bpm_test database must be returned to its real
+    // migrated state (DDL is transactional in PostgreSQL).
+    try conn.exec("ROLLBACK", &.{});
+}
+
 // ---------------------------------------------------------------------------
 // SPT-03 — schema-only routing, no bpm.tenant_id session variable
 // ---------------------------------------------------------------------------
@@ -778,15 +879,15 @@ test "TC-SPT-04-01: SPT suite uses provisionTestTenantSchema/dropTestTenantSchem
     try testing.expect(drop_calls >= provision_calls);
 }
 
-// TC-SPT-04-02 (SPT-04 AC2): this suite covers all 16 SPT ACs as runnable,
+// TC-SPT-04-02 (SPT-04 AC2): this suite covers all 17 SPT ACs as runnable,
 // non-skipped test blocks.
-test "TC-SPT-04-02: suite has 16 runnable SPT test blocks and no error.SkipZigTest" {
+test "TC-SPT-04-02: suite has 17 runnable SPT test blocks and no error.SkipZigTest" {
     const alloc = testing.allocator;
     const this_src = try readRepoFile(alloc, "tests/integration/spt02_03_04_schema_tenant_migration_test.zig");
     defer alloc.free(this_src);
 
     const block_count = std.mem.count(u8, this_src, "test \"TC-SPT-");
-    try testing.expectEqual(@as(usize, 16), block_count);
+    try testing.expectEqual(@as(usize, 17), block_count);
 
     // No MUST test may skip. The needle is built at runtime so this
     // assertion's own literal ("return {s};") can never self-match.
