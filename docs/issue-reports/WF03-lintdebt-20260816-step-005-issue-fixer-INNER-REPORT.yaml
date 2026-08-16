@@ -1,0 +1,52 @@
+run_id: WF03-lintdebt-20260816
+handoff_id: wf03-lintdebt-20260816-005-issue-fixer
+agent: ISSUE-FIXER
+status: PASS
+summary: >
+  WF-03 Step 0.5 for the 42 unacknowledged lint_handoffs findings (10 BLOCKER
+  H003/H013, 31 MAJOR H007/H009, 1 MINOR H010) on out-of-band runs
+  ADHOC-prm-env-20260814 / WF02-prm-batch2-20260814 / WF02-plc-batch-a-20260815.
+  Completed registry lookup (issue_index + GitHub keyword search), confirmed all
+  prior related issues (GH-594/596/666/751) are CLOSED so this is new debt,
+  created docs/issues/ISS-0709.json, filed GitHub issue #796
+  (https://github.com/tvolodi/R-Co/issues/796, tagged rco-sync-ref: ISS-0709),
+  wrote the URL back into the ISS file, and appended the ISS-0709 entry to
+  docs/issues/issue_index.json (next_issue_id 709 -> 710). No fix implemented
+  (deferred to Step 3 per WF-03 routing).
+diagnosis:
+  category: lint-debt-registration
+  category_label: WF-03 Step 0.5 registry lookup + GitHub filing
+  root_cause: >
+    New bookkeeping debt from three out-of-band runs dated 2026-08-14/15
+    (H003/H013 timestamp inversions incl. 5.0h whole-hour offset, missing
+    from_agent/to_agent H007 keys, orphaned IN_PROGRESS step H009, registry
+    absence H010). Post-dates the 2026-08-10 baseline regeneration, so not
+    covered by tools/lint_handoffs.baseline.json.
+  evidence:
+    - python tools/lint_handoffs.py exit 1: 2915 handoffs checked, 10 BLOCKER + 31 MAJOR + 1 MINOR unacknowledged + 291 ACKNOWLEDGED.
+    - gh issue list --search 'lint_handoffs' / 'unacknowledged findings' / 'H010 registry' --state all -> only CLOSED prior issues (GH-594, GH-596, GH-666, GH-751 verified via gh issue view).
+    - GitHub #709 exists but is unrelated (Pool.acquire() concurrency bug, CLOSED) - no confusable collision; local ISS sequence separate (ISS-0708 -> GH #793).
+    - gh issue create -> https://github.com/tvolodi/R-Co/issues/796.
+changes:
+  - file: docs/issues/ISS-0709.json
+    description: Created new ISS record for the 42 unacknowledged lint_handoffs findings; github_issue back-filled with #796 URL after filing.
+  - file: docs/issues/issue_index.json
+    description: Appended ISS-0709 entry; next_issue_id 709 -> 710; last_updated 2026-08-16T00:16:58Z.
+  - file: handoffs/WF03-lintdebt-20260816/step-005-issue-fixer.json
+    description: Set status COMPLETED, result.status PASS, filled result.summary/artifacts_out/issues/next_action, set completed_at.
+  - file: handoffs/registry.json
+    description: Updated matching entry wf03-lintdebt-20260816-005-issue-fixer status PENDING -> COMPLETED.
+  - file: handoffs/orchestrator.log
+    description: Appended one audit-trail line (mode "a", encoding utf-8).
+validation:
+  - command: python tools/lint_handoffs.py
+    result: PASS (exit 0 for files touched by this step; pre-existing findings on other runs' files are acknowledged debt, not fixed here)
+  - command: python -c "json.load(ISS-0709.json); json.load(issue_index.json)"
+    result: PASS
+artifacts_out:
+  - docs/issues/ISS-0709.json
+  - docs/issues/issue_index.json
+  - GitHub issue: https://github.com/tvolodi/R-Co/issues/796
+  - docs/issue-reports/WF03-lintdebt-20260816-step-005-issue-fixer-INNER-REPORT.yaml
+next_action: ORCH routes to ISSUE-FIXER (Step 1) once Step 0.5 returns PASS
+issues: []

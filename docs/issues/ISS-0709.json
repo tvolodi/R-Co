@@ -1,0 +1,66 @@
+{
+  "iss_id": "ISS-0709",
+  "id": "ISS-0709",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/796",
+  "github_issue_confirmed": true,
+  "title": "lint_handoffs.py: 42 unacknowledged findings (10 BLOCKER H003/H013, 31 MAJOR H007/H009, 1 MINOR H010) on out-of-band runs ADHOC-prm-env-20260814 / WF02-prm-batch2-20260814 / WF02-plc-batch-a-20260815 — new debt after GH-594/596/666/751 closed",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-lintdebt-20260816",
+  "run_id": "WF03-lintdebt-20260816",
+  "branch": "feature/WF03-lintdebt-20260816",
+  "created_at": "2026-08-16T00:16:58Z",
+  "registered_at": "2026-08-16T00:16:58Z",
+  "created_by": "ISSUE-FIXER (WF03-lintdebt-20260816 step-0.5)",
+  "registered_by": "ISSUE-FIXER (WF03-lintdebt-20260816 step-0.5)",
+  "labels": [
+    "bug",
+    "process",
+    "bookkeeping"
+  ],
+  "scope": "tools/lint_handoffs.py global gate exits 1: 42 unacknowledged findings on handoff files/registry produced by three out-of-band WF-02 runs dated 2026-08-14/15 (ADHOC-prm-env-20260814, WF02-prm-batch2-20260814, WF02-plc-batch-a-20260815). These runs predate this run's baseline regeneration and are NOT covered by tools/lint_handoffs.baseline.json (which acknowledges the pre-2026-08-10 debt via ISS-0627/GH-596, GH-666/ISS-0656). Step 3 (CODE-DESIGNER/BACKEND-DEV) decides the disposition per finding class (correct + acknowledge-in-baseline vs. permanent-record acknowledgment per ISS-0627 convention). This Step 0.5 only registers the finding and files the GitHub issue.",
+  "affected_areas": [
+    "handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json",
+    "handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json",
+    "handoffs/WF02-prm-batch2-20260814/step-01-code-designer.json",
+    "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework1.json",
+    "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json",
+    "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json",
+    "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework1.json",
+    "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json",
+    "handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json",
+    "handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json",
+    "handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json",
+    "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework1.json",
+    "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework2.json",
+    "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer.json",
+    "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json",
+    "handoffs/registry.json",
+    "tools/lint_handoffs.baseline.json"
+  ],
+  "description": "python tools/lint_handoffs.py (global gate, must exit 0 before any handoff completes) reports 42 UNACKNOWLEDGED findings against 2915 handoffs: 10 BLOCKER + 31 MAJOR + 1 MINOR, on top of 291 already-acknowledged baseline entries. The 42 findings cluster entirely on handoffs produced by three out-of-band (non-registry-routed) runs from 2026-08-14/15 that are absent from tools/lint_handoffs.baseline.json. Break down: (A) 5 H003 BLOCKER — completed_at precedes started_at (non-whole-hour); (B) 5 H013 BLOCKER — completed_at is exactly 5.0h before started_at (whole-hour offset, the .ToUniversalTime() omission signature / local-time-labelled-Z); (C) 30 H007 MAJOR — missing required schema keys from_agent AND to_agent across 15 files (2 findings per file); (D) 1 H009 MAJOR — WF02-prm-batch2-20260814/step-02a-backend-dev.json left IN_PROGRESS while 7 later steps COMPLETED; (E) 1 H010 MINOR — 71 of 2915 handoffs (2.4%) absent from handoffs/registry.json, including ADHOC-prm-env-20260814/step-00-backend-dev.json (0 registry matches). All finding timestamps are 2026-08-14/15, i.e. NEW debt that arose after prior lint-debt issues GH-594, GH-596, GH-666, GH-751 were closed.",
+  "symptom": "python tools/lint_handoffs.py exits 1. Global lint gate is red; every handoff completion in the pipeline is nominally blocked until the 42 findings are acknowledged or corrected. Summary line: 'lint_handoffs: 2915 handoffs checked — 10 BLOCKER, 31 MAJOR, 1 MINOR, 291 ACKNOWLEDGED'.",
+  "discovered_at": "2026-08-16T00:12:16Z",
+  "discovered_by": "ORCH (WF03-lintdebt-20260816 dispatch; finding pre-flagged in WF02-prm02-05-20260816 session memory as 'pre-existing lint_handoffs BLOCKERs on WF02-prm-batch2-20260814, ADHOC-prm-env-20260814, WF02-plc-batch-a-20260815 — NOT in baseline; global lint exits 1')",
+  "root_cause": "Same root-cause class as ISS-0626/ISS-0627: bookkeeping directives were followed for work product but not for the record of the work. The three out-of-band runs executed on 2026-08-14/15 wrote handoff files using timestamps from session context / local-time-labelled-Z (H003/H013), omitted from_agent/to_agent schema keys (H007), left a step orphaned IN_PROGRESS while routing past it (H009), and one run's files were never registered in handoffs/registry.json (H010). Because these runs happened after the 2026-08-10 baseline regeneration, their findings are NOT covered by the acknowledgment mechanism and re-surface as new unacknowledged debt. Severity of the issue itself is MAJOR: it is bookkeeping/audit-trail debt that reds the lint gate, not a runtime defect.",
+  "investigation_notes": "Verified live on 2026-08-16T00:12..00:17Z: (1) full lint run captured (291 ACKNOWLEDGED from baseline + 42 unacknowledged); (2) H003 exact inversions recorded per file (e.g. ADHOC-prm-env-20260814/step-00-backend-dev.json completed_at 2026-08-14T14:39:42Z < started_at 2026-08-14T19:37:32Z); (3) H013 offset is uniformly 5.0h across all 5 files (consistent single-session local-time drift); (4) H007 = missing from_agent+to_agent pair, 2 findings per each of 15 files; (5) H009 = WF02-prm-batch2-20260814/step-02a-backend-dev.json status IN_PROGRESS with 7 later COMPLETED steps in the same run; (6) H010 = registry.json absent-from-registry count 71/2915 (2.4%), ADHOC-prm-env-20260814 has 0 registry matches for its 1 handoff file. Prior-art disposition per class (from ISS-0627/GH-596 resolution): H013 correction was REJECTED there and folded into the acknowledgment mechanism; H003/H009 are permanent-record categories (no field recovers the true value); H007 was corrected in prior runs by renaming workflow_id/sequence -> run_id/step where the file is a real handoff; H010 was repaired in WF03-GH594-20260808 by registry backfill. Step 3 must decide per-class whether to correct or acknowledge, following that prior art.",
+  "acceptance_criteria": [
+    "python tools/lint_handoffs.py exits 0 (or the 42 findings are explicitly acknowledged in tools/lint_handoffs.baseline.json with a reasoned reason_ref per ISS-0627 convention, so the gate is green and the debt is visible as accepted historical record)",
+    "The H010 registry gap is repaired or acknowledged: ADHOC-prm-env-20260814/step-00-backend-dev.json present in handoffs/registry.json, or the 71-absent state acknowledged",
+    "No fabricated timestamps or status values introduced (Never Satisfy a Gate by Editing What It Measures applies: correcting = fixing the condition; acknowledging = documenting the honest gap, not deleting the detector)",
+    "The 291 already-acknowledged baseline entries remain untouched"
+  ],
+  "reproduction": "python tools/lint_handoffs.py 2>&1 | Select-String -Pattern '^(BLOCKER|MAJOR|MINOR)' -> 42 lines (10 BLOCKER, 31 MAJOR, 1 MINOR); LINT_EXIT=1. Baseline acknowledgment count stays 291 (unchanged).",
+  "notes": "Collision check performed per No-Issue-Left-Local-Only / issue-fixer Step 5: gh issue list --search 'lint_handoffs' --state all -> no matches; --search 'unacknowledged findings' --state all -> GH-666 (CLOSED); --search 'H010 registry' --state all -> GH-751 (CLOSED), GH-594 (CLOSED). All prior related issues are CLOSED (GH-594, GH-596, GH-666, GH-751 verified closed via gh issue view) — this is NEW debt, not a recurrence; a fresh GitHub issue is filed. Local ISS-0709 is the registry's next_issue_id (709). GitHub #709 exists but is an unrelated CLOSED issue (Pool.acquire() row-lock isolation concurrency bug) with no title/body reference to lint_handoffs or ISS-0709; local and GitHub numbering are separate sequences (cf. ISS-0708 -> GH #793), so no confusable collision. Do NOT implement the fix in Step 0.5 — Step 3 (CODE-DESIGNER -> BACKEND-DEV) decides disposition.",
+  "handoff_history": [
+    {
+      "step": "step-0.5-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-lintdebt-20260816",
+      "handoff_id": "wf03-lintdebt-20260816-005-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": null,
+      "summary": "Registered ISS-0709 for the 42 unacknowledged lint_handoffs findings and filed GitHub issue (URL back-filled into github_issue field after gh issue create). Collision check done (all prior related GH issues closed). Fix disposition deferred to Step 3 per WF-03 routing."
+    }
+  ]
+}
