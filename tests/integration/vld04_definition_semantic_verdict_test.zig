@@ -56,9 +56,7 @@ test "vld04_definition_semantic_verdict: verdict_columns_exist_with_defaults" {
     const fx = try setup(std.testing.allocator, &h.conn);
     defer freeFixtures(std.testing.allocator, fx);
 
-    var result = try h.conn.query(std.testing.allocator,
-        "SELECT semantically_valid::text, compiler_version, validated_at, validation_finding_count FROM process_definitions WHERE name = $1",
-        &.{fx.definition_name_value});
+    var result = try h.conn.query(std.testing.allocator, "SELECT semantically_valid::text, compiler_version, validated_at, validation_finding_count FROM process_definitions WHERE name = $1", &.{fx.definition_name_value});
     defer result.deinit();
 
     // CUSTOM: assert result.rows.len == 1, semantically_valid == "false",
@@ -87,9 +85,7 @@ test "vld04_definition_semantic_verdict: clean_pass_records_verdict_with_compile
 
     // CUSTOM: assert the row now reads semantically_valid = "true",
     // compiler_version = the constant, validated_at NOT NULL, finding count 0.
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT semantically_valid::text, compiler_version, validated_at, validation_finding_count FROM process_definitions WHERE name = $1",
-        &.{fx.definition_name_value});
+    var rows = try h.conn.query(std.testing.allocator, "SELECT semantically_valid::text, compiler_version, validated_at, validation_finding_count FROM process_definitions WHERE name = $1", &.{fx.definition_name_value});
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     const row = rows.rows[0];
@@ -120,9 +116,7 @@ test "vld04_definition_semantic_verdict: failed_pass_records_finding_count_and_s
     // CUSTOM: assert semantically_valid = "false", compiler_version = the current
     // constant, validation_finding_count = "3" — the data DEFINITION_VALIDATION_FAILED
     // carries (AC5).
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT semantically_valid::text, compiler_version, validation_finding_count FROM process_definitions WHERE name = $1",
-        &.{fx.definition_name_value});
+    var rows = try h.conn.query(std.testing.allocator, "SELECT semantically_valid::text, compiler_version, validation_finding_count FROM process_definitions WHERE name = $1", &.{fx.definition_name_value});
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     const row = rows.rows[0];
@@ -145,9 +139,7 @@ test "vld04_definition_semantic_verdict: stale_compiler_version_is_distinguishab
         &.{fx.definition_name_value},
     );
 
-    var result = try h.conn.query(std.testing.allocator,
-        "SELECT compiler_version FROM process_definitions WHERE name = $1",
-        &.{fx.definition_name_value});
+    var result = try h.conn.query(std.testing.allocator, "SELECT compiler_version FROM process_definitions WHERE name = $1", &.{fx.definition_name_value});
     defer result.deinit();
 
     // CUSTOM: assert compiler_version == "old-version" (NOT the current constant),
@@ -178,9 +170,7 @@ test "vld04_definition_semantic_verdict: finding_count_check_rejects_negative" {
     try std.testing.expectError(error.ServerError, result);
     try h.conn.exec("ROLLBACK TO SAVEPOINT before_neg", &.{});
 
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT validation_finding_count FROM process_definitions WHERE name = $1",
-        &.{fx.definition_name_value});
+    var rows = try h.conn.query(std.testing.allocator, "SELECT validation_finding_count FROM process_definitions WHERE name = $1", &.{fx.definition_name_value});
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     try std.testing.expectEqualStrings("0", rows.rows[0][0] orelse "");

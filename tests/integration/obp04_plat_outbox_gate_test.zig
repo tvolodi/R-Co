@@ -69,9 +69,7 @@ test "obp04_plat_outbox_gate: per_tenant_keying_keeps_rows_independent" {
     const fx = try setup(std.testing.allocator, &h.conn);
     defer freeFixtures(std.testing.allocator, fx);
 
-    var result = try h.conn.query(std.testing.allocator,
-        "SELECT state, depth FROM plat_outbox_gate ORDER BY tenant_schema",
-        &.{});
+    var result = try h.conn.query(std.testing.allocator, "SELECT state, depth FROM plat_outbox_gate ORDER BY tenant_schema", &.{});
     defer result.deinit();
 
     // CUSTOM: assert exactly 2 rows: one 'closed' with depth 49999 for
@@ -111,9 +109,7 @@ test "obp04_plat_outbox_gate: state_check_constraint_rejects_unknown_value" {
     try std.testing.expectError(error.ServerError, result);
     try h.conn.exec("ROLLBACK TO SAVEPOINT before_flapping", &.{});
 
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT count(*) FROM plat_outbox_gate WHERE tenant_schema = $1",
-        &.{fx.tenant_schema_value});
+    var rows = try h.conn.query(std.testing.allocator, "SELECT count(*) FROM plat_outbox_gate WHERE tenant_schema = $1", &.{fx.tenant_schema_value});
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     try std.testing.expectEqualStrings("1", rows.rows[0][0] orelse "0");
@@ -168,9 +164,7 @@ test "obp04_plat_outbox_gate: closed_gate_sweep_finds_long_closed_tenant" {
     const fx = try setup(std.testing.allocator, &h.conn);
     defer freeFixtures(std.testing.allocator, fx);
 
-    var result = try h.conn.query(std.testing.allocator,
-        "SELECT tenant_schema, closed_at FROM plat_outbox_gate WHERE state = 'closed' AND closed_at <= now() - interval '300 seconds' ORDER BY closed_at",
-        &.{});
+    var result = try h.conn.query(std.testing.allocator, "SELECT tenant_schema, closed_at FROM plat_outbox_gate WHERE state = 'closed' AND closed_at <= now() - interval '300 seconds' ORDER BY closed_at", &.{});
     defer result.deinit();
 
     // CUSTOM: assert result.rows.len == 1 and tenant_schema ==
@@ -197,9 +191,7 @@ test "obp04_plat_outbox_gate: reopen_persists_transition_and_duration" {
     // CUSTOM: assert the row for fx.tenant_schema_value now reads state='open',
     // depth=40000, closed_duration_ms >= 400000 (400 s from the seed), and
     // last_transition_at has been refreshed — the data the AC2 event carries.
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT state, depth, closed_duration_ms FROM plat_outbox_gate WHERE tenant_schema = $1",
-        &.{fx.tenant_schema_value});
+    var rows = try h.conn.query(std.testing.allocator, "SELECT state, depth, closed_duration_ms FROM plat_outbox_gate WHERE tenant_schema = $1", &.{fx.tenant_schema_value});
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     const row = rows.rows[0];

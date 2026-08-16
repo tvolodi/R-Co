@@ -1,0 +1,65 @@
+{
+  "report_id": "WF02-batch-7-20260816-step-03-test-designer-INNER-REPORT",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-batch-7-20260816",
+  "step": "03",
+  "created_at": "2026-08-16T19:02:30Z",
+  "summary": "TEST-DESIGNER Step 3 complete for WF02-batch-7 (DDL-04/OBP-04/ORD-03/VLD-04). Wrote 4 test specs (tests/specs/DDL-04.md, OBP-04.md, ORD-03.md, VLD-04.md) and 4 new integration test suites (tests/integration/ddl04_backfill_loop_test.zig, obp04_gate_test.zig, ord03_ordering_test.zig, vld04_gate_test.zig), wired into build.zig with narrow steps + test_integration_others_step, plus named modules (platform_backfill, outbox_gate, ordering_sweeper, validation_gate). Reviewed and kept BACKEND-DEV's 3 schema suites (all green). Fixed 4 BACKEND-DEV implementation defects found while compiling/running the tests: (1) event appends targeted public.events which GBL-112 permanently dropped -> switched to the tenant-scoped events table via the canonical plat_event_idempotency sidecar pattern (gate.zig, consumer.zig, validation/gate.zig); (2) consumer.zig applyCompletion + backfill.zig mapBatchError used 'error set is discarded' `_ = err` under Zig 0.16; (3) gate.zig called deriveLowWater as an instance method (no self) - now OutboxGateConfig.deriveLowWater; (4) consumer.zig etc. needed fmt. Test results: obp04-gate 6/6, ord03 8/9, ddl04-backfill 5/6, vld04-gate 4/7. The failures are genuine implementation defects reported as BLOCKER issues (see issues_found): ORD-03 sweeper predicate missing +1, DDL-04 AC5 stall policy unreachable, VLD-04 finding-path heap corruption. Also fixed a test-side defer-ordering use-after-free and the T020-atomic/AlertSeverity callback issues. zig build check 0, zig build test 0, lint_test_isolation 0, all new suites runnable against BPM_TEST_DB_URL=localhost:5453.",
+  "files_created": [
+    "tests/specs/DDL-04.md",
+    "tests/specs/OBP-04.md",
+    "tests/specs/ORD-03.md",
+    "tests/specs/VLD-04.md",
+    "tests/integration/ddl04_backfill_loop_test.zig",
+    "tests/integration/obp04_gate_test.zig",
+    "tests/integration/ord03_ordering_test.zig",
+    "tests/integration/vld04_gate_test.zig",
+    "docs/issue-reports/WF02-batch-7-20260816-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "build.zig",
+    "src/outbox/gate.zig",
+    "src/ordering/consumer.zig",
+    "src/validation/gate.zig",
+    "src/platform/backfill.zig",
+    "src/dlq/store.zig",
+    "src/ordering/cursor.zig",
+    "tests/integration/ddl04_plat_migration_state_test.zig",
+    "tests/integration/obp04_plat_outbox_gate_test.zig",
+    "tests/integration/vld04_definition_semantic_verdict_test.zig",
+    "handoffs/WF02-batch-7-20260816/step-03-test-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    { "name": "zig build check", "status": "pass", "detail": "exit 0; check_fmt_scope PASSED" },
+    { "name": "zig build test (unit aggregate)", "status": "pass", "detail": "exit 0; lint_test_wiring PASSED after restoring root_source_file roots" },
+    { "name": "lint_test_isolation.py tests/integration", "status": "pass", "detail": "OK - 186 files, no isolation issues (0 BLOCKER/MAJOR/MINOR beyond baseline)" },
+    { "name": "test-integration-ord03", "status": "partial", "detail": "8 pass, 1 fail - TC-ORD-03-AC5-non-stalled-not-swept (sweeper predicate defect, BLOCKER)" },
+    { "name": "test-integration-obp04-gate", "status": "pass", "detail": "6 pass, 0 fail" },
+    { "name": "test-integration-ddl04-backfill", "status": "partial", "detail": "5 pass, 1 fail - TC-DDL-04-AC5-stall-escalation (stall policy unreachable, BLOCKER)" },
+    { "name": "test-integration-vld04-gate", "status": "partial", "detail": "4 pass, 3 fail/crash - AC1 fail + AC3-stale/AC4 crash (finding-path heap corruption, BLOCKER)" },
+    { "name": "test-integration-ddl04/obp04/vld04 (schema suites, BACKEND-DEV)", "status": "pass", "detail": "all three exit 0" },
+    { "name": "zig fmt --check", "status": "pass", "detail": "all changed files formatted" }
+  ],
+  "issues_found": [
+    { "severity": "BLOCKER", "description": "ORD-03: sweepStalledCorrelations predicate is `p.lowest_seq > c.applied_seq` (missing + 1), so a slow-but-present correlation whose lowest PENDING sequence equals applied_seq+1 is wrongly dead-lettered. Requirement AC5 requires the predecessor to be ABSENT. TC-ORD-03-AC5-non-stalled-not-swept fails. Fix: `p.lowest_seq > c.applied_seq + 1`." },
+    { "severity": "BLOCKER", "description": "DDL-04 AC5: runBackfill executes `if (rows_updated == 0) break;` BEFORE the stall check, so the ten-consecutive-zero-progress stall policy is unreachable; a stuck backfill terminates with stalled=false/status=applied instead of escalating. TC-DDL-04-AC5-stall-escalation fails. The zero-row break must only fire when rows_remaining==0; zero-progress with rows_remaining>0 must count toward the stall threshold." },
+    { "severity": "BLOCKER", "description": "VLD-04: runSemanticGate's finding-producing path corrupts heap memory - persistVerdict writes a garbage compiler_version into process_definitions whenever validateDefinition returns findings (clean passes write the correct constant; verified), and TC-VLD-04-AC3-stale-verdict-reruns / TC-VLD-04-AC4-timeout segfault. Root cause is in the validateDefinition finding path (VLD-01/02/03 pipeline) or BACKEND-DEV's gate wiring - needs ISSUE-FIXER root-cause." },
+    { "severity": "BLOCKER", "description": "Event appends (EXECUTION_OUTBOX_GATE_OPENED, EXECUTION_EFFECT_APPLIED, DEFINITION_VALIDATED/FAILED) originally targeted public.events, which GBL-112 permanently dropped (events are per-tenant). They failed with 42P01, then 42P10 on ON CONFLICT(idempotency_key) because the partitioned events table has no unique on idempotency_key. Fixed to the canonical plat_event_idempotency sidecar + unqualified `events` pattern in gate.zig/consumer.zig/validation/gate.zig. Confirmed by tests. (This fix is applied; recorded for traceability.)" },
+    { "severity": "MAJOR", "description": "BACKEND-DEV's consumer.zig applyCompletion and backfill.zig mapBatchError used `_ = err` in catch blocks, which Zig 0.16 rejects as 'error set is discarded' - the ordering/backfill integration tests could not compile until fixed (dropped the unused error capture)." },
+    { "severity": "MAJOR", "description": "gate.zig called OutboxGateConfig.deriveLowWater as an instance method (`config.deriveLowWater(cap)`); the function has no self parameter and only compiled when a unit test never invoked evaluateAndDecide. Fixed to the type-qualified call." },
+    { "severity": "MINOR", "description": "recordBatchProgress hardcodes backfill_batch_size=5000 in plat_migration_state (the live adaptive value is only in BackfillResult.final_batch_size) and never transitions the row status from 'running' to 'applied'/'failed' at loop end (design's terminal write is missing)." },
+    { "severity": "MINOR", "description": "BACKEND-DEV's six changed .zig files were not zig fmt-formatted and blocked `zig build check`; formatted them (whitespace-only) to unblock the gate." },
+    { "severity": "MINOR", "description": "canonical event_store.Store.appendPlatform also uses SET LOCAL search_path TO public + INSERT INTO events; since GBL-112 dropped public.events this is a latent defect in the shipped event-store path too - out of scope for this batch but flagged for awareness." }
+  ],
+  "next_steps": [
+    "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b) - the spec/implementation case counts match (DDL-04: 14, OBP-04: 16, ORD-03: 9, VLD-04: 13).",
+    "Route the 3 BLOCKER implementation defects (ORD-03 sweeper +1, DDL-04 AC5 stall, VLD-04 finding-path heap corruption) to ISSUE-FIXER via ORCH before TEST-RUNNER can mark those ACs TESTED.",
+    "TEST-RUNNER: run test-integration-ord03/obp04-gate/ddl04-backfill/vld04-gate with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test."
+  ],
+  "blockers": [
+    "ORD-03 AC5 sweeper predicate missing +1 (test fails)",
+    "DDL-04 AC5 stall policy unreachable (test fails)",
+    "VLD-04 finding-path heap corruption in runSemanticGate (3 tests fail/crash)"
+  ]
+}

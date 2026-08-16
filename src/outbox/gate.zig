@@ -80,6 +80,13 @@ pub const GateDecision = enum {
     reopen_now,
 };
 
+/// Severity of the Platform Admin escalation fired by evaluateEscalations:
+/// AC4's refusal-rate breach escalates; AC5's closed-duration breach pages.
+pub const AlertSeverity = enum {
+    escalate,
+    page,
+};
+
 /// Decoded plat_outbox_gate row (individually-freed fields, explicit deinit()).
 pub const GateStatus = struct {
     tenant_schema: []u8,
@@ -275,16 +282,37 @@ fn appendGateOpened(
     ) catch return error.OutOfMemory;
     defer allocator.free(payload);
 
+    // PAR-01 idempotency: the partitioned events table has no UNIQUE constraint
+    // on idempotency_key — global idempotency lives in the plat_event_idempotency
+    // sidecar (written in the same transaction as the append, mirroring
+    // event_store.Store.appendPlatform). If the sidecar insert returns no row
+    // the key is a duplicate and the events append is absorbed.
+    const idem = conn.query(
+        allocator,
+        \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+        \\VALUES ($1, gen_random_uuid(), NOW())
+        \\ON CONFLICT (idempotency_key) DO NOTHING
+        \\RETURNING event_id::text
+    ,
+        &.{idempotency_key},
+    ) catch return error.PersistenceFailed;
+    defer {
+        var r = idem;
+        r.deinit();
+    }
+    if (idem.rows.len == 0) return; // duplicate — nothing to append
+    if (idem.rows[0].len == 0 or idem.rows[0][0] == null) return error.PersistenceFailed;
+    const event_id = idem.rows[0][0].?;
+
     conn.exec(
-        \\INSERT INTO public.events
+        \\INSERT INTO events
         \\  (event_id, instance_id, event_type, payload, actor_id,
         \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
         \\VALUES
-        \\  (gen_random_uuid(), $1::uuid, 'EXECUTION_OUTBOX_GATE_OPENED', $2::jsonb, $3::uuid,
-        \\   0, $4, '{}'::jsonb, $5::uuid, nextval('public.events_global_seq'))
-        \\ON CONFLICT (idempotency_key) DO NOTHING
+        \\  ($1::uuid, $2::uuid, 'EXECUTION_OUTBOX_GATE_OPENED', $3::jsonb, $4::uuid,
+        \\   0, $5, '{}'::jsonb, $6::uuid, nextval('public.events_global_seq'))
     ,
-        &.{ PLATFORM_INSTANCE_ID, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
+        &.{ event_id, PLATFORM_INSTANCE_ID, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
     ) catch return error.PersistenceFailed;
 }
 
@@ -351,7 +379,7 @@ pub fn evaluateAndDecide(
     // AC3: flapping detected — record the defect and restore the 80% low-water
     // mark in place (the CHECK constraint forbids persisting low_water == cap).
     if (outcome.flapping) {
-        const restored = config.deriveLowWater(gate.cap);
+        const restored = OutboxGateConfig.deriveLowWater(gate.cap);
         const restored_text = std.fmt.allocPrint(allocator, "{d}", .{restored}) catch return error.OutOfMemory;
         defer allocator.free(restored_text);
         conn.exec(
@@ -417,7 +445,7 @@ pub fn evaluateEscalations(
     config: OutboxGateConfig,
     alert: *const fn (
         allocator: std.mem.Allocator,
-        severity: enum { escalate, page },
+        severity: AlertSeverity,
         detail: []const u8,
     ) OutboxGateError!void,
 ) OutboxGateError!void {

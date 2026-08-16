@@ -2958,8 +2958,18 @@ pub fn build(b: *std.Build) void {
     // -----------------------------------------------------------------------
 
     // DDL-04: src/platform/backfill.zig — idempotent batched backfill loop
-    // (pure predicate guard + per-batch-transaction loop). Unit tests cover
-    // the pure guard; the loop is exercised by the integration suite.
+    // (pure predicate guard + per-batch-transaction loop). Named module so the
+    // pure-guard unit tests AND the integration suite (ddl04_backfill_loop_test.zig)
+    // share one import. Unit tests cover the pure guard; the loop is exercised
+    // by the integration suite.
+    const platform_backfill_mod = b.createModule(.{
+        .root_source_file = b.path("src/platform/backfill.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
     const platform_backfill_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/platform/backfill.zig"),
@@ -2977,6 +2987,11 @@ pub fn build(b: *std.Build) void {
 
     // OBP-04: src/outbox/gate.zig — outbox ingress gate hysteresis + escalation
     // (pure decide() + DB persistence). Self-contained module (std only).
+    const outbox_gate_mod = b.createModule(.{
+        .root_source_file = b.path("src/outbox/gate.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const outbox_gate_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/outbox/gate.zig"),
@@ -2990,18 +3005,17 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_outbox_gate_tests.step);
 
     // ORD-03: src/ordering/sweeper.zig — 60 s gap sweeper (dead-letters stalled
-    // correlations as one unit). Unit-test root compiles the module; the DB
-    // path is exercised by the integration suite (TEST-DESIGNER, step 2b).
-    const ordering_sweeper_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/ordering/sweeper.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "ordering_mod", .module = ordering_mod },
-            },
-        }),
+    // correlations as one unit). Named module shared by the compile/unit test
+    // and the integration suite (ord03_ordering_test.zig).
+    const ordering_sweeper_mod = b.createModule(.{
+        .root_source_file = b.path("src/ordering/sweeper.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "ordering_mod", .module = ordering_mod },
+        },
     });
+    const ordering_sweeper_tests = b.addTest(.{ .root_module = ordering_sweeper_mod });
     const run_ordering_sweeper_tests = b.addRunArtifact(ordering_sweeper_tests);
     const test_ordering_sweeper_step = b.step("test-ordering-sweeper", "Run ORD-03 gap sweeper module compile/unit tests (no DB)");
     test_ordering_sweeper_step.dependOn(&run_ordering_sweeper_tests.step);
@@ -3009,6 +3023,16 @@ pub fn build(b: *std.Build) void {
 
     // VLD-04: src/validation/gate.zig — the validation gate wrapping the pure
     // VLD-01/02/03 pipeline (verdict storage + events + compiler-version rule).
+    const validation_gate_mod = b.createModule(.{
+        .root_source_file = b.path("src/validation/gate.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "graph", .module = graph_mod },
+            .{ .name = "validation", .module = validation_mod },
+        },
+    });
     const validation_gate_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/validation/gate.zig"),
@@ -3069,6 +3093,100 @@ pub fn build(b: *std.Build) void {
     test_integration_vld04_step.dependOn(&clean_test_db.step);
     test_integration_vld04_step.dependOn(&run_vld04_integration_tests.step);
     test_integration_others_step.dependOn(&run_vld04_integration_tests.step);
+
+    // -----------------------------------------------------------------------
+    // WF02-batch-7-20260816 (stage 16) — TEST-DESIGNER: module-exercising
+    // integration suites for DDL-04 / OBP-04 / ORD-03 / VLD-04 (the schema
+    // contract suites above were written by BACKEND-DEV; these exercise the
+    // Zig modules' DB paths against real PostgreSQL).
+    // -----------------------------------------------------------------------
+
+    // DDL-04 backfill LOOP — real runBackfill against a committed fixture table.
+    const ddl04_backfill_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "platform_backfill", .module = platform_backfill_mod },
+    };
+    var ddl04_backfill_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 1) catch @panic("OOM");
+    ddl04_backfill_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    ddl04_backfill_integration_imports.appendSliceAssumeCapacity(ddl04_backfill_imports);
+    const ddl04_backfill_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ddl04_backfill_loop_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = ddl04_backfill_integration_imports.items,
+        }),
+    });
+    const run_ddl04_backfill_integration_tests = addIntegrationRun(b, ddl04_backfill_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ddl04_backfill_step = b.step("test-integration-ddl04-backfill", "Run DDL-04 runBackfill loop integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_ddl04_backfill_step.dependOn(&clean_test_db.step);
+    test_integration_ddl04_backfill_step.dependOn(&run_ddl04_backfill_integration_tests.step);
+    test_integration_others_step.dependOn(&run_ddl04_backfill_integration_tests.step);
+
+    // OBP-04 gate state machine — evaluateAndDecide / recordRefusal /
+    // evaluateEscalations against plat_outbox_gate + public.events.
+    var obp04_gate_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 1) catch @panic("OOM");
+    obp04_gate_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    obp04_gate_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "outbox_gate", .module = outbox_gate_mod },
+    });
+    const obp04_gate_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp04_gate_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = obp04_gate_integration_imports.items,
+        }),
+    });
+    const run_obp04_gate_integration_tests = addIntegrationRun(b, obp04_gate_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp04_gate_step = b.step("test-integration-obp04-gate", "Run OBP-04 outbox gate state-machine integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_obp04_gate_step.dependOn(&clean_test_db.step);
+    test_integration_obp04_gate_step.dependOn(&run_obp04_gate_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp04_gate_integration_tests.step);
+
+    // ORD-03 ordering — applyCompletion / advanceCursor / recordCompletion /
+    // sweepStalledCorrelations against the ordering tables + public.events.
+    var ord03_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 4) catch @panic("OOM");
+    ord03_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    ord03_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "ordering_mod", .module = ordering_mod },
+        .{ .name = "ordering_cursor", .module = ordering_cursor_mod },
+        .{ .name = "ordering_consumer", .module = ordering_consumer_mod },
+        .{ .name = "ordering_sweeper", .module = ordering_sweeper_mod },
+    });
+    const ord03_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ord03_ordering_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = ord03_integration_imports.items,
+        }),
+    });
+    const run_ord03_integration_tests = addIntegrationRun(b, ord03_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ord03_step = b.step("test-integration-ord03", "Run ORD-03 order-guard + gap-sweeper integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_ord03_step.dependOn(&clean_test_db.step);
+    test_integration_ord03_step.dependOn(&run_ord03_integration_tests.step);
+    test_integration_others_step.dependOn(&run_ord03_integration_tests.step);
+
+    // VLD-04 gate — runSemanticGate / storedVerdictIsCurrent / persistVerdict
+    // against process_definitions verdict columns + public.events.
+    var vld04_gate_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 1) catch @panic("OOM");
+    vld04_gate_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    vld04_gate_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "validation_gate", .module = validation_gate_mod },
+    });
+    const vld04_gate_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/vld04_gate_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = vld04_gate_integration_imports.items,
+        }),
+    });
+    const run_vld04_gate_integration_tests = addIntegrationRun(b, vld04_gate_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_vld04_gate_step = b.step("test-integration-vld04-gate", "Run VLD-04 validation-gate integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_vld04_gate_step.dependOn(&clean_test_db.step);
+    test_integration_vld04_gate_step.dependOn(&run_vld04_gate_integration_tests.step);
+    test_integration_others_step.dependOn(&run_vld04_gate_integration_tests.step);
 
     // ISS-0637 / GH-619: narrow step for EXT-02 webhook dispatch + audit
     // tests only, so TC-EXT-02-INT-08 (and siblings) can be iterated on

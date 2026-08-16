@@ -171,16 +171,37 @@ pub fn persistVerdict(
     };
     defer allocator.free(payload);
 
+    // PAR-01 idempotency: the partitioned events table has no UNIQUE constraint
+    // on idempotency_key — global idempotency lives in the plat_event_idempotency
+    // sidecar (written in the same transaction as the append, mirroring
+    // event_store.Store.appendPlatform). If the sidecar insert returns no row
+    // the key is a duplicate and the events append is absorbed.
+    const idem = conn.query(
+        allocator,
+        \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+        \\VALUES ($1, gen_random_uuid(), NOW())
+        \\ON CONFLICT (idempotency_key) DO NOTHING
+        \\RETURNING event_id::text
+    ,
+        &.{idempotency_key},
+    ) catch return error.EventAppendFailed;
+    defer {
+        var r = idem;
+        r.deinit();
+    }
+    if (idem.rows.len == 0) return; // duplicate — nothing to append
+    if (idem.rows[0].len == 0 or idem.rows[0][0] == null) return error.EventAppendFailed;
+    const event_id = idem.rows[0][0].?;
+
     conn.exec(
-        \\INSERT INTO public.events
+        \\INSERT INTO events
         \\  (event_id, instance_id, event_type, payload, actor_id,
         \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
         \\VALUES
-        \\  (gen_random_uuid(), $1::uuid, $2, $3::jsonb, $4::uuid,
-        \\   0, $5, '{}'::jsonb, $6::uuid, nextval('public.events_global_seq'))
-        \\ON CONFLICT (idempotency_key) DO NOTHING
+        \\  ($1::uuid, $2::uuid, $3, $4::jsonb, $5::uuid,
+        \\   0, $6, '{}'::jsonb, $7::uuid, nextval('public.events_global_seq'))
     ,
-        &.{ PLATFORM_INSTANCE_ID, event_type, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
+        &.{ event_id, PLATFORM_INSTANCE_ID, event_type, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
     ) catch return error.EventAppendFailed;
 }
 

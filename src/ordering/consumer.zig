@@ -97,16 +97,37 @@ fn appendEffectApplied(
     ) catch return error.OutOfMemory;
     defer allocator.free(payload);
 
+    // PAR-01 idempotency: the partitioned events table has no UNIQUE constraint
+    // on idempotency_key — global idempotency lives in the plat_event_idempotency
+    // sidecar (written in the same transaction as the append, mirroring
+    // event_store.Store.appendPlatform). If the sidecar insert returns no row
+    // the key is a duplicate and the events append is absorbed.
+    const idem = conn.query(
+        allocator,
+        \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+        \\VALUES ($1, gen_random_uuid(), NOW())
+        \\ON CONFLICT (idempotency_key) DO NOTHING
+        \\RETURNING event_id::text
+    ,
+        &.{idempotency_key},
+    ) catch return error.PersistenceFailed;
+    defer {
+        var r = idem;
+        r.deinit();
+    }
+    if (idem.rows.len == 0) return; // duplicate — nothing to append
+    if (idem.rows[0].len == 0 or idem.rows[0][0] == null) return error.PersistenceFailed;
+    const event_id = idem.rows[0][0].?;
+
     conn.exec(
-        \\INSERT INTO public.events
+        \\INSERT INTO events
         \\  (event_id, instance_id, event_type, payload, actor_id,
         \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
         \\VALUES
-        \\  (gen_random_uuid(), $1::uuid, 'EXECUTION_EFFECT_APPLIED', $2::jsonb, $3::uuid,
-        \\   0, $4, '{}'::jsonb, $5::uuid, nextval('public.events_global_seq'))
-        \\ON CONFLICT (idempotency_key) DO NOTHING
+        \\  ($1::uuid, $2::uuid, 'EXECUTION_EFFECT_APPLIED', $3::jsonb, $4::uuid,
+        \\   0, $5, '{}'::jsonb, $6::uuid, nextval('public.events_global_seq'))
     ,
-        &.{ PLATFORM_INSTANCE_ID, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
+        &.{ event_id, PLATFORM_INSTANCE_ID, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
     ) catch return error.PersistenceFailed;
 }
 
@@ -135,8 +156,7 @@ pub fn applyCompletion(
     claim: mod.ClaimedCompletion,
 ) mod.OrderingError!ApplyOutcome {
     // 1 + 2: read the correlation's applied_seq and enforce the order guard.
-    const applied_seq = cursor.readOrInitCursor(allocator, conn, claim.correlation_id) catch |err| {
-        _ = err;
+    const applied_seq = cursor.readOrInitCursor(allocator, conn, claim.correlation_id) catch {
         return .apply_failed;
     };
     if (claim.sequence_no != applied_seq + 1) {
@@ -151,18 +171,15 @@ pub fn applyCompletion(
     conn.exec(
         "UPDATE plat_effect_completion SET status = 'APPLIED', applied_at = now() WHERE completion_id = $1::uuid AND status = 'PENDING'",
         &.{claim.completion_id},
-    ) catch |err| {
-        _ = err;
+    ) catch {
         return .apply_failed;
     };
-    appendEffectApplied(allocator, conn, claim.correlation_id, claim.sequence_no) catch |err| {
-        _ = err;
+    appendEffectApplied(allocator, conn, claim.correlation_id, claim.sequence_no) catch {
         return .apply_failed;
     };
 
     // 4: conditional cursor advance.
-    const advanced = cursor.advanceCursor(allocator, conn, claim.correlation_id, claim.sequence_no) catch |err| {
-        _ = err;
+    const advanced = cursor.advanceCursor(allocator, conn, claim.correlation_id, claim.sequence_no) catch {
         return .apply_failed;
     };
     if (advanced == 0) {

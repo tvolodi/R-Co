@@ -248,8 +248,8 @@ pub fn runBackfill(
         defer allocator.free(batch_size_text);
 
         const start_ms = std.Io.Clock.real.now(pool.io).toMilliseconds();
-        const batch_result = conn.query(allocator, batch_sql, &.{batch_size_text}) catch |err| {
-            return mapBatchError(conn, err);
+        const batch_result = conn.query(allocator, batch_sql, &.{batch_size_text}) catch {
+            return mapBatchError(conn);
         };
         defer {
             var r = batch_result;
@@ -389,8 +389,7 @@ pub fn recordBatchProgress(
 /// Map a batch query failure to BackfillError, using the server SQLSTATE to
 /// distinguish lock_timeout / statement_timeout from generic persistence
 /// failures.
-fn mapBatchError(conn: anytype, err: anyerror) BackfillError {
-    _ = err;
+fn mapBatchError(conn: anytype) BackfillError {
     if (conn.lastSqlState()) |sqlstate| {
         if (std.mem.eql(u8, sqlstate, SQLSTATE_LOCK_TIMEOUT)) return error.LockTimeout;
         if (std.mem.eql(u8, sqlstate, SQLSTATE_QUERY_CANCELED)) return error.StatementTimeout;

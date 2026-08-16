@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-batch-7-20260816-step-2c-security-reviewer-INNER-REPORT",
+  "agent_id": "SECURITY-REVIEWER",
+  "run_id": "WF02-batch-7-20260816",
+  "step": "2c",
+  "created_at": "2026-08-16T18:15:12Z",
+  "summary": "HARD GATE PASS — WF-02 batch 7 (DDL-04/OBP-04/ORD-03/VLD-04) security review against the numbered invariants in docs/agents/instructions/security-invariants.md. Reviewed all 7 changed Zig files (src/platform/backfill.zig, src/outbox/gate.zig, src/ordering/cursor.zig, src/ordering/consumer.zig, src/ordering/sweeper.zig, src/validation/gate.zig, src/dlq/store.zig) and migrations 1163-1166. Result: PASS with INV-1, INV-4, INV-6, INV-7, INV-8 applied and satisfied; INV-2, INV-3, INV-5 not applicable. No blockers. Handoff status COMPLETED; registry entry updated; lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 MINOR unrelated, 332 acknowledged).",
+  "files_created": [
+    "docs/issue-reports/WF02-batch-7-20260816-step-2c-security-reviewer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-batch-7-20260816/step-2c-security-reviewer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    { "name": "lint_migration_schema.py", "status": "pass", "detail": "0 violations — no business table created under public; new tables are unqualified platform control tables resolved per-tenant via search_path" },
+    { "name": "lint_sql_table_refs.py", "status": "pass", "detail": "OK — no legacy table-name references in 464 Zig files" },
+    { "name": "lint_sql_param_types.py src tests", "status": "pass", "detail": "0 BLOCKER, 0 MAJOR, 0 MINOR" },
+    { "name": "grep catch unreachable (7 changed files)", "status": "pass", "detail": "0 occurrences — INV-8 satisfied, no justification burden" },
+    { "name": "grep client_secret/password hardcode in src", "status": "pass", "detail": "0 matches — no config-secret hardcoding" },
+    { "name": "grep secret/token/password/api_key in 7 changed files", "status": "pass", "detail": "0 matches — no secret material introduced" },
+    { "name": "lint_handoffs.py", "status": "pass", "detail": "exit 0 — 3016 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR (not this handoff), 332 acknowledged; no findings reference WF02-batch-7-20260816" }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-DESIGNER (Step 3)"
+  ],
+  "blockers": []
+}

@@ -93,9 +93,7 @@ test "ddl04_plat_migration_state: unique_constraint_on_migration_tenant_phase" {
     try std.testing.expectError(error.ServerError, result);
     try h.conn.exec("ROLLBACK TO SAVEPOINT before_dup", &.{});
 
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT count(*) FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND phase = 'backfill'",
-        &.{ fx.migration_id_value, fx.tenant_schema_value });
+    var rows = try h.conn.query(std.testing.allocator, "SELECT count(*) FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND phase = 'backfill'", &.{ fx.migration_id_value, fx.tenant_schema_value });
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     try std.testing.expectEqualStrings("1", rows.rows[0][0] orelse "0");
@@ -131,9 +129,7 @@ test "ddl04_plat_migration_state: status_check_constraint_rejects_unknown_value"
     try std.testing.expectError(error.ServerError, result);
     try h.conn.exec("ROLLBACK TO SAVEPOINT before_bogus", &.{});
 
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT count(*) FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND phase = 'backfill'",
-        &.{ fx.migration_id_value, fx.tenant_schema_value });
+    var rows = try h.conn.query(std.testing.allocator, "SELECT count(*) FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND phase = 'backfill'", &.{ fx.migration_id_value, fx.tenant_schema_value });
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     try std.testing.expectEqualStrings("0", rows.rows[0][0] orelse "1");
@@ -188,9 +184,7 @@ test "ddl04_plat_migration_state: backfill_batch_size_check_bounds" {
         &.{ fx.migration_id_value, fx.tenant_schema_value },
     );
 
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT count(*) FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND status = 'pending'",
-        &.{ fx.migration_id_value, fx.tenant_schema_value });
+    var rows = try h.conn.query(std.testing.allocator, "SELECT count(*) FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND status = 'pending'", &.{ fx.migration_id_value, fx.tenant_schema_value });
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     try std.testing.expectEqualStrings("2", rows.rows[0][0] orelse "0");
@@ -204,9 +198,7 @@ test "ddl04_plat_migration_state: resume_reads_persisted_progress" {
     const fx = try setup(std.testing.allocator, &h.conn);
     defer freeFixtures(std.testing.allocator, fx);
 
-    var result = try h.conn.query(std.testing.allocator,
-        "SELECT rows_updated_total, rows_remaining, backfill_batch_size, status FROM plat_migration_state WHERE migration_id = $1 AND status IN ('pending','running')",
-        &.{fx.migration_id_value});
+    var result = try h.conn.query(std.testing.allocator, "SELECT rows_updated_total, rows_remaining, backfill_batch_size, status FROM plat_migration_state WHERE migration_id = $1 AND status IN ('pending','running')", &.{fx.migration_id_value});
     defer result.deinit();
 
     // CUSTOM: assert result.rows.len == 1 (the seeded running row is found via
@@ -236,9 +228,7 @@ test "ddl04_plat_migration_state: progress_recording_updates_counters_in_place" 
 
     // CUSTOM: assert exactly one row remains, rows_updated_total == "205000",
     // rows_remaining == "45000", last_batch_rows == "5000", last_batch_ms == "900".
-    var rows = try h.conn.query(std.testing.allocator,
-        "SELECT rows_updated_total, rows_remaining, last_batch_rows, last_batch_ms FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND phase = 'backfill'",
-        &.{ fx.migration_id_value, fx.tenant_schema_value });
+    var rows = try h.conn.query(std.testing.allocator, "SELECT rows_updated_total, rows_remaining, last_batch_rows, last_batch_ms FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = $2 AND phase = 'backfill'", &.{ fx.migration_id_value, fx.tenant_schema_value });
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     const row = rows.rows[0];
