@@ -1,0 +1,67 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-2b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "2b",
+  "created_at": "2026-08-16T06:01:48Z",
+  "summary": "HARD GATE fix-design validation of src/design/vld-01-03-stage-16-validation-FIX.md against ISS-0709 root_cause_analysis (R1-R5) and the actual source. All 8 acceptance criteria MET: R1-R5 all covered and source-grounded; no implementation code (lint_design_artefact.py exit 0; 8 short before->after pseudocode deltas only); every fix names exact file/function/field with new behaviour; R3 'number'/'bool'/'timestamp' table extension sound (fixtures use amount:number; consistent with original design §8, no taxonomy widening, table stays source of truth); R1 freeSites backing-free + R5 post-appendSlice backing-free correct under Zig allocator semantics with no double-free (all non-test call sites pass owned slices; the 4 typecheck tests converted to owned-slice pattern); R2 changes only test scaffolding, TypedEnv.deinit untouched (envForSite returns owned toOwnedSlice, verified scope.zig:201); R4 scoped to src/validation/ only (pd06.zig per-site gate -> expr.parse, graph.zig explicitly unchanged, mod.zig gate-before-env ordering specified in 6 numbered steps). Verdict: PASS. 2 MINOR notes recorded (fn:validate-design referenced by handoff does not exist in FUNCTIONS.md; R4a catch-continue on OOM deviates from module OOM convention but is explicit and unambiguous).",
+  "files_created": [
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-2b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-vld-impl-bugs-20260816/step-2b-code-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/vld-01-03-stage-16-validation-FIX.md",
+      "status": "pass",
+      "detail": "exit 0, 'OK — 1 file(s) checked, no issues'"
+    },
+    {
+      "name": "design coverage of ISS-0709 grouped_root_causes R1-R5",
+      "status": "pass",
+      "detail": "Design §1 table + §3 subsections map all 5 groups; each cross-checked against ISS-0709 per-test root causes and actual source"
+    },
+    {
+      "name": "no-implementation-code grep (8 fenced ```zig blocks)",
+      "status": "pass",
+      "detail": "All 8 blocks are short before->after change deltas / pseudocode (exact-change specs); no full module implementation, no DDL, no JSX"
+    },
+    {
+      "name": "source grounding spot-checks",
+      "status": "pass",
+      "detail": "site.zig freeSites lacks backing free (l.56-59) / enumerateSites toOwnedSlice (l.85); env.zig mapDeclaredTypeName lacks number/bool/timestamp (l.208-218), TypedEnv.deinit frees entries (l.122-136); mod.zig gate runs after env-builder loops (l.137-290), per-site owned never freed (l.304-311); pd06.zig per-site loop isValidCelSyntax-first (l.119-141); typecheck.zig tests use borrowed entries.items + double deinit (l.410-451); parser.zig negative tests prove trailing operators fail (l.547-579); fixtures use amount:number; scope.zig envForSite returns owned toOwnedSlice (l.201)"
+    },
+    {
+      "name": "R3 soundness",
+      "status": "pass",
+      "detail": "Original design §8 accepts integer/decimal/money->number, boolean->bool, date/datetime->timestamp; adding number/bool/timestamp is natural-CEL-synonym widening, no new TypeTag, table remains source of truth, message literal synced"
+    },
+    {
+      "name": "R1/R2/R5 ownership (Zig allocator semantics)",
+      "status": "pass",
+      "detail": "No double-free: R1 freeSites frees backing once (all non-test callers pass owned slices); R2 test scaffolding converted to toOwnedSlice; R5 frees only the []Finding backing after appendSlice, explicitly not freeFindings"
+    },
+    {
+      "name": "R4 scope",
+      "status": "pass",
+      "detail": "pd06.zig only for per-site gate; graph.zig explicitly unchanged (design §1/§2.2/§7); mod.zig reorder specified in 6 numbered steps; empty findings slice on gate path safe (Allocator.free guards len==0; wire.zig test uses &[_]Finding{})"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Handoff task.functions_to_call lists 'fn:validate-design' which does not exist in docs/agents/FUNCTIONS.md or docs/agents/functions/. Executed the mandatory chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff instead. Fix at source (ORCH handoff template)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "FIX design R4a per-site gate uses `catch continue` on expr.parse OutOfMemory ('OOM -> skip site'), which deviates from pd06.zig's own Pd06Error=error{OutOfMemory} propagation convention. Explicit and unambiguous as written, so not a gate failure; recommend BACKEND-DEV consider propagating OOM instead of silently skipping the site."
+    }
+  ],
+  "next_steps": [
+    "Route PASS to BACKEND-DEV (WF-03 Step 3) to implement R1-R5 in the order recommended in FIX design §6",
+    "After implementation, TEST-RUNNER re-runs zig build test-validation (38/38), test-integration-vld-unit (14/14), test-integration-vld-http (5/5)"
+  ],
+  "blockers": []
+}
