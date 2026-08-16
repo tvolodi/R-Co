@@ -1,0 +1,63 @@
+{
+  "report_id": "WF03-GH793-20260816-step-5-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF03-GH793-20260816",
+  "step": "5",
+  "created_at": "2026-08-16T06:01:54Z",
+  "summary": "Independent verification (WF-03 Step 5) of the PRM-06/07 integration-test fix for ISS-0708/GH-793 on branch feature/WF03-GH793-20260816. All four acceptance criteria verified PASS: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 exits 0 with 9/9 tests passing, including the three fixed tests TC-PRM-06-03, TC-PRM-07-01, TC-PRM-07-03 (confirmed via direct run of the compiled binary: 'All 9 tests passed.'); (b) python tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010); (c) no production code or migration files modified by this run (git diff --name-only d966a264..HEAD over src/ migrations/ shows only src/design/iss0708-gh793-prm0607-test-fixes.md, a design artefact); (d) zig build test-env-verify exits 0 (HEALTHY, 10 checks). Backend service pre-check passed (KC gateway :8091 ok, test DB :5453 SELECT 1 ok). Verification report written to tests/reports/report-20260816-WF03-GH793-20260816.yaml.",
+  "files_created": [
+    "tests/reports/report-20260816-WF03-GH793-20260816.yaml",
+    "docs/issue-reports/WF03-GH793-20260816-step-5-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH793-20260816/step-05-test-runner.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-prm06-07 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test)",
+      "status": "pass",
+      "detail": "Build step exit 0; direct binary run exit 0, 'All 9 tests passed.'"
+    },
+    {
+      "name": "TC-PRM-06-03 (Cluster A fix: requested_by param + columns in insertPromotionReviewsRow)",
+      "status": "pass",
+      "detail": "3/9 in binary output ...OK"
+    },
+    {
+      "name": "TC-PRM-07-01 (Cluster C fix: recordTeardownFailure UPDATE qualified to public.promotion_assertion_runs)",
+      "status": "pass",
+      "detail": "5/9 in binary output ...OK"
+    },
+    {
+      "name": "TC-PRM-07-03 (Cluster B fix: parent promotion_reviews row seeded before assertion-run INSERT)",
+      "status": "pass",
+      "detail": "8/9 in binary output ...OK"
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0; 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010), 332 ACKNOWLEDGED"
+    },
+    {
+      "name": "zig build test-env-verify",
+      "status": "pass",
+      "detail": "exit 0; verify_test_env: HEALTHY — 10 checks passed"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "fn:register-inner-report.md specifies inner reports as .json but core-directives.md requires .yaml (authoritative). Pre-existing drift, re-flagged (same as prior steps in this run)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "lint_handoffs H010: 4 pre-existing handoffs absent from registry, not from this run; lint_handoffs exits 0 with 0 BLOCKER / 0 MAJOR."
+    }
+  ],
+  "next_steps": [
+    "Route to RELEASE-VALIDATOR (WF-02 Step 5 / WF-04 Step 6) with the PASS verification report."
+  ],
+  "blockers": []
+}
