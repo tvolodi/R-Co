@@ -1955,3 +1955,5 @@
 2026-08-16T19:00:45Z | ROUTE | WF-02 | WF02-spt02-04-20260816-04-test-runner | ORCH → TEST-RUNNER | PENDING
 2026-08-16T19:13:28Z | complete | WF02-spt02-04-20260816 | WF02-spt | TEST-RUNNER | status=FAILED result.status=FAIL: spt 16/16, spt01 3/3, unit 0 failed; event-store compile regression (ReadOpts.tenant_id) routed to BACKEND-DEV
 2026-08-16T19:14:39Z | UNBLOCK | WF-02 | WF02-spt02-04-20260816-04-unblock-backend-dev | ORCH → BACKEND-DEV | PENDING | event-store/adp06 ReadOpts.tenant_id regression fix (Step 4 unblock)
+2026-08-16T19:41:44Z | ROUTE | WF-02 | WF02-spt02-04-20260816-04-test-runner-rerun | ORCH → TEST-RUNNER | PENDING | Step 4 re-run after unblock
+2026-08-16T20:04:51Z | COMPLETE | WF02-spt02-04-20260816 | WF02-spt | TEST-RUNNER | Step 4 re-run PASS: spt 16/16, spt01 3/3, event-store 29/29, unit 1145/1209 (0 failed), 23 regression suites green, migrate 1163 clean. Route to RELEASE-VALIDATOR.
