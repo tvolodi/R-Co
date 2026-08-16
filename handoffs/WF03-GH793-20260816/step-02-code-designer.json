@@ -1,0 +1,70 @@
+{
+  "handoff_id": "wf03-gh793-20260816-02-code-designer",
+  "run_id": "WF03-GH793-20260816",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH793-20260816/step-02-code-designer.json",
+  "created_at": "2026-08-16T05:42:31Z",
+  "started_at": "2026-08-16T05:42:47Z",
+  "completed_at": "2026-08-16T05:46:31Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2 -- fix design",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/793",
+    "iss_id": "ISS-0708",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh793-20260816-00-backend-dev",
+      "wf03-gh793-20260816-005-issue-fixer",
+      "wf03-gh793-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0708.json",
+      "docs/issue-reports/WF03-GH793-20260816-step-1-issue-fixer-INNER-REPORT.json",
+      "tests/integration/prm-06-07-promotion-assertion.test.zig",
+      "handoffs/WF03-GH793-20260816/step-01-issue-fixer.json"
+    ],
+    "branch_name": "feature/WF03-GH793-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 2: produce the design artefact for ISS-0708 / GH-793 \u2014 fixing three PRM-06/07 integration tests (test-code only, NO production code, NO migrations). The fix spec from Step 1 is precise: single file tests/integration/prm-06-07-promotion-assertion.test.zig. (A) TC-PRM-06-03: add a requested_by parameter to insertPromotionReviewsRow (lines ~99-113) and include requested_by, def_type, serialised_plan in the INSERT; call site (~line 482) generates a fresh UUID. (C) TC-PRM-07-01 (~lines 706-719): qualify the manual recordTeardownFailure UPDATE target to public.promotion_assertion_runs (the unqualified UPDATE resolves to tenant_default -> 0 rows); optionally capture RETURNING id and key by run_id mirroring production. (B) TC-PRM-07-03: seed a parent promotion_reviews row via the fixed insertPromotionReviewsRow before the assertion-run INSERT (defensive; passes in this workspace but immune to review FK). Design artefact to src/design/iss0708-gh793-prm0607-test-fixes.md covering: the three patches with before/after shapes, why no production code changes, the verification plan (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 must exit 0, 9/9), and the note that there is no separate test-integration-prm-06/-07 target (combined target is test-integration-prm06-07).",
+    "acceptance_criteria": [
+      "src/design/iss0708-gh793-prm0607-test-fixes.md created and passes tools/lint_design_artefact.py (BLOCKER=0 MAJOR=0) if the linter applies (check first)",
+      "Design covers the three clusters (A/C/B) with exact patch shapes and the single target file",
+      "No implementation code written (design only; implementation is Step 3)",
+      "Verification plan documented (test-integration-prm06-07 with :5453 test DB)"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0708/GH-793 PRM-06/07 integration-test fixes - Type E prose artefact src/design/iss0708-gh793-prm0607-test-fixes.md covering the three clusters (A: insertPromotionReviewsRow gains requested_by param + requested_by/def_type/serialised_plan INSERT columns, call site passes fresh UUID; C: TC-PRM-07-01 teardown UPDATE qualified to public.promotion_assertion_runs with optional run_id capture mirroring production; B: TC-PRM-07-03 defensive parent promotion_reviews seed via fixed helper). Single target file tests/integration/prm-06-07-promotion-assertion.test.zig; no production code, no migrations. Design linter exits 0 (BLOCKER=0 MAJOR=0; MINOR=7 intentional E030 for the required public. qualifier). Verification: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 must exit 0, 9/9; confirmed no separate test-integration-prm-06/-07 target (combined target test-integration-prm06-07 at build.zig:3130).",
+    "artifacts_out": [
+      "src/design/iss0708-gh793-prm0607-test-fixes.md",
+      "docs/issue-reports/WF03-GH793-20260816-step-2-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Design linter E030 MINOR x7 (intentional): design names public.promotion_assertion_runs to document the Cluster C schema-qualification fix."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Latent duplicate insertPromotionReviewsRow NOT-NULL defect in tests/integration/prm-08-rollback-sandbox.test.zig (lines 233-258); out of ISS-0708 scope, tracked for follow-up."
+      },
+      {
+        "severity": "MINOR",
+        "description": ".vscode/run-zig-test-integration.ps1 and zig-test-integration-cmd hardcode stale port 5433; Step 3 must use :5453 URL explicitly."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) for Type E design validation, then to ISSUE-FIXER Step 3 to implement the three test-setup patches"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
