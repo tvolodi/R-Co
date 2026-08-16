@@ -1,0 +1,66 @@
+{
+  "report_id": "WF02-batch-7-20260816-step-01b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF02-batch-7-20260816",
+  "step": "01b",
+  "created_at": "2026-08-16T17:39:33Z",
+  "summary": "HARD GATE (WF-02 Step 1b) PASS for batch 7 (DDL-04, OBP-04, ORD-03, VLD-04). All 4 Type E design artefacts lint clean (lint_design_artefact.py exit 0). All 3 Type C migration YAMLs lint clean and codegen_migration.py --dry-run exits 0; generated previews cover the schema-level acceptance criteria. Every acceptance criterion of every requirement is mapped to a design element; no implementation code present in any Type E artefact; classification matches templates/lego-catalog.md selection rules. The 3 MINOR issues flagged by CODE-DESIGNER are verified and dispositioned as acceptable to carry (none gates implementation). One additional MINOR gap noted: OBP-04's migration YAML lacks the event-seeding IMPLEMENTER NOTE that VLD-04's carries.",
+  "files_created": [
+    "docs/issue-reports/WF02-batch-7-20260816-step-01b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-batch-7-20260816/step-01b-code-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "lint_design_artefact.py on 4 Type E design files",
+      "status": "pass",
+      "detail": "ddl-04-idempotent-batched-backfill.md, obp-04-outbox-gate-hysteresis-escalation.md, ord-03-sequence-order-guard-gap-sweeping.md, vld-04-validation-gate-authoring-promotion.md \u2014 all exit 0, no issues."
+    },
+    {
+      "name": "lint_design_artefact.py on 3 Type C migration YAMLs",
+      "status": "pass",
+      "detail": "ddl-04-plat-migration-state.migration.yaml, obp-04-plat-outbox-gate.migration.yaml, vld-04-definition-semantic-verdict.migration.yaml \u2014 all exit 0, no BLOCKER/MAJOR."
+    },
+    {
+      "name": "codegen_migration.py --dry-run on 3 Type C migration YAMLs",
+      "status": "pass",
+      "detail": "ddl-04 (1163), obp-04 (1164), vld-04 (1165) \u2014 all exit 0; generated SQL + test previews cover the schema-level ACs (DDL-04 AC1/AC4/AC6, OBP-04 AC2/AC3/AC5/AC6, VLD-04 AC1/AC3/AC5)."
+    },
+    {
+      "name": "acceptance-criterion coverage + no-implementation-code review",
+      "status": "pass",
+      "detail": "Mapped every AC of DDL-04 (6), OBP-04 (6), ORD-03 (6), VLD-04 (5) to a design element; all Type E artefacts contain interfaces/types/data-flow only (no function bodies, no SQL DDL, no JSX)."
+    },
+    {
+      "name": "MINOR-issue verification",
+      "status": "pass",
+      "detail": "reqctl VALID_STATUSES lacks DESIGNED (confirmed); DEFINITION_VALIDATED / DEFINITION_VALIDATION_FAILED / EXECUTION_OUTBOX_GATE_OPENED absent from all migrations (confirmed); OBP-01/02/03 status DRAFT (confirmed)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "reqctl tool-vs-spec drift: tools/reqctl.py VALID_STATUSES lacks DESIGNED (set is DRAFT/VALIDATED/PENDING/IN_PROGRESS/IMPLEMENTED/TESTED/RELEASED/UNTRACKED/INFORMATIONAL/DEPRECATED), so CODE-DESIGNER used IN_PROGRESS as closest legal status. Verified. Disposition: acceptable to carry \u2014 status is bookkeeping, already noted in docs/requirements.yaml notes for DDL-04/OBP-04/ORD-03/VLD-04. Recommend DOC-UPDATER/ORCH file a MINOR issue to add DESIGNED to reqctl.py (or correct AGENT_SYSTEM.md)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "VLD-04 event_type_registry seeding required by BACKEND-DEV: DEFINITION_VALIDATED and DEFINITION_VALIDATION_FAILED are absent from every migration (grep across migrations/** returns nothing); migration 1152 seeds only the EXECUTION_* family. Verified. Disposition: acceptable to carry \u2014 the VLD-04 migration YAML carries an explicit IMPLEMENTER NOTE telling BACKEND-DEV to add a CUSTOM seeding block (ON CONFLICT (name, schema_version) DO NOTHING, retention_class='retain_forever', per PAR-03 AC1) to the generated SQL before final COMMIT, so the requirement is unambiguous. BACKEND-DEV MUST seed both types or persistVerdict's append fails the ES-05 registry check."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OBP-04 depends on unimplemented OBP-01/02/03 (all status DRAFT in docs/requirements.yaml). Verified. Disposition: acceptable to carry \u2014 OBP-04's own ACs (gate hysteresis, escalations, per-tenant keying) are fully testable via the pure `decide` function plus plat_outbox_gate without OBP-01/02/03 present; the design fixes the gate interface now so future modules consume it without signature change. Only callers in this batch are its own tests and drainer cadence wiring."
+    },
+    {
+      "severity": "MINOR",
+      "description": "NEW (found by validator): OBP-04's migration YAML lacks the event-seeding IMPLEMENTER NOTE that VLD-04's carries. EXECUTION_OUTBOX_GATE_OPENED is absent from every migration (grep across migrations/** returns nothing), yet the OBP-04 migration YAML header only says 'This migration only creates the table shape'; the seeding requirement lives only in the Type E design's Open question #1. Disposition: acceptable to carry \u2014 the design names the event and the registry-gate consequence, so BACKEND-DEV reading both files will not miss it; recommend CODE-DESIGNER add the matching IMPLEMENTER NOTE to the OBP-04 migration YAML for parity during implementation."
+    }
+  ],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a).",
+    "BACKEND-DEV: seed DEFINITION_VALIDATED + DEFINITION_VALIDATION_FAILED in event_type_registry per VLD-04 migration IMPLEMENTER NOTE, and seed EXECUTION_OUTBOX_GATE_OPENED per OBP-04 design Open question #1.",
+    "DOC-UPDATER/ORCH: file a MINOR issue to add DESIGNED to tools/reqctl.py VALID_STATUSES (or correct AGENT_SYSTEM.md)."
+  ],
+  "blockers": []
+}
