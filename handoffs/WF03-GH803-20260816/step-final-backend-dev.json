@@ -1,0 +1,91 @@
+{
+  "handoff_id": "wf03-gh803-20260816-final-backend-dev",
+  "run_id": "WF03-GH803-20260816",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH803-20260816/step-final-backend-dev.json",
+  "created_at": "2026-08-16T08:41:43Z",
+  "started_at": "2026-08-16T08:44:42Z",
+  "completed_at": "2026-08-16T08:47:57Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step Final -- git-merge + claim release",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
+    "iss_id": "ISS-0712",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh803-20260816-00-backend-dev",
+      "wf03-gh803-20260816-005-issue-fixer",
+      "wf03-gh803-20260816-01-issue-fixer",
+      "wf03-gh803-20260816-02-code-designer",
+      "wf03-gh803-20260816-2b-code-design-validator",
+      "wf03-gh803-20260816-03-backend-dev",
+      "wf03-gh803-20260816-05-test-runner",
+      "wf03-gh803-20260816-07-doc-updater"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "docs/agents/protocols/LOOP_PROTOCOL.md",
+      "docs/issues/ISS-0712.json",
+      "task/current.json"
+    ],
+    "branch_name": "feature/WF03-GH803-20260816"
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for WF-03 run WF03-GH803-20260816 (production rollback.zig supersede fix for ISS-0712 / GH-803). On branch feature/WF03-GH803-20260816: commit any remaining uncommitted workflow artefacts (handoffs/, docs/issue-reports/, docs/issues/, src/definition/, src/design/, CHANGELOG.md; NOTE there may be an unstaged whitespace-only zig fmt cleanup on tests/integration/prm-08-rollback-sandbox.test.zig from a prior step — that is out of this run's scope, leave it uncommitted), rebase onto the latest origin/main, open a PR, get it squash-merged, delete the feature branch on origin, and return to a clean main with the working tree clean. LOOP-MODE RELEASE (mandatory): this run has a TaskManager claim in task/current.json (item r-co:GH-803, claimed_by r-co-2-loop). As part of Step Final, run: python \"C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py\" task/current.json --status DONE --close-github-issue (workspace_id auto-resolved from .env as r-co-2-loop). Verify it exits 0, the GitHub issue #803 is closed, the claimed-by-r-co-2-loop label is cleared, and task/current.json is back to {}. Record branch_name, commit_sha_list, remote_branch, pr_url (or pr_create_error), and push_status: ok in your result, plus the release.py exit code. Confirm the local repo is on main with a clean working tree.",
+    "acceptance_criteria": [
+      "PR opened and squash-merged to main (PR URL recorded)",
+      "feature/WF03-GH803-20260816 deleted on origin",
+      "Local repo on main with clean working tree",
+      "result.git_evidence: branch_name, commit_sha_list, remote_branch, pr_url, push_status ok",
+      "release.py task/current.json --status DONE --close-github-issue exited 0; GH-803 closed; claimed-by-r-co-2-loop label cleared; task/current.json == {}"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step Final fn:git-merge PASS - PR #807 (https://github.com/tvolodi/R-Co/pull/807) opened and squash-merged into main (e5dbb40b) from branch feature/WF03-GH803-20260816. Rebase onto origin/main (531c3019) reported up to date (0 conflicts); finalize-artifacts commit b66c7a0c included in the squash. Push ok (6e0416fb..b66c7a0c). Remote branch feature/WF03-GH803-20260816 deleted (git ls-remote no ref); local branch auto-deleted by gh pr merge --delete-branch; local on main with git pull --ff-only up to date. The only working-tree change is the intentional out-of-scope whitespace-only zig fmt cleanup on tests/integration/prm-08-rollback-sandbox.test.zig (left uncommitted per run scope). LOOP-MODE RELEASE (mandatory): python C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py task/current.json --status DONE --close-github-issue exited 0; GitHub issue #803 CLOSED, claimed-by-r-co-2-loop label cleared (labels now bug), task/current.json back to {}. Post-merge bookkeeping: step-final handoff COMPLETED, registry updated, orchestrator.log appended, INNER-REPORT registered. Global lint gate verified: python tools/lint_handoffs.py exit 0.",
+    "artifacts_out": [
+      "branch: feature/WF03-GH803-20260816 (squash-merged into main as e5dbb40b, branch deleted on origin and locally)",
+      "PR: https://github.com/tvolodi/R-Co/pull/807",
+      "docs/issue-reports/WF03-GH803-20260816-step-final-backend-dev-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH803-20260816",
+      "commit_sha_list": [
+        "c3726bda62ae30b3c99fcc04d10ce814017ce82a",
+        "82ec864c9c05fdbae610c73b805768833f2eeb5b",
+        "f43425785908fdf9b86e171d8edf226fabfa3daa",
+        "9857d65f9215c73d8791dbd2f03de5f79bfea739",
+        "2b46a19ce26ffb05fee6ec22122d5e7e8569e5c8",
+        "51e2dc4d9142f1334cd6831565ae671cce975109",
+        "6e0416fbd5163ba931a419d2c12ffb82f7ba221a",
+        "fa5537215b5fb84eb40716c948fdca906a99b7d5",
+        "b66c7a0c5510c0e43b37468e88a1ab7819cf644a",
+        "e5dbb40b3776207a05d190c4ed8dbec7a04e6088"
+      ],
+      "remote_branch": "origin/feature/WF03-GH803-20260816 (deleted post-merge)",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/807",
+      "push_status": "ok"
+    },
+    "release_evidence": {
+      "release_cmd": "python C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py task/current.json --status DONE --close-github-issue",
+      "release_exit_code": 0,
+      "gh_issue_number": 803,
+      "gh_issue_closed": true,
+      "claimed_by_label_cleared": true,
+      "task_current_json": {}
+    },
+    "next_action": "ORCH marks run WF03-GH803-20260816 COMPLETED"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

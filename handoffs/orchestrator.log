@@ -1869,12 +1869,30 @@
 2026-08-16T07:39:53Z | complete | WF03-GH804-20260816 | wf03-gh8 | DOC-UPDATER | Step 7 doc update PASS: CHANGELOG [Unreleased] 2026-08-16 entry for GH-804/ISS-0713 prm-08 TC-PRM-08-03 fixture seed fix (test-code only); ISS-0713 -> RESOLVED (resolved_at 2026-08-16T07:39:53Z, resolution + prevention, step-07 history); issue_index.json updated (ISS-0713 RESOLVED); GH-804 intentionally left OPEN for Step Final (release.py --close-github-issue, loop-mode); GH-803/ISS-0712 untouched; lint_handoffs exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACK)
 2026-08-16T07:42:20Z | ROUTE | WF-03 | wf03-gh804-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T07:45:11Z | complete | WF03-GH804-20260816 | wf03-gh804-20260816-final-backend-dev | BACKEND-DEV | Step Final PASS: fn:git-merge - PR #806 squash-merged into main (cc588d90), feature/WF03-GH804-20260816 deleted on origin and locally, local on main clean; LOOP-MODE release exit 0 - GH-804 CLOSED, claimed-by-r-co-2-loop cleared, task/current.json {}; ISS-0713/GH-804 release evidence recorded; lint_handoffs exit 0
+2026-08-16T07:46:30Z | DONE | WF03-GH804-20260816 | --- | PIPELINE COMPLETE | GH-804 CLOSED (ISS-0713 RESOLVED, prm-08 TC-PRM-08-03 seed fix landed)
+2026-08-16T07:46:30Z | GIT  | WF03-GH804-20260816 | feature/WF03-GH804-20260816 | cc588d90 | PR: https://github.com/tvolodi/R-Co/pull/806
+2026-08-16T07:46:30Z | LOOP | WF03-GH804-20260816 | --- | ORCH | claim released (r-co:GH-804 DONE, gh-804 closed, task/current.json empty) - continuing loop; GH-803 (production 42883) remains OPEN
+2026-08-16T07:47:27Z | ROUTE | WF-03 | wf03-gh803-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T07:48:58Z | GIT-SETUP | WF03-GH803-20260816 | wf03-gh8 | BACKEND-DEV | fn:git-setup PASS branch=feature/WF03-GH803-20260816 base=531c301991e30022d58aff8046c7461146faaf7c push=ok
+2026-08-16T07:50:08Z | ROUTE | WF-03 | wf03-gh803-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T07:53:55Z | ROUTE | WF-03 | wf03-gh803-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T07:57:26Z | COMPLETE | WF03-GH803-20260816 | wf03-gh8 | ISSUE-FIXER | Step 1 diagnosis PASS: confirmed 42883 supersede defect (rollback.zig Step 5 def_id = $3::uuid vs TEXT def_id, swallowed by catch null); Step 3 fix spec delivered (drop ::uuid on $3; SQLSTATE 42P01 catch distinction) in docs/issue-reports/WF03-GH803-20260816-step-1-issue-fixer-INNER-REPORT.yaml
 2026-08-16T07:58:08Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-004b | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | STEP 4b: HARD GATE test-design validation (vld 14/14 + 5/5)
+2026-08-16T07:59:39Z | ROUTE | WF-03 | wf03-gh803-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
 2026-08-16T08:06:23Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-005-r | ORCH -> TEST-RUNNER | PENDING | STEP 5: verify ISS-0709 fix (vld 14/14 + 5/5 + 40/40)
+2026-08-16T08:06:34Z | ROUTE | WF-03 | wf03-gh803-20260816-2b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-08-16T08:09:15Z | COMPLETE | WF03-GH803-20260816 | wf03-gh8 | CODE-DESIGN-VALIDATOR | Step 2b design validation (hard gate) result.status=PASS: src/design/iss0712-gh803-rollback-supersede-fix.md validated, 14/14 checks PASS, lint_design_artefact exit 0, lint_handoffs exit 0 -> route to BACKEND-DEV (Step 3)
+2026-08-16T08:11:04Z | ROUTE | WF-03 | wf03-gh803-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T08:13:32Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-006 | ORCH -> RELEASE-VALIDATOR | PENDING | STEP 6: release decision VLD-01/02/03 (BLOCKER severity)
 2026-08-16T08:19:22Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-007 | ORCH -> DOC-UPDATER | PENDING | STEP 7: mark VLD-01/02/03 RELEASED + changelog
+2026-08-16T08:21:48Z | ROUTE | WF-03 | wf03-gh803-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING
 2026-08-16T08:24:32Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 007 | DOC-UPDATER | PASS | Step 7: mark VLD-01/02/03 RELEASED + changelog (reqctl set-status + render-status + CHANGELOG [Unreleased] 2026-08-16)
 2026-08-16T08:27:04Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-008-final | ORCH -> BACKEND-DEV | PENDING | STEP Final: git-merge feature branch to main
+2026-08-16T08:29:03Z | complete-handoff | WF03-GH803-20260816 | wf03-gh8 | TEST-RUNNER | Step 5 PASS — production supersede fix verified (prm08 4/4, no 42883; lint 0; scope rollback.zig only; test-env-verify 0; unit 0). report=tests/reports/report-20260816-WF03-GH803-20260816.yaml
+2026-08-16T08:31:02Z | ROUTE | WF-03 | wf03-gh803-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
+2026-08-16T08:40:32Z | complete-handoff | WF03-GH803-20260816 | wf03-gh803-20260816-07-doc-updater | DOC-UPDATER | Step 7 PASS - CHANGELOG updated, ISS-0712 RESOLVED, issue_index updated; GH-803 left OPEN for Step Final release.py --close-github-issue
+2026-08-16T08:41:43Z | ROUTE | WF-03 | wf03-gh803-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T08:48:37Z | WF03-GH803-20260816 Step Final (BACKEND-DEV): fn:git-merge PASS - PR #807 squash-merged into main at e5dbb40b, feature branch deleted, claim released (GH-803 CLOSED, claimed-by-r-co-2-loop cleared, task/current.json {}); handoff COMPLETED (result PASS)
 [2026-08-12T17:35:00Z] | DONE | WF02-batch-5-20260812 | wf02batc-Final | BACKEND-DEV | PASS: PR #749 merged (squash), feature branch deleted, main clean at 6495b759
 
 [2026-08-13T20:13:08Z] WF02-pw13-pw16-batch19-20260813/step-01b-code-design-validator ORCH->CODE-DESIGN-VALIDATOR COMPLETED PASS — design rework added §12 Error taxonomy (21 runtime failure modes across RND-UI-05/06, GRD-UI-06/07); lint_design_artefact exits 0 (BLOCKER=0 MAJOR=0 MINOR=0); lint_handoffs exits 0. Routing to FRONTEND-DEV Step 02b.

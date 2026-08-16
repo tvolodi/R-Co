@@ -1,0 +1,68 @@
+{
+  "handoff_id": "wf03-gh803-20260816-02-code-designer",
+  "run_id": "WF03-GH803-20260816",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH803-20260816/step-02-code-designer.json",
+  "created_at": "2026-08-16T07:59:39Z",
+  "started_at": "2026-08-16T07:59:56Z",
+  "completed_at": "2026-08-16T08:03:38Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2 -- fix design",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
+    "iss_id": "ISS-0712",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh803-20260816-00-backend-dev",
+      "wf03-gh803-20260816-005-issue-fixer",
+      "wf03-gh803-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0712.json",
+      "docs/issue-reports/WF03-GH803-20260816-step-1-issue-fixer-INNER-REPORT.yaml",
+      "src/definition/rollback.zig",
+      "migrations/096_promotion_reviews.sql",
+      "src/event_store/store.zig"
+    ],
+    "branch_name": "feature/WF03-GH803-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 2: produce the design artefact for ISS-0712 / GH-803 \u2014 the production fix for src/definition/rollback.zig Step 5 supersede (PRODUCTION code, NO migrations). The fix spec from Step 1 is precise: (a) line ~290 change `AND def_id = $3::uuid` to `AND def_id = $3` (def_id column is TEXT; current_active_id is a uuid string bound as text \u2014 text = text); superseded_by = $1::uuid and tenant_id = $2::uuid stay (both uuid columns); (b) line ~295 replace the bare `catch null` with a catch that distinguishes SQLSTATE 42P01 (genuinely missing table \u2014 tolerate as null) from all other errors (42883 and others surface as RollbackError.TransactionFailed / PoolExhausted), mirroring the canonical pattern in src/event_store/store.zig. Design artefact to src/design/iss0712-gh803-rollback-supersede-fix.md covering: the two patch shapes (before/after), the error-handling semantics (why 42P01-only tolerance is correct and how other errors now surface), the blast radius (RollbackError callers), why no migration is needed, and the verification plan (zig build; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 expected 4/4 green now that GH-802 fixture and GH-804 seed are merged; no sqlstate=42883 in stderr).",
+    "acceptance_criteria": [
+      "src/design/iss0712-gh803-rollback-supersede-fix.md created and passes tools/lint_design_artefact.py (BLOCKER=0 MAJOR=0) if the linter applies (check first)",
+      "Design covers the two patch shapes (drop ::uuid on $3; 42P01-distinguishing catch) with before/after",
+      "Blast radius documented (RollbackError callers, no migration needed)",
+      "No implementation code written (design only; implementation is Step 3)",
+      "Verification plan documented (zig build; test-integration-prm08 expected 4/4 green)"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for production rollback supersede fix (ISS-0712/GH-803) - Type E prose artefact src/design/iss0712-gh803-rollback-supersede-fix.md. Change A: drop ::uuid on $3 (line 290, text=text vs promotion_reviews.def_id TEXT); Change B: replace bare catch null (line 295) with SQLSTATE-42P01-distinguishing catch mirroring PAR-01 in src/event_store/store.zig (copy lastSqlState() into local buffer; 42P01 -> null; ExhaustedPool -> PoolExhausted / else -> TransactionFailed). Blast radius: sole caller handleRollback (definition_rollback.zig:76) already maps every RollbackError (503/500 now surfaced instead of swallowed 200 with null superseded_review_id); no migration needed. Verification: zig build; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 expected 4/4 green (GH-802 + GH-804 merged) and no sqlstate=42883 in [pool] stderr. tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0 MINOR=0). fn:validate-completeness all criteria MET. No implementation code written (Step 3 implements).",
+    "artifacts_out": [
+      "src/design/iss0712-gh803-rollback-supersede-fix.md",
+      "docs/issue-reports/WF03-GH803-20260816-step-2-code-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Inner-report format drift: core-directives.md mandates .yaml for docs/issue-reports/ (declares fn-register-inner-report.md .json outdated); this report follows .yaml per core-directives, consistent with this run step-1. Sibling GH-802/GH-804 step-2 reports are .json. Recommend one-time source consolidation."
+      },
+      {
+        "severity": "MINOR",
+        "description": "rollback.zig module doc claims single serialisable transaction but no conn.begin()/COMMIT present (pre-existing, out of scope); recorded as open question in the artefact - recommend REQ-ANALYST/DOC-UPDATER reconcile."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,60 @@
+report_id: WF03-GH803-20260816-step-2-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF03-GH803-20260816
+step: "2"
+created_at: "2026-08-16T08:03:24Z"
+summary: >-
+  WF-03 Step 2 (fix design) for GH-803/ISS-0712. Produced the Type E prose design
+  artefact src/design/iss0712-gh803-rollback-supersede-fix.md for the PRODUCTION
+  fix of src/definition/rollback.zig Step 5 supersede (lines 286-298): Change A
+  drops the ::uuid cast on $3 (line 290 -> `AND def_id = $3`, text = text against
+  promotion_reviews.def_id TEXT from migration 096), Change B replaces the bare
+  `catch null` (line 295) with a SQLSTATE-42P01-distinguishing catch mirroring the
+  canonical PAR-01 pattern in src/event_store/store.zig (copy lastSqlState() into a
+  local 5-byte buffer, tolerate only 42P01 as null, map ExhaustedPool ->
+  PoolExhausted / else -> TransactionFailed). Design covers both patch shapes with
+  before/after, error-handling semantics (why 42P01-only tolerance is correct and
+  how 42883/22P02/23503/pool errors now surface as 503/500 instead of being
+  swallowed), blast radius (sole production caller handleRollback in
+  src/api/routes/definition_rollback.zig already maps every RollbackError; no
+  migration needed), and the verification plan (zig build; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08
+  expected 4/4 green with GH-802 fixture + GH-804 seed merged; no sqlstate=42883
+  in [pool] stderr). tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0
+  MINOR=0). fn:validate-completeness all 5 acceptance criteria MET. No
+  implementation code written (Step 3 implements).
+
+files_created:
+  - "src/design/iss0712-gh803-rollback-supersede-fix.md"
+  - "docs/issue-reports/WF03-GH803-20260816-step-2-code-designer-INNER-REPORT.yaml"
+files_modified:
+  - "handoffs/WF03-GH803-20260816/step-02-code-designer.json"
+  - "handoffs/registry.json"
+tests_run:
+  - name: "tools/lint_design_artefact.py --json src/design/iss0712-gh803-rollback-supersede-fix.md"
+    status: pass
+    detail: "exit 0; BLOCKER=0 MAJOR=0 MINOR=0 (required E headings present; no fenced block over 40 lines; no SQL interpolation hint; no TODO/TBD headings)"
+  - name: "fn:validate-completeness (design task; evidence = artefact + linter)"
+    status: pass
+    detail: "all 5 acceptance criteria MET (artefact created + linter clean; both patch shapes before/after; blast radius documented; no implementation code; verification plan documented)"
+issues_found:
+  - severity: MINOR
+    description: >-
+      Conventions drift on inner-report format: core-directives.md mandates .yaml
+      for docs/issue-reports/ and declares the fn-register-inner-report.md .json
+      spec outdated, but the sibling GH-802/GH-804 step-2 code-designer reports
+      and this run's own step-0.5/step-00 reports are .json. This report follows
+      the authoritative core-directives (.yaml), consistent with this run's
+      step-1 report. Recommend a one-time consolidation at the source.
+  - severity: MINOR
+    description: >-
+      rollback.zig module doc claims the pointer move/event/supersede run "in a
+      single serialisable transaction" but no conn.begin()/COMMIT is present
+      (pre-existing, out of scope for this fix). Recorded as an open question in
+      the design artefact; recommend REQ-ANALYST/DOC-UPDATER reconcile the doc
+      comment.
+next_steps:
+  - "Step 2b (CODE-DESIGN-VALIDATOR): validate src/design/iss0712-gh803-rollback-supersede-fix.md (rerun tools/lint_design_artefact.py)."
+  - "Step 3 (BACKEND-DEV/ISSUE-FIXER): implement the two-part fix in src/definition/rollback.zig only - drop ::uuid on $3 (line 290) and replace the bare catch null with the 42P01-distinguishing catch (line 295) per the design's before/after."
+  - "Step 3 verification: zig build; then BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 -> expect 4/4 green (TC-PRM-08-03 superseded assertion now passes) and no sqlstate=42883 in [pool] stderr."
+blockers:
+  - "None for Step 2 (design complete; linter clean). Fix is intentionally NOT implemented (Step 3 only)."

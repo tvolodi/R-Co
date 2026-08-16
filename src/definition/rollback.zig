@@ -287,12 +287,26 @@ pub fn rollbackDefinitionVersion(
     const supersede_row = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews SET status = 'superseded', superseded_by = $1::uuid
-        \\WHERE tenant_id = $2::uuid AND def_id = $3::uuid
+        \\WHERE tenant_id = $2::uuid AND def_id = $3
         \\  AND status IN ('applied', 'approved')
         \\RETURNING id::text
     ,
         &[_][]const u8{ event_id, tenant_id, current_active_id },
-    ) catch null; // table may not exist (PRM-04 is a later batch)
+    ) catch |err| blk: {
+        // lastSqlState() returns a slice INTO the connection's mutable buffer;
+        // copy before anything can overwrite it (canonical pattern: PAR-01 in
+        // src/event_store/store.zig). PostgreSQL SQLSTATE is always exactly 5 chars.
+        var sqlstate_buf: [5]u8 = undefined;
+        const is_missing_table = if (conn.lastSqlState()) |s| blk2: {
+            @memcpy(&sqlstate_buf, s);
+            break :blk2 std.mem.eql(u8, &sqlstate_buf, "42P01");
+        } else false;
+        if (is_missing_table) break :blk null; // table may not exist (PRM-04 is a later batch)
+        return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => RollbackError.PoolExhausted,
+            else => RollbackError.TransactionFailed,
+        };
+    };
 
     var superseded_review_id: ?[]const u8 = null;
     if (supersede_row) |r| {

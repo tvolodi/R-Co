@@ -1,0 +1,66 @@
+report_id: WF03-GH803-20260816-step-07-doc-updater
+agent_id: DOC-UPDATER
+run_id: WF03-GH803-20260816
+step: "07"
+created_at: 2026-08-16T08:33:19Z
+summary: >-
+  WF-03 Step 7 for ISS-0712 / GH-803 on branch feature/WF03-GH803-20260816. (1)
+  fn:update-changelog: prepended a fix(prod) entry under [Unreleased] — 2026-08-16
+  documenting the PRODUCTION rollback supersede fix (GH-803/ISS-0712) in
+  src/definition/rollback.zig — Change A (line 290 `AND def_id = $3::uuid` ->
+  `AND def_id = $3`, dropping the ::uuid cast so the TEXT column promotion_reviews.def_id
+  compares text = text, eliminating sqlstate 42883) and Change B (line 295 bare `catch null`
+  replaced with a SQLSTATE-42P01-distinguishing catch mirroring the PAR-01 pattern in
+  src/event_store/store.zig so real query failures surface as RollbackError instead of a
+  swallowed 200 with null superseded_review_id). Result: PRM-08 AC4 works —
+  test-integration-prm08 is now 4/4 green (together with the GH-802 fixture and GH-804
+  seed fixes). (2) fn:update-issue: docs/issues/ISS-0712.json set to status RESOLVED with
+  resolved_at 2026-08-16T08:33:19Z, resolved_by DOC-UPDATER (WF03-GH803-20260816 step-07),
+  resolution (supersede fix; 42883 eliminated; 4/4 prm-08 green) filled; prevention
+  retained + augmented (when a query binds a value into a column the parameter type must
+  match the column type — TEXT columns must not be compared with ::uuid-cast parameters; a
+  bare catch null must never swallow real query errors — distinguish SQLSTATE 42P01 from
+  other failures); a step-07 handoff_history entry added. (3) docs/issues/issue_index.json
+  updated: ISS-0712 status RESOLVED with resolved_at and resolved_by; top-level
+  last_updated bumped; next_issue_id 714 unchanged. GitHub issue #803 intentionally NOT
+  closed (loop-mode; Step Final release.py --close-github-issue handles it). JSON parse
+  validation OK for both issue files; lint_handoffs.py runs clean.
+
+files_created:
+  - docs/issue-reports/WF03-GH803-20260816-step-07-doc-updater-INNER-REPORT.yaml
+
+files_modified:
+  - CHANGELOG.md
+  - docs/issues/ISS-0712.json
+  - docs/issues/issue_index.json
+  - handoffs/WF03-GH803-20260816/step-07-doc-updater.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: python -c "json.load(ISS-0712.json); json.load(issue_index.json)"
+    status: pass
+    detail: >-
+      both docs/issues JSON files parse cleanly (utf-8-sig tolerant); ISS-0712 RESOLVED
+      with resolved_at/resolved_by/resolution, prevention.actions now 4 items, step-07
+      handoff_history entry appended; issue_index ISS-0712 RESOLVED with
+      resolved_at/resolved_by, GH-803 issue untouched, next_issue_id 714 unchanged,
+      last_updated bumped to 2026-08-16T08:33:19Z.
+  - name: python tools/lint_handoffs.py
+    status: pass
+    detail: "handoff lint gate exit 0 (0 BLOCKER, 0 MAJOR; 1 pre-existing MINOR H010, 332 ACK)."
+
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md specifies inner reports as .json but core-directives.md
+      Output File Format Rules requires .yaml (authoritative). Pre-existing drift,
+      re-flagged (same as earlier steps in this run and the GH-802/GH-804 step-07 runs).
+      Inner report written per core-directives (.yaml), matching the DOC-UPDATER precedent.
+
+next_steps:
+  - Step Final: run release.py (--close-github-issue to close GH-803), squash-merge
+    feature/WF03-GH803-20260816 to main, delete the feature branch, and return the repo
+    to a clean main. GH-802/ISS-0711 and GH-804/ISS-0713 companion fixes already merged.
+
+blockers: []

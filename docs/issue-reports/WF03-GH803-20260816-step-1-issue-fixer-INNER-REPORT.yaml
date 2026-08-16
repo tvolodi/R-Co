@@ -1,0 +1,126 @@
+report_id: WF03-GH803-20260816-step-1-issue-fixer
+agent_id: ISSUE-FIXER
+run_id: WF03-GH803-20260816
+step: "1"
+created_at: "2026-08-16T07:57:26Z"
+summary: >-
+  WF-03 Step 1 (diagnosis-as-design) for GH-803/ISS-0712. CONFIRMED the documented
+  production supersede 42883 diagnosis against the ACTUAL code: src/definition/rollback.zig
+  Step 5 (lines 286-298) runs the supersede UPDATE with `WHERE ... AND def_id = $3::uuid`
+  (line 290) against promotion_reviews.def_id, which migration 096 declares as
+  `text NOT NULL` — so PostgreSQL has no `text = uuid` operator and raises sqlstate 42883
+  at execution; the statement is wrapped in a bare `catch null` (line 295, comment
+  "table may not exist (PRM-04 is a later batch)") which swallows EVERY error, so
+  superseded_review_id is always null and PRM-08 AC4 never works. `zig build check`
+  on the current unfixed branch exits 0 (build_check_exit=0), confirming the defect is
+  runtime-only, not a compile error. Defined the exact Step 3 fix spec (below): (a) drop
+  `::uuid` on $3 so the predicate is text = text; (b) replace the bare `catch null` with a
+  SQLSTATE-42P01 distinction that tolerates only a genuinely missing promotion_reviews
+  table and propagates every other query error (mirroring the canonical pattern in
+  src/event_store/store.zig PAR-01). No fix implemented (Step 3 only). Worked on branch
+  feature/WF03-GH803-20260816 (verified).
+
+# ---------------------------------------------------------------------------
+# Root-cause diagnosis (confirmed against the actual source + migration)
+# ---------------------------------------------------------------------------
+root_cause: >-
+  Type mismatch between the supersede predicate and the applied schema.
+  rollback.zig Step 5 binds the current ACTIVE process_definitions id (a uuid string
+  from Step 2's `SELECT id::text`) as `$3` and casts it `::uuid`, then compares it to
+  promotion_reviews.def_id, which migration 096 declares `text NOT NULL`.
+  `text = uuid` has no implicit operator, so PostgreSQL raises sqlstate 42883
+  ("operator does not exist: text = uuid") at execution time. The surrounding
+  `catch null` — written to tolerate the promotion_reviews table not existing when the
+  PRM-04 batch is a later batch — conflates "table missing" with "query failed" and
+  swallows the real error, so the supersede never executes and superseded_review_id is
+  always null.
+
+evidence_confirming_diagnosis:
+  - "src/definition/rollback.zig line 290: `\\WHERE tenant_id = $2::uuid AND def_id = $3::uuid` (Step 5 supersede UPDATE, lines 286-298)"
+  - "src/definition/rollback.zig line 295: `) catch null; // table may not exist (PRM-04 is a later batch)` — swallows ALL errors, including 42883"
+  - "src/definition/rollback.zig params at the supersede call: [event_id, tenant_id, current_active_id]; current_active_id is the id::text uuid string from Step 2"
+  - "migrations/096_promotion_reviews.sql: `def_id text NOT NULL` (also requested_by uuid NOT NULL, def_type text NOT NULL, serialised_plan text NOT NULL)"
+  - "empirical (documented in ISS-0712, reproduced in WF03-GH802 step-1): [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status = 'superseded', superseded_by = $1::uuid WHERE tenant_id = $2::uuid AND def_id = $3::uuid ..."
+  - "zig build check on feature/WF03-GH803-20260816 (unfixed) exits 0 -> defect is runtime-only SQL, not a compile error"
+
+# ---------------------------------------------------------------------------
+# Fix spec for Step 3 (BACKEND-DEV) — DO NOT implement in Step 1
+# ---------------------------------------------------------------------------
+fix_spec:
+  scope: "Production code change confined to src/definition/rollback.zig Step 5. No migrations. No other source files."
+  change_a:
+    what: "Drop the ::uuid cast on the bound def id so the predicate matches the TEXT column."
+    file: "src/definition/rollback.zig"
+    line: 290
+    before: "\\WHERE tenant_id = $2::uuid AND def_id = $3::uuid"
+    after: "\\WHERE tenant_id = $2::uuid AND def_id = $3"
+    rationale: >-
+      current_active_id is already a uuid string bound as text; with no cast PostgreSQL
+      infers $3 as text (the column type) and resolves text = text via the text equality
+      operator. Keep superseded_by = $1::uuid (column is uuid, $1 = event_id) and
+      tenant_id = $2::uuid (column is uuid, $2 = tenant_id) — both casts are correct and
+      must stay.
+  change_b:
+    what: "Replace the bare `catch null` guard with a SQLSTATE 42P01 distinction so a genuinely missing table is tolerated but every other query error propagates."
+    file: "src/definition/rollback.zig"
+    line: 295
+    before: ") catch null; // table may not exist (PRM-04 is a later batch)"
+    after: |-
+      ) catch |err| blk: {
+          // lastSqlState() returns a slice INTO the connection's mutable buffer;
+          // copy before anything can overwrite it (canonical pattern: PAR-01 in
+          // src/event_store/store.zig). PostgreSQL SQLSTATE is always exactly 5 chars.
+          var sqlstate_buf: [5]u8 = undefined;
+          const is_missing_table = if (conn.lastSqlState()) |s| blk2: {
+              @memcpy(&sqlstate_buf, s);
+              break :blk2 std.mem.eql(u8, &sqlstate_buf, "42P01");
+          } else false;
+          if (is_missing_table) break :blk null; // table may not exist (PRM-04 is a later batch)
+          return switch (err) {
+              pool_mod.PoolError.ExhaustedPool => RollbackError.PoolExhausted,
+              else => RollbackError.TransactionFailed,
+          };
+      };
+    rationale: >-
+      queryRow returns PoolError!?[]?[]u8; the catch block evaluates to ?[]?[]u8
+      (break :blk null coerces) and the error switch uses the same ExhaustedPool ->
+      PoolExhausted / else -> TransactionFailed mapping as every sibling query in the
+      function. Only SQLSTATE 42P01 (undefined_table — promotion_reviews not yet created
+      by the later PRM-04 batch) is treated as "no review to supersede". 42883 and any
+      other genuine failure now surface as RollbackError.TransactionFailed instead of
+      being silently swallowed.
+  verification_commands:
+    - "zig build"
+    - "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08"
+  verification_expectation: >-
+    zig build exits 0. test-integration-prm08 is 4/4 green (TC-PRM-08-01/02/03/04): with
+    the GH-802 fixture fix and GH-804 seed fix already merged on main, and this production
+    cast fix applied, TC-PRM-08-03's superseded assertion passes because the Step 5
+    supersede UPDATE now executes and sets status='superseded'. Confirm no
+    `sqlstate=42883` line appears in the [pool] stderr output of the run.
+  note: >-
+    The current unfixed tree is 3/4 green (TC-PRM-08-03 fails on the superseded assertion
+    because the supersede is swallowed); the 4/4 expectation applies AFTER this fix is
+    implemented in Step 3.
+
+files_created:
+  - "docs/issue-reports/WF03-GH803-20260816-step-1-issue-fixer-INNER-REPORT.yaml"
+files_modified: []
+tests_run:
+  - name: "zig build check (feature/WF03-GH803-20260816, unfixed tree)"
+    status: pass
+    detail: "exit 0 (build_check_exit=0). Compile baseline: the 42883 supersede defect is runtime-only SQL, not a compile error."
+issues_found:
+  - severity: MINOR
+    description: >-
+      Conventions drift on inner-report format: core-directives.md mandates .yaml for
+      docs/issue-reports/ and declares the fn-register-inner-report.md .json spec outdated,
+      but this run's own step-0.5/step-00 reports and the recent ISSUE-FIXER step-1
+      precedents (GH-793/802/804) are .json. This report follows the authoritative
+      core-directives (.yaml). Recommend a one-time consolidation at the source.
+next_steps:
+  - "Step 3 (BACKEND-DEV): implement the fix spec in src/definition/rollback.zig only — drop ::uuid on $3 (line 290) and replace the bare catch null with the SQLSTATE-42P01-distinguishing catch (line 295)."
+  - "Step 3 verification: zig build; then BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 -> expect 4/4 green and no sqlstate=42883 in [pool] stderr."
+  - "Route to TEST-RUNNER (WF-03 Step 3) after the fix lands."
+blockers:
+  - "None for Step 1 (diagnosis complete). Fix is intentionally NOT implemented (Step 3 only)."

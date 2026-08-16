@@ -1,0 +1,24 @@
+{
+  "report_id": "WF03-GH803-20260816-step-0.5-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH803-20260816",
+  "step": "0.5",
+  "created_at": "2026-08-16T07:52:13Z",
+  "summary": "WF-03 Step 0.5 (registry lookup) for GH-803: verified ISS-0712 is the correct, non-colliding local record for GitHub issue #803 (title/severity/status/labels match; GH-803 OPEN with labels bug, claimed-by-r-co-2-loop; only one index entry references #803). No new ISS number and no new GitHub issue (GH-803 already exists and is filed per the discovery in WF03-GH802-20260816 step-1). Updated ISS-0712.json workflow_id/run_id/handoff_id from the stale GH802 discovery values to WF03-GH803-20260816 (the active fix run) and added handoff_history (2 entries: GH802 step-1 discovery + this run step-0.5), mirroring the ISS-0711/ISS-0713 step-0.5 precedent. issue_index.json confirmed consistent (ISS-0712 present exactly once; next_issue_id 714 correct) and its ISS-0712 entry mirrored (run_id/handoff_id/branch + step_0.5_completed_at; last_updated bumped). NO fix implemented — deferred to Step 3 per WF-03.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH803-20260816-step-0.5-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/issues/ISS-0712.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH803-20260816/step-005-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH routes to Step 1 diagnosis (ISSUE-FIXER): confirm + reproduce the rollback.zig Step 5 supersede 42883 (def_id = $3::uuid vs TEXT column, swallowed by catch null) before Step 3 implements the fix per the ISS-0712 fix_diff (drop ::uuid cast on $3; distinguish SQLSTATE 42P01 from other query errors).",
+    "After the fix is verified, DOC-UPDATER marks ISS-0712 RESOLVED and Step Final closes GH-803 via release.py --close-github-issue."
+  ],
+  "blockers": []
+}

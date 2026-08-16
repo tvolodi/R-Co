@@ -1,0 +1,59 @@
+# INNER REPORT — TEST-RUNNER · WF-03 Step 5 · WF03-GH803-20260816
+# Independent verification of the PRODUCTION supersede fix (ISS-0712 / GH-803).
+
+report_id: WF03-GH803-20260816-step-5-test-runner
+agent_id: TEST-RUNNER
+run_id: WF03-GH803-20260816
+workflow_id: WF-03
+step: "5"
+github_issue: https://github.com/tvolodi/R-Co/issues/803
+iss_id: ISS-0712
+created_at: 2026-08-16T08:28:50Z
+branch: feature/WF03-GH803-20260816
+
+summary: >
+  Independently verified the PRODUCTION supersede fix in src/definition/rollback.zig
+  (ISS-0712 / GH-803) on branch feature/WF03-GH803-20260816. All five acceptance
+  criteria pass: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test
+  zig build test-integration-prm08 exits 0 with 4/4 passing (TC-PRM-08-01..04,
+  including TC-PRM-08-03 supersede which now works) and no sqlstate=42883 in stderr;
+  (b) python tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR
+  H010 unrelated to this run); (c) the production change is confined to
+  src/definition/rollback.zig (git diff 531c3019..HEAD) with no migrations/ and no
+  tests/ changes; (d) zig build test-env-verify exits 0 (HEALTHY, 10 checks); (e)
+  zig build test exits 0 (unit suite green, lint_test_wiring PASS). Pre-checks also
+  PASS: backend services healthy (db :5452, db_test :5453, keycloak, gateway :8091);
+  test-env-verify HEALTHY. Verified Change A (def_id = $3, no ::uuid cast on TEXT
+  column) and Change B (42P01-distinguishing catch, PAR-01 pattern) present in the
+  diff. Verification report written to tests/reports/report-20260816-WF03-GH803-20260816.yaml.
+
+files_created:
+  - tests/reports/report-20260816-WF03-GH803-20260816.yaml
+
+files_modified:
+  - handoffs/WF03-GH803-20260816/step-05-test-runner.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: "zig build test-integration-prm08 (BPM_TEST_DB_URL=...:5453/bpm_test, direct)"
+    status: pass
+    detail: "exit 0 — 4/4 (TC-PRM-08-01..04); TC-PRM-08-03 supersede PASS; no sqlstate=42883 in stderr. Direct binary run confirmed 'All 4 tests passed'."
+  - name: "python tools/lint_handoffs.py"
+    status: pass
+    detail: "exit 0 — 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010), 332 ACKNOWLEDGED"
+  - name: "zig build test-env-verify"
+    status: pass
+    detail: "exit 0 — verify_test_env: HEALTHY, 10 checks passed"
+  - name: "zig build test (unit suite)"
+    status: pass
+    detail: "exit 0 — lint_test_wiring PASS (325 files / 156 roots / 444 reachable); 4 non-fatal ADVISORY (ISS-0172); differential + orphan binaries verified green directly (3/3, 4/4, exit 0)"
+
+issues_found:
+  - severity: MINOR
+    description: "Pre-existing H010: 4 of 2964 handoffs absent from handoffs/registry.json. None are in run WF03-GH803-20260816 (step-05 is registered). Not introduced by this run."
+
+next_steps:
+  - "ORCH: route WF03-GH803-20260816 to the next WF-03 step (Step Final / merge) per the workflow."
+
+blockers: []
