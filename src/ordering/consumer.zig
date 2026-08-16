@@ -64,6 +64,117 @@ pub fn stubAlwaysDeferred(
     return .deferred;
 }
 
+// Platform event sentinels (mirror src/event_store/platform.zig — kept inline
+// so this named module needs no cross-directory import; frozen constants by
+// contract). EXECUTION_EFFECT_APPLIED is appended as a platform/audit event
+// (sequence 0, sentinels), per the EXECUTION_* family convention.
+const PLATFORM_INSTANCE_ID: []const u8 = "00000000-0000-0000-0000-0000000000ff";
+const PLATFORM_ACTOR_ID: []const u8 = "00000000-0000-0000-0000-000000000000";
+const PLATFORM_TENANT_ID: []const u8 = "00000000-0000-0000-0000-000000000000";
+
+/// Append EXECUTION_EFFECT_APPLIED (ORD-03 AC2/AC4) on the given conn inside
+/// the caller's transaction. Carries correlation_id and sequence_no so apply
+/// order is auditable from the event log alone (ORD-04 AC5). The event type
+/// is seeded by migration 1166.
+fn appendEffectApplied(
+    allocator: std.mem.Allocator,
+    conn: anytype,
+    correlation_id: []const u8,
+    sequence_no: i64,
+) mod.OrderingError!void {
+    const seq_text = std.fmt.allocPrint(allocator, "{d}", .{sequence_no}) catch return error.OutOfMemory;
+    defer allocator.free(seq_text);
+    const idempotency_key = std.fmt.allocPrint(
+        allocator,
+        "effect-applied:{s}:{d}",
+        .{ correlation_id, sequence_no },
+    ) catch return error.OutOfMemory;
+    defer allocator.free(idempotency_key);
+    const payload = std.fmt.allocPrint(
+        allocator,
+        "{{\"correlation_id\":\"{s}\",\"sequence_no\":{d}}}",
+        .{ correlation_id, sequence_no },
+    ) catch return error.OutOfMemory;
+    defer allocator.free(payload);
+
+    conn.exec(
+        \\INSERT INTO public.events
+        \\  (event_id, instance_id, event_type, payload, actor_id,
+        \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
+        \\VALUES
+        \\  (gen_random_uuid(), $1::uuid, 'EXECUTION_EFFECT_APPLIED', $2::jsonb, $3::uuid,
+        \\   0, $4, '{}'::jsonb, $5::uuid, nextval('public.events_global_seq'))
+        \\ON CONFLICT (idempotency_key) DO NOTHING
+    ,
+        &.{ PLATFORM_INSTANCE_ID, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
+    ) catch return error.PersistenceFailed;
+}
+
+/// ORD-03's implementation of `ConsumerRunConfig.applyFn`. Given a claimed row
+/// with the execute guard already held (the ORD-01/02/04 contract), applies it
+/// under the order guard and advances the cursor in one transaction:
+///
+///   1. readOrInitCursor -> applied_seq (MissingCursorRow recovery inserts 0).
+///   2. order guard: `sequence_no != applied_seq + 1` -> `.deferred` — the
+///      caller ROLLBACKs silently, no error, no retry increment (AC1).
+///   3. engine apply (this batch's observable apply: mark APPLIED + append
+///      EXECUTION_EFFECT_APPLIED); a write failure -> `.apply_failed` so the
+///      caller ROLLBACKs and applied state and applied_seq cannot diverge
+///      (AC4).
+///   4. advanceCursor (conditional UPDATE WHERE applied_seq = $2 - 1); a 0-row
+///      result is CursorRaceLost -> `.deferred`, the caller ROLLBACKs and the
+///      completion is re-claimed (AC3).
+///   5. `.applied` — the caller COMMITs status -> 'APPLIED' together with the
+///      cursor advance (AC2: seq 5 applied, then seq 6; engine observes order).
+///
+/// The caller (runOneCycle, unchanged) owns the connection and the transaction;
+/// this function returns the ApplyOutcome and never commits or rolls back.
+pub fn applyCompletion(
+    allocator: std.mem.Allocator,
+    conn: anytype,
+    claim: mod.ClaimedCompletion,
+) mod.OrderingError!ApplyOutcome {
+    // 1 + 2: read the correlation's applied_seq and enforce the order guard.
+    const applied_seq = cursor.readOrInitCursor(allocator, conn, claim.correlation_id) catch |err| {
+        _ = err;
+        return .apply_failed;
+    };
+    if (claim.sequence_no != applied_seq + 1) {
+        // AC1: not next in sequence — silent rollback, no error, row stays PENDING.
+        return .deferred;
+    }
+
+    // 3: engine apply — mark the completion APPLIED and append the event. Both
+    // share the caller's transaction, so any later failure rolls both back.
+    const seq_text = std.fmt.allocPrint(allocator, "{d}", .{claim.sequence_no}) catch return error.OutOfMemory;
+    defer allocator.free(seq_text);
+    conn.exec(
+        "UPDATE plat_effect_completion SET status = 'APPLIED', applied_at = now() WHERE completion_id = $1::uuid AND status = 'PENDING'",
+        &.{claim.completion_id},
+    ) catch |err| {
+        _ = err;
+        return .apply_failed;
+    };
+    appendEffectApplied(allocator, conn, claim.correlation_id, claim.sequence_no) catch |err| {
+        _ = err;
+        return .apply_failed;
+    };
+
+    // 4: conditional cursor advance.
+    const advanced = cursor.advanceCursor(allocator, conn, claim.correlation_id, claim.sequence_no) catch |err| {
+        _ = err;
+        return .apply_failed;
+    };
+    if (advanced == 0) {
+        // AC3: CursorRaceLost — another transaction advanced the cursor;
+        // roll back (including the apply writes) and re-claim.
+        return .deferred;
+    }
+
+    // 5: caller COMMITs; status APPLIED and applied_seq are one unit.
+    return .applied;
+}
+
 /// Generic over the connection type so this module has no compile-time
 /// dependency on the concrete `pg`/pool vendor types — matches
 /// cursor.zig's own `conn: anytype` shape. Callers pass a `*db.Pool`

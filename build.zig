@@ -2953,6 +2953,123 @@ pub fn build(b: *std.Build) void {
     test_integration_ordering_step.dependOn(&clean_test_db.step);
     test_integration_ordering_step.dependOn(&run_ordering_integration_tests.step);
 
+    // -----------------------------------------------------------------------
+    // WF02-batch-7-20260816 (stage 16): DDL-04 / OBP-04 / ORD-03 / VLD-04
+    // -----------------------------------------------------------------------
+
+    // DDL-04: src/platform/backfill.zig — idempotent batched backfill loop
+    // (pure predicate guard + per-batch-transaction loop). Unit tests cover
+    // the pure guard; the loop is exercised by the integration suite.
+    const platform_backfill_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/platform/backfill.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_platform_backfill_tests = b.addRunArtifact(platform_backfill_tests);
+    const test_backfill_step = b.step("test-backfill", "Run DDL-04 backfill module unit tests (no DB)");
+    test_backfill_step.dependOn(&run_platform_backfill_tests.step);
+    test_step.dependOn(&run_platform_backfill_tests.step);
+
+    // OBP-04: src/outbox/gate.zig — outbox ingress gate hysteresis + escalation
+    // (pure decide() + DB persistence). Self-contained module (std only).
+    const outbox_gate_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/outbox/gate.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_outbox_gate_tests = b.addRunArtifact(outbox_gate_tests);
+    const test_outbox_gate_step = b.step("test-outbox-gate", "Run OBP-04 outbox gate module unit tests (no DB)");
+    test_outbox_gate_step.dependOn(&run_outbox_gate_tests.step);
+    test_step.dependOn(&run_outbox_gate_tests.step);
+
+    // ORD-03: src/ordering/sweeper.zig — 60 s gap sweeper (dead-letters stalled
+    // correlations as one unit). Unit-test root compiles the module; the DB
+    // path is exercised by the integration suite (TEST-DESIGNER, step 2b).
+    const ordering_sweeper_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ordering/sweeper.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "ordering_mod", .module = ordering_mod },
+            },
+        }),
+    });
+    const run_ordering_sweeper_tests = b.addRunArtifact(ordering_sweeper_tests);
+    const test_ordering_sweeper_step = b.step("test-ordering-sweeper", "Run ORD-03 gap sweeper module compile/unit tests (no DB)");
+    test_ordering_sweeper_step.dependOn(&run_ordering_sweeper_tests.step);
+    test_step.dependOn(&run_ordering_sweeper_tests.step);
+
+    // VLD-04: src/validation/gate.zig — the validation gate wrapping the pure
+    // VLD-01/02/03 pipeline (verdict storage + events + compiler-version rule).
+    const validation_gate_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/validation/gate.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_root_mod },
+                .{ .name = "graph", .module = graph_mod },
+                .{ .name = "validation", .module = validation_mod },
+            },
+        }),
+    });
+    const run_validation_gate_tests = b.addRunArtifact(validation_gate_tests);
+    const test_validation_gate_step = b.step("test-validation-gate", "Run VLD-04 validation gate module unit tests (no DB)");
+    test_validation_gate_step.dependOn(&run_validation_gate_tests.step);
+    test_step.dependOn(&run_validation_gate_tests.step);
+
+    // DDL-04 / OBP-04 / VLD-04 migration integration tests (Lego Type C codegen
+    // output) — real PostgreSQL, wired exactly like the other solo suites.
+    const ddl04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/ddl04_plat_migration_state_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_ddl04_integration_tests = addIntegrationRun(b, ddl04_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_ddl04_step = b.step("test-integration-ddl04", "Run ddl04_plat_migration_state_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_ddl04_step.dependOn(&clean_test_db.step);
+    test_integration_ddl04_step.dependOn(&run_ddl04_integration_tests.step);
+    test_integration_others_step.dependOn(&run_ddl04_integration_tests.step);
+
+    const obp04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp04_plat_outbox_gate_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_obp04_integration_tests = addIntegrationRun(b, obp04_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp04_step = b.step("test-integration-obp04", "Run obp04_plat_outbox_gate_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_obp04_step.dependOn(&clean_test_db.step);
+    test_integration_obp04_step.dependOn(&run_obp04_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp04_integration_tests.step);
+
+    const vld04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/vld04_definition_semantic_verdict_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_vld04_integration_tests = addIntegrationRun(b, vld04_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_vld04_step = b.step("test-integration-vld04", "Run vld04_definition_semantic_verdict_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_vld04_step.dependOn(&clean_test_db.step);
+    test_integration_vld04_step.dependOn(&run_vld04_integration_tests.step);
+    test_integration_others_step.dependOn(&run_vld04_integration_tests.step);
+
     // ISS-0637 / GH-619: narrow step for EXT-02 webhook dispatch + audit
     // tests only, so TC-EXT-02-INT-08 (and siblings) can be iterated on
     // without paying for the full ~40-binary test-integration umbrella.

@@ -1,0 +1,51 @@
+{
+  "handoff_id": "6990badc-0478-490a-9f05-b572df501b27",
+  "run_id": "WF02-batch-7-20260816",
+  "workflow_id": "WF-02",
+  "step": "00a",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-batch-7-20260816/step-00a-test-runner.json",
+  "created_at": "2026-08-16T17:01:47Z",
+  "started_at": "2026-08-16T17:17:14Z",
+  "completed_at": "2026-08-16T17:22:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-04",
+      "OBP-04",
+      "ORD-03",
+      "VLD-04"
+    ],
+    "related_handoff_ids": [
+      "00fade61-b49f-4132-b06d-b4ab356872b8"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Green-Main Gate: run the test suite against current main (HEAD) BEFORE any WF-02 implementation starts for batch 7 (DDL-04, OBP-04, ORD-03, VLD-04). ORCH has already confirmed zig build test-env-verify is HEALTHY (10/10 exit 0). Run zig build test (full unit suite). For integration coverage, run the targeted steps from the prior released batches whose module families this batch extends: DDL family (test-ddl-namespace, test-ddl-validate), ORD family (test-ordering, test-integration-ordering, test-integration-ord01, test-integration-ord04), VLD family (test-integration-vld-unit, test-integration-vld-http). Do NOT run the full test-integration umbrella (documented capacity issue, ISS-0665/GH-702, still open). Set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test and BPM_DB_URL=postgres://bpm:bpm@localhost:5452/bpm_dev explicitly before running.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "all targeted prior-batch steps exit 0",
+      "Exact pass/fail counts reported for each command",
+      "Report written to tests/reports/report-20260816-WF02-batch-7-20260816-step-00a.yaml"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Green-Main Gate PASS: unit suite exit 0 (1145/1209 passed, 64 skipped, 0 failed) and all 8 targeted prior-batch steps exit 0 (DDL 10+28, ORD 4+10+3+4, VLD 14+5). No failures. Full test-integration umbrella skipped per ISS-0665/GH-702.",
+    "artifacts_out": [
+      "tests/reports/report-20260816-WF02-batch-7-20260816-step-00a.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to ORCH \u2014 Green-Main Gate PASS, proceed to WF-02 Step 00 (git-setup) for batch 7"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

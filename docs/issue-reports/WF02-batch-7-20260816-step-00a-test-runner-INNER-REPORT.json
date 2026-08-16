@@ -1,0 +1,68 @@
+{
+  "report_id": "WF02-batch-7-20260816-step-00a-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-batch-7-20260816",
+  "step": "00a",
+  "created_at": "2026-08-16T17:22:56Z",
+  "summary": "Green-Main Gate (WF-02 Step 00a) for batch 7 (DDL-04, OBP-04, ORD-03, VLD-04). Ran against current main (feature branch in sync with origin/main; no source diff). Pre-checks passed: zig build test-env-verify HEALTHY 10/10 (exit 0), backend KC_OK/DB_OK. zig build test: exit 0, 107/107 steps succeeded, 1145/1209 passed (64 skipped, 0 failed). Targeted prior-batch steps all exit 0: test-ddl-namespace 10/10, test-ddl-validate 28/28, test-ordering 4/4, test-integration-ordering 10/10, test-integration-ord01 3/3, test-integration-ord04 4/4, test-integration-vld-unit 14/14, test-integration-vld-http 5/5. Full test-integration umbrella intentionally NOT run (ISS-0665 / GH-702 still open). No failures found. Report written to tests/reports/report-20260816-WF02-batch-7-20260816-step-00a.yaml.",
+  "files_created": [
+    "tests/reports/report-20260816-WF02-batch-7-20260816-step-00a.yaml",
+    "docs/issue-reports/WF02-batch-7-20260816-step-00a-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-batch-7-20260816/step-00a-test-runner.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "1145/1209 passed, 64 skipped, 0 failed, exit 0"
+    },
+    {
+      "name": "test-ddl-namespace",
+      "status": "pass",
+      "detail": "10/10 passed, exit 0"
+    },
+    {
+      "name": "test-ddl-validate",
+      "status": "pass",
+      "detail": "28/28 passed, exit 0"
+    },
+    {
+      "name": "test-ordering",
+      "status": "pass",
+      "detail": "4/4 passed, exit 0"
+    },
+    {
+      "name": "test-integration-ordering",
+      "status": "pass",
+      "detail": "10/10 passed, exit 0"
+    },
+    {
+      "name": "test-integration-ord01",
+      "status": "pass",
+      "detail": "3/3 passed, exit 0"
+    },
+    {
+      "name": "test-integration-ord04",
+      "status": "pass",
+      "detail": "4/4 passed, exit 0"
+    },
+    {
+      "name": "test-integration-vld-unit",
+      "status": "pass",
+      "detail": "14/14 passed, exit 0"
+    },
+    {
+      "name": "test-integration-vld-http",
+      "status": "pass",
+      "detail": "5/5 passed, exit 0"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Green-Main Gate PASS \u2014 ORCH may proceed to WF-02 Step 00 (git-setup) for batch 7."
+  ],
+  "blockers": []
+}

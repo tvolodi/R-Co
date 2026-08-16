@@ -134,3 +134,60 @@ pub fn readOrInitCursor(
     const raw = reread.rows[0][0] orelse return error.PersistenceFailed;
     return std.fmt.parseInt(i64, raw, 10) catch error.PersistenceFailed;
 }
+
+/// ORD-03's conditional cursor advance (process step 6 / the ORD-03 body):
+///   UPDATE plat_correlation_cursor SET applied_seq = $2
+///   WHERE correlation_id = $1 AND applied_seq = $2 - 1
+/// Returns the number of rows updated (0 or 1). A 0 result is CursorRaceLost —
+/// another transaction advanced the cursor; the caller rolls back and re-claims
+/// (ORD-03 AC3). MUST be called on the SAME connection/transaction that holds
+/// ORD-02's per-correlation advisory lock, so applied_seq cannot move between
+/// the read and the advance.
+pub fn advanceCursor(
+    allocator: std.mem.Allocator,
+    conn: anytype,
+    correlation_id: []const u8,
+    new_applied_seq: i64,
+) mod.OrderingError!u64 {
+    const new_seq_text = std.fmt.allocPrint(allocator, "{d}", .{new_applied_seq}) catch return error.OutOfMemory;
+    defer allocator.free(new_seq_text);
+    const prev_seq_text = std.fmt.allocPrint(allocator, "{d}", .{new_applied_seq - 1}) catch return error.OutOfMemory;
+    defer allocator.free(prev_seq_text);
+
+    const result = conn.query(
+        allocator,
+        \\UPDATE plat_correlation_cursor
+        \\SET applied_seq = $2, updated_at = now()
+        \\WHERE correlation_id = $1 AND applied_seq = $3
+        \\RETURNING applied_seq::text
+    ,
+        &.{ correlation_id, new_seq_text, prev_seq_text },
+    ) catch return error.PersistenceFailed;
+    const rows_updated = result.rows.len;
+    defer {
+        var r = result;
+        r.deinit();
+    }
+    return rows_updated;
+}
+
+/// ORD-03 AC6: Effects Worker completion insert discipline — a retried insert
+/// of the same (correlation_id, sequence_no) is absorbed by ON CONFLICT DO
+/// NOTHING (the UNIQUE constraint is from ORD-01 migration 1145), so no second
+/// apply can occur. The row starts PENDING for the consumer claim loop.
+pub fn recordCompletion(
+    allocator: std.mem.Allocator,
+    conn: anytype,
+    correlation_id: []const u8,
+    sequence_no: i64,
+) mod.OrderingError!void {
+    const seq_text = std.fmt.allocPrint(allocator, "{d}", .{sequence_no}) catch return error.OutOfMemory;
+    defer allocator.free(seq_text);
+    conn.exec(
+        \\INSERT INTO plat_effect_completion (correlation_id, sequence_no, status, payload, received_at)
+        \\VALUES ($1, $2, 'PENDING', '{}'::jsonb, now())
+        \\ON CONFLICT (correlation_id, sequence_no) DO NOTHING
+    ,
+        &.{ correlation_id, seq_text },
+    ) catch return error.PersistenceFailed;
+}
