@@ -1839,3 +1839,4 @@
 2026-08-16T07:59:39Z | ROUTE | WF-03 | wf03-gh803-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
 2026-08-16T08:06:34Z | ROUTE | WF-03 | wf03-gh803-20260816-2b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
 2026-08-16T08:09:15Z | COMPLETE | WF03-GH803-20260816 | wf03-gh8 | CODE-DESIGN-VALIDATOR | Step 2b design validation (hard gate) result.status=PASS: src/design/iss0712-gh803-rollback-supersede-fix.md validated, 14/14 checks PASS, lint_design_artefact exit 0, lint_handoffs exit 0 -> route to BACKEND-DEV (Step 3)
+2026-08-16T08:11:04Z | ROUTE | WF-03 | wf03-gh803-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING

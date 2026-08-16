@@ -1,0 +1,58 @@
+{
+  "handoff_id": "wf03-gh803-20260816-03-backend-dev",
+  "run_id": "WF03-GH803-20260816",
+  "workflow_id": "WF-03",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH803-20260816/step-03-backend-dev.json",
+  "created_at": "2026-08-16T08:11:04Z",
+  "started_at": "2026-08-16T08:11:23Z",
+  "completed_at": "2026-08-16T08:19:02Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 3 -- implement fix (PRODUCTION code)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
+    "iss_id": "ISS-0712",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh803-20260816-02-code-designer",
+      "wf03-gh803-20260816-2b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/iss0712-gh803-rollback-supersede-fix.md",
+      "docs/issues/ISS-0712.json",
+      "src/definition/rollback.zig",
+      "src/event_store/store.zig"
+    ],
+    "branch_name": "feature/WF03-GH803-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 3 for ISS-0712 / GH-803: implement the PRODUCTION fix per the validated design at src/design/iss0712-gh803-rollback-supersede-fix.md (no migrations, no test-file changes). Single target file src/definition/rollback.zig: (a) line ~290 change `AND def_id = $3::uuid` to `AND def_id = $3` (def_id column is TEXT; current_active_id is a uuid string bound as text \u2014 text = text; superseded_by = $1::uuid and tenant_id = $2::uuid stay); (b) line ~295 replace the bare `catch null` with a catch that copies conn.lastSqlState() into a local buffer, tolerates only SQLSTATE 42P01 (genuinely missing table) as null, and maps all other errors via switch (ExhaustedPool -> RollbackError.PoolExhausted, else -> RollbackError.TransactionFailed), mirroring the PAR-01 pattern in src/event_store/store.zig. Verify: zig build exits 0; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (direct, NOT the stale-5433 wrapper) \u2014 EXPECTATION: now 4/4 green (GH-802 fixture and GH-804 seed are merged on main) with NO sqlstate=42883 in stderr. Also run python tools/lint_handoffs.py.",
+    "acceptance_criteria": [
+      "Change A applied: def_id = $3 (no ::uuid cast) in the supersede UPDATE",
+      "Change B applied: catch distinguishes SQLSTATE 42P01 (null) from other errors (RollbackError mapping), mirroring PAR-01",
+      "No migrations and no test files modified",
+      "zig build exits 0",
+      "test-integration-prm08 exits 0 with 4/4 passing and no sqlstate=42883 in stderr",
+      "python tools/lint_handoffs.py exits 0",
+      "Work on branch feature/WF03-GH803-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented production fix for ISS-0712/GH-803 in src/definition/rollback.zig: dropped ::uuid cast on def_id=$3 (TEXT) in Step 5 supersede UPDATE and replaced bare catch null with a 42P01-distinguishing catch (lastSqlState copy) mapping other errors to RollbackError (PoolExhausted/TransactionFailed) per validated design. zig build 0, unit tests 0, test-integration-prm08 4/4 green (TC-PRM-08-03 supersede now passes) with no sqlstate=42883. Commit 2b46a19c pushed.",
+    "artifacts_out": [
+      "src/definition/rollback.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER / next step in WF-03 for GH-803"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
