@@ -76,7 +76,8 @@ pub const Finding = struct {
     /// `expression_path == "/"` is rejected by the site walker.
     expression_path: []const u8,
     /// Literal CEL source slice that produced the finding. For `EmptyExpression`
-    /// this is `""` (preserved verbatim per VLD-03 AC2).
+    /// the verbatim empty/whitespace source is preserved (e.g. `"   "`) per
+    /// VLD-03 AC2 — the finding carries the exact source, never a normalised `""`.
     source: []const u8,
     /// Closed enum — see `ErrorKind` docstring.
     error_kind: ErrorKind,
@@ -159,26 +160,24 @@ pub fn editDistance(a: []const u8, b: []const u8) usize {
 
     const alloc_prev: []usize = if (min_dim + 1 <= 256)
         prev[0 .. min_dim + 1]
-    else
-        blk: {
-            const slice = std.heap.page_allocator.alloc(usize, min_dim + 1) catch return max_dim;
-            prev_heap = slice;
-            break :blk slice;
-        };
+    else blk: {
+        const slice = std.heap.page_allocator.alloc(usize, min_dim + 1) catch return max_dim;
+        prev_heap = slice;
+        break :blk slice;
+    };
     const alloc_curr: []usize = if (min_dim + 1 <= 256)
         curr[0 .. min_dim + 1]
-    else
-        blk: {
-            const slice = std.heap.page_allocator.alloc(usize, min_dim + 1) catch return max_dim;
-            curr_heap = slice;
-            break :blk slice;
-        };
+    else blk: {
+        const slice = std.heap.page_allocator.alloc(usize, min_dim + 1) catch return max_dim;
+        curr_heap = slice;
+        break :blk slice;
+    };
 
     // Determine the short string (length min_dim) and long string (length max_dim).
     const short_str: []const u8 = if (a.len <= b.len) a else b;
     const long_str: []const u8 = if (a.len <= b.len) b else a;
 
-    for (alloc_prev[0..min_dim + 1], 0..) |*cell, i| cell.* = i;
+    for (alloc_prev[0 .. min_dim + 1], 0..) |*cell, i| cell.* = i;
 
     for (long_str, 1..) |lc, i| {
         alloc_curr[0] = i;

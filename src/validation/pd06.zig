@@ -60,11 +60,20 @@ pub fn freePd06Diagnostics(allocator: std.mem.Allocator, items: []Pd06Diagnostic
     allocator.free(items);
 }
 
+/// Extract the first single-quoted token from a violation message — the edge
+/// id, e.g. `'e2'` in "Edge 'e2' leaves EXCLUSIVE_GATEWAY 'gw' ...". Returns
+/// null when the message carries no single-quoted token.
+fn firstQuotedToken(message: []const u8) ?[]const u8 {
+    const start = std.mem.indexOfScalar(u8, message, '\'') orelse return null;
+    const end = std.mem.indexOfScalarPos(u8, message, start + 1, '\'') orelse return null;
+    return message[start + 1 .. end];
+}
+
 // ---------------------------------------------------------------------------
 // runSyntaxCheck — aggregate PD-06 across graph + every site
 // ---------------------------------------------------------------------------
 
-pub const Pd06Error = error{ OutOfMemory };
+pub const Pd06Error = error{OutOfMemory};
 
 /// Run PD-06 syntax check against:
 ///   1. The graph-level edge conditions and edge transforms (existing
@@ -95,7 +104,30 @@ pub fn runSyntaxCheck(
         for (cond.violations) |v| allocator.free(v.message);
         allocator.free(cond.violations);
     }
+    // ISS-0709 R9: defer present empty/whitespace edge conditions to VLD-02
+    // AC5. The set S holds every edge id whose condition is PRESENT
+    // (`condition != null`) and empty-or-whitespace. Graph-level structural
+    // violations (EDGE_MISSING_CONDITION / EDGE_INVALID_CEL) for those edges
+    // are skipped so the per-site semantic loop can emit an EmptyExpression
+    // finding; `condition == null` edges still fire EDGE_MISSING_CONDITION (a
+    // null condition enumerates no site, so only the structural gate can
+    // signal it).
+    var deferred_edges = std.StringHashMap(void).init(allocator);
+    defer deferred_edges.deinit();
+    for (graph.edges) |e| {
+        if (e.condition != null and site_mod.isEmptyOrWhitespace(e.condition.?)) {
+            try deferred_edges.put(e.id, {});
+        }
+    }
     for (cond.violations) |v| {
+        const is_edge_cond_violation =
+            std.mem.eql(u8, v.code, "EDGE_MISSING_CONDITION") or
+            std.mem.eql(u8, v.code, "EDGE_INVALID_CEL");
+        if (is_edge_cond_violation) {
+            if (firstQuotedToken(v.message)) |edge_id| {
+                if (deferred_edges.contains(edge_id)) continue;
+            }
+        }
         try diagnostics.append(allocator, .{
             .code = v.code,
             .message = try allocator.dupe(u8, v.message),
@@ -177,13 +209,13 @@ test "runSyntaxCheck: clean graph + empty sites -> no diagnostics" {
 
     const sites = try site_mod.enumerateSites(alloc, DefinitionGraph{
         .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
-        .edges = &[_]graph_mod.GraphEdge{ e1 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
     });
     defer site_mod.freeSites(alloc, sites);
 
     const diag = try runSyntaxCheck(alloc, DefinitionGraph{
         .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
-        .edges = &[_]graph_mod.GraphEdge{ e1 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
     }, sites);
     defer freePd06Diagnostics(alloc, diag);
     try std.testing.expectEqual(@as(usize, 0), diag.len);
@@ -198,13 +230,13 @@ test "runSyntaxCheck: malformed per-site expression -> CEL_SYNTAX_INVALID diagno
 
     const sites = try site_mod.enumerateSites(alloc, DefinitionGraph{
         .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
-        .edges = &[_]graph_mod.GraphEdge{ e1 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
     });
     defer site_mod.freeSites(alloc, sites);
 
     const diag = try runSyntaxCheck(alloc, DefinitionGraph{
         .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
-        .edges = &[_]graph_mod.GraphEdge{ e1 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
     }, sites);
     defer freePd06Diagnostics(alloc, diag);
 
@@ -229,13 +261,13 @@ test "runSyntaxCheck: empty source skipped (VLD-02 AC5 handles those downstream)
 
     const sites = try site_mod.enumerateSites(alloc, DefinitionGraph{
         .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
-        .edges = &[_]graph_mod.GraphEdge{ e1 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
     });
     defer site_mod.freeSites(alloc, sites);
 
     const diag = try runSyntaxCheck(alloc, DefinitionGraph{
         .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
-        .edges = &[_]graph_mod.GraphEdge{ e1 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
     }, sites);
     defer freePd06Diagnostics(alloc, diag);
 

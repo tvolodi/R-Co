@@ -173,8 +173,13 @@ pub fn envForSite(
             .variable_schema => true,
             .service_result, .module_output => blk: {
                 const src = e.source_node_id orelse break :blk false;
-                const reachable = reachableFrom(reach, src) orelse return TypedEnv{ .entries = &.{} };
-                const walker_idx = indexOf(reach.node_order, site_walking_node_id) orelse return TypedEnv{ .entries = &.{} };
+                // ISS-0709 R6: a per-entry scope-filter miss is a SKIP, never
+                // a whole-site bail-out. An absent producer (producer node not
+                // in the graph) or an absent walker node contributes nothing
+                // for THIS entry only — the rest of the per-site env stays
+                // intact (int_vld_01_04: variable_schema rows remain visible).
+                const reachable = reachableFrom(reach, src) orelse break :blk false;
+                const walker_idx = indexOf(reach.node_order, site_walking_node_id) orelse break :blk false;
                 for (reachable) |r| {
                     if (r == walker_idx) break :blk true;
                 }
@@ -239,7 +244,7 @@ test "envForSite: variable_schema entries are globally visible" {
     const e1 = GraphEdge{ .id = "e1", .source = "a", .target = "b" };
     const r = try computeReachability(alloc, DefinitionGraph{
         .nodes = &[_]GraphNode{ n1, n2 },
-        .edges = &[_]GraphEdge{ e1 },
+        .edges = &[_]GraphEdge{e1},
     });
     defer r.deinit(alloc);
 
@@ -269,7 +274,7 @@ test "envForSite: service_result entry visible only on downstream nodes" {
     const e1 = GraphEdge{ .id = "e1", .source = "svc", .target = "next" };
     const r = try computeReachability(alloc, DefinitionGraph{
         .nodes = &[_]GraphNode{ n1, n2, n3 },
-        .edges = &[_]GraphEdge{ e1 },
+        .edges = &[_]GraphEdge{e1},
     });
     defer r.deinit(alloc);
 

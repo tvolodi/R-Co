@@ -291,8 +291,10 @@ fn emitEmptyExpression(
     errdefer allocator.free(node_dup);
     const path_dup = try allocator.dupe(u8, site.expression_path);
     errdefer allocator.free(path_dup);
-    // source is empty literal "" per VLD-03 AC2 contract.
-    const source_dup = try allocator.dupe(u8, "");
+    // ISS-0709 R8: preserve the site's verbatim source per VLD-03 AC2 — an
+    // EmptyExpression finding carries the exact empty/whitespace string
+    // (e.g. "   "), never a normalised "".
+    const source_dup = try allocator.dupe(u8, site.source);
     errdefer allocator.free(source_dup);
 
     try diagnostics.append(allocator, .{
