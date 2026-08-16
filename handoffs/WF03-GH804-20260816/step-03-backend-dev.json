@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-GH804-20260816/step-03-backend-dev.json",
   "created_at": "2026-08-16T07:28:31Z",
   "started_at": "2026-08-16T07:28:49Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-08-16T07:31:28Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "Step 3 -- implement fix",
@@ -42,7 +42,19 @@
       "fn:complete-handoff"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 3 implementation (GH-804/ISS-0713) COMPLETED. Applied the TC-PRM-08-03 fixture seed fix, test-code ONLY, in tests/integration/prm-08-rollback-sandbox.test.zig exactly per the validated design src/design/iss0713-gh804-prm08-seed-fix.md: (1) insertPromotionReviewsRow gained a 5th param def_id: []const u8; the hardcoded zero-UUID def_id literal became $4::text (def_id column is TEXT); params array extended to {review_id, tenant_id, requested_by, def_id}. (2) The single call site (line 472, TC-PRM-08-03 AC4 path) now seeds insertPromotionReviewsRow(&pool, DEFAULT_TENANT_ID, review_id, requested_by, def_id_v2), so the fixture row matches the production supersede predicate (tenant_id=DEFAULT_TENANT_ID AND def_id=current_active_id=def_id_v2). NO production code (src/definition/rollback.zig = GH-803/ISS-0712, separate run) and NO migrations modified; the GH-802 requested_by fix was retained untouched. Verified: zig build exit 0 with no 'error set' output in stderr; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (run DIRECTLY, NOT the stale-5433 .vscode wrapper) -> 3 pass, 1 fail. The seed is now CORRECT: the promotion_reviews INSERT succeeds (row seeded with tenant_id=DEFAULT_TENANT_ID and def_id=def_id_v2, verified in source diff + run; no 23502/seed error) and rollback reaches Step 5. The sole residual TC-PRM-08-03 failure is sqlstate 42883 on the PRODUCTION supersede UPDATE (def_id = $3::uuid vs TEXT column, operator does not exist), swallowed by catch null so the row stays 'approved' - this is the GH-803/ISS-0712 production cast bug, OUT OF SCOPE for GH-804 (documented, not fixed). Committed ca059c03 on feature/WF03-GH804-20260816 and pushed. Completion chain: fn:validate-completeness (6/6 MET) -> fn:register-inner-report -> fn:complete-handoff; python tools/lint_handoffs.py exit 0 (hard gate).",
+    "artifacts_out": [
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "docs/issue-reports/WF03-GH804-20260816-step-03-backend-dev-INNER-REPORT.json"
+    ],
+    "issues": [
+      "GH-803 / ISS-0712 residual (OUT OF SCOPE for GH-804): production src/definition/rollback.zig Step 5 supersede UPDATE uses def_id = $3::uuid against TEXT column promotion_reviews.def_id -> sqlstate 42883 (swallowed by catch null), so superseded_review_id stays null and the seeded row remains 'approved'. GH-804 (fixture seed) alone yields 3 pass, 1 fail; full 4/4 green requires GH-803 (production cast fix).",
+      "MINOR (optional hardening, not an AC): seed a second promotion_reviews row with a non-matching def_id (e.g. def_id_v1) and assert it remains 'approved' to prove supersede predicate selectivity."
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 4) for the test-execution verdict on test-integration-prm08, with the residual TC-PRM-08-03 42883 failure attributed to GH-803 (out of scope for GH-804)."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
