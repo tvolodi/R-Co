@@ -1,0 +1,68 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-05-unblock-backend-dev",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "05-unblock",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-spt02-04-20260816/step-05-unblock-backend-dev.json",
+  "created_at": "2026-08-16T20:14:48Z",
+  "started_at": "2026-08-16T20:15:07Z",
+  "completed_at": "2026-08-16T20:37:15Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-05-release-validator",
+      "WF02-spt02-04-20260816-02a-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/status/release-decision-WF02-spt02-04-20260816.yaml",
+      "migrations/062_remove_tenant_id_rls_from_public.sql",
+      "migrations/052_*.sql",
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-05-release-validator-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "RELEASE-VALIDATOR Step 5 BLOCKED the release: zig build bench exits 1 — its migrate precondition against bpm_dev (BPM_DB_URL:5442) aborts at migration 062: 'cannot drop column tenant_id of table artifact_activations because other objects depend on it — view v_active_configs depends on column tenant_id'. Root cause (branch-attributable, fresh-DB-reproducible): migration 052 creates v_active_configs depending on artifact_activations.tenant_id; 062 (order 62) runs before GBL-123 (order 1123) which removes the column, so DROP COLUMN fails on the dev DB. The Step-4 gate passed only because bpm_test had GBL-123 applied already. All 16 ACs verified met; the ONLY release blocker is this bench/migrate defect. Fix owner per RELEASE-VALIDATOR: BACKEND-DEV for 062."
+  },
+  "task": {
+    "description": "Fix the migration 062 view-dependency defect that blocks zig build bench (release blocker, WF-02 Step 5) for run WF02-spt02-04-20260816. Migration 062 drops tenant_id from artifact_activations (and other Class B tables) but view v_active_configs (created by migration 052) depends on artifact_activations.tenant_id, so DROP COLUMN fails on a fresh DB where GBL-123 hasn't run yet (bpm_dev:5442). Fix: in migration 062, DROP the dependent view(s) (v_active_configs and any other view depending on dropped tenant_id columns) before DROP COLUMN, then RECREATE them after — preserving their original definition semantics (or, if the view legitimately referenced tenant_id, recreate it referencing the tenant schema's column per the SPT design). Verify: (1) zig build bench exits 0 and emits NFR_RESULT metrics against bpm_dev (fresh-DB path); (2) zig build migrate applies 062/063 cleanly on bpm_test AND bpm_dev; (3) test-integration-spt still 16/16; (4) zig build exits 0. Do NOT add the regression test — TEST-DESIGNER (Step 5 follow-up) will add view-dependency regression coverage. Run python tools/lint_handoffs.py and report its exit code.",
+    "acceptance_criteria": [
+      "Migration 062 drops/recreates dependent views around DROP COLUMN (v_active_configs + any other dependents)",
+      "zig build bench exits 0 with NFR_RESULT metrics on bpm_dev (fresh-DB path)",
+      "zig build migrate applies cleanly on bpm_test and bpm_dev",
+      "test-integration-spt still 16/16 PASS",
+      "zig build exits 0",
+      "lint_handoffs.py exit code reported"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed migration 062 view-dependency release blocker (WF-02 Step 5): 062 now drops every public view depending on a Class-B tenant_id column (v_active_configs from 052 + any view stacked on it) BEFORE the DROP COLUMN and recreates them AFTER with original definition semantics minus the removed tenant_id projection (tenant-schema copies untouched). Class-B discovery hardened to base tables only (relkind='r'). Verified: zig build 0 (no error-set); zig build migrate 0 on bpm_test AND bpm_dev (bpm_dev applied 062/063/1163 cleanly over the exact failing state); zig build bench 0 on bpm_dev emitting all 5 NFR_RESULT lines passed=true (overall_passed=true); test-integration-spt 16/16; lint_migration_schema 0; lint_handoffs 0.",
+    "artifacts_out": [
+      "migrations/062_remove_tenant_id_rls_from_public.sql",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-05-backend-dev-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Secondary defect found and fixed in-run: the first draft of the Class-B discovery populated _spt_class_b from information_schema.columns, which also lists VIEW columns, so v_active_configs itself polluted the set and the DROP COLUMN loop emitted two cosmetic 'relation v_active_configs does not exist' NOTICEs. Hardened both discovery blocks to join pg_class and require relkind='r' (base tables only); verified the NOTICEs are gone."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (add view-dependency regression coverage, e.g. TC-SPT-02-07) then re-run Step 4 gate and re-dispatch RELEASE-VALIDATOR"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
