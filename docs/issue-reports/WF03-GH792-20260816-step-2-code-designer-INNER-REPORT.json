@@ -1,0 +1,52 @@
+{
+  "report_id": "WF03-GH792-20260816-step-2-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-GH792-20260816",
+  "step": "2",
+  "created_at": "2026-08-16T09:14:11Z",
+  "summary": "WF-03 Step 2 design artefact for GH-792/ISS-0707 (prm-09 pack-update 42703). Produced Type E prose design at src/design/iss0707-gh792-prm09-public-qualify-fix.md covering the public. schema-qualification fix in BOTH the integration test (tests/integration/prm-09-pack-update.test.zig lines 98/119/128/164) and the PRODUCTION SUT (src/definition/pack_update.zig lines 117/179) per the Step 1 fix spec. Documented why qualification is correct (migration 1157 is public-scoped with public.-qualified DDL; migration 1158 creates the tenant_default SOL-02 shadow), why process_definitions stays unqualified (tenant-side, no public copy), the blast radius (verified by grep: pack_update.computePackUpdatePlan has NO production callers — only the bpm.zig re-export and the test file; src/solution/store.zig + sol02/sol03 tests target the TENANT-side 1158 table and MUST stay unqualified — fix touches exactly two files), the error taxonomy, and the verification plan (static qualification check as the authoritative proof because the warm :5453 DB masks the bug; zig build test-integration-prm09 4/4; fresh-migration replay to prove the fix; sol02/sol03 collateral check). Design linter tools/lint_design_artefact.py: BLOCKER=0 MAJOR=0 MINOR=15 (all MINOR E030 schema-qualified-name flags, inherent to the topic), exit 0. No implementation code written (Step 3 is BACKEND-DEV).",
+  "files_created": [
+    "src/design/iss0707-gh792-prm09-public-qualify-fix.md"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH792-20260816/step-02-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "python tools/lint_design_artefact.py src/design/iss0707-gh792-prm09-public-qualify-fix.md",
+      "status": "pass",
+      "detail": "BLOCKER=0 MAJOR=0 MINOR=15, exit 0. All 15 MINOR are E030 schema-qualified-name flags — expected and acceptable for a schema-qualification design (BLOCKER=0 MAJOR=0 meets the acceptance criterion)."
+    },
+    {
+      "name": "grep blast-radius audit (solution_pack_installs / solution_pack_artefact_bases / process_definitions across src/**/*.zig and tests/integration/*.zig)",
+      "status": "pass",
+      "detail": "Confirmed the only files needing public. qualification are prm-09-pack-update.test.zig (L98/L119/L128/L164) and src/definition/pack_update.zig (L117/L179). src/solution/store.zig (L324/L347) and sol02_install_test.zig / sol03_role_gate_test.zig target the tenant-side 1158 table and must remain unqualified. computePackUpdatePlan has no production callers (only bpm.zig:138 re-export)."
+    },
+    {
+      "name": "build.zig verification target lookup",
+      "status": "pass",
+      "detail": "build.zig:3164 defines the step 'test-integration-prm09'; the issue-cited 'test-integration-prm-09' does not exist. Recorded in the verification plan."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "lint_design_artefact.py reports 15 E030 MINOR (schema-qualified names) — inherent to a design whose subject is public. schema qualification; no BLOCKER/MAJOR, exit 0."
+    },
+    {
+      "severity": "MINOR",
+      "description": "pack_update.zig:102-105 doc comment currently asserts the public tables are 'found via search_path fallback'; design flags that Step 3 (BACKEND-DEV) must update the comment to reflect explicit public. qualification."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Dual-schema shadow (tenant_default.solution_pack_installs vs public.solution_pack_installs) remains after this fix; systemic remediation tracked separately (anti-patterns / ISS-0185). Out of scope for GH-792."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (WF-03 Step 1b) to review the design artefact before implementation.",
+    "Then BACKEND-DEV (WF-03 Step 3): implement the fix per the design — qualify solution_pack_installs -> public.solution_pack_installs at test lines 98/119/164 and pack_update.zig line 117; solution_pack_artefact_bases -> public.solution_pack_artefact_bases at test line 128 and pack_update.zig line 179; LEAVE process_definitions unqualified (test lines 145/160, pack_update.zig line 235); update the pack_update.zig:102-105 comment. NO other files (store.zig, sol02/sol03 tests must stay unqualified).",
+    "Verify with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm09 (4/4). Warm DB masks the bug — the static qualification check is the authoritative proof; also run on a fresh-migration replay and re-run sol02_install_test / sol03_role_gate_test for collateral damage."
+  ],
+  "blockers": []
+}
