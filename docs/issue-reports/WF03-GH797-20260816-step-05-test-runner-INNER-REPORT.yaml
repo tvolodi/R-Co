@@ -1,0 +1,62 @@
+report_id: WF03-GH797-20260816-step-05-test-runner
+agent_id: TEST-RUNNER
+run_id: WF03-GH797-20260816
+step: "05"
+created_at: 2026-08-16T05:08:35Z
+summary: >-
+  Independently verified the docs-only ORCH dispatch-time staleness gate fix for
+  ISS-0710 / GH-797 on branch feature/WF03-GH797-20260816. All five acceptance checks
+  PASS: (a) lint_handoffs exit 0 (2927 handoffs, 0 BLOCKER, 0 MAJOR); (b) lint_agent_docs
+  exit 0 (41 files, 0 BLOCKER/MAJOR/MINOR) with the baseline update reflecting IMPROVED
+  similarity (orchestrator.agent.md 0.40->0.43, orchestrator.instructions.md 0.42->0.45)
+  not suppression; (c) the §8f heading and both DISPATCH_STALE log lines present verbatim
+  in all four surfaces (docs/agents/ORCHESTRATOR.md, .claude/agents/orchestrator.md,
+  .github/instructions/orchestrator.instructions.md, .github/agents/orchestrator.agent.md)
+  plus rule 7 verbatim in ORCHESTRATOR.md §5; (d) lint_design_artefact on
+  src/design/iss0710-gh797-dispatch-staleness-gate.md exit 0; (e) no production code or
+  migration files modified (run diff confined to docs, handoffs, issue-reports, the design
+  artefact, and the agent-docs baseline). Verification report written to
+  tests/reports/report-20260816-WF03-GH797-20260816.yaml. Verdict: PASS.
+
+files_created:
+  - tests/reports/report-20260816-WF03-GH797-20260816.yaml
+  - docs/issue-reports/WF03-GH797-20260816-step-05-test-runner-INNER-REPORT.yaml
+
+files_modified:
+  - handoffs/WF03-GH797-20260816/step-05-test-runner.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: python tools/lint_handoffs.py
+    status: pass
+    detail: "exit 0 — 2927 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010 residual), 332 ACKNOWLEDGED"
+  - name: python tools/lint_agent_docs.py
+    status: pass
+    detail: "exit 0 — 41 agent files checked, 0 BLOCKER, 0 MAJOR, 0 MINOR; 6 A007 findings baseline-suppressed (improved similarity 0.40->0.43 / 0.42->0.45, not suppression)"
+  - name: python tools/lint_design_artefact.py src/design/iss0710-gh797-dispatch-staleness-gate.md
+    status: pass
+    detail: "exit 0 — OK, 1 file checked, no issues (BLOCKER=0, MAJOR=0)"
+  - name: verbatim-surface-grep (§8f heading + DISPATCH_STALE CLEARED/BLOCKER in four surfaces)
+    status: pass
+    detail: "present in all four: ORCHESTRATOR.md (165/187/196), .claude/agents/orchestrator.md (569/590/599), .github/instructions/orchestrator.instructions.md (200/221/230), .github/agents/orchestrator.agent.md (159/180/189); rule 7 at ORCHESTRATOR.md §5 line 340"
+  - name: git diff --name-only <Step-00 base dac6353a>..HEAD -- src migrations
+    status: pass
+    detail: "only src/design/iss0710-gh797-dispatch-staleness-gate.md (design artefact) under src/; zero migrations/ files changed"
+
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md specifies inner reports as .json but core-directives.md
+      requires .yaml (authoritative). Pre-existing drift, re-flagged (same as Steps
+      1/2/2b/3 in this run); inner report written as .yaml.
+  - severity: MINOR
+    description: >-
+      lint_handoffs H010: pre-existing handoffs absent from registry (e.g.
+      ADHOC-prm-env-20260814, WF02-iss201) not from this run; lint_handoffs exits 0.
+      Re-flagged from Step 3.
+
+next_steps:
+  - Route to DOC-UPDATER (WF-03 Step 7) then Step Final (git-merge) per WF-03 pipeline; docs-only change so no TEST-DESIGNER/4b steps apply.
+
+blockers: []
