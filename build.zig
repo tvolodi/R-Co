@@ -812,6 +812,17 @@ pub fn build(b: *std.Build) void {
             // wasm_mod; a relative @import from bpm.zig would trip the
             // Single-Owner Module Rule. See the comment in src/bpm.zig.
             .{ .name = "wasm", .module = wasm_mod },
+            // WF02-vld01-03-20260816 (VLD-01/02/03): src/definition/store.zig
+            // (reachable via bpm.definition) does `@import("graph")` and
+            // src/api/routes/validation.zig (reachable via bpm.validation_routes)
+            // does `@import("graph")` + `@import("validation")`. All three must
+            // be supplied here or any integration binary that imports
+            // bpm_src_mod standalone fails to compile store.zig/validation.zig
+            // ("no module named 'graph' available within module 'bpm'"). Same
+            // single-owner rationale as the other named modules above.
+            .{ .name = "graph", .module = graph_mod },
+            .{ .name = "sub_process_interface", .module = sub_process_interface_mod },
+            .{ .name = "validation", .module = validation_mod },
         },
     });
 
@@ -1905,6 +1916,13 @@ pub fn build(b: *std.Build) void {
         .{ .name = "realm_provisioning", .module = realm_provisioning_mod },
         .{ .name = "realm_deletion", .module = realm_deletion_mod },
         .{ .name = "oidc_migration_helper", .module = oidc_migration_helper_mod },
+        // WF02-vld01-03-20260816 (VLD-01/02/03) REWORK 2: the two
+        // tests/integration/validation_vld_*.zig files reach the validator via
+        // `@import("validation")` — the same named module the route handler
+        // (src/api/routes/validation.zig) uses. Adding it here is the only
+        // integration_imports change those files need (they also import `bpm`
+        // and `env`, both already present above).
+        .{ .name = "validation", .module = validation_mod },
     };
 
     const integration_tests = b.addTest(.{
@@ -3497,6 +3515,39 @@ pub fn build(b: *std.Build) void {
     test_integration_exp401_exp402_step.dependOn(&clean_test_db.step);
     test_integration_exp401_exp402_step.dependOn(&run_exp401_exp402_integration_tests.step);
     test_integration_others_step.dependOn(&run_exp401_exp402_integration_tests.step);
+
+    // WF02-vld01-03-20260816 (VLD-01/02/03) REWORK 2: dedicated addTest roots
+    // + narrow steps for the two VLD validation test files (handler-direct
+    // unit-style path and HTTP-boundary path). Mirrors the exp401-exp402
+    // narrow-step pattern above. The umbrella `test-integration` runs them via
+    // the test_integration_others_step barrier (dependOn below).
+    const vld_unit_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/validation_vld_unit_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_vld_unit_integration_tests = addIntegrationRun(b, vld_unit_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_vld_unit_step = b.step("test-integration-vld-unit", "Run VLD-01/02/03 handler-direct validation integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_vld_unit_step.dependOn(&clean_test_db.step);
+    test_integration_vld_unit_step.dependOn(&run_vld_unit_integration_tests.step);
+    test_integration_others_step.dependOn(&run_vld_unit_integration_tests.step);
+
+    const vld_http_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/validation_vld_http_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_vld_http_integration_tests = addIntegrationRun(b, vld_http_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_vld_http_step = b.step("test-integration-vld-http", "Run VLD-03 HTTP-boundary (handler-direct) validation integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_vld_http_step.dependOn(&clean_test_db.step);
+    test_integration_vld_http_step.dependOn(&run_vld_http_integration_tests.step);
+    test_integration_others_step.dependOn(&run_vld_http_integration_tests.step);
 
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);

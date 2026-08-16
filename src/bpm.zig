@@ -141,6 +141,14 @@ pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities su
 pub const solution_pack_store = @import("solution/store.zig"); // SOL-01/02/03 solution pack
 pub const solution_pack_types = @import("solution/types.zig"); // SOL-01/02/03 types
 pub const solution_pack_routes = @import("api/routes/solution_packs.zig"); // SOL-01/02 HTTP handlers
+// WF02-vld01-03-20260816 (VLD-01/02/03) REWORK 1: VLD-03 HTTP-boundary
+// integration tests (tests/integration/validation_vld_http_test.zig) drive
+// the POST /api/v1/definitions/:id/validate handler directly. Exposing it
+// here as `validation_routes` lets the test reach `handleValidate` through
+// the existing bpm re-export shim — same pattern as `task_routes`,
+// `instance_routes`, `promotion_review_routes` etc. The route handler
+// itself lives in src/main.zig's tree (no separate named module needed).
+pub const validation_routes = @import("api/routes/validation.zig"); // VLD-03 HTTP handler
 
 // ISS-0147 / GH #463 — src/wasm subsystem (WASM-01..14, all RELEASED).
 //
