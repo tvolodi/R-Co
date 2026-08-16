@@ -33512,7 +33512,7 @@
       "step": "00",
       "created_at": "2026-08-16T16:24:59Z",
       "started_at": "2026-08-16T16:40:13Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "workflow_ref": "WF02-spt02-04-20260816",
       "requirements": [
         "SPT-02",
