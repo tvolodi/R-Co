@@ -1,0 +1,74 @@
+{
+  "handoff_id": "4dec6570-cfab-4895-bb00-722a070fdb26",
+  "run_id": "WF02-batch-7-20260816",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-batch-7-20260816/step-05-release-validator.json",
+  "created_at": "2026-08-16T20:14:37Z",
+  "started_at": "2026-08-16T20:14:56Z",
+  "completed_at": "2026-08-16T20:32:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-04",
+      "OBP-04",
+      "ORD-03",
+      "VLD-04"
+    ],
+    "related_handoff_ids": [
+      "ec1bf1f5-382e-4e22-ac37-8c4a0ecb769f"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260816-WF02-batch-7-20260816-step-04.yaml",
+      "src/design/ddl-04-idempotent-batched-backfill.md",
+      "src/design/obp-04-outbox-gate-hysteresis-escalation.md",
+      "src/design/ord-03-sequence-order-guard-gap-sweeping.md",
+      "src/design/vld-04-validation-gate-authoring-promotion.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml"
+    ],
+    "branch_name": "feature/WF02-batch-7-20260816"
+  },
+  "task": {
+    "description": "Release validation for WF-02 batch 7 (DDL-04, OBP-04, ORD-03, VLD-04) on branch feature/WF02-batch-7-20260816. TEST-RUNNER Step 04 returned PASS with all batch-7 suites green (obp04-gate 6/6, ord03 9/9, ddl04-backfill 6/6, vld04-gate 7/7, schema suites 5/5+6/6+5/5, ordering regression 10/10, unit 1155/1219). Verify each requirement meets ALL its MUST/SHOULD acceptance criteria, check NFRs (compilation bounded, no cross-tenant leakage), and produce a release decision. Determine whether each requirement (DDL-04 MUST, OBP-04 SHOULD, ORD-03 SHOULD, VLD-04 SHOULD) is RELEASE-READY. If NFR benchmarks are required, run them per fn:run-nfr-benchmarks. Write the release decision to docs/status/.",
+    "acceptance_criteria": [
+      "Release decision written to docs/status/ covering DDL-04, OBP-04, ORD-03, VLD-04",
+      "Every acceptance criterion of each requirement verified against test evidence",
+      "NFRs checked (no cross-tenant leakage; bounded compilation; no regression)",
+      "Result records which requirements are RELEASE-READY",
+      "Requirement status updated to the appropriate post-validation status via reqctl.py"
+    ],
+    "functions_to_call": [
+      "fn:run-nfr-benchmarks",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Release validation for WF-02 batch 7 (DDL-04, OBP-04, ORD-03, VLD-04) on feature/WF02-batch-7-20260816 (HEAD d7eafe12). Independently re-ran every batch-7 target live (obp04-gate 6/6, ord03 9/9, ddl04-backfill 6/6 incl REWORK-1-fixed AC5, vld04-gate 7/7 no segfault, schema ddl04 5/5 obp04 6/6 vld04 5/5, ordering regression 10/10, unit 1155/1219 with 64 baseline skips) plus zig build bench (NFR-01 read 1.003ms / write 3.170ms, NFR-02 46276.7 eps, NFR-04 replay 50.6ms / snapshot 5.9ms, overall_passed=true, exit 0). Decision PARTIAL: DDL-04 (MUST), OBP-04 (SHOULD), ORD-03 (SHOULD) RELEASE-READY and set RELEASED via reqctl.py; VLD-04 (SHOULD) held at TESTED because AC1/AC2 HTTP-422 handler wiring is not done (no handler calls runSemanticGate; promotion handler computes a plan without the gate) - filed ISS-0715/GH-813 (MAJOR). Also filed ISS-0716/GH-814 (MINOR, DDL-04 bookkeeping, non-blocking). Release decision: docs/status/release-stage16-WF02-batch-7-20260816.yaml.",
+    "artifacts_out": [
+      "docs/status/release-stage16-WF02-batch-7-20260816.yaml",
+      "docs/issues/ISS-0715.json",
+      "docs/issues/ISS-0716.json",
+      "docs/issue-reports/WF02-batch-7-20260816-step-05-release-validator-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "VLD-04 AC1/AC2 handler wiring absent - no HTTP handler calls runSemanticGate (grep across src/**/*.zig returns matches only inside src/validation/gate.zig). AC1 draft-save HTTP 422 and AC2 promotion-submit HTTP 422 / no plan / no promotion_reviews row not enforced end-to-end; promotion handler (src/api/routes/promotions.zig) calls computePromotionPlan without the gate. VLD-04 held at TESTED. Filed ISS-0715 / GH-813 (OPEN)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "DDL-04 plat_migration_state bookkeeping - backfill_batch_size column hardcoded 5000 and persisted status left running after completion (design applied/failed terminal write missing). Both documented/asserted in TC-DDL-04-AC6; no AC violated. Filed ISS-0716 / GH-814 (OPEN)."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6): DDL-04/OBP-04/ORD-03 already set RELEASED via reqctl.py; VLD-04 kept at TESTED with ISS-0715/GH-813 referenced; add changelog + Step Final branch management. Move VLD-04 to RELEASED when ISS-0715/GH-813 is resolved."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

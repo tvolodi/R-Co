@@ -1,0 +1,47 @@
+{
+  "status": "OPEN",
+  "classification": "DEFECT",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-batch-7-20260816",
+  "handoff_id": "WF02-batch-7-20260816/step-05-release-validator",
+  "triggered_by": "RELEASE-VALIDATOR (WF02-batch-7-20260816 step-05)",
+  "discovered_at": "2026-08-16T20:29:35Z",
+  "discovered_by": "RELEASE-VALIDATOR (WF02-batch-7-20260816 step-05)",
+  "branch": "feature/WF02-batch-7-20260816",
+  "created_at": "2026-08-16T20:29:35Z",
+  "registered_at": "2026-08-16T20:29:35Z",
+  "registered_by": "RELEASE-VALIDATOR (WF02-batch-7-20260816 step-05)",
+  "github_issue_confirmed": true,
+  "github_issue_filed_at": "2026-08-16T20:29:35Z",
+  "labels": [
+    "bug"
+  ],
+  "iss_id": "ISS-0716",
+  "id": "ISS-0716",
+  "issue_id": "ISS-0716",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "github_issue_number": 814,
+  "severity": "MINOR",
+  "title": "DDL-04: plat_migration_state bookkeeping - backfill_batch_size column hardcoded 5000, persisted status stays running after completion",
+  "summary": "recordBatchProgress hardcodes backfill_batch_size=5000 in the persisted row (adaptive value only in BackfillResult.final_batch_size) and leaves persisted status running after loop completion (design applied/failed terminal write missing). Non-blocking; documented and asserted in tests.",
+  "description": "src/platform/backfill.zig progress INSERT hardcodes 5000 (line ~379) and progress UPDATE sets status running (line ~383). TC-DDL-04-AC6 explicitly documents and asserts the running status while asserting in-memory BackfillResult.status applied/failed. AC4 adaptive halving proven via final_batch_size (asserted 2500); AC6 progress counters recorded. No AC violated.",
+  "symptom": "plat_migration_state.backfill_batch_size never reflects the adaptive value; completed backfills remain status running in the persisted row.",
+  "investigation_notes": "Documented in tests/integration/ddl04_backfill_loop_test.zig TC-DDL-04-AC6 NOTE comment and tests/specs/DDL-04.md Run status. New issue (gh search found no pre-existing).",
+  "reproduction": "Run a DDL-04 backfill to completion; read plat_migration_state - backfill_batch_size=5000 regardless of adaptive halving and status=running.",
+  "acceptance_criteria": [
+    "Persisted plat_migration_state row reflects terminal status (applied/failed) and adaptive backfill_batch_size at loop end, OR the divergence is documented as an intentional design choice",
+    "No DDL-04 AC regression (suites stay green)"
+  ],
+  "files_affected": [
+    "src/platform/backfill.zig",
+    "tests/integration/ddl04_backfill_loop_test.zig"
+  ],
+  "affected_areas": [
+    "src/platform/backfill.zig",
+    "migrations/1163_ddl04_plat_migration_state.sql"
+  ],
+  "context": {
+    "release_decision": "docs/status/release-stage16-WF02-batch-7-20260816.yaml",
+    "release_validator_handoff": "handoffs/WF02-batch-7-20260816/step-05-release-validator.json"
+  }
+}
