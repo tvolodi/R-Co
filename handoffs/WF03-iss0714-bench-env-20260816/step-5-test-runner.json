@@ -1,0 +1,65 @@
+{
+  "handoff_id": "wf03-iss0714-bench-env-20260816-005",
+  "run_id": "WF03-iss0714-bench-env-20260816",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-iss0714-bench-env-20260816/step-5-test-runner.json",
+  "created_at": "2026-08-16T11:28:32Z",
+  "started_at": "2026-08-16T11:28:32Z",
+  "completed_at": "2026-08-16T11:35:30Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 5 \u2014 Verify dev-DB reconciliation (ISS-0714 / GH #809)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-iss0714-bench-env-20260816-003",
+      "wf03-iss0714-bench-env-20260816-002b"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-iss0714-bench-env-20260816/step-3-backend-dev.json (verification D-1..D-7)",
+      "src/design/fix-ISS-0714-bench-env.md",
+      "docs/issues/ISS-0714.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 5: Independently verify the ISS-0714 / GH #809 fix (dev-DB reconciliation). BACKEND-DEV reported all gates green (D-1..D-7): tenant_default ledger reconciled, migrations_applied_at stamped, zig build migrate exit 0, zig build bench full NFR suite exit 0. Re-verify: (1) bench env healthy (zig build test-env-verify exit 0), (2) dev-DB migrate exit 0 (BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev), (3) zig build bench proceeds and completes (WF-04 NFR), (4) no test-DB regression (5434/bpm_test migrate 147/147), (5) no src/*.zig or migrations/*.sql changes on the branch (git diff main...HEAD). Write a structured verification report to tests/reports/WF03-iss0714-bench-env-20260816-verification.md. Return PASS only if all gates are green.",
+    "acceptance_criteria": [
+      "zig build test-env-verify exits 0",
+      "zig build migrate against dev DB (5442) exits 0 (post-condition passes)",
+      "zig build bench completes (WF-04 NFR) exit 0",
+      "No test-DB regression (5434 migrate 147/147)",
+      "No src/*.zig or migrations/*.sql changes on the branch",
+      "Verification report written",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:run-tests",
+      "fn:write-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independent verification of ISS-0714 / GH #809 (dev-DB reconciliation): all 5 gates green. (1) zig build test-env-verify exit 0 (10/10 checks); (2) zig build migrate against dev DB 5442/bpm_dev exit 0 \u2014 default-tenant provisioning fast-paths, leg-(d) post-condition passes, ledger 111 rows, registry stamped, events relkind 'p'; (3) zig build bench (WF-04 full NFR) runs to completion exit 0 with NFR_BENCH_SUMMARY overall_passed=true (db_url_source=BPM_DB_URL); (4) no test-DB regression \u2014 5434/bpm_test migrate exit 0, public ledger 147/147; (5) git diff main...HEAD = 13 bookkeeping/design files, ZERO src/*.zig and ZERO migrations/*.sql changes. ISS-0714 / GH #809 unblocked; WF-04 full benchmark can proceed.",
+    "verification": {
+      "gate1_test_env_verify": "PASS - zig build test-env-verify exit 0; HEALTHY 10/10 (C0 test=5434/bpm_test dev=5442/bpm_dev; C1 db_test healthy; C2 zig build 0; C3 test-DB migrate 147/147; C4 schema baseline; C5 isolation lint; C6 no stale locks; C7 bench URL=BPM_DB_URL->5442; C8 tenant lint; C9 config drift none). Note: initial run hit a stale shell BPM_DB_URL override (5434); cleared and reran \u2014 resolved from .env (correct).",
+      "gate2_dev_db_migrate": "PASS - BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev; zig build migrate exit 0; all tenant_default migrations skip (incl 001_event_store.sql); 'No new migrations to apply.'; no leg-(d) post-condition abort. Read-only confirm via docker-exec psql: ledger_count=111 (D-1), stamped=1 (D-3), events_relkind='p' (D-4), tables=59 (58 base + 1 view), par01_recorded=1 (D-4).",
+      "gate3_zig_build_bench": "PASS - zig build bench exit 0; BENCHMARK_SETUP_INFO db_url_source=BPM_DB_URL; NFR-01 p99 read 0.974ms (<=200) / write 3.382ms (<=500); NFR-02 51758.445 eps (>=1000); NFR-04 replay 56.414ms (<=5000) / snapshot 4.931ms (<=1000); NFR_BENCH_SUMMARY overall_passed=true (run_id=bench-1786879921454).",
+      "gate4_test_db_no_regression": "PASS - BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test; zig build migrate exit 0; 'No new migrations to apply.'; public schema_migrations count = 147/147 (via docker-exec db_test).",
+      "gate5_no_src_or_migration_changes": "PASS - git diff main...HEAD --stat: 13 files changed (1100 insertions, 45 deletions) \u2014 5 handoff step jsons + registry.json + orchestrator.log + docs/issues/ISS-0714.json + 5 INNER-REPORT jsons + src/design/fix-ISS-0714-bench-env.md. grep for ^src/.*\\.zig$ and ^migrations/.*\\.sql$ returned ZERO matches.",
+      "gh809_ac_mapping": "AC1 (migrate 5442 exit 0 + stamped): MET via gate2; AC2 (bench runs to completion): MET via gate3; AC3 (failing migration identified + repaired on dev DB): MET \u2014 001_event_store.sql 42P16 root cause repaired by ledger reconciliation, independently confirmed; AC4 (test-DB 147/147): MET via gate4; AC5 (no NEW lint findings): MET \u2014 lint_handoffs no NEW issues on this run.",
+      "constraints": "Verification only; no src/*.zig or migrations/*.sql modified; dev/test DB state untouched (read-only queries; migrates were no-ops); no push to origin."
+    },
+    "report_path": "tests/reports/WF03-iss0714-bench-env-20260816-verification.md",
+    "artifacts_out": [
+      "tests/reports/WF03-iss0714-bench-env-20260816-verification.md",
+      "docs/issue-reports/WF03-iss0714-bench-env-20260816-step-5-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5 / WF-04 Step 6) \u2014 bench NFR confirmed green; dev/bench DB unblocked for WF-04 full benchmark."
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}
