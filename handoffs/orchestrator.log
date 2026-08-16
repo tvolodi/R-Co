@@ -1764,3 +1764,5 @@
 2026-08-16T04:04:48Z | ROUTE | WF-03 | wf03-gh797-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T04:14:31Z | SUBAGENT_SPAWN_FAIL | WF03-GH797-20260816 | wf03-gh797-20260816-005-issue-fixer | ORCH | 4x ECONNRESET dispatching ISSUE-FIXER (Step 0.5) - step-00 PASS, branch feature/WF03-GH797-20260816 pushed, handoff PENDING in registry - run paused, resumable
 2026-08-16T04:43:23Z | HANDOFF_COMPLETE | WF03-GH797-20260816 | wf03-gh7 | ISSUE-FIXER | step-0.5 PASS: registered ISS-0710 for GH-797, corrected GH-797 body ISS-0709->ISS-0710, next_issue_id 710->711; fix deferred to Step 3
+2026-08-16T04:45:04Z | ROUTE | WF-03 | wf03-gh797-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T04:48:06Z | HANDOFF_COMPLETE | WF03-GH797-20260816 | wf03-gh7 | ISSUE-FIXER | step-1 PASS: root cause (dispatch-time staleness) confirmed; fix spec (ORCHESTRATOR.md sec5 rule7 + sec8f dispatch-time short-circuit gate, BLOCKER before step-00) defined for Step 3; no fix implemented
