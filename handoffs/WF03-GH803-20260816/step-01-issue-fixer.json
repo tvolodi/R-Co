@@ -1,0 +1,62 @@
+{
+  "handoff_id": "wf03-gh803-20260816-01-issue-fixer",
+  "run_id": "WF03-GH803-20260816",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH803-20260816/step-01-issue-fixer.json",
+  "created_at": "2026-08-16T07:53:55Z",
+  "started_at": "2026-08-16T07:54:15Z",
+  "completed_at": "2026-08-16T07:57:26Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 1 -- root-cause diagnosis",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
+    "iss_id": "ISS-0712",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh803-20260816-00-backend-dev",
+      "wf03-gh803-20260816-005-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0712.json",
+      "src/definition/rollback.zig",
+      "migrations/096_promotion_reviews.sql",
+      "tests/integration/prm-08-rollback-sandbox.test.zig"
+    ],
+    "branch_name": "feature/WF03-GH803-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 1 for run WF03-GH803-20260816: root-cause diagnosis (diagnosis-as-design) for the production supersede 42883 defect (ISS-0712 / GH-803). CONFIRM the diagnosis documented in ISS-0712 and the GH-803 body by reading src/definition/rollback.zig Step 5 (~lines 286-298) and migrations/096_promotion_reviews.sql (def_id is TEXT): the supersede UPDATE compares `def_id = $3::uuid` against the TEXT column -> sqlstate 42883, swallowed by `catch null` so superseded_review_id is always null. DEFINE the fix spec for Step 3 precisely: (a) change `AND def_id = $3::uuid` to `AND def_id = $3` (current_active_id is a uuid string bound as text; PostgreSQL infers text = text); (b) improve the `catch null` guard to distinguish a genuinely missing table (SQLSTATE 42P01) from other query errors so real failures surface (specify the exact code change \u2014 e.g. check err == error.PgSqlState42P01 or similar). SCOPE: production code change confined to src/definition/rollback.zig; no migrations. Specify the verification command (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 \u2014 EXPECTATION: now 4/4 green since GH-802 (fixture) and GH-804 (seed) are already merged on main; plus zig build). Do NOT implement the fix yourself.",
+    "acceptance_criteria": [
+      "Root cause confirmed against the ACTUAL src/definition/rollback.zig Step 5 and migration 096",
+      "Fix spec for Step 3 fully specified (drop ::uuid on $3; catch-null 42P01 distinction with exact code change)",
+      "SCOPE explicit: production rollback.zig only, no migrations",
+      "Verification command(s) specified (test-integration-prm08 expected 4/4 green, zig build)",
+      "No fix implemented (Step 3 only)",
+      "Work on branch feature/WF03-GH803-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 1 (diagnosis-as-design) for GH-803/ISS-0712: CONFIRMED the production supersede 42883 diagnosis against the ACTUAL src/definition/rollback.zig Step 5 (lines 286-298: WHERE tenant_id = $2::uuid AND def_id = $3::uuid, wrapped in a bare `catch null`) and migrations/096_promotion_reviews.sql (def_id text NOT NULL); `zig build check` exits 0 so the defect is runtime-only, not a compile error. Defined the exact Step 3 fix spec: (a) drop ::uuid on $3 (def_id = $3 -> text = text); (b) replace the bare `catch null` with a SQLSTATE-42P01 distinction (copy conn.lastSqlState() into a [5]u8 buffer; 42P01 missing-table -> null, else map ExhaustedPool -> PoolExhausted / other -> TransactionFailed), mirroring the canonical pattern in src/event_store/store.zig PAR-01. SCOPE: src/definition/rollback.zig only, no migrations. Verification for Step 3: `zig build`; `BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08` -> expect 4/4 green, no sqlstate=42883. No fix implemented (Step 3 only).",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH803-20260816-step-1-issue-fixer-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Inner-report format drift: core-directives.md mandates .yaml for docs/issue-reports/ and declares the fn-register-inner-report.md .json spec outdated, but this run's own step-0.5/step-00 reports and the recent ISSUE-FIXER step-1 precedents (GH-793/802/804) are .json. This report follows the authoritative core-directives (.yaml). Recommend one-time consolidation at the source."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3) to implement the ISS-0712 fix spec in src/definition/rollback.zig, then TEST-RUNNER for verification."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
