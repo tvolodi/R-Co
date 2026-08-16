@@ -1,0 +1,29 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-4b-TEST-DESIGN-VALIDATOR",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "4b",
+  "created_at": "2026-08-16T08:04:40Z",
+  "summary": "Validated the VLD-01/02/03 integration test suite (ISS-0709 / GH #799) against the spec tests/specs/vld-01-03-stage-16-validation.spec.md (§1 + §6) and the fix design src/design/vld-01-03-stage-16-validation-FIX.md. All 6 hard-gate checks PASS. 15/15 MUST ACs have at least one implemented integration test in the current files (14 unit blocks + 5 HTTP blocks). No deferred coverage; no SkipZigTest on any MUST block (only the standard BPM_TEST_DB_URL env-var guard helper). Fixtures are isolated (immutable const fixtures in the unit file; per-test unique names + runtime CSPRNG UUIDs + defer cleanup in the HTTP file; lint_test_isolation: 179 files, exit 0). Tests are self-sufficient (unit = pure in-process; HTTP = in-process handleValidate against a self-provisioned Pool, requires BPM_TEST_DB_URL only). Wiring correct: build.zig has test-integration-vld-unit + test-integration-vld-http narrow steps aggregated into the umbrella test_integration_others_step, and both files are imported in tests/integration/main_test.zig. Suites green: test-integration-vld-unit 14/14, test-integration-vld-http 5/5 (0 leaks, no 42P01), test-validation 40/40. lint_handoffs: no NEW issues (pre-existing 10 BLOCKER + 31 MAJOR + 1 MINOR in ADHOC-prm-env-20260814 / WF02-prm-batch2-20260814 and repo-wide H010 only). One non-blocking MINOR noted: VLD-02 AC1 TypeMismatch negative path is asserted at in-file unit level (src/validation/typecheck.zig 'checkSite: number literal where bool expected -> TypeMismatch') but not at the integration layer; spec §1/§4/§5.3 text for int_vld_02_01 is stale vs the R7-reworked block.",
+  "files_created": [
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-4b-TEST-DESIGN-VALIDATOR-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-vld-impl-bugs-20260816/step-4b-test-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    { "name": "test-integration-vld-unit", "status": "pass", "detail": "14/14 tests passed (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test), 6/6 steps succeeded" },
+    { "name": "test-integration-vld-http", "status": "pass", "detail": "5/5 tests passed, 0 leaked allocations, no sqlstate 42P01 cleanup errors" },
+    { "name": "test-validation", "status": "pass", "detail": "40/40 tests passed (impl unit tests for src/validation/*.zig)" },
+    { "name": "lint_test_isolation.py tests/integration", "status": "pass", "detail": "exit 0, 179 files checked, no isolation issues" },
+    { "name": "lint_handoffs.py", "status": "pass", "detail": "no NEW issues for this run; pre-existing baseline only (10 BLOCKER H003/H013, 31 MAJOR H009, 1 MINOR H010)" }
+  ],
+  "issues_found": [
+    { "severity": "MINOR", "description": "VLD-02 AC1 (guard compiles to non-bool -> TypeMismatch) is not asserted at the integration layer. Post-R7 int_vld_02_01 covers the 12 positive operator cases (0 findings) and the OperandTypeError negative (s > 0), but no integration test drives a non-bool gateway guard and asserts TypeMismatch. The behavior IS pinned by the in-file unit test 'checkSite: number literal where bool expected -> TypeMismatch' (src/validation/typecheck.zig:425, part of test-validation 40/40). Spec §1/§4/§5.3 text still describes int_vld_02_01 as 'returns TypeMismatch on guard that compiles to non-bool' — stale vs the R7-reworked block. Recommend either (a) adding a TypeMismatch integration assertion (e.g. gateway guard 'a + b' -> TypeMismatch naming bool expected / number actual) or (b) aligning the spec text with the R7 state." }
+  ],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-03 Step 4) with PASS: vld-unit 14/14, vld-http 5/5, test-validation 40/40, coverage 15/15 ACs."
+  ],
+  "blockers": []
+}

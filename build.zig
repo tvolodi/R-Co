@@ -298,6 +298,65 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // WF02-vld01-03-20260816 (VLD-01/02/03): graph_mod — src/definition/graph.zig,
+    // exposed as a named module so the VLD-01/02/03 validation module
+    // (src/validation/mod.zig) can reach it from a DIFFERENT directory. Without
+    // this, validation_mod would either have to do a relative
+    // @import("../definition/graph.zig") (which Zig 0.16 rejects: imports must
+    // stay inside the importing file's module root) or duplicate graph.zig as
+    // its own copy. Named-module exposure also forces a single ownership: any
+    // importer must reach graph as `@import("graph")`, never as
+    // `@import("graph.zig")`, or Zig reports "file exists in modules 'root' and
+    // 'graph'" (the REWORK-1 defect on this handoff).
+    //
+    // graph.zig imports sub_process_interface.zig (relative), and so do
+    // src/engine/instance.zig and src/lua/service_catalog.zig — once graph.zig
+    // is rooted as a separate module, those relative imports collide
+    // ("file exists in modules 'graph' and 'root'"). To resolve, graph.zig
+    // reaches sub_process_interface via a NAMED import below, and
+    // engine/instance.zig was converted in REWORK-1 to do the same. This
+    // absorbs the second, test-only `graph_mod` declaration that previously
+    // existed further down in this build function (REWORK-1 folded them into
+    // one canonical declaration at the top).
+    //
+    // json_schema: graph.zig's transitive graph includes sub_process_interface
+    // → json_schema, so both sub_process_interface_mod and graph_mod must
+    // supply it.
+    const sub_process_interface_mod = b.createModule(.{
+        .root_source_file = b.path("src/definition/sub_process_interface.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "json_schema", .module = json_schema_mod },
+        },
+    });
+    const graph_mod = b.createModule(.{
+        .root_source_file = b.path("src/definition/graph.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "json_schema", .module = json_schema_mod },
+            .{ .name = "sub_process_interface", .module = sub_process_interface_mod },
+        },
+    });
+
+    // WF02-vld01-03-20260816 (VLD-01/02/03): validation_mod — src/validation/mod.zig
+    // rooted module that re-exports the typed environment builder, the CEL
+    // site walker, the per-site type checker, the PD-06 syntax gate aggregator,
+    // the finding struct + sort/dedupe, and the wire serialiser. validation_mod
+    // depends on graph_mod (for DefinitionGraph / isValidCelSyntax / forward-
+    // reachability DFS) and expr_mod (for the TypeTag enum that the env
+    // builder's mapDeclaredTypeName produces and the type checker reads).
+    const validation_mod = b.createModule(.{
+        .root_source_file = b.path("src/validation/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "graph", .module = graph_mod },
+            .{ .name = "expr", .module = expr_mod },
+        },
+    });
+
     const transition_mod = b.createModule(.{
         .root_source_file = b.path("src/engine/transition.zig"),
         .target = target,
@@ -450,6 +509,25 @@ pub fn build(b: *std.Build) void {
         .{ .name = "json_schema", .module = json_schema_mod },
         // ISS-0134: portable environment-variable access (src/env.zig).
         .{ .name = "env", .module = env_mod },
+        // WF02-vld01-03-20260816 (VLD-01/02/03): graph as a named module so
+        // validation_mod (declared above) can import it as `@import("graph")`
+        // — single-owner module rule (Zig 0.16). After this, every consumer
+        // that previously did `@import("graph.zig")` (relative) must convert
+        // to `@import("graph")` to avoid the "file exists in modules 'root'
+        // and 'graph'" REWORK-1 defect.
+        .{ .name = "graph", .module = graph_mod },
+        // Same single-owner rationale for sub_process_interface — graph.zig
+        // imports it relatively, and so does src/engine/instance.zig. Now
+        // that graph.zig is rooted as the `graph` module, instance.zig (in
+        // `root`) must reach sub_process_interface by name too.
+        .{ .name = "sub_process_interface", .module = sub_process_interface_mod },
+        // WF02-vld01-03-20260816: validation as a named module so src/api/routes/
+        // validation.zig (the POST /api/v1/definitions/:id/validate handler)
+        // can import it via `@import("validation")` — the route handler lives
+        // under the `root` module (src/main.zig) but validation/test_root.zig
+        // is its own module root, so a relative @import from src/api/routes/
+        // into src/validation/ would escape the root module's path.
+        .{ .name = "validation", .module = validation_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -621,18 +699,6 @@ pub fn build(b: *std.Build) void {
     const run_python_interp_tests = b.addRunArtifact(python_interp_tests);
     run_python_interp_tests.setCwd(b.path("."));
 
-    const graph_mod = b.createModule(.{
-        .root_source_file = b.path("src/definition/graph.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            // SPC-02: graph.zig's checkSubProcess imports
-            // sub_process_interface.zig (relative), which imports json_schema
-            // by name — so this test module must supply it, mirroring how the
-            // main/bpm modules already do.
-            .{ .name = "json_schema", .module = json_schema_mod },
-        },
-    });
     // PD-02/PD-05/PD-06 graph validation unit tests, aggregated into one
     // compile unit via tests/unit/graph_test_root.zig. Reduces this group
     // from 3 separate zig-test compilations to 1 — see ISS-0136 for why
@@ -640,7 +706,10 @@ pub fn build(b: *std.Build) void {
     // (concurrent -lc compiles trigger an upstream Zig cache-lock deadlock).
     // None of these three files link libc, so this group doesn't reduce
     // that count directly, but establishes the aggregator pattern used by
-    // the libc-linked groups below.
+    // the libc-linked groups below. graph_mod itself is declared at the top
+    // of this build function (REWORK-1 of WF02-vld01-03-20260816 folded the
+    // test-only duplicate into the canonical declaration that also serves
+    // validation_mod).
     const graph_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/graph_test_root.zig"),
@@ -654,6 +723,38 @@ pub fn build(b: *std.Build) void {
     const run_graph_tests = b.addRunArtifact(graph_tests);
     const test_graph_step = b.step("test-graph", "Run PD-02/PD-05/PD-06 graph validation unit tests only");
     test_graph_step.dependOn(&run_graph_tests.step);
+
+    // WF02-vld01-03-20260816 (VLD-01/02/03): validation unit tests, aggregated
+    // into one compile unit via src/validation/test_root.zig. The test_root
+    // pattern (a single `test {}` block that re-imports every sibling) is the
+    // ISS-0136-recommended aggregator shape for module-rooted groups: a bare
+    // `pub const` re-export does NOT force analysis of in-file `test {...}`
+    // blocks, but `_ = @import("...")` does. validation_mod is declared above
+    // (REWORK-1: validation/test_root.zig's existing re-imports use the same
+    // names — finding, env, scope, site, pd06, typecheck, wire, mod — so this
+    // group needs no additional named-module imports beyond graph and expr,
+    // which the test root inherits from validation_mod).
+    //
+    // graph and expr MUST be supplied at the test-root level: test_root.zig
+    // IS the root module for the test compile unit, so any transitive named
+    // import that validation_mod itself declares must also be reachable from
+    // test_root.zig — even if test_root.zig's source code never references
+    // them directly (Zig still has to wire the import graph).
+    const validation_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/validation/test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "validation", .module = validation_mod },
+                .{ .name = "graph", .module = graph_mod },
+                .{ .name = "expr", .module = expr_mod },
+            },
+        }),
+    });
+    const run_validation_tests = b.addRunArtifact(validation_tests);
+    const test_validation_step = b.step("test-validation", "Run VLD-01/02/03 validation module unit tests only");
+    test_validation_step.dependOn(&run_validation_tests.step);
 
     // PD-07 definition retrieval handler tests (pure input-validation paths).
     // src/main.zig is used as the named-module root so that definitions.zig
@@ -711,6 +812,17 @@ pub fn build(b: *std.Build) void {
             // wasm_mod; a relative @import from bpm.zig would trip the
             // Single-Owner Module Rule. See the comment in src/bpm.zig.
             .{ .name = "wasm", .module = wasm_mod },
+            // WF02-vld01-03-20260816 (VLD-01/02/03): src/definition/store.zig
+            // (reachable via bpm.definition) does `@import("graph")` and
+            // src/api/routes/validation.zig (reachable via bpm.validation_routes)
+            // does `@import("graph")` + `@import("validation")`. All three must
+            // be supplied here or any integration binary that imports
+            // bpm_src_mod standalone fails to compile store.zig/validation.zig
+            // ("no module named 'graph' available within module 'bpm'"). Same
+            // single-owner rationale as the other named modules above.
+            .{ .name = "graph", .module = graph_mod },
+            .{ .name = "sub_process_interface", .module = sub_process_interface_mod },
+            .{ .name = "validation", .module = validation_mod },
         },
     });
 
@@ -1170,6 +1282,10 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "expr", .module = expr_mod },
+                // VLD-01/02/03 (graph named module): transition.zig now reaches
+                // graph via @import("graph"), so this test root must supply the
+                // graph module too.
+                .{ .name = "graph", .module = graph_mod },
             },
         }),
     });
@@ -1196,6 +1312,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "pool", .module = pool_root_mod },
+                // VLD-01/02/03 (graph named module): store.zig now reaches graph
+                // via @import("graph"), so this test root must supply it too.
+                .{ .name = "graph", .module = graph_mod },
             },
         }),
     });
@@ -1220,6 +1339,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "pool", .module = pool_root_mod },
+                // VLD-01/02/03 (graph named module): store.zig now reaches graph
+                // via @import("graph"), so this test root must supply it too.
+                .{ .name = "graph", .module = graph_mod },
             },
         }),
     });
@@ -1628,6 +1750,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_entities_tests.step); // ISS-0160 / GH #481
     test_step.dependOn(&run_python_interp_tests.step);
     test_step.dependOn(&run_graph_tests.step);
+    test_step.dependOn(&run_validation_tests.step); // VLD-01/02/03 (WF02-vld01-03-20260816)
     test_step.dependOn(&run_bpm_main_tests.step);
     test_step.dependOn(&run_snapshot_tests.step);
     test_step.dependOn(&run_tasks_store_tests.step);
@@ -1803,6 +1926,13 @@ pub fn build(b: *std.Build) void {
         .{ .name = "realm_provisioning", .module = realm_provisioning_mod },
         .{ .name = "realm_deletion", .module = realm_deletion_mod },
         .{ .name = "oidc_migration_helper", .module = oidc_migration_helper_mod },
+        // WF02-vld01-03-20260816 (VLD-01/02/03) REWORK 2: the two
+        // tests/integration/validation_vld_*.zig files reach the validator via
+        // `@import("validation")` — the same named module the route handler
+        // (src/api/routes/validation.zig) uses. Adding it here is the only
+        // integration_imports change those files need (they also import `bpm`
+        // and `env`, both already present above).
+        .{ .name = "validation", .module = validation_mod },
     };
 
     const integration_tests = b.addTest(.{
@@ -3395,6 +3525,39 @@ pub fn build(b: *std.Build) void {
     test_integration_exp401_exp402_step.dependOn(&clean_test_db.step);
     test_integration_exp401_exp402_step.dependOn(&run_exp401_exp402_integration_tests.step);
     test_integration_others_step.dependOn(&run_exp401_exp402_integration_tests.step);
+
+    // WF02-vld01-03-20260816 (VLD-01/02/03) REWORK 2: dedicated addTest roots
+    // + narrow steps for the two VLD validation test files (handler-direct
+    // unit-style path and HTTP-boundary path). Mirrors the exp401-exp402
+    // narrow-step pattern above. The umbrella `test-integration` runs them via
+    // the test_integration_others_step barrier (dependOn below).
+    const vld_unit_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/validation_vld_unit_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_vld_unit_integration_tests = addIntegrationRun(b, vld_unit_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_vld_unit_step = b.step("test-integration-vld-unit", "Run VLD-01/02/03 handler-direct validation integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_vld_unit_step.dependOn(&clean_test_db.step);
+    test_integration_vld_unit_step.dependOn(&run_vld_unit_integration_tests.step);
+    test_integration_others_step.dependOn(&run_vld_unit_integration_tests.step);
+
+    const vld_http_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/validation_vld_http_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_vld_http_integration_tests = addIntegrationRun(b, vld_http_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_vld_http_step = b.step("test-integration-vld-http", "Run VLD-03 HTTP-boundary (handler-direct) validation integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_vld_http_step.dependOn(&clean_test_db.step);
+    test_integration_vld_http_step.dependOn(&run_vld_http_integration_tests.step);
+    test_integration_others_step.dependOn(&run_vld_http_integration_tests.step);
 
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);

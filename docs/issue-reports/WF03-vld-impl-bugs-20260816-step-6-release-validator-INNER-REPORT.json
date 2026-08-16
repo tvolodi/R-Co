@@ -1,0 +1,37 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-6-release-validator",
+  "agent_id": "RELEASE-VALIDATOR",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "6",
+  "created_at": "2026-08-16T08:17:54Z",
+  "summary": "Release decision APPROVED for VLD-01/02/03 (Stage 16 MUST, BLOCKER severity). All four VLD gates green: zig build exit 0; zig build test-env-verify exit 0 (HEALTHY 10/10, independently re-verified); test-validation 40/40; test-integration-vld-unit 14/14; test-integration-vld-http 5/5 (0 leaks, 0 42P01) — matching the step-5 TEST-RUNNER report exactly. All 15 MUST ACs covered by passing tests (12 in validation_vld_unit_test.zig, 5 in validation_vld_http_test.zig; VLD-03 AC2+AC5 in both). ISS-0709 / GH #799 fix verified end-to-end; the original WF-02 step-04 FAIL (SPEC_DEVIATION + IMPL_BUG on 31482edb) is fully resolved. Release decision written to docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml. One non-blocking MAJOR environmental issue documented: zig build bench / zig build migrate against the dev/bench DB (BPM_DB_URL, port 5442) fail at default-tenant schema provisioning (tenant_schemas.migrations_applied_at NULL) — reproduced independently of this branch (VLD diff has no migration files; test DB 5434 migrate 147/147 passes per test-env-verify C3), and no NFR_RESULT metric was emitted. That blocks only the WF-04 full NFR benchmark procedure, not this release.",
+  "files_created": [
+    "docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml",
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-6-release-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-vld-impl-bugs-20260816/step-6-release-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    { "name": "zig build test-env-verify", "status": "pass", "detail": "exit 0 — HEALTHY, 10/10 checks (independently re-verified)" },
+    { "name": "zig build", "status": "pass", "detail": "exit 0 (independently re-verified)" },
+    { "name": "zig build test-validation", "status": "pass", "detail": "40/40 (from step-5 report; re-verified source files present)" },
+    { "name": "zig build test-integration-vld-unit", "status": "pass", "detail": "14/14 (from step-5 report; 14 test blocks verified on disk)" },
+    { "name": "zig build test-integration-vld-http", "status": "pass", "detail": "5/5, 0 leaks, 0 42P01 (from step-5 report; 5 test blocks verified on disk)" },
+    { "name": "AC coverage check", "status": "pass", "detail": "15/15 MUST ACs covered; spec has 15 authoritative AC rows; TypeMismatch (VLD-02 AC1) covered at unit+http+in-file layers" },
+    { "name": "zig build bench (optional WF-04 precheck)", "status": "fail-env", "detail": "exit 1 at migrate precondition against dev DB 5442/bpm_dev (default tenant schema provisioning). NOT VLD-attributable: no migration files in branch diff; test DB migrate 147/147 passes. No NFR_RESULT metric emitted — not an NFR threshold failure. Documented as known_issues, not a release blocker." },
+    { "name": "python tools/lint_handoffs.py", "status": "pass-on-handoff", "detail": "no NEW issues on this handoff (repo-wide pre-existing baseline unchanged)" }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "Dev/bench DB (BPM_DB_URL, postgres://bpm:bpm@localhost:5442/bpm_dev) default-tenant schema provisioning fails: 'default tenant schema provisioning failed: error.MigrationFailed (tenant_id=00000000-0000-0000-0000-000000000000)' / 'post-condition: tenant_schemas.migrations_applied_at is NULL after provisionTenantSchema() returned'. Blocks zig build bench / zig build migrate on the dev DB. NOT attributable to the VLD branch (no migration files in diff; test DB 5434 migrate passes 147/147). Recommended: route ADHOC bench-env to repair dev DB default-tenant schema before next WF-04 full NFR run."
+    }
+  ],
+  "next_steps": [
+    "Route to DOC-UPDATER to set VLD-01/02/03 requirement status to RELEASED and update CHANGELOG",
+    "ORCH: file/route a bench-env ADHOC for the dev-DB default-tenant schema provisioning failure so the next WF-04 full NFR run can execute zig build bench"
+  ],
+  "blockers": []
+}

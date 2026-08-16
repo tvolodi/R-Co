@@ -1,0 +1,69 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-004-r2",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "4-r2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-4-test-designer-rework2.json",
+  "created_at": "2026-08-16T07:08:55Z",
+  "started_at": "2026-08-16T07:08:55Z",
+  "completed_at": "2026-08-16T07:37:15Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 4 REWORK 2 \u2014 Implement B2/B3 (http fixture/harness)",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-004-r1",
+      "wf03-vld-impl-bugs-20260816-003-r1"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-vld-impl-bugs-20260816/step-4-test-designer-rework.json (result.issues \u2014 B2, B3)",
+      "tests/integration/validation_vld_http_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 4 REWORK 2: Fix blockers B2 and B3 reported by the previous TEST-DESIGNER run (step-4-r1) in tests/integration/validation_vld_http_test.zig. B2: int_vld_03_http_200 expects 200 but gets 422 \u2014 the fixture's happy-path conditions are not literal-only (they use variables/expressions the validator flags), so the definition is NOT actually valid. Fix the fixture so it uses literal-only happy-path conditions that genuinely yield 0 findings (HTTP 200). B3: int_vld_03_cross_tenant_404 gets 500 instead of 404 \u2014 tenant B is not provisioned (SELECT on its schema \u2192 42P01). Provision tenant B via the existing provisionTenantSchema harness helper before the cross-tenant assertion, so the tenant-scoped read returns 404 (definition not found) instead of 500. Verify: zig build exit 0; zig build test-integration-vld-http -> 5/5 with 0 leaks and no 42P01 (note: B1 is routed to BACKEND-DEV separately \u2014 test-integration-vld-unit will reach 14/14 after that lands; the http suite must be 5/5 from your changes alone). Commit on the feature branch.",
+    "acceptance_criteria": [
+      "int_vld_03_http_200 fixture uses literal-only conditions -> HTTP 200",
+      "int_vld_03_cross_tenant_404 provisions tenant B -> HTTP 404 (not 500)",
+      "test-integration-vld-http passes 5/5 with 0 leaks, no 42P01",
+      "zig build exits 0",
+      "No regression to R7/R10-1/2/3 fixes",
+      "Fix committed on feature branch"
+    ],
+    "functions_to_call": [
+      "fn:implement-fix",
+      "fn:check-zig-build",
+      "fn:check-zig-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 4 REWORK 2 TEST-DESIGNER for ISS-0709/GH#799: B2 - int_vld_03_http_200 now drives a literal-only happy fixture (happy_literal_graph: '1 > 0' / '1 <= 0'), which type-checks to .bool with zero env lookups under handleValidate's empty env -> genuinely 0 findings -> HTTP 200 + semantically_valid (the shared happy_graph with variable conditions stays for int_vld_03_02's UnknownVariable-findings assertion, R10-3). B3 - int_vld_03_cross_tenant_404 now provisions tenant B's physical schema via provisionTenantSchema (same idempotent pattern as idn05_role_registry_test.zig) BEFORE the cross-tenant read, so SCHEMA-mode routing points search_path at the empty tenant_<b> schema -> getById DefinitionNotFound -> HTTP 404 (was 500 via LEGACY_RLS fallback to public where process_definitions does not exist, sqlstate 42P01). Verification: zig build exit 0; test-integration-vld-http 5/5 with 0 leaks and no 42P01; test-integration-vld-unit 14/14 (B1 landed by BACKEND-DEV commit 844c2016; R7 preserved - no regression); lint_test_isolation.py exit 0 (179 files, no issues). Committed on feature/wf02-vld01-03-20260816 (1c3a6065).",
+    "artifacts_out": [
+      "tests/integration/validation_vld_http_test.zig",
+      "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-4-r2-test-designer-INNER-REPORT.json"
+    ],
+    "commit_sha": "1c3a6065",
+    "root_causes_fixed": [
+      "B2",
+      "B3"
+    ],
+    "verification": {
+      "zig_build": "exit 0",
+      "test_integration_vld_http": "5/5 passed (run test 5 pass (5 total)), INT_EXIT=0, 0 leaks, no 42P01 - B2 (int_vld_03_http_200 -> 200), B3 (int_vld_03_cross_tenant_404 -> 404), R10-3 (int_vld_03_02 five-fields) all pass",
+      "test_integration_vld_unit": "14/14 passed - B1 (operand-compat in cmp_expr) landed by BACKEND-DEV commit 844c2016; R7 arithmetic-positive cases preserved - no regression",
+      "lint_test_isolation": "OK - 179 file(s) checked, no isolation issues (exit 0)"
+    },
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

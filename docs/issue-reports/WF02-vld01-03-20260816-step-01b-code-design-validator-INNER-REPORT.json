@@ -1,0 +1,59 @@
+{
+  "report_id": "WF02-vld01-03-20260816-step-01b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF02-vld01-03-20260816",
+  "step": "01b",
+  "created_at": "2026-08-16T01:20:00Z",
+  "summary": "Validated the Type E prose design artefact src/design/vld-01-03-stage-16-validation.md produced by CODE-DESIGNER in WF-02 Step 1 (Stage 16, VLD-01 / VLD-02 / VLD-03). lint_design_artefact.py exits 1 with 0 BLOCKER / 1 MAJOR / 0 MINOR — the MAJOR is E010 (heading-phrasing substring false positive: design's section 9 is titled '## 9. Error kinds — full taxonomy' which does not contain any of the linter's accepted literal substrings). Substantively complete: 15/15 ACs covered (§16 table), all 12 zig code blocks are interface sketches (≤20 lines each, no SQL DDL, no JSX/TS implementation, all under 40-line E050 cap), and all 7 BACKEND-DEV/TEST-DESIGNER handoff-consumer sections are present (module structure §7.2, test pointers §12, closed ErrorKind §4.3, type mapping §8, PD-06 ordering §6.2.4, edit-distance §6.2.2/§9.1, scope rules §10). Verdict: FAIL — route back to CODE-DESIGNER for one-line heading rephrase ('## 9. Error kinds — full taxonomy' → '## 9. Error taxonomy') and re-emit. No substantive design rework needed; this is a one-character/one-line fix.",
+  "files_created": [
+    "docs/issue-reports/WF02-vld01-03-20260816-step-01b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-vld01-03-20260816/step-01b-code-design-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/vld-01-03-stage-16-validation.md",
+      "status": "fail",
+      "detail": "Exit 1. BLOCKER=0 MAJOR=1 MINOR=0. [MAJOR] E010 — missing required section for `errors`; expected one of: ('error taxonomy', 'errors', 'error cases'). Root cause: substring-match linter does not accept the design's heading '## 9. Error kinds — full taxonomy' (singular 'error' vs accepted 'errors', em-dash breaks 'error taxonomy' into two tokens). Substantively §9 IS a complete error taxonomy — all 7 ErrorKind variants enumerated (§9.1–9.7) with emit-when + message format, and §4.3 enforces the closed enum at the Zig type level."
+    },
+    {
+      "name": "AC coverage (15/15)",
+      "status": "pass",
+      "detail": "§16 table maps every VLD-01/02/03 AC to a design section, test-plan pointer, and substantive narrative. Spot-checks: VLD-01 AC1 (§6.1.2 + §9.4 + §12.1), VLD-02 AC4 (§6.2.4 + §7.3 + §12.2 — pd06_diagnostics verbatim), VLD-03 AC3 (§6.2.2 + §6.3.3 + §9.1 + §12.3 — Levenshtein ≤4)."
+    },
+    {
+      "name": "No implementation code check",
+      "status": "pass",
+      "detail": "12 zig code blocks: all interface sketches. Type definitions (TypeTag/Entry/Provenance §4.1; ErrorKind/Finding §4.3; ValidationFailure §4.4) + ≤20-line AC-anchored emission snippets (§6.1.2–6.1.4 env builder, §6.2.1–6.2.5 type checker, §6.3.4 sort). Zero SQL DDL. Zero JSX/TS implementation. All blocks well under 40-line E050 cap."
+    },
+    {
+      "name": "Completeness for handoff consumers (7/7 sections)",
+      "status": "pass",
+      "detail": "§7.2 module structure (8 files), §12 per-AC test pointers (5 sub-sections), §4.3 closed ErrorKind (7 variants), §8 type mapping table (8 mappings), §6.2.4 PD-06 hard-gate ordering, §6.2.2/§9.1 edit-distance (Levenshtein ≤4), §10 scope rules (forward-reachable DFS + per-form scoping)."
+    },
+    {
+      "name": "tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "Same baseline numbers as before this handoff was written (10 BLOCKER / 31 MAJOR / 1 MINOR / 291 ACKNOWLEDGED). No new issues introduced by this handoff. H003 OK: completed_at (2026-08-16T01:08:33Z) > started_at (2026-08-16T00:58:35Z)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "code": "E010",
+      "description": "lint_design_artefact.py: [MAJOR] E010 — missing required section for `errors`; expected one of: ('error taxonomy', 'errors', 'error cases'). The design's section 9 heading '## 9. Error kinds — full taxonomy' does not contain any of the accepted literal substrings because of (a) singular 'error' vs the linter's accepted 'errors' substring and (b) the em-dash separator breaking 'error taxonomy' into two tokens. Substantively the section IS a complete error taxonomy — §9.1–9.7 enumerate all 7 ErrorKind variants with emit-when + message format, and §4.3 enforces the closed enum at the Zig type level. FIX (one line): rename '## 9. Error kinds — full taxonomy' to '## 9. Error taxonomy' (or add a sibling '## Errors' heading). No substantive design rework required — all 15 ACs are covered and all 7 handoff-consumer sections are present.",
+      "fix": "Rename '## 9. Error kinds — full taxonomy' to '## 9. Error taxonomy' (or add '## Errors' sibling heading). Re-emit the file unchanged otherwise. Expected: lint exits 0, gate becomes PASS.",
+      "cross_repo_false_positive_scope": "Many other repo designs trigger the same E010 with non-canonical heading phrasing: adp-01-tenant-column-event-store.md, event_store.md, expr-benchmark.md, fix-ISS-0097.md, fix-iss-0098.md, fix-iss-0099.md, etc. — confirms the linter's substring heuristic is brittle."
+    }
+  ],
+  "next_steps": [
+    "Route back to CODE-DESIGNER for one-line heading rephrase.",
+    "Rename '## 9. Error kinds — full taxonomy' to '## 9. Error taxonomy' (or add '## Errors' sibling heading).",
+    "Re-emit src/design/vld-01-03-stage-16-validation.md unchanged otherwise.",
+    "Re-run CODE-DESIGN-VALIDATOR (Step 1b) — expected to PASS."
+  ],
+  "blockers": []
+}

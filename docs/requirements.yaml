@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-15T23:28:29Z'
+generated_at: '2026-08-16T08:21:17Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -13131,7 +13131,7 @@ requirements:
     title: Typed environment from definition context
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL build a typed environment for expression validation from the definition's own declarations: the `variable_schema`, the declared result schemas of referenced service catalog entries (REPO-07, SVC-01), the declared output schemas of referenced `module_ref` modules (PLC-01), and the field types of each human task's form schema. The declared type names map as follows: `string`, `text` and `enum` to string; `integer`, `decimal` and `money` to number; `boolean` to bool; `date` and `datetime` to timestamp; `list<T>` to a list of the mapped element type; `object` to map.
 
@@ -13146,14 +13146,29 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:12Z'
+    last_updated: '2026-08-16T08:21:15Z'
     workflow: PW-02
+    note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
+      fix verified 40/40 + 14/14 + 5/5).'
+    implemented_in:
+    - src/validation/mod.zig
+    - src/validation/env.zig
+    - src/validation/scope.zig
+    - src/validation/typecheck.zig
+    - src/validation/site.zig
+    - src/validation/pd06.zig
+    - src/validation/finding.zig
+    - src/validation/wire.zig
+    - tests/integration/validation_vld_unit_test.zig
+    - tests/integration/validation_vld_http_test.zig
+    - tests/specs/vld-01-03-stage-16-validation.spec.md
+    released_at: '2026-08-16T08:21:15Z'
   VLD-02:
     id: VLD-02
     title: Expression compile and type check
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL compile every CEL expression carried by a definition against the VLD-01 typed environment visible at that expression's site. The sites are transition guards, human-task assignment expressions, timer delay expressions, service-task input mappings, and form `visible_when` and `computed_from` expressions. Compilation runs only after the PD-02 structure check and the PD-06 syntax check pass. Required result types are bool for a guard, duration or timestamp for a timer delay, and the declared field type for `computed_from`.
 
@@ -13168,14 +13183,29 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:13Z'
+    last_updated: '2026-08-16T08:21:16Z'
     workflow: PW-02
+    note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
+      fix verified 40/40 + 14/14 + 5/5).'
+    implemented_in:
+    - src/validation/mod.zig
+    - src/validation/env.zig
+    - src/validation/scope.zig
+    - src/validation/typecheck.zig
+    - src/validation/site.zig
+    - src/validation/pd06.zig
+    - src/validation/finding.zig
+    - src/validation/wire.zig
+    - tests/integration/validation_vld_unit_test.zig
+    - tests/integration/validation_vld_http_test.zig
+    - tests/specs/vld-01-03-stage-16-validation.spec.md
+    released_at: '2026-08-16T08:21:16Z'
   VLD-03:
     id: VLD-03
     title: Aggregated validation diagnostics
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The platform SHALL report every semantic validation finding from a single pass in one HTTP 422 response. Each finding carries `node_id`, `expression_path`, `source`, `error_kind` and `message`. `error_kind` is one of `UnknownVariable`, `TypeMismatch`, `OperandTypeError`, `UnknownVariableType`, `UndeclaredResultSchema`, `ConflictingFieldType`, `EmptyExpression`.
 
@@ -13190,8 +13220,23 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:14Z'
+    last_updated: '2026-08-16T08:21:17Z'
     workflow: PW-02
+    note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
+      fix verified 40/40 + 14/14 + 5/5).'
+    implemented_in:
+    - src/validation/mod.zig
+    - src/validation/env.zig
+    - src/validation/scope.zig
+    - src/validation/typecheck.zig
+    - src/validation/site.zig
+    - src/validation/pd06.zig
+    - src/validation/finding.zig
+    - src/validation/wire.zig
+    - tests/integration/validation_vld_unit_test.zig
+    - tests/integration/validation_vld_http_test.zig
+    - tests/specs/vld-01-03-stage-16-validation.spec.md
+    released_at: '2026-08-16T08:21:17Z'
   VLD-04:
     id: VLD-04
     title: Validation gate at authoring and promotion

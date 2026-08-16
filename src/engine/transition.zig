@@ -10,7 +10,7 @@
 //!
 //! Design artefact: src/design/engine.md §EE-02
 const std = @import("std");
-const graph_mod = @import("../definition/graph.zig");
+const graph_mod = @import("graph");
 const expr = @import("expr");
 const Uuid = graph_mod.Uuid;
 

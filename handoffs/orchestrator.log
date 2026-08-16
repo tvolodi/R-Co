@@ -707,11 +707,17 @@
 2026-08-09T09:58:00Z | COMPLETE | WF03-GH380-20260809 | d671b493 | ISSUE-FIXER | Step 1 PASS — root cause: validateCompensationHandlers()/validateReversibility() defined in graph.zig but never called from store.zig create/promote/update
 2026-08-09T10:02:00Z | COMPLETE | WF03-GH380-20260809 | 10472669 | CODE-DESIGNER | Step 2 PASS — src/design/fix-ISS-0117.md written
 2026-08-09T10:02:00Z | COMPLETE | WF03-GH380-20260809 | d7f54c2e | CODE-DESIGN-VALIDATOR | Step 2b PASS — design covers all 4 acceptance criteria, no implementation code
+2026-08-09T10:02:12Z | ROUTE | WF03-GH379-20260809 | 1214a791 | ORCH → BACKEND-DEV | PENDING
+2026-08-09T10:02:12Z | COMPLETE | WF03-GH379-20260809 | 1214a791 | BACKEND-DEV | git-setup PASS — feature/WF03-GH379-20260809 pushed
 2026-08-09T10:09:54Z | COMPLETE | WF03-GH380-20260809 | f2712ca7 | BACKEND-DEV | Step 3 PASS — store.zig/graph.zig/build.zig implemented, zig build + lint_sql_param_types.py + zig build migrate all clean, commit 1bbf857 pushed
 2026-08-09T10:09:54Z | COMPLETE | WF03-GH380-20260809 | e4f03e3b | TEST-RUNNER | Step 5 PASS — 7/7 exp401_exp402 tests pass (TC-EXP-401-02/03/04/05 fixed), zig build test exit 0
 2026-08-09T10:14:00Z | COMPLETE | WF03-GH380-20260809 | ff965720 | DOC-UPDATER | Step 7 PASS — CHANGELOG updated, ISS-0117 RESOLVED, commit f64c765 pushed
 2026-08-09T10:18:47Z | MERGE | WF03-GH380-20260809 | 5f6ff84d | BACKEND-DEV | PR #625 squash-merged 4d7b94c; branch deleted; GH-380 closed and Done; ISS-0117 RESOLVED
 2026-08-09T10:18:47Z | COMPLETE | WF03-GH380-20260809 | 5f6ff84d | ORCH | WF-03 run COMPLETE — GH-380 resolved
+2026-08-09T10:29:55Z | ROUTE | WF03-GH379-20260809 | 2c0e27e1 | ORCH → ISSUE-FIXER | Step 0.5 PENDING
+2026-08-09T10:29:55Z | COMPLETE | WF03-GH379-20260809 | 2c0e27e1 | ISSUE-FIXER | Step 0.5 PASS — ISS-0116 OPEN, GH#379 linked, no prior resolution
+2026-08-09T10:29:55Z | ROUTE | WF03-GH379-20260809 | 8d300b53 | ORCH → ISSUE-FIXER | Step 1 PENDING
+2026-08-09T10:29:55Z | COMPLETE | WF03-GH379-20260809 | 8d300b53 | ISSUE-FIXER | Step 1 PASS — Category D, obs05_dlq_test.zig lines 395/462 resource_id::uuid cast mismatch
 2026-08-09T10:57:15Z | ROUTE | WF03-GH379-20260809 | fa4ae9f2 | ORCH -> BACKEND-DEV | Step 00 git-setup COMPLETED
 2026-08-09T10:57:15Z | ROUTE | WF03-GH379-20260809 | 3d0baff1 | ORCH -> ISSUE-FIXER | Step 01 diagnose COMPLETED
 2026-08-09T10:57:15Z | ROUTE | WF03-GH379-20260809 | ca9e8dfa | ORCH -> CODE-DESIGNER | Step 02 design COMPLETED
@@ -719,16 +725,9 @@
 2026-08-09T10:57:15Z | ROUTE | WF03-GH379-20260809 | d520e5b3 | ORCH -> BACKEND-DEV | Step 03 implement COMPLETED
 2026-08-09T10:57:15Z | ROUTE | WF03-GH379-20260809 | 84bc8df1 | ORCH -> TEST-RUNNER | Step 05 verify PASS (obs05 3/3, obs06 5/5)
 2026-08-09T10:57:15Z | ROUTE | WF03-GH379-20260809 | 2398dcaa | ORCH -> DOC-UPDATER | Step 07 changelog+issue RESOLVED
-2026-08-09T10:02:12Z | ROUTE | WF03-GH379-20260809 | 1214a791 | ORCH → BACKEND-DEV | PENDING
-2026-08-09T10:02:12Z | COMPLETE | WF03-GH379-20260809 | 1214a791 | BACKEND-DEV | git-setup PASS — feature/WF03-GH379-20260809 pushed
-2026-08-09T10:29:55Z | ROUTE | WF03-GH379-20260809 | 2c0e27e1 | ORCH → ISSUE-FIXER | Step 0.5 PENDING
-2026-08-09T10:29:55Z | COMPLETE | WF03-GH379-20260809 | 2c0e27e1 | ISSUE-FIXER | Step 0.5 PASS — ISS-0116 OPEN, GH#379 linked, no prior resolution
-2026-08-09T10:29:55Z | ROUTE | WF03-GH379-20260809 | 8d300b53 | ORCH → ISSUE-FIXER | Step 1 PENDING
-2026-08-09T10:29:55Z | COMPLETE | WF03-GH379-20260809 | 8d300b53 | ISSUE-FIXER | Step 1 PASS — Category D, obs05_dlq_test.zig lines 395/462 resource_id::uuid cast mismatch
 2026-08-09T11:14:36Z | COMPLETE | WF03-GH379-20260809 | 8d300b53 | ISSUE-FIXER | Step 2 PASS — 3 fixes applied: resource_id cast, migration 1139, SAVEPOINT pattern
 2026-08-09T11:26:33Z | COMPLETE | WF03-GH379-20260809 | 4bdfdeb1 | TEST-RUNNER | Step 5 PASS — unit tests exit 0, TC-OBS-05-INT-02/03 PASS, TC-SCH-303 4/4 PASS
 2026-08-09T11:26:40Z | ROUTE | WF03-GH379-20260809 | b8922472 | ORCH -> DOC-UPDATER | PENDING
-2026-08-09T11:29:22Z | COMPLETE | WF03-GH379-20260809 | b8922472 | DOC-UPDATER | PASS: CHANGELOG updated, GH-379 closed
 2026-08-09T11:29:06Z | ROUTE | WF03-GH378-20260809 | ce7c1905 | ORCH -> BACKEND-DEV | PENDING
 2026-08-09T11:29:06Z | COMPLETE | WF03-GH378-20260809 | ce7c1905 | BACKEND-DEV | PASS
 2026-08-09T11:29:06Z | ROUTE | WF03-GH378-20260809 | 0bb1aecc | ORCH -> ISSUE-FIXER | PENDING
@@ -743,6 +742,7 @@
 2026-08-09T11:29:06Z | COMPLETE | WF03-GH378-20260809 | 3fc95cde | TEST-RUNNER | PASS
 2026-08-09T11:29:06Z | ROUTE | WF03-GH378-20260809 | 589979c9 | TEST-RUNNER -> DOC-UPDATER | PENDING
 2026-08-09T11:29:06Z | COMPLETE | WF03-GH378-20260809 | 589979c9 | DOC-UPDATER | PASS
+2026-08-09T11:29:22Z | COMPLETE | WF03-GH379-20260809 | b8922472 | DOC-UPDATER | PASS: CHANGELOG updated, GH-379 closed
 2026-08-09T11:36:40Z | MERGE | WF03-GH379-20260809 | ce7f5abe | BACKEND-DEV | PR #628 squash-merged 781bad66; branch deleted; GH-379 closed; ISS-0116 RESOLVED
 2026-08-09T11:36:40Z | COMPLETE | WF03-GH379-20260809 | ce7f5abe | ORCH | WF-03 run COMPLETE — GH-379 resolved
 2026-08-09T11:37:54Z | ROUTE | WF03-GH362-20260809 | 36097324 | ORCH -> BACKEND-DEV | Step 00 git-setup COMPLETED — branch feature/WF03-GH362-20260809 pushed to origin
@@ -759,13 +759,13 @@
 2026-08-09T12:09:28Z | ROUTE | WF03-GH629-20260809 | 55ba6715 | ORCH -> ISSUE-FIXER | Step 1 COMPLETED
 2026-08-09T12:13:58Z | COMPLETE | WF03-GH629-20260809 | c0ddc0e0 | BACKEND-DEV | Step 03 PASS -- svc_test_root.zig created, build.zig patched, zig build+test exit 0, commit 66f84bf3 pushed
 2026-08-09T12:19:05Z | COMPLETE | WF03-GH629-20260809 | 6e0dcf07 | TEST-RUNNER | PASS — 35 SVC tests (scope verified); ISS-0640/GH-631 pre-existing filed+queued
+2026-08-09T12:20:00Z | ROUTE | WF03-GH631-20260809 | acc19747 | ORCH → ISSUE-FIXER | Step 0.5 PENDING
+2026-08-09T12:20:30Z | COMPLETE | WF03-GH631-20260809 | acc19747 | ISSUE-FIXER | Step 0.5 PASS - ISS-0640 registry confirmed, GH-631 linked
+2026-08-09T12:20:30Z | ROUTE | WF03-GH631-20260809 | f5121aff | ORCH → ISSUE-FIXER | Step 1 PENDING
 2026-08-09T12:23:20Z | COMPLETE | WF03-GH629-20260809 | a3b7c2d1 | DOC-UPDATER | CHANGELOG+ISS-0639 RESOLVED, GH-629 closed
 2026-08-09T12:25:06Z | COMPLETE | WF03-GH629-20260809 | f8e9d0c1 | DOC-UPDATER | PR #632 squash-merged, branch deleted, main clean, GH-629 Done, ISS-0639 RESOLVED
 2026-08-09T12:26:49Z | ROUTE | WF03-GH631-20260809 | a1b2c3d4 | ORCH -> BACKEND-DEV | PENDING
 2026-08-09T12:26:49Z | COMPLETE | WF03-GH631-20260809 | a1b2c3d4 | BACKEND-DEV | Step 00 git-setup PASS — feature/WF03-GH631-20260809 pushed to origin
-2026-08-09T12:20:00Z | ROUTE | WF03-GH631-20260809 | acc19747 | ORCH → ISSUE-FIXER | Step 0.5 PENDING
-2026-08-09T12:20:30Z | COMPLETE | WF03-GH631-20260809 | acc19747 | ISSUE-FIXER | Step 0.5 PASS - ISS-0640 registry confirmed, GH-631 linked
-2026-08-09T12:20:30Z | ROUTE | WF03-GH631-20260809 | f5121aff | ORCH → ISSUE-FIXER | Step 1 PENDING
 2026-08-09T12:38:05Z | COMPLETE | WF03-GH631-20260809 | f5121aff | ISSUE-FIXER | Step 1 PASS - DELETE schema-qualified + session_replication_role fix; 35/35 SVC tests pass
 2026-08-09T12:41:25Z | COMPLETE | WF03-GH631-20260809 | 41e66a69 | TEST-RUNNER | PASS — 35/35 SVC tests pass, unit exit 0
 2026-08-09T12:44:47Z | ROUTE | WF03-GH631-20260809 | f71c97f1 | ORCH -> DOC-UPDATER | PENDING
@@ -791,10 +791,6 @@
 2026-08-09T13:11:15Z | ROUTE | WF03-GH359-20260809 | 10ecd97f | ORCH -> ISSUE-FIXER | COMPLETED step-0.5 registry-lookup ISS-0101 GH-359
 2026-08-09T13:11:20Z | ROUTE | WF03-GH359-20260809 | 3afe7006 | ORCH -> ISSUE-FIXER | COMPLETED step-1 diagnosis ISS-0101 D1=OPEN D2=RESOLVED
 2026-08-09T13:18:48Z | COMPLETE | WF03-GH359-20260809 | 7ff9305b | CODE-DESIGNER | PASS — GBL-140 + 031 scope-header design; lint BLOCKER=0 MAJOR=0
-2026-08-09T15:51:40Z | COMPLETE | WF03-GH359-20260809 | b65667a2 | CODE-DESIGN-VALIDATOR | PASS
-2026-08-09T15:52:33Z | COMPLETE | WF03-GH359-20260809 | f32882fe | BACKEND-DEV | PASS
-2026-08-09T15:52:33Z | COMPLETE | WF03-GH359-20260809 | 2b0d7caa | TEST-RUNNER | PASS
-2026-08-09T15:52:34Z | COMPLETE | WF03-GH359-20260809 | b3c05464 | DOC-UPDATER | PASS
 2026-08-09T15:02:01Z | ROUTE | WF03-GH375-20260809 | 8e9ad5b6 | ORCH -> BACKEND-DEV | PENDING
 2026-08-09T15:02:01Z | COMPLETE | WF03-GH375-20260809 | 8e9ad5b6 | BACKEND-DEV | PASS
 2026-08-09T15:02:01Z | ROUTE | WF03-GH375-20260809 | 4e163896 | ORCH -> ISSUE-FIXER | PENDING
@@ -813,12 +809,16 @@
 2026-08-09T15:05:48Z | COMPLETE | WF03-GH375-20260809 | 2aba02e6 | DOC-UPDATER | PASS
 2026-08-09T15:36:54Z | ROUTE | WF03-GH357-20260809 | 6f9a5258 | ORCH -> BACKEND-DEV | Step 00 git-setup COMPLETED — feature/WF03-GH357-20260809 pushed
 2026-08-09T15:47:04Z | ROUTE | WF03-GH357-20260809 | a1c4f8b2 | ORCH -> ISSUE-FIXER | Step 0.5 registry lookup COMPLETED
+2026-08-09T15:51:40Z | COMPLETE | WF03-GH359-20260809 | b65667a2 | CODE-DESIGN-VALIDATOR | PASS
+2026-08-09T15:52:33Z | COMPLETE | WF03-GH359-20260809 | f32882fe | BACKEND-DEV | PASS
+2026-08-09T15:52:33Z | COMPLETE | WF03-GH359-20260809 | 2b0d7caa | TEST-RUNNER | PASS
+2026-08-09T15:52:34Z | COMPLETE | WF03-GH359-20260809 | b3c05464 | DOC-UPDATER | PASS
 2026-08-09T15:53:33Z | ROUTE | WF03-GH357-20260809 | d7e2a3f1 | ORCH -> ISSUE-FIXER | Step 1 diagnosis COMPLETED — ISS-0100 FULLY RESOLVED, no code change needed
 2026-08-09T16:15:00Z | ROUTE | WF03-GH637-20260809 | e93ff5dc | ORCH -> BACKEND-DEV | PENDING
 2026-08-09T16:16:00Z | COMPLETE | WF03-GH637-20260809 | e93ff5dc | BACKEND-DEV | PASS
 2026-08-09T16:16:00Z | ROUTE | WF03-GH637-20260809 | 7cca2897 | ORCH -> ISSUE-FIXER | PENDING
-2026-08-09T16:17:00Z | COMPLETE | WF03-GH637-20260809 | 7cca2897 | ISSUE-FIXER | PASS
 2026-08-09T16:16:00Z | ROUTE | WF03-GH637-20260809 | 6c5e7466 | ORCH -> ISSUE-FIXER | PENDING
+2026-08-09T16:17:00Z | COMPLETE | WF03-GH637-20260809 | 7cca2897 | ISSUE-FIXER | PASS
 2026-08-09T16:35:00Z | COMPLETE | WF03-GH637-20260809 | 6c5e7466 | ISSUE-FIXER | PASS
 2026-08-09T16:35:00Z | ROUTE | WF03-GH637-20260809 | 9b894a0f | ORCH -> CODE-DESIGNER | PENDING
 2026-08-09T16:40:00Z | COMPLETE | WF03-GH637-20260809 | 9b894a0f | CODE-DESIGNER | PASS
@@ -876,6 +876,7 @@
 2026-08-10T15:00:03Z | RESOLVE | GH-649 | --- | r-co-2-loop | WF03-GH649-20260810-final Step Final PASS (PR #677) — all forwarded children resolved, closed
 2026-08-10T15:13:01Z | RESOLVE | GH-482 | --- | r-co-2-loop | WF03-GH482-20260810-final Step Final PASS (PR #678) — root ancestor issue closed, entire chain resolved
 2026-08-10T16:14:30Z | ROUTE | WF03-batch-GH280-301-triage-20260810 | b3f1a2c4 | ORCH | Batch verification of GH-280..301 dispatched to research subagent
+2026-08-10T16:19:33Z | ENQUEUE | ISS-0658 | --- | ORCH | Filed GH-679, added to global queue — aggregate test-integration instability discovered during GH-283 verification
 2026-08-10T16:20:06Z | RESOLVE | GH-282 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
 2026-08-10T16:20:06Z | RESOLVE | GH-284 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
 2026-08-10T16:20:06Z | RESOLVE | GH-286 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — CONFIRMED_FIXED, closed on source evidence
@@ -884,7 +885,6 @@
 2026-08-10T16:20:06Z | RESOLVE | GH-296 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — substantially resolved, closed
 2026-08-10T16:20:06Z | RESOLVE | GH-298 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — superseded by global-queue architecture, closed
 2026-08-10T16:20:06Z | COMMENT | GH-280,281,283,291,292,293,294,295,297,299,300 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — evidence comments posted, kept open, stale triage notes corrected on 280/283
-2026-08-10T16:19:33Z | ENQUEUE | ISS-0658 | --- | ORCH | Filed GH-679, added to global queue — aggregate test-integration instability discovered during GH-283 verification
 2026-08-10T16:20:06Z | DEFER | GH-301 | --- | ORCH | WF03-batch-GH280-301-triage-20260810 — GOV-02 scoping decision recorded, deferred cleanly for future WF-02 implementation run
 2026-08-10T16:55:01Z | COMPLETE | WF03-GH300-20260810 | a3000000 | BACKEND-DEV | PASS
 2026-08-10T16:55:30Z | ROUTE | WF03-GH300-20260810 | a3000000-0050 | ORCH -> ISSUE-FIXER | PENDING
@@ -915,33 +915,33 @@
 2026-08-10T20:13:02Z | ROUTE   | WF03-GH299-20260811 | 29900000-0000-0200-0000-000000000000 | ORCH → CODE-DESIGNER | PENDING (step 2: design)
 2026-08-10T20:16:47Z | COMPLETE | WF03-GH299-20260811 | 29900000 | CODE-DESIGNER | PASS (pi-09-operations-runbook.md + ISS-0084.md)
 2026-08-10T20:18:29Z | ROUTE   | WF03-GH299-20260811 | 29900000-0000-02b1-0000-000000000000 | ORCH → CODE-DESIGN-VALIDATOR | PENDING (step 2b: hard gate)
+2026-08-10T20:20:40Z | COMPLETE | WF03-GH297-20260811 | --- | BACKEND-DEV | PASS (PR #685 merged 5ee3412, GH-297 closed)
+2026-08-10T20:20:40Z | RESOLVE  | WF03-GH297-20260811 | --- | ORCH | GH-297 closed via PR #685; ci.yml paths-ignore added, gate tiering evaluated and deferred (no slow job to tier), flaky-test policy documented in test_developer_guide.md sec 10.1
+2026-08-10T20:20:40Z | QUEUE_REL | WF03-GH297-20260811 | --- | ORCH | GH-297 marked RESOLVED on global_queue (PR #685 merged at 5ee3412)
 2026-08-10T20:20:55Z | FAIL    | WF03-GH299-20260811 | 29900000 | CODE-DESIGN-VALIDATOR | FAIL — 3 BLOCKER/MAJOR issues (test spec sections + exit code)
 2026-08-10T20:22:18Z | REWORK   | WF03-GH299-20260811 | 29900000-0000-0200-0000-000000000000 | CODE-DESIGNER | REWORK(1/3) routed by validator: exit code 1->78, test spec missing purpose/error sections
 2026-08-10T20:24:04Z | COMPLETE | WF03-GH299-20260811 | 29900000 | CODE-DESIGNER | PASS (rework 1)
 2026-08-10T20:25:05Z | ROUTE   | WF03-GH299-20260811 | 29900000-0000-02b1-0000-000000000000 | ORCH → CODE-DESIGN-VALIDATOR | PENDING (step 2b re-run after design rework 1)
 2026-08-10T20:27:05Z | COMPLETE | WF03-GH299-20260811 | 29900000-0000-02b1-0000-000000000000 | CODE-DESIGN-VALIDATOR | PASS (re-validated after design rework 1)
 2026-08-10T20:28:21Z | ROUTE   | WF03-GH299-20260811 | 29900000-0000-0300-0000-000000000000 | ORCH → BACKEND-DEV | PENDING (step 3: implement PI-09 ops runbook + fail-fast assertion)
+2026-08-10T20:28:22Z | COMPLETE | WF03-GH295-20260811 | --- | BACKEND-DEV | PASS (PR #686 merged a8b51df, GH-295 closed)
+2026-08-10T20:28:22Z | RESOLVE  | WF03-GH295-20260811 | --- | ORCH | GH-295 closed via PR #686; scored test-tier rubric added to test_developer_guide.md sec 2.1, fail-first rule added to TEST-DESIGN-VALIDATOR checklist in CLAUDE.md
+2026-08-10T20:28:22Z | QUEUE_REL | WF03-GH295-20260811 | --- | ORCH | GH-295 marked RESOLVED on global_queue (PR #686 merged at a8b51df)
 2026-08-10T20:36:26Z | COMPLETE | WF03-GH299-20260811 | 29900000 | BACKEND-DEV | PASS (PI-09 implementation)
 2026-08-10T20:37:43Z | ROUTE   | WF03-GH299-20260811 | 29900000-0000-0500-0000-000000000000 | ORCH → TEST-RUNNER | PENDING (step 5: verify PI-09 implementation)
 2026-08-10T20:41:05Z | COMPLETE | WF03-GH299-20260811 | 29900000 | TEST-RUNNER | FAIL (pre-check BLOCKER: env_verify C0 — DB URL collision)
 2026-08-10T20:42:45Z | BENCH_ENV | WF03-GH299-20260811 | --- | ORCH | CLEARED (BPM_DB_URL -> bpm_dev on :5442; zig build test-env-verify exit 0)
 2026-08-10T20:42:45Z | ROUTE    | WF03-GH299-20260811 | 29900000-0000-0500-0000-000000000000 | ORCH → TEST-RUNNER | PENDING (step 5 redispatch after env fix)
 2026-08-10T20:51:12Z | COMPLETE | WF03-GH299-20260811 | 29900000 | TEST-RUNNER | FAIL (compilation errors in startup_assertions_test.zig)
+2026-08-10T20:52:19Z | RESOLVE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 (ISS-0079/PI-04) resolved via PR #687, squash-merged 86173d3, single command surface make.ps1 added, check scoped as interim pre-PI-03 stand-in pending GH-293
+2026-08-10T20:52:19Z | QUEUE_RELEASE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 -> RESOLVED (workspace r-co-2-loop)
 2026-08-10T20:55:49Z | REWORK | WF03-GH299-20260811 | 29900000 | BACKEND-DEV | REWORK(1/3) compile-errors-in-test-file
 2026-08-10T21:05:47Z | COMPLETE | WF03-GH299-20260811 | 29900000-0000-0300-0000-000000000000 | BACKEND-DEV | PASS rework=1/3
 2026-08-10T21:08:52Z | ROUTE | WF03-GH299-20260811 | 29900000 | ORCH → TEST-RUNNER | PENDING (step 5 redispatch after Step 03 rework 1 PASS)
-2026-08-10T21:31:21Z | COMPLETE | WF03-GH299-20260811 | 29900005 | TEST-RUNNER | PASS - 5/5 startup_assertions tests pass; report at tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml
-2026-08-10T21:32:58Z | ROUTE | WF03-GH299-20260811 | 8da9095b | ORCH → DOC-UPDATER | PENDING (step 7 — housekeeping + merge)
-2026-08-10T20:20:40Z | COMPLETE | WF03-GH297-20260811 | --- | BACKEND-DEV | PASS (PR #685 merged 5ee3412, GH-297 closed)
-2026-08-10T20:20:40Z | RESOLVE  | WF03-GH297-20260811 | --- | ORCH | GH-297 closed via PR #685; ci.yml paths-ignore added, gate tiering evaluated and deferred (no slow job to tier), flaky-test policy documented in test_developer_guide.md sec 10.1
-2026-08-10T20:20:40Z | QUEUE_REL | WF03-GH297-20260811 | --- | ORCH | GH-297 marked RESOLVED on global_queue (PR #685 merged at 5ee3412)
-2026-08-10T20:28:22Z | COMPLETE | WF03-GH295-20260811 | --- | BACKEND-DEV | PASS (PR #686 merged a8b51df, GH-295 closed)
-2026-08-10T20:28:22Z | RESOLVE  | WF03-GH295-20260811 | --- | ORCH | GH-295 closed via PR #686; scored test-tier rubric added to test_developer_guide.md sec 2.1, fail-first rule added to TEST-DESIGN-VALIDATOR checklist in CLAUDE.md
-2026-08-10T20:28:22Z | QUEUE_REL | WF03-GH295-20260811 | --- | ORCH | GH-295 marked RESOLVED on global_queue (PR #686 merged at a8b51df)
-2026-08-10T20:52:19Z | RESOLVE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 (ISS-0079/PI-04) resolved via PR #687, squash-merged 86173d3, single command surface make.ps1 added, check scoped as interim pre-PI-03 stand-in pending GH-293
-2026-08-10T20:52:19Z | QUEUE_RELEASE | WF03-GH294-20260811 | --- | BACKEND-DEV | GH-294 -> RESOLVED (workspace r-co-2-loop)
 2026-08-10T21:09:28Z | RESOLVE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 (ISS-0078/PI-03) resolved via PR #688, squash-merged 71ac764, zig build check gate added (build + scoped zig fmt --check via tools/check_fmt_scope.py), error-set grep retired (exit code already sufficient), make.ps1 check now calls the real gate
 2026-08-10T21:09:28Z | QUEUE_RELEASE | WF03-GH293-20260811 | --- | BACKEND-DEV | GH-293 -> RESOLVED (workspace r-co-2-loop)
+2026-08-10T21:31:21Z | COMPLETE | WF03-GH299-20260811 | 29900005 | TEST-RUNNER | PASS - 5/5 startup_assertions tests pass; report at tests/reports/report-2026-08-10-WF03-GH299-20260811.yaml
+2026-08-10T21:32:58Z | ROUTE | WF03-GH299-20260811 | 8da9095b | ORCH → DOC-UPDATER | PENDING (step 7 — housekeeping + merge)
 2026-08-10T21:34:58Z | GIT_MERGE | WF03-GH292-20260811 | --- | BACKEND-DEV | PR #689 squash-merged to main (4b07018), branch feature/WF03-GH292-20260811 deleted
 2026-08-10T21:34:58Z | ISSUE_CLOSE | WF03-GH292-20260811 | --- | DOC-UPDATER | GH-292 closed with evidence comment; ISS-0077 status RESOLVED
 2026-08-10T21:34:58Z | QUEUE_RELEASE | WF03-GH292-20260811 | --- | ORCH | GH-292 released from global_queue.json, status RESOLVED
@@ -1224,21 +1224,15 @@
 2026-08-12T07:56:16Z | QUEUE_REL | WF03-GH714-20260812 | --- | ORCH | GH-714 released from global_queue, RESOLVED
 2026-08-12T07:56:16Z | LOOP | WF03-GH714-20260812 | --- | ORCH | GH-714 RESOLVED; 12 issues remain in queue
 2026-08-12T07:59:01Z | QUEUE_REL | LOOP | --- | ORCH | GH-715/718/719/721/724/727 already closed on GitHub — marked RESOLVED in queue
-2026-08-12T08:10:00Z | QUEUE_REL | LOOP | --- | ORCH | ISS-0684 RESOLVED (fixed by ISS-0663); ISS-0672 DEFERRED (needs REQ-ANALYST schema decision)
 2026-08-12T08:03:32Z | ROUTE | WF03-GH720-20260812 | 72000000 | ORCH -> BACKEND-DEV | PENDING (step 00)
 2026-08-12T08:03:32Z | ROUTE | WF03-GH722-20260812 | 72200000 | ORCH -> BACKEND-DEV | PENDING (step 00)
+2026-08-12T08:10:00Z | QUEUE_REL | LOOP | --- | ORCH | ISS-0684 RESOLVED (fixed by ISS-0663); ISS-0672 DEFERRED (needs REQ-ANALYST schema decision)
 2026-08-12T08:10:40Z | BENCH_ENV_CHECK | WF03-GH720-20260812 | --- | ORCH | CLEARED (10/10 healthy)
 2026-08-12T08:10:40Z | ROUTE | WF03-GH720-20260812 | 72000500 | ORCH -> TEST-RUNNER | PENDING (step 5)
 2026-08-12T08:10:40Z | ROUTE | WF03-GH722-20260812 | 72200500 | ORCH -> TEST-RUNNER | PENDING (step 5)
 2026-08-12T08:21:18Z | ROUTE | WF03-GH720-20260812 | 72000700 | ORCH -> DOC-UPDATER | PENDING (step 7+final)
 2026-08-12T08:21:18Z | ROUTE | WF03-GH722-20260812 | 72200700 | ORCH -> DOC-UPDATER | PENDING (step 7+final)
 2026-08-12T09:03:52Z | ROUTE | WF03-GH716-20260812 | f0dc5017 | ORCH -> BACKEND-DEV | PENDING (Step 00 git-setup)
-2026-08-12T13:24:32Z | RESOLVE | WF03-GH720-20260812 | --- | DOC-UPDATER | GH-720 closed; ISS-0678 RESOLVED; PR merged
-2026-08-12T13:24:32Z | QUEUE_REL | WF03-GH720-20260812 | --- | ORCH | ISS-0678 released, RESOLVED
-2026-08-12T13:24:32Z | LOOP | WF03-GH720-20260812 | --- | ORCH | ISS-0678 RESOLVED; continuing to GH-722
-2026-08-12T13:27:28Z | RESOLVE | WF03-GH722-20260812 | --- | DOC-UPDATER | GH-722 closed; ISS-0680 RESOLVED; PR merged
-2026-08-12T13:27:28Z | QUEUE_REL | WF03-GH722-20260812 | --- | ORCH | ISS-0680 released, RESOLVED
-2026-08-12T13:27:28Z | LOOP | WF03-GH722-20260812 | --- | ORCH | ISS-0680 RESOLVED; both WF03-GH720 and WF03-GH722 complete
 2026-08-12T09:12:13Z | COMPLETE | WF03-GH716-20260812 | f0dc5017 | BACKEND-DEV | Step 00 git-setup PASS, branch feature/WF03-GH716-20260812
 2026-08-12T09:15:00Z | ROUTE | WF03-GH716-20260812 | e94f1400 | ORCH -> ISSUE-FIXER | PENDING (Step 0.5 registry lookup)
 2026-08-12T09:16:08Z | ROUTE | WF03-GH716-20260812 | 8bb1745f | ORCH -> ISSUE-FIXER | PENDING (Step 01 root cause diagnosis)
@@ -1312,8 +1306,14 @@
 2026-08-12T13:19:17Z | COMPLETE | WF02-idn05-20260812 | d0e1f2a3 | DOC-UPDATER | PASS -- IDN-05 RELEASED (reqctl), CHANGELOG updated, lint_handoffs 0, PR #746 CI 8/8 green, squash-merged 34d7ca13, branch deleted, repo on clean main b373f205
 2026-08-12T13:19:17Z | GIT_MERGE | WF02-idn05-20260812 | d0e1f2a3 | DOC-UPDATER | PR #746 squash-merged 34d7ca13; feature/WF02-idn05-20260812 deleted; on main b373f205, clean tree
 2026-08-12T13:19:17Z | DONE | WF02-idn05-20260812 | --- | ORCH | IDN-05 RELEASED. WF-02 complete. Feature branch deleted. Repo on clean main.
+2026-08-12T13:24:32Z | RESOLVE | WF03-GH720-20260812 | --- | DOC-UPDATER | GH-720 closed; ISS-0678 RESOLVED; PR merged
+2026-08-12T13:24:32Z | QUEUE_REL | WF03-GH720-20260812 | --- | ORCH | ISS-0678 released, RESOLVED
+2026-08-12T13:24:32Z | LOOP | WF03-GH720-20260812 | --- | ORCH | ISS-0678 RESOLVED; continuing to GH-722
 2026-08-12T13:26:33Z | COMPLETE | WF02-batch-5-20260812 | wf02-bat | BACKEND-DEV | COMPLETED step-02a-adhoc-fix-iss0688: PASS, fixed ISS-0688/GH-745 (bpm_effective_tenant_id() regression) in src/engine/instance.zig plus 9 additional genuine survivors found by the mandated grep sweep (store.zig, export_import.zig, snapshot.zig, audit.zig, commands.zig); grep -rn bpm_effective_tenant_id src/ now returns zero functional call sites; added tools/lint_dropped_tenant_function.py standing check wired into CI; zig build test-integration-main 709 pass/9 skip/43 fail (baseline pre-fix was 708/9/44, zero new failures, 1 additional pass); test-env-verify HEALTHY; closed GH-745; next: SECURITY-REVIEWER re-review then resume TEST-RUNNER
 2026-08-12T13:26:33Z | COMPLETE | WF02-batch-5-20260812 | wf02-bat | BACKEND-DEV | COMPLETED step-02a-adhoc-fix-iss0688: PASS, fixed ISS-0688/GH-745 (bpm_effective_tenant_id() regression) in src/engine/instance.zig plus 9 additional genuine survivors found by the mandated grep sweep (store.zig, export_import.zig, snapshot.zig, audit.zig, commands.zig); grep -rn bpm_effective_tenant_id src/ now returns zero functional call sites; added tools/lint_dropped_tenant_function.py standing check wired into CI; zig build test-integration-main 709 pass/9 skip/43 fail (baseline pre-fix was 708/9/44, zero new failures, 1 additional pass); test-env-verify HEALTHY; closed GH-745; next: SECURITY-REVIEWER re-review then resume TEST-RUNNER
+2026-08-12T13:27:28Z | RESOLVE | WF03-GH722-20260812 | --- | DOC-UPDATER | GH-722 closed; ISS-0680 RESOLVED; PR merged
+2026-08-12T13:27:28Z | QUEUE_REL | WF03-GH722-20260812 | --- | ORCH | ISS-0680 released, RESOLVED
+2026-08-12T13:27:28Z | LOOP | WF03-GH722-20260812 | --- | ORCH | ISS-0680 RESOLVED; both WF03-GH720 and WF03-GH722 complete
 2026-08-12T14:08:36Z | ROUTE | WF02-env04-20260812 | env04-s00-0001 | ORCH -> BACKEND-DEV | PENDING (step 00 git-setup, ENV-04 UI test-tenant labels)
 2026-08-12T14:13:19Z | COMPLETE | WF02-env04-20260812 | env04-s00-0001 | BACKEND-DEV | PASS -- git-setup: branch feature/WF02-env04-20260812 from b373f205, pushed
 2026-08-12T14:13:56Z | ROUTE | WF02-env04-20260812 | env04-s01-0002 | ORCH -> CODE-DESIGNER | PENDING (step 01 design ENV-04 test-tenant UI)
@@ -1367,7 +1367,6 @@
 2026-08-12T17:26:12Z | GIT_MERGE | WF02-batch-5-20260812 | wf02-6 | DOC-UPDATER | PR #749 squash-merged 609f0703 (reconciled duplicate DOC-UPDATER dispatch from sibling workspace, ef75ad81/ece6e693, superseded with authoritative RELEASE-VALIDATOR PARTIAL outcome); feature/WF02-batch-5-20260812 deleted; on main 609f0703, clean tree
 2026-08-12T17:26:12Z | BATCH_RELEASE | WF02-batch-5-20260812 | wf02-6 | DOC-UPDATER | batch queue claim 5413361521cc -> DONE; registry archived (12 entries total for this run); pushed to main b3a13ea9
 2026-08-12T17:26:12Z | DONE | WF02-batch-5-20260812 | --- | ORCH | PIN-04/PIN-05/PRM-01 RELEASED, PIN-03 TESTED (ISS-0672/GH-306). WF-02 complete. Feature branch deleted. Repo on clean main.
-[2026-08-12T17:35:00Z] | DONE | WF02-batch-5-20260812 | wf02batc-Final | BACKEND-DEV | PASS: PR #749 merged (squash), feature branch deleted, main clean at 6495b759
 2026-08-12T18:08:44Z | ESTIMATE | WF02-batch-6-20260812 | D4/medium | ~73min | PRM-02, PRM-03, PRM-04, PRM-05
 2026-08-12T18:08:44Z | ROUTE | WF02-batch-6-20260812 | 6621e151 | ORCH -> TEST-RUNNER | PENDING (Step 00a Green-Main Gate)
 2026-08-12T18:13:05Z | ROUTE | WF03-GH750-20260812 | wf03-gh750-20260812-00 | ORCH -> ISSUE-FIXER | PENDING (Step 00, GH #750 doc-updater agent fix)
@@ -1379,7 +1378,6 @@
 2026-08-12T22:06:56Z | START | WF03-GH752-20260812 | wf03-gh752-20260812-00 | ISSUE-FIXER | Dispatched Step 00 (ISS-0692 filing + triage)
 2026-08-12T22:08:33Z | STEP_CLAIM | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Step 00 claimed: registry lookup + GH filing + ISS update
 2026-08-12T22:08:33Z | STEP_CLAIM | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Step 00 claimed: registry lookup + GH filing + ISS update\n2026-08-12T22:08:33Z | FILE_ISS | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Filed adjacent issues ISS-0694/GH-754 (adp06:271) and ISS-0695/GH-755 (api03:988); line 254 leak folded into this ISS at Step 00 scope expansion\n2026-08-12T22:11:00Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | ISSUE-FIXER | Step 01 root-cause confirmed; 2 leaks in TC-SIM-01-01 verified under std.testing.allocator\n2026-08-12T22:13:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | CODE-DESIGNER | Step 02 design artefact written (src/design/fix-iss-0691.md); Type-E prose, 1 file changed, no production code touched\n2026-08-12T22:14:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | CODE-DESIGN-VALIDATOR | Step 02b PASS hard gate (a-g all PASS or N/A)\n2026-08-12T22:15:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | BACKEND-DEV | Step 03 implemented: capture-and-free at sim01_04:254+264; test-only fix; production untouched; zig build exits 0\n2026-08-12T22:18:30Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753 | TEST-RUNNER | Step 05 PASS: zig build test-integration-stage11-sim-xc04 = 14/14 tests passed, 0 leaks; zig build test = 1071/1135; lint_test_isolation BLOCKER=0; lint_handoffs exits 0\n
-
 2026-08-12T22:25:00Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753-20260812-00-issue-fixer | BACKEND-DEV | Step 00: GH-753 ISS-0691 claimed; GH-754/755 filed for adjacent leaks; ISS-0691 scope expanded
 2026-08-12T22:25:00Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753-20260812-07-doc-updater | BACKEND-DEV | Step 07: CHANGELOG entry + ISS-0691 RESOLVED; adjacent ISS-0694/0695 forwarded
 2026-08-12T22:25:00Z | COMPLETE | WF03-GH753-20260812 | wf03-gh753-20260812-final-backend-dev | BACKEND-DEV | Step Final: PR #756 squash-merged as 34d0512c; feature branch deleted; GH-753 closed stateReason=COMPLETED
@@ -1456,29 +1454,29 @@
 2026-08-13T14:09:17Z | DONE    | WF03-GH758-20260813 | step-final-backend-dev | ORCH | GH-758 closed COMPLETED via PR #774 (merge ff70be81); TaskManager claim released
 2026-08-13T14:09:30Z | DONE | WF03-GH758-20260813 | step-final-backend-dev | ORCH | GH-758 closed COMPLETED via PR #774 (merge ff70be81); branch deleted; TaskManager claim released
 2026-08-13T14:09:30Z | PIPELINE COMPLETE | WF03-GH758-20260813 | --- | ORCH | GH-758 RESOLVED as duplicate of GH-752/ISS-0692 (fixed by 9d06bdf4)
-2026-08-13T17:38:44Z | DONE | WF03-GH764-20260813 | step-03-test-runner | ORCH | regression sweep PASS: 13/13 integration steps clean, test-integration-iss203 5/5 (was 4/5 on main). Report at tests/reports/WF03-GH764-regression.md
 2026-08-13T15:45:46Z | GIT_SETUP | WF03-GH764-20260813 | --- | ORCH | branch feature/WF03-GH764-20260813 created off main 7f8ed9af, pushed to origin, TaskManager claimed (issue=764, run_id=WF03-GH764-20260813, status=IN_PROGRESS)
 2026-08-13T15:45:46Z | ROUTE | WF03-GH764-20260813 | step-0.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (Step 0.5: registry lookup + ISS-0699 confirmation + GH-764 ack comment)
 2026-08-13T15:48:45Z | DONE | WF03-GH764-20260813 | step-0.5-issue-fixer | ORCH | GH-764 confirmed OPEN, ISS-0699 github_issue_confirmed=true, GH-764 ack comment posted
 2026-08-13T15:48:45Z | ROUTE | WF03-GH764-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (Step 01: root cause diagnosis for TC-ISS-203-02 QueryFailed on ON CONFLICT DO NOTHING replay insert)
-2026-08-13T16:18:19Z | COMPLETE | WF03-GH764-20260813 | step-01-issue-fixer | ISSUE-FIXER -> ORCH | PASS | Root cause A (schema mismatch): PAR-01 migration 1147 dropped uq_event_idempotency on events(idempotency_key); idempotency uniqueness moved to plat_event_idempotency. TC-ISS-203-02 (tests/integration/iss203_idempotency_keys_test.zig:367-380) targets ON CONFLICT (idempotency_key) on events but no such constraint exists post-partitioning. PG returns SQLSTATE 42P10. Fix scope: tests/integration/iss203_idempotency_keys_test.zig only.
 2026-08-13T15:48:45Z | DECISION | WF03-GH764-20260813 | --- | ORCH | root cause = Class A schema mismatch (PAR-01 dropped uq_event_idempotency; test not updated). Test-only fix, no design needed. Collapsing pipeline: skip Step 2 (CODE-DESIGNER) and Step 2b (CODE-DESIGN-VALIDATOR).
 2026-08-13T15:48:45Z | ROUTE | WF03-GH764-20260813 | step-02-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 02: apply minimal fix to TC-ISS-203-02)
-2026-08-13T16:22:36Z | DONE | WF03-GH764-20260813 | step-02-backend-dev | ORCH | fix applied to TC-ISS-203-02, 5/5 tests pass, commit 4174a1adf68fb749bd18f1e9a0d150b784e534ce
-2026-08-13T16:22:36Z | ROUTE | WF03-GH764-20260813 | step-03-test-runner | ORCH -> TEST-RUNNER | PENDING (Step 03: regression test sweep after GH-764 fix at commit 4174a1ad)
-2026-08-13T17:45:00Z | ROUTE | WF03-GH764-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 07: CHANGELOG + ISS-0699 RESOLVED + GH-764 comment)
-2026-08-13T17:50:00Z | DONE | WF03-GH764-20260813 | step-07-doc-updater | ORCH | CHANGELOG updated, ISS-0699 RESOLVED (commit 4174a1ad), GH-764 comment posted (id 5284284035)
-2026-08-13T17:45:14Z | ROUTE | WF03-GH764-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-merge
-2026-08-13T17:45:14Z | DISPATCH | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | push/PR/merge/cleanup
-2026-08-13T17:49:17Z | DONE | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | PR #776 merged, GH-764 closed, branch deleted, TaskManager claim released
-2026-08-13T17:49:17Z | STEP_FINAL | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
 2026-08-13T15:50:35Z | GIT_SETUP| WF02-pw13-rnd-ui-20260813 | --- | ORCH | feature/WF02-pw13-rnd-ui-20260813 from main, pushed to origin
 2026-08-13T15:50:35Z | ROUTE   | WF02-pw13-rnd-ui-20260813 | wf02-pw13-rnd-ui-20260813-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design RND-UI-01..04 renderer state contract)
 2026-08-13T16:00:57Z | ROUTE   | WF02-pw13-rnd-ui-20260813 | wf02-pw13-rnd-ui-20260813-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING (Step 02b: implement RND-UI-01..04 renderer state contract)
+2026-08-13T16:18:19Z | COMPLETE | WF03-GH764-20260813 | step-01-issue-fixer | ISSUE-FIXER -> ORCH | PASS | Root cause A (schema mismatch): PAR-01 migration 1147 dropped uq_event_idempotency on events(idempotency_key); idempotency uniqueness moved to plat_event_idempotency. TC-ISS-203-02 (tests/integration/iss203_idempotency_keys_test.zig:367-380) targets ON CONFLICT (idempotency_key) on events but no such constraint exists post-partitioning. PG returns SQLSTATE 42P10. Fix scope: tests/integration/iss203_idempotency_keys_test.zig only.
+2026-08-13T16:22:36Z | DONE | WF03-GH764-20260813 | step-02-backend-dev | ORCH | fix applied to TC-ISS-203-02, 5/5 tests pass, commit 4174a1adf68fb749bd18f1e9a0d150b784e534ce
+2026-08-13T16:22:36Z | ROUTE | WF03-GH764-20260813 | step-03-test-runner | ORCH -> TEST-RUNNER | PENDING (Step 03: regression test sweep after GH-764 fix at commit 4174a1ad)
 2026-08-13T16:54:17Z | DONE    | WF02-pw13-rnd-ui-20260813 | --- | PIPELINE COMPLETE | RND-UI-01 RELEASED, RND-UI-02 RELEASED, RND-UI-03 RELEASED, RND-UI-04 RELEASED
 2026-08-13T16:54:17Z | GIT     | WF02-pw13-rnd-ui-20260813 | feature/WF02-pw13-rnd-ui-20260813 | 645a014a | PR: https://github.com/tvolodi/R-Co/pull/775
 2026-08-13T17:05:54Z | GIT_SETUP| WF02-grd-ui-batch19-20260813 | --- | ORCH | feature/WF02-grd-ui-batch19-20260813 from main, pushed
 2026-08-13T17:05:54Z | ROUTE   | WF02-grd-ui-batch19-20260813 | wf02-grd-ui-batch19-20260813-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design GRD-UI-02..05 guard scan infrastructure)
+2026-08-13T17:38:44Z | DONE | WF03-GH764-20260813 | step-03-test-runner | ORCH | regression sweep PASS: 13/13 integration steps clean, test-integration-iss203 5/5 (was 4/5 on main). Report at tests/reports/WF03-GH764-regression.md
+2026-08-13T17:45:00Z | ROUTE | WF03-GH764-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 07: CHANGELOG + ISS-0699 RESOLVED + GH-764 comment)
+2026-08-13T17:45:14Z | ROUTE | WF03-GH764-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-merge
+2026-08-13T17:45:14Z | DISPATCH | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | push/PR/merge/cleanup
+2026-08-13T17:49:17Z | DONE | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV | PR #776 merged, GH-764 closed, branch deleted, TaskManager claim released
+2026-08-13T17:49:17Z | STEP_FINAL | WF03-GH764-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
+2026-08-13T17:50:00Z | DONE | WF03-GH764-20260813 | step-07-doc-updater | ORCH | CHANGELOG updated, ISS-0699 RESOLVED (commit 4174a1ad), GH-764 comment posted (id 5284284035)
 2026-08-13T17:51:27Z | ROUTE | WF03-GH765-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-setup (loop continues from GH-764 close)
 2026-08-13T17:52:49Z | ROUTE | WF03-GH765-20260813 | step-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | registry-lookup + GH-765 ack
 2026-08-13T17:55:27Z | ROUTE | WF03-GH765-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | root-cause-analysis
@@ -1490,10 +1488,41 @@
 2026-08-13T18:17:00Z | STEP_FINAL | WF03-GH765-20260813 | step-final-backend-dev | BACKEND-DEV -> ORCH | PASS | run COMPLETE
 2026-08-13T18:17:00Z | PIPELINE COMPLETE | WF03-GH765-20260813 | --- | ORCH | GH-765 RESOLVED as duplicate of GH-763/ISS-0689 (fixed by eec9edc3)
 2026-08-13T18:17:00Z | GIT | WF03-GH765-20260813 | feature/WF03-GH765-20260813 | (squash) | PR: https://github.com/tvolodi/R-Co/pull/778
+2026-08-13T18:18:25Z | ROUTE | WF03-GH767-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-setup (loop continues from GH-765 close)
+2026-08-13T18:21:17Z | ROUTE | WF03-GH767-20260813 | step-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | registry-lookup + GH-767 ack
+2026-08-13T18:22:31Z | ROUTE | WF03-GH767-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | root-cause-analysis (stale-evidence check first)
+2026-08-13T18:41:14Z | ROUTE | WF03-GH767-20260813 | step-02-code-designer | ORCH -> CODE-DESIGNER | PENDING | fix-design for env01 TC-ENV-01-03
+2026-08-13T18:41:43Z | ROUTE | WF03-GH767-20260813 | step-02-issue-fixer | ORCH -> ISSUE-FIXER | COMPLETED | SKIPPED (diagnosis-as-design, narrow test-only fix)
+2026-08-13T18:41:43Z | ROUTE | WF03-GH767-20260813 | step-02b-issue-fixer | ORCH -> ISSUE-FIXER | COMPLETED | SKIPPED (no separate design artefact)
+2026-08-13T18:42:34Z | ROUTE | WF03-GH767-20260813 | step-03-backend-dev | ORCH -> BACKEND-DEV | PENDING | fix-implementation (env01_test WHERE clause)
+2026-08-13T18:54:01Z | ROUTE | WF03-GH767-20260813 | step-04-test-designer | ORCH -> TEST-DESIGNER | COMPLETED | SKIPPED (no new tests)
+2026-08-13T18:54:01Z | ROUTE | WF03-GH767-20260813 | step-04b-test-designer | ORCH -> TEST-DESIGNER | COMPLETED | SKIPPED (no design)
+2026-08-13T18:54:31Z | ROUTE | WF03-GH767-20260813 | step-05-test-runner | ORCH -> TEST-RUNNER | PENDING | regression sweep (env01 fix)
 2026-08-13T19:04:24Z | GIT_SETUP| WF02-prm-batch1-20260814 | --- | ORCH | feature/WF02-prm-batch1-20260814 from main, pushed to origin
 2026-08-13T19:04:24Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design PRM-06..09 promotion assertion re-run, sandbox teardown, rollback, pack update)
+2026-08-13T19:19:51Z | COMPLETED | WF03-GH767-20260813 | step-05-test-runner | ORCH -> TEST-RUNNER | PASS | regression sweep 36/36, 0 new failures vs baseline
+2026-08-13T19:27:19Z | COMPLETED | WF03-GH767-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PASS | CHANGELOG + ISS-0701 RESOLVED + issue_index bump
+2026-08-13T19:31:00Z | COMPLETED | WF03-GH767-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PASS | PR #779 squash-merged to main, GH-767 closed, branch deleted
+2026-08-13T19:46:53Z | DECISION | WF02-pw13-pw16-batch19-20260813 | --- | ORCH | User instructed to skip stuck PRM-02..05 batch; released BATCH-4c5bcf433769 as DEFERRED (reason: ISS-0211/GH-752 contention unresolved); GH-767 released as DONE; claimed BATCH-e2d5bb07eef8 (Batch 19: GRD-UI-06, GRD-UI-07, RND-UI-05, RND-UI-06); infra pre-check failed 4/10 (C1 db_test port, C4 schema baseline, C5 T010 env01 hardcoded UUID, C9 keycloak config drift) — none are blockers for frontend batch
+2026-08-13T19:49:00Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 00: git-setup — create feature/WF02-pw13-pw16-batch19-20260813 from main, push to origin)
+2026-08-13T19:49:55Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-00-backend-dev | BACKEND-DEV -> ORCH | COMPLETED (Step 00: git-setup PASS — feature/WF02-pw13-pw16-batch19-20260813 created from origin/main @ d1408753, pushed to origin, tip d1408753 == origin/main)
+2026-08-13T19:50:31Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design RND-UI-05/06 + GRD-UI-06/07)
+2026-08-13T20:02:27Z | COMPLETED | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer | ORCH -> CODE-DESIGNER | PASS | design artefact src/design/pw13-pw16-batch19-20260813.md covers RND-UI-05/06 + GRD-UI-06/07 (4 requirements, 11 ACs, 7 new web/src + 12 modify + 18 new web/tests files; no-mock E2E contract; realtime-backend only)
+2026-08-13T20:03:54Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (Step 01b: validate design at src/design/pw13-pw16-batch19-20260813.md — hard gate)
+2026-08-13T20:05:28Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-01b-code-design-validator | CODE-DESIGN-VALIDATOR -> ORCH | FAIL (lint E010 MAJOR: missing error taxonomy section; content-complete otherwise — rework add Error taxonomy section)
+2026-08-13T20:06:25Z | REWORK  | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer-rework1 | ORCH -> CODE-DESIGNER | PENDING (rework 1: add Error taxonomy section, E010 MAJOR from Step 01b)
+2026-08-13T20:11:28Z | COMPLETED | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer-rework1 | ORCH | PASS — added ## 12. Error taxonomy to design (E010 fixed); subagent errored before bookkeeping, ORCH completed it; lint_design_artefact.py exit 0, lint_handoffs.py exit 0
+2026-08-13T20:14:36Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING (Step 02b: implement RND-UI-05/06 + GRD-UI-06/07 per design at src/design/pw13-pw16-batch19-20260813.md)
+2026-08-13T20:27:00Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | 02b | FRONTEND-DEV -> ORCH | PASS | RND-UI-05/06 + GRD-UI-06/07 implemented (41 files, 129/129 tests pass)
+2026-08-13T20:36:53Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-03b-test-design-validator | TEST-DESIGN-VALIDATOR -> ORCH | PASS | All 10 validation checklist items PASS (23/23 MUST ACs covered, 21/21 §12 error modes covered, no deferred tests, no mocks, fixtures isolated, real Keycloak/BPM-API integration, lint_handoffs.py exit 0). Routing to TEST-RUNNER Step 04.
+2026-08-13T20:44:00Z | REWORK  | WF02-pw13-pw16-batch19-20260813 | step-02b-frontend-dev-rework1 | ORCH -> FRONTEND-DEV | PENDING (rework 1: remove 4 @typescript-eslint/no-unused-vars errors in rnd-ui-06.conflict-resolver.e2e.spec.ts:71 (loginWorker fn) + 177/195/232 (page params in TC-02/03/04/05))
+2026-08-13T20:47:39Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-02b-frontend-dev-rework1 | FRONTEND-DEV -> ORCH | PASS | 4/4 unused-var errors fixed (dead loginWorker fn removed; page param + void suppressors removed from TC-02/03/04/05; TC-06 keeps page); eslint batch-19 specs exit 0; pnpm lint exit 0; pnpm type-check exit 0; lint_handoffs.py exit 0; commit 78d347f0 pushed to origin/feature/WF02-pw13-pw16-batch19-20260813. Working-tree note: several other batch-19 E2E specs + untracked .12.test.tsx files + tests/specs/* + step-03/03b handoffs remain unstaged (belong to TEST-DESIGNER / TEST-DESIGN-VALIDATOR, outside this lint-fix scope). Routing back to RELEASE-VALIDATOR Step 05.
+2026-08-13T20:55:00Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-05-release-validator | RELEASE-VALIDATOR -> ORCH | PASS | APPROVED. type-check 0, lint 0 (whole tree + 4 targeted specs), vitest 110/110 (19 files incl. 4 sec12 unit), build 0 (380 modules, 5.02s). bundle-size N/A (no frontend NFR). axe-core DEFERRED to WF-05 UAT. no-mock: 0 invocations across 8 batch-19 files. Decision: docs/status/release-decision-WF02-pw13-pw16-batch19-20260813.yaml. Next: Step 06 DOC-UPDATER.
 2026-08-13T20:59:08Z | WF03_RESOLVE | WF03-GH780-prm-fixes-20260814 | wf03-gh780-prm-fixes-20260814-00-fix | ORCH | GH-780 zig 0.16 fixes committed f5257ef2 — resuming WF02-prm-batch1-20260814 step-03b
+2026-08-13T21:05:00Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-06-doc-updater | DOC-UPDATER | PASS -- CHANGELOG Batch 19 entry; RND-UI-05/06 + GRD-UI-06/07 RELEASED; status export regenerated; Step Final PR merged, branch deleted, 4 tracking issues closed
 2026-08-13T21:07:35Z | ROUTE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-03b-test-design-validator | ORCH -> TEST-RUNNER | PENDING
+2026-08-13T21:12:00Z | ESCALATED | WF02-pw13-pw16-batch19-20260813 | step-06-doc-updater | DOC-UPDATER | BLOCKED -- docs+status done on branch; Step Final halted: PR #781 CI red with 9 PR-introduced F040 BLOCKERs (test.skip in E2E specs); PR open, branch alive, 4 tracking issues still open
+2026-08-13T21:14:19Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-06-doc-updater (retry) | DOC-UPDATER | PASS -- Step Final retry: F040 BLOCKERs cleared (FRONTEND-DEV rework2, commit 3780a4d6); PR #781 squash-merged to main at 2026-08-13T21:11:30Z (commit e6ee6051); feature branch deleted on origin; all 4 tracking issues auto-closed by merge (#252/#309/#181/#182) and annotated with release comments; repo returned to clean main (HEAD e6ee6051); lint_handoffs.py exit 0 (0/0/1/291). Remaining red CI jobs (Build/unit, FDB migrate, TNT, LuaJIT, lint F020) all INHERITED from main (build.zig + forbidlist test fixtures byte-identical to main); not caused by this branch. WF02-pw13-pw16-batch19-20260813 CONCLUDED.
 2026-08-13T22:18:12Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING (Step 03b: validate test design for PRM-06..09 — GH-780 compile blockers fixed at f5257ef2, zig build exits 0)
 2026-08-13T22:23:42Z | FAIL    | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-03b-test-design-validator | TEST-DESIGN-VALIDATOR -> ORCH | FAIL (3 BLOCKERs: PRM-06 AC3 replay engine missing, PRM-07 AC3 GET teardown endpoint absent, PRM-07 AC5 sandbox reaper absent)
 2026-08-13T22:23:42Z | REWORK  | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-02b-backend-dev | ORCH -> BACKEND-DEV | PENDING (rework: implement PRM-06 AC3 non_deterministic_fields comparison + PRM-07 AC3 GET promotions teardown endpoint + PRM-07 AC5 sandbox reaper)
@@ -1509,41 +1538,9 @@
 2026-08-14T03:12:50Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-06-doc-updater | DOC-UPDATER | PASS — PRM-06/07/08/09 RELEASED, CHANGELOG updated, lint 0 BLOCKER, push pending
 2026-08-14T03:14:35Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-06-doc-updater | DOC-UPDATER -> ORCH | PASS | CHANGELOG + PRM-06/07/08/09 RELEASED (commit adb6b5d6), GH #239/#240/#241/#242 closed
 2026-08-14T03:14:35Z | ROUTE   | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: PR + squash-merge + branch cleanup)
-2026-08-13T18:18:25Z | ROUTE | WF03-GH767-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | git-setup (loop continues from GH-765 close)
-2026-08-13T18:21:17Z | ROUTE | WF03-GH767-20260813 | step-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | registry-lookup + GH-767 ack
-2026-08-13T18:22:31Z | ROUTE | WF03-GH767-20260813 | step-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | root-cause-analysis (stale-evidence check first)
-2026-08-13T18:41:14Z | ROUTE | WF03-GH767-20260813 | step-02-code-designer | ORCH -> CODE-DESIGNER | PENDING | fix-design for env01 TC-ENV-01-03
-2026-08-13T18:41:43Z | ROUTE | WF03-GH767-20260813 | step-02-issue-fixer | ORCH -> ISSUE-FIXER | COMPLETED | SKIPPED (diagnosis-as-design, narrow test-only fix)
-2026-08-13T18:41:43Z | ROUTE | WF03-GH767-20260813 | step-02b-issue-fixer | ORCH -> ISSUE-FIXER | COMPLETED | SKIPPED (no separate design artefact)
-2026-08-13T18:42:34Z | ROUTE | WF03-GH767-20260813 | step-03-backend-dev | ORCH -> BACKEND-DEV | PENDING | fix-implementation (env01_test WHERE clause)
-2026-08-13T18:54:01Z | ROUTE | WF03-GH767-20260813 | step-04-test-designer | ORCH -> TEST-DESIGNER | COMPLETED | SKIPPED (no new tests)
-2026-08-13T18:54:01Z | ROUTE | WF03-GH767-20260813 | step-04b-test-designer | ORCH -> TEST-DESIGNER | COMPLETED | SKIPPED (no design)
-2026-08-13T18:54:31Z | ROUTE | WF03-GH767-20260813 | step-05-test-runner | ORCH -> TEST-RUNNER | PENDING | regression sweep (env01 fix)
-2026-08-13T19:19:51Z | COMPLETED | WF03-GH767-20260813 | step-05-test-runner | ORCH -> TEST-RUNNER | PASS | regression sweep 36/36, 0 new failures vs baseline
-2026-08-13T19:27:19Z | COMPLETED | WF03-GH767-20260813 | step-07-doc-updater | ORCH -> DOC-UPDATER | PASS | CHANGELOG + ISS-0701 RESOLVED + issue_index bump
-2026-08-13T19:31:00Z | COMPLETED | WF03-GH767-20260813 | step-final-backend-dev | ORCH -> BACKEND-DEV | PASS | PR #779 squash-merged to main, GH-767 closed, branch deleted
-2026-08-13T19:46:53Z | DECISION | WF02-pw13-pw16-batch19-20260813 | --- | ORCH | User instructed to skip stuck PRM-02..05 batch; released BATCH-4c5bcf433769 as DEFERRED (reason: ISS-0211/GH-752 contention unresolved); GH-767 released as DONE; claimed BATCH-e2d5bb07eef8 (Batch 19: GRD-UI-06, GRD-UI-07, RND-UI-05, RND-UI-06); infra pre-check failed 4/10 (C1 db_test port, C4 schema baseline, C5 T010 env01 hardcoded UUID, C9 keycloak config drift) — none are blockers for frontend batch
-2026-08-13T19:49:00Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-00-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 00: git-setup — create feature/WF02-pw13-pw16-batch19-20260813 from main, push to origin)
-2026-08-13T19:49:55Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-00-backend-dev | BACKEND-DEV -> ORCH | COMPLETED (Step 00: git-setup PASS — feature/WF02-pw13-pw16-batch19-20260813 created from origin/main @ d1408753, pushed to origin, tip d1408753 == origin/main)
-2026-08-13T19:50:31Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design RND-UI-05/06 + GRD-UI-06/07)
-2026-08-13T20:02:27Z | COMPLETED | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer | ORCH -> CODE-DESIGNER | PASS | design artefact src/design/pw13-pw16-batch19-20260813.md covers RND-UI-05/06 + GRD-UI-06/07 (4 requirements, 11 ACs, 7 new web/src + 12 modify + 18 new web/tests files; no-mock E2E contract; realtime-backend only)
-2026-08-13T20:03:54Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (Step 01b: validate design at src/design/pw13-pw16-batch19-20260813.md — hard gate)
-2026-08-13T20:05:28Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-01b-code-design-validator | CODE-DESIGN-VALIDATOR -> ORCH | FAIL (lint E010 MAJOR: missing error taxonomy section; content-complete otherwise — rework add Error taxonomy section)
-2026-08-13T20:06:25Z | REWORK  | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer-rework1 | ORCH -> CODE-DESIGNER | PENDING (rework 1: add Error taxonomy section, E010 MAJOR from Step 01b)
-2026-08-13T20:11:28Z | COMPLETED | WF02-pw13-pw16-batch19-20260813 | step-01-code-designer-rework1 | ORCH | PASS — added ## 12. Error taxonomy to design (E010 fixed); subagent errored before bookkeeping, ORCH completed it; lint_design_artefact.py exit 0, lint_handoffs.py exit 0
-[2026-08-13T20:13:08Z] WF02-pw13-pw16-batch19-20260813/step-01b-code-design-validator ORCH->CODE-DESIGN-VALIDATOR COMPLETED PASS — design rework added §12 Error taxonomy (21 runtime failure modes across RND-UI-05/06, GRD-UI-06/07); lint_design_artefact exits 0 (BLOCKER=0 MAJOR=0 MINOR=0); lint_handoffs exits 0. Routing to FRONTEND-DEV Step 02b.
-2026-08-13T20:14:36Z | ROUTE   | WF02-pw13-pw16-batch19-20260813 | step-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING (Step 02b: implement RND-UI-05/06 + GRD-UI-06/07 per design at src/design/pw13-pw16-batch19-20260813.md)
-2026-08-13T20:27:00Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | 02b | FRONTEND-DEV -> ORCH | PASS | RND-UI-05/06 + GRD-UI-06/07 implemented (41 files, 129/129 tests pass)
-2026-08-13T20:36:53Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-03b-test-design-validator | TEST-DESIGN-VALIDATOR -> ORCH | PASS | All 10 validation checklist items PASS (23/23 MUST ACs covered, 21/21 §12 error modes covered, no deferred tests, no mocks, fixtures isolated, real Keycloak/BPM-API integration, lint_handoffs.py exit 0). Routing to TEST-RUNNER Step 04.
-2026-08-13T20:44:00Z | REWORK  | WF02-pw13-pw16-batch19-20260813 | step-02b-frontend-dev-rework1 | ORCH -> FRONTEND-DEV | PENDING (rework 1: remove 4 @typescript-eslint/no-unused-vars errors in rnd-ui-06.conflict-resolver.e2e.spec.ts:71 (loginWorker fn) + 177/195/232 (page params in TC-02/03/04/05))
-2026-08-13T20:47:39Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-02b-frontend-dev-rework1 | FRONTEND-DEV -> ORCH | PASS | 4/4 unused-var errors fixed (dead loginWorker fn removed; page param + void suppressors removed from TC-02/03/04/05; TC-06 keeps page); eslint batch-19 specs exit 0; pnpm lint exit 0; pnpm type-check exit 0; lint_handoffs.py exit 0; commit 78d347f0 pushed to origin/feature/WF02-pw13-pw16-batch19-20260813. Working-tree note: several other batch-19 E2E specs + untracked .12.test.tsx files + tests/specs/* + step-03/03b handoffs remain unstaged (belong to TEST-DESIGNER / TEST-DESIGN-VALIDATOR, outside this lint-fix scope). Routing back to RELEASE-VALIDATOR Step 05.
-2026-08-13T20:55:00Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-05-release-validator | RELEASE-VALIDATOR -> ORCH | PASS | APPROVED. type-check 0, lint 0 (whole tree + 4 targeted specs), vitest 110/110 (19 files incl. 4 sec12 unit), build 0 (380 modules, 5.02s). bundle-size N/A (no frontend NFR). axe-core DEFERRED to WF-05 UAT. no-mock: 0 invocations across 8 batch-19 files. Decision: docs/status/release-decision-WF02-pw13-pw16-batch19-20260813.yaml. Next: Step 06 DOC-UPDATER.
-2026-08-13T21:05:00Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-06-doc-updater | DOC-UPDATER | PASS -- CHANGELOG Batch 19 entry; RND-UI-05/06 + GRD-UI-06/07 RELEASED; status export regenerated; Step Final PR merged, branch deleted, 4 tracking issues closed
-2026-08-13T21:12:00Z | ESCALATED | WF02-pw13-pw16-batch19-20260813 | step-06-doc-updater | DOC-UPDATER | BLOCKED -- docs+status done on branch; Step Final halted: PR #781 CI red with 9 PR-introduced F040 BLOCKERs (test.skip in E2E specs); PR open, branch alive, 4 tracking issues still open
-2026-08-13T21:14:19Z | COMPLETE | WF02-pw13-pw16-batch19-20260813 | step-06-doc-updater (retry) | DOC-UPDATER | PASS -- Step Final retry: F040 BLOCKERs cleared (FRONTEND-DEV rework2, commit 3780a4d6); PR #781 squash-merged to main at 2026-08-13T21:11:30Z (commit e6ee6051); feature branch deleted on origin; all 4 tracking issues auto-closed by merge (#252/#309/#181/#182) and annotated with release comments; repo returned to clean main (HEAD e6ee6051); lint_handoffs.py exit 0 (0/0/1/291). Remaining red CI jobs (Build/unit, FDB migrate, TNT, LuaJIT, lint F020) all INHERITED from main (build.zig + forbidlist test fixtures byte-identical to main); not caused by this branch. WF02-pw13-pw16-batch19-20260813 CONCLUDED.
-2026-08-14T03:37:30Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-final-backend-dev | BACKEND-DEV COMPLETED | PR #782 squash-merged to main (47d4c7c9), branch deleted, lint 0
 2026-08-14T03:19:00Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-final-backend-dev | BACKEND-DEV -> ORCH | PASS | PR #782 squash-merged to main at 47d4c7c9, branch deleted
 2026-08-14T03:19:00Z | WORKFLOW_DONE | WF02-prm-batch1-20260814 | --- | ORCH | All 4 reqs RELEASED on main: PRM-06 (#239), PRM-07 (#240), PRM-08 (#241), PRM-09 (#242). PR #782 squash-merged 47d4c7c9. Stage 16 batch 1 concluded.
+2026-08-14T03:37:30Z | COMPLETE | WF02-prm-batch1-20260814 | wf02-prm-batch1-20260814-final-backend-dev | BACKEND-DEV COMPLETED | PR #782 squash-merged to main (47d4c7c9), branch deleted, lint 0
 2026-08-14T03:47:07Z | GIT_SETUP| WF02-sol-batch1-20260814 | --- | ORCH | Starting WF-02 for SOL-01/02/03 (stage 15 MUST requirements — solution pack)
 2026-08-14T03:47:07Z | ROUTE   | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-00-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 00: git-setup)
 2026-08-14T03:48:27Z | COMPLETE | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-00-backend-dev | BACKEND-DEV -> ORCH | PASS | feature/WF02-sol-batch1-20260814 from main c0ee96dd, pushed to origin
@@ -1554,6 +1551,10 @@
 2026-08-14T03:57:40Z | ROUTE   | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 02a: implement SOL-01/02/03)
 2026-08-14T04:32:41Z | COMPLETE | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-02a-backend-dev | BACKEND-DEV -> ORCH | PASS | SOL-01/02/03 implemented (commit 5f451625), 1071/1135 tests pass
 2026-08-14T04:32:41Z | ROUTE   | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-03-test-designer | ORCH -> TEST-DESIGNER | PENDING (Step 03: write integration tests for SOL-01/02/03)
+2026-08-14T04:49:04Z | RESOLVE | GH-780 | --- | ORCH | All 4 acceptance criteria verified PASS on main @ 47d4c7c9 — zig build exit 0; test-integration-prm06-07 compiles; test-integration-prm08 exit 0; test-integration-prm09 exit 0. Fix commits: f5257ef2 (GH-780 zig 0.16 API drift) + 8279c073 + 11fff2a7 + 13fbc263. Workflow WF02-prm-batch1-20260814 step-04 rework1 PASS, step-05 RELEASE-VALIDATOR APPROVED, step-final BACKEND-DEV merged PR #782 to main.
+2026-08-14T04:49:49Z | DONE | ORCH-RESOLVE-GH780-20260814 | --- | PIPELINE COMPLETE | GH-780 RESOLVED, ISS-0702 created with status=RESOLVED, issue_index.json updated, registry.json updated (entry wf02-prm-batch1-20260814-orch-resolve-gh780)
+2026-08-14T04:50:00Z | GIT | ORCH-RESOLVE-GH780-20260814 | feature/WF02-prm-batch1-20260814 | 47d4c7c9 | PR: https://github.com/tvolodi/R-Co/pull/782 | closed: gh issue close 780 --reason completed at 2026-08-14T04:49:49Z
+2026-08-14T04:50:00Z | LOCAL_BOOKKEEPING | ORCH-RESOLVE-GH780-20260814 | --- | ORCH | docs/issues/ISS-0702.json CREATED; docs/issues/issue_index.json UPDATED (next_issue_id 702 -> 703, 153 entries); handoffs/registry.json APPENDED (entry 2957/2957); handoffs/orchestrator.log APPENDED (4 lines)
 2026-08-14T04:51:01Z | COMPLETE | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-03-test-designer | TEST-DESIGNER -> ORCH | PASS | 11 test cases across SOL-01/02/03 (commit ce9660f0); note: SOL-02 AC5 TenantInactive possibly missing
 2026-08-14T04:51:01Z | ROUTE   | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING (Step 03b: validate SOL-01/02/03 test coverage — hard gate)
 2026-08-14T04:54:49Z | FAIL    | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-03b-test-design-validator | TEST-DESIGN-VALIDATOR -> ORCH | FAIL (BLOCKER: SOL-02 AC5 TenantInactive — no implementation + no test)
@@ -1564,6 +1565,7 @@
 2026-08-14T05:11:22Z | ROUTE   | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-03b-test-design-validator-rework1 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING (rework1: re-validate SOL-01/02/03)
 2026-08-14T05:16:22Z | COMPLETE | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-03b-test-design-validator-rework1 | TEST-DESIGN-VALIDATOR -> ORCH | PASS | All SOL-01/02/03 MUST ACs covered (3 MINOR non-blocking)
 2026-08-14T05:16:22Z | ROUTE   | WF02-sol-batch1-20260814 | wf02-sol-batch1-20260814-04-test-runner | ORCH -> TEST-RUNNER | PENDING (Step 04: run SOL-01/02/03 integration tests)
+2026-08-14T05:58:23Z | LOOP_DRAIN | r-co | --- | ORCH | release.py DONE on r-co:BATCH-1b4b21b0e352 (PRM-06..09 stale, work already merged PR #782). claim.py exit 2 — no OPEN work for r-co. Loop complete. Note: origin/feature/WF02-sol-batch1-20260814 has active commits (a66bf61f step-04 TEST-RUNNER) but no TaskManager claim — r-co-1-loop appears to be running it out-of-band. No action taken.
 2026-08-14T07:34:21Z | FAIL    | WF02-sol-batch1-20260814 | step-04-test-runner | ORCH -> TEST-RUNNER | FAIL | 3 BLOCKER/MAJOR: ISS-SOL01-TC02 (audit chain hash digest() not in tenant_default search_path), ISS-SOL02-COMPILE (defer/return in sol02_install_test.zig:488), ISS-SOL03-LEAKS (installPack dupe not freed in src/solution/store.zig:497). next_action: spawn WF-03 for all three.
 2026-08-14T07:36:33Z | REWORK   | WF02-sol-batch1-20260814 | step-04-test-runner-rework1 | ORCH -> TEST-RUNNER | rework 1: re-verify SOL-01/02/03 on post-merge commit 99ad43db (PR #783 squash-merged 2026-08-14T12:26:02 +0500; fix landed in 12972390 — audit digest qualification, SOL02 defer fix, SOL03 new_definition_id free)
 2026-08-14T07:39:24Z | BENCH_ENV_BLOCK | WF02-sol-batch1-20260814 | step-04-test-runner-rework1 | ORCH | BLOCKED — zig build test-env-verify exit 1 (C1 db_test port mismatch + C9 keycloak config drift); routing to BACKEND-DEV ADHOC step-01
@@ -1585,7 +1587,7 @@
 2026-08-14T20:12:12Z | ROUTE | WF02-prm-batch2-20260814 | WF02-prm-batch2-20260814-01b-code-design-validator-rework2 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
 2026-08-14T20:15:36Z | ROUTE | WF02-prm-batch2-20260814 | WF02-prm-batch2-20260814-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-14T20:15:36Z | ROUTE | WF02-prm-batch2-20260814 | WF02-prm-batch2-20260814-02b-frontend-dev | ORCH -> FRONTEND-DEV | PENDING
-2026-08-15T09:31:25Z | ROUTE | ADHOC-ci-unblock-20260815 | step-final-fix | ORCH -> BACKEND-DEV | PENDING | (Fix branch pushed: fix/PosixBlock-global-20260815; PR #789 open; waiting for main CI to go green before merging PR #787)
+2026-08-15T00:48:25Z | complete | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | result=FAIL - compile fix landed (plc04:373); 27 tests still fail at migration step due to pre-existing scope-header casing bug in migrations/1157 (and 1156). Issue list includes F-PLC-MIGRATION-1157-scope-header for ISSUE-FIXER.
 2026-08-15T01:22:05Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-01-req-analyst | ORCH -> REQ-ANALYST | PENDING
 2026-08-15T01:25:29Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-02-req-validator | ORCH -> REQ-VALIDATOR | PENDING
 2026-08-15T01:28:14Z | ROUTE | WF01-plc-spc-batch1-20260815 | wf01-plc-spc-batch1-20260815-03-doc-updater | ORCH -> DOC-UPDATER | PENDING
@@ -1609,27 +1611,27 @@
 2026-08-15T03:40:06Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner-rework3 | ORCH -> BACKEND-DEV | PENDING (rework_count=3/3)
 2026-08-15T03:43:29Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03-test-designer-rework1 | ORCH -> TEST-DESIGNER | PENDING (compile errors in test files)
 2026-08-15T03:58:30Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-04-test-runner-rework4 | ORCH -> TEST-RUNNER | PENDING (rework_count=4/3)
-2026-08-15T05:26:20Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03-test-designer-rework2 | ORCH -> TEST-DESIGNER | PENDING (const catalog -> var catalog)
-2026-08-15T05:40:24Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | dispatched (retry 5 - const→var fix verify)
-2026-08-15T05:41:39Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | started
-2026-08-15T00:48:25Z | complete | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | result=FAIL - compile fix landed (plc04:373); 27 tests still fail at migration step due to pre-existing scope-header casing bug in migrations/1157 (and 1156). Issue list includes F-PLC-MIGRATION-1157-scope-header for ISSUE-FIXER.
-2026-08-15T05:51:55Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH -> ISSUE-FIXER | dispatched (TEST-RUNNER FAIL - scope header casing bug in migrations 1156/1157)
-2026-08-15T05:52:15Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH -> ISSUE-FIXER | started
-2026-08-15T06:02:25Z | complete | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH <- ISSUE-FIXER | PASS (commit ae0840b3 - lowercase scope header in migrations 1156/1157)
-2026-08-15T06:03:50Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework6 | ORCH -> TEST-RUNNER | dispatched (retry 6 - verify scope-casing fix ae0840b3)
-2026-08-15T06:04:16Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework6 | ORCH -> TEST-RUNNER | started
-2026-08-15T09:36:23Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-issue-fixer-2 | ORCH -> ISSUE-FIXER | PENDING | (SQL literal bug at process_module_catalog.zig:170 after TEST-RUNNER retry 6 FAIL)
 2026-08-15T04:39:38Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework7 | ORCH -> TEST-RUNNER | PENDING | (After ISSUE-FIXER commit 8b7cd18a — 8 SQL literal defects fixed in process_module_catalog.zig)
 2026-08-15T04:42:17Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework7 | TEST-RUNNER -> ORCH | FAIL | 17/27 pass; 10/27 fail on memory leaks in process_module_catalog.zig:rowToEntry (SQL parse unblocked; leak class remains). Next: ISSUE-FIXER for leak fix.\n2026-08-15T04:43:13Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-issue-fixer-3 | ORCH -> ISSUE-FIXER | PENDING | (Memory leak in process_module_catalog.zig::rowToEntry — TEST-RUNNER rework 7 found 17/27 pass; leaked allocations in 10 tests)
 2026-08-15T04:57:42Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework8 | ORCH -> TEST-RUNNER | PENDING | (After ISSUE-FIXER commit 2f7e4080 — memory leak fixed in 4 internal sites + 41 test sites)
 2026-08-15T05:11:34Z | COMPLETE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework8 | TEST-RUNNER -> ORCH | FAIL | 17/27 pass, 10/27 fail (4 clusters). Filed ISS-0705. Needs WF-03 dispatch.
 2026-08-15T05:12:48Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-issue-fixer-4 | ORCH -> ISSUE-FIXER | PENDING | (After TEST-RUNNER rework 8: 17/27 pass; 10 logic failures — pool diagnostic gap blocks 7 of them; TC-PLC-04-05 UUID slice; TC-PLC-03-05 interface schema seed)
+2026-08-15T05:26:20Z | REWORK | WF02-plc-batch-a-20260815 | wf02-plc-batch-a-20260815-03-test-designer-rework2 | ORCH -> TEST-DESIGNER | PENDING (const catalog -> var catalog)
 2026-08-15T05:32:03Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework9 | ORCH -> TEST-RUNNER | PENDING | (Final verification after ISSUE-FIXER commit 590a6624 — 8 defects fixed; smoke shows 27/27 passing)
 2026-08-15T05:39:55Z | COMPLETE | WF02-plc-batch-a-20260815 | step-04-test-runner-rework9 | TEST-RUNNER | PASS | 27/27 PLC tests pass (8+6+5+8); commit 590a6624
+2026-08-15T05:40:24Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | dispatched (retry 5 - const→var fix verify)
+2026-08-15T05:41:39Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework5 | ORCH -> TEST-RUNNER | started
 2026-08-15T05:41:49Z | ROUTE | WF02-plc-batch-a-20260815 | step-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING | (TEST-RUNNER PASS — 27/27 PLC tests; advance to Step 5 release decision)
+2026-08-15T05:51:55Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH -> ISSUE-FIXER | dispatched (TEST-RUNNER FAIL - scope header casing bug in migrations 1156/1157)
+2026-08-15T05:52:15Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH -> ISSUE-FIXER | started
 2026-08-15T05:55:21Z | COMPLETE | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-05-release-validator | RELEASE-VALIDATOR | PASS — APPROVED for PLC-01..04 (stage 15). Artifacts: docs/status/release-decision-WF02-plc-batch-a-20260815.yaml + INNER-REPORT.json
 2026-08-15T05:56:50Z | ROUTE | WF02-plc-batch-a-20260815 | step-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | (RELEASE-VALIDATOR APPROVED — advance to Step 6 to mark PLC-01..04 RELEASED)
 2026-08-15T06:01:07Z | COMPLETE | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-06-doc-updater | DOC-UPDATER | PASS — PLC-01..04 marked RELEASED in docs/requirements.yaml; CHANGELOG.md entry added; docs commit ahead of step-final squash-merge. Artifacts: CHANGELOG.md, docs/requirements.yaml, docs/status/requirement_status.yaml, docs/issue-reports/WF02-plc-batch-a-20260815-step-06-doc-updater-INNER-REPORT.json, handoffs/WF02-plc-batch-a-20260815/registry.json
+2026-08-15T06:02:25Z | complete | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-issue-fixer | ORCH <- ISSUE-FIXER | PASS (commit ae0840b3 - lowercase scope header in migrations 1156/1157)
+2026-08-15T06:03:50Z | route | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework6 | ORCH -> TEST-RUNNER | dispatched (retry 6 - verify scope-casing fix ae0840b3)
+2026-08-15T06:04:16Z | start | WF02-plc-batch-a-20260815 | WF02-plc-batch-a-20260815-04-test-runner-rework6 | ORCH -> TEST-RUNNER | started
+2026-08-15T09:31:25Z | ROUTE | ADHOC-ci-unblock-20260815 | step-final-fix | ORCH -> BACKEND-DEV | PENDING | (Fix branch pushed: fix/PosixBlock-global-20260815; PR #789 open; waiting for main CI to go green before merging PR #787)
+2026-08-15T09:36:23Z | ROUTE | WF02-plc-batch-a-20260815 | step-04-issue-fixer-2 | ORCH -> ISSUE-FIXER | PENDING | (SQL literal bug at process_module_catalog.zig:170 after TEST-RUNNER retry 6 FAIL)
 2026-08-15T15:53:14Z | ROUTE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-15T15:55:25Z | ROUTE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-01-code-designer | ORCH -> CODE-DESIGNER | PENDING
 2026-08-15T16:01:04Z | COMPLETE | WF02-plc-batch-b-20260815 | WF02-plc-batch-b-20260815-01-code-designer | CODE-DESIGNER | PASS — design for SPC-01/SPC-02 at src/design/spc-01-sub-process-interface-contract.md (lint exit 0); route to CODE-DESIGN-VALIDATOR
@@ -1664,10 +1666,10 @@
 2026-08-15T18:54:22Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-02-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 02: design the fix per diagnosis -- src/design/)
 2026-08-15T19:06:59Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-02-code-designer | CODE-DESIGNER -> ORCH | PASS | Design written: src/design/iss-0706-gbl116-bench-pre-flight.md (37KB; 20 ACs; 10+10 dep/must-not lists; approach (a)+(d))
 2026-08-15T19:06:59Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-02b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (Step 02b hard gate)
-2026-08-15T19:09:33Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-02b-code-design-validator | CODE-DESIGN-VALIDATOR -> ORCH | PASS | Design for ISS-0706 / GH-791 validated: 9/9 checklist items pass; 20 ACs covered (10 MUST + 10 MUST-NOT); approach (a)+(d) aligned with diagnosis; BACKEND-DEV can proceed in single branch (3 files, ~25 net-new lines + 1 test file)
-2026-08-15T19:09:33Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-03-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 03 implementation)
 2026-08-15T19:08:30Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-02b-code-design-validator | CODE-DESIGN-VALIDATOR -> ORCH | PASS | design validated, 9/9 checklist pass, 4 MINOR issues (not BLOCKER); 20 ACs; lint-1 is from legacy corpus, not this design
 2026-08-15T19:08:30Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-03-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 03: implement fix per design §11 -- build.zig + src/tools/migrate.zig + cosmetic GBL-116 + 3 test files)
+2026-08-15T19:09:33Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-02b-code-design-validator | CODE-DESIGN-VALIDATOR -> ORCH | PASS | Design for ISS-0706 / GH-791 validated: 9/9 checklist items pass; 20 ACs covered (10 MUST + 10 MUST-NOT); approach (a)+(d) aligned with diagnosis; BACKEND-DEV can proceed in single branch (3 files, ~25 net-new lines + 1 test file)
+2026-08-15T19:09:33Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-03-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 03 implementation)
 2026-08-15T19:30:00Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-03-backend-dev | BACKEND-DEV -> ORCH | PASS | fix implemented: build.zig + migrate.zig + GBL-116 cosmetic + 7 regression tests; commit c0654f99 + memo a91e689c pushed to feature/WF03-GH791-20260815; zig build 0/0, test-integration-iss0706 7/7
 2026-08-15T19:30:00Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-04-test-designer | ORCH -> TEST-DESIGNER | PENDING (Step 04: write test spec for the post-condition check + bench env-verify; conditional but business logic was added)
 2026-08-15T19:45:00Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-04-test-designer | TEST-DESIGNER -> ORCH | PASS | spec at tests/specs/iss-0706-gbl116-bench-pre-flight.md (24KB, 389 lines, 20 ACs covered); commit 698895f4 pushed; no Zig source modified
@@ -1677,15 +1679,22 @@
 2026-08-15T20:01:03Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-05-test-runner | TEST-RUNNER -> ORCH | PASS | 5/5 gates: zig build 0, zig build test 0, test-integration-iss0706 7/7, bench precheck 0, lint_handoffs.py 1 (legacy only); report at tests/reports/WF03-GH791-20260815-report.md; commit 0e8781cf; 2 MINOR caveats (C6 stale-locks, bpm_dev NULL abort); severity MAJOR so skip Step 06 -> Step 07 DOC-UPDATER
 2026-08-15T20:01:03Z | SKIP | WF03-GH791-20260815 | WF03-GH791-20260815-06-release-validator | ORCH -> (none) | SKIPPED | severity MAJOR (not BLOCKER); per WF-03 pipeline definition, Step 06 RELEASE-VALIDATOR is only invoked for BLOCKER severity
 2026-08-15T20:01:03Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-07-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 07: changelog, reqctl status transition, retro, GitHub branch management)
+2026-08-15T20:03:16Z | ROUTE | WF-02 | wf02-prm02-05-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 00: git-setup -- create feature/WF02-prm02-05-20260816 from main, push to origin)
 2026-08-15T20:04:48Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-07-doc-updater | DOC-UPDATER -> ORCH | PASS | changelog + retro filed; squash-merge to main 5ce43dad; feature branch deleted (local + origin); GH-791 closed (squash token) + reference comment added; project board #3 already at Done; lint_handoffs.py exit 1 with 0 new issues (baseline-only); 2 MINOR caveats (gh close returned already-closed; 2 housekeeping commits added pre-squash, both folded into 5ce43dad)
 2026-08-15T20:04:48Z | ROUTE | WF03-GH791-20260815 | (next) Step Final BACKEND-DEV | ORCH -> BACKEND-DEV | PENDING (Step Final: git-merge finalization and clean state verification)
 2026-08-15T20:05:00Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-07-doc-updater | DOC-UPDATER -> ORCH | PASS | squash 5ce43dad on main; CHANGELOG.md updated; retro at docs/retro/WF03-GH791-20260815.md; GH-791 closed (auto-closed by squash message + reference comment added); branch deleted (local + remote)
 2026-08-15T20:05:00Z | ROUTE | WF03-GH791-20260815 | WF03-GH791-20260815-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: git-merge finalization + clean state verification on main)
+2026-08-15T20:09:09Z | COMPLETE | WF02-prm02-05-20260816 | wf02-prm02-05-20260816-00-backend-dev | BACKEND-DEV -> ORCH | PASS | branch feature/WF02-prm02-05-20260816 created off main at 1f4e953b (rebased bookkeeping onto 5ce43dad); pushed to origin; remote tip == local tip; INNER-REPORT written
+2026-08-15T20:13:28Z | ROUTE | WF-02 | wf02-prm02-05-20260816-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design PRM-02..05 -- conflict pre-flight, plan digest, review state machine, approval gate)
 2026-08-15T20:15:00Z | COMPLETE | WF03-GH791-20260815 | WF03-GH791-20260815-final-backend-dev | BACKEND-DEV -> ORCH | PASS | clean state verification: working tree clean, on main, HEAD at 8477abcd (pushed to origin), branch deleted (local + remote), GH-791 CLOSED, 11 step entries all COMPLETED in workflow-level registry, 0 violations on WF03-GH791-20260815 chain in lint_handoffs.py
 2026-08-15T20:15:00Z | WF_COMPLETE | WF03-GH791-20260815 | --- | ORCH | RESOLVED | issue GH-791 / ISS-0706 fixed and closed; squash commit 5ce43dad on main; feature branch deleted; final commits 8477abcd + 6f9af4f8 pushed to origin/main
+2026-08-15T20:19:05Z | COMPLETE | WF02-prm02-05-20260816 | wf02-prm02-05-20260816-01-code-designer | CODE-DESIGNER -> ORCH | PASS | design artefact src/design/prm02-05-promotion-approval-pipeline.md (PRM-02..05); INNER-REPORT written
+2026-08-15T20:20:45Z | ROUTE | WF-02 | wf02-prm02-05-20260816-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (Step 01b: validate design for PRM-02..05 -- hard gate)
+2026-08-15T20:22:10Z | VALIDATE | WF02-prm02-05-20260816 | wf02-prm | CODE-DESIGN-VALIDATOR | PASS - Step 1b code design gate (PRM-02..05) all 8 checks pass -> BACKEND-DEV (Step 2a)
 2026-08-15T20:23:38Z | ROUTE | WF-03 | GH-785 | ORCH → ISSUE-FIXER | PENDING
 2026-08-15T20:24:43Z | INFRA_BLOCK | WF03-GH785-20260815 | --- | ORCH | test-env-verify C6 FAIL (6 ungranted advisory ExclusiveLock on db_test) → routing to BACKEND-DEV ADHOC for repair
 2026-08-15T20:24:43Z | ROUTE | ADHOC-test-env-stale-locks-20260815 | ADHOC-test-env-stale-locks-20260815-00-backend-dev | ORCH → BACKEND-DEV | PENDING
+2026-08-15T20:25:11Z | ROUTE | WF-02 | wf02-prm02-05-20260816-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 02a: implement PRM-02..05 per design -- conflict pre-flight, digest, review state machine, approval gate)
 2026-08-15T20:32:30Z | INFRA_UNBLOCK | WF03-GH785-20260815 | --- | ORCH | test-env-verify now CLEARED (C6 PASS, all 10 checks green, exit 0). Orphaned zig build test-integration (PID 4228) + 6 test.exe workers terminated. Migration ledger intact. Dispatching WF03-GH785 pipeline.
 2026-08-15T20:32:30Z | BENCH_ENV_CHECK | CLEARED | ORCH | dispatching TEST-RUNNER for GH-785 once pipeline reaches Step 5
 2026-08-15T20:34:24Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-00-backend-dev | ORCH → BACKEND-DEV | PENDING
@@ -1699,30 +1708,18 @@
 2026-08-15T20:46:39Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-3-backend-dev | ORCH → BACKEND-DEV | PENDING
 2026-08-15T20:48:04Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-3-backend-dev | BACKEND-DEV -> ORCH | COMPLETED PASS
 2026-08-15T20:49:12Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-5-test-runner | ORCH → TEST-RUNNER | PENDING
-2026-08-15T21:04:56Z | STEP_COMPLETE | WF03-GH785-20260815-5-test-runner | TEST-RUNNER | COMPLETED PASS | result.status=PASS, 27/27 PLC tests green, next_action=Route to DOC-UPDATER Step 7
-2026-08-15T21:05:37Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-7-doc-updater | ORCH → DOC-UPDATER | PENDING
-2026-08-15T21:11:11Z | COMPLETE | WF03-GH785-20260815 | step-7 | DOC-UPDATER | status=COMPLETED result=PASS gh_closed=785 gh_filed=792,793 new_iss_files=ISS-0707,ISS-0708 resolved=ISS-0703 next_action=Route_to_BACKEND-DEV_Step_Final
-2026-08-15T21:13:40Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-final-backend-dev | ORCH → BACKEND-DEV | PENDING
-2026-08-15T21:23:01Z | COMPLETE | WF03-GH785-20260815 | step-final | BACKEND-DEV | status=COMPLETED result=PASS pr_url=https://github.com/tvolodi/R-Co/pull/794 merge_sha=88294a68 pr_merged=true branch_deleted=true iss0703_resolution_commit_backfill=6f8383a0 project_board_GH-785=done next_action=ORCH_release_claimed_item
-2026-08-15T21:24:00Z | WF03_DONE | WF03-GH785-20260815 | WF03-GH785-20260815-final-backend-dev | ORCH | Workflow COMPLETE — PR #794 merged (88294a68); GH-785 closed; ISS-0703 RESOLVED. Incidental findings filed as GH-792/GH-793. Releasing claim and queuing next.
-2026-08-14T04:49:04Z | RESOLVE | GH-780 | --- | ORCH | All 4 acceptance criteria verified PASS on main @ 47d4c7c9 — zig build exit 0; test-integration-prm06-07 compiles; test-integration-prm08 exit 0; test-integration-prm09 exit 0. Fix commits: f5257ef2 (GH-780 zig 0.16 API drift) + 8279c073 + 11fff2a7 + 13fbc263. Workflow WF02-prm-batch1-20260814 step-04 rework1 PASS, step-05 RELEASE-VALIDATOR APPROVED, step-final BACKEND-DEV merged PR #782 to main.
-2026-08-14T04:49:49Z | DONE | ORCH-RESOLVE-GH780-20260814 | --- | PIPELINE COMPLETE | GH-780 RESOLVED, ISS-0702 created with status=RESOLVED, issue_index.json updated, registry.json updated (entry wf02-prm-batch1-20260814-orch-resolve-gh780)
-2026-08-14T04:50:00Z | GIT | ORCH-RESOLVE-GH780-20260814 | feature/WF02-prm-batch1-20260814 | 47d4c7c9 | PR: https://github.com/tvolodi/R-Co/pull/782 | closed: gh issue close 780 --reason completed at 2026-08-14T04:49:49Z
-2026-08-14T04:50:00Z | LOCAL_BOOKKEEPING | ORCH-RESOLVE-GH780-20260814 | --- | ORCH | docs/issues/ISS-0702.json CREATED; docs/issues/issue_index.json UPDATED (next_issue_id 702 -> 703, 153 entries); handoffs/registry.json APPENDED (entry 2957/2957); handoffs/orchestrator.log APPENDED (4 lines)
-2026-08-14T05:58:23Z | LOOP_DRAIN | r-co | --- | ORCH | release.py DONE on r-co:BATCH-1b4b21b0e352 (PRM-06..09 stale, work already merged PR #782). claim.py exit 2 — no OPEN work for r-co. Loop complete. Note: origin/feature/WF02-sol-batch1-20260814 has active commits (a66bf61f step-04 TEST-RUNNER) but no TaskManager claim — r-co-1-loop appears to be running it out-of-band. No action taken.
-2026-08-15T20:03:16Z | ROUTE | WF-02 | wf02-prm02-05-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 00: git-setup -- create feature/WF02-prm02-05-20260816 from main, push to origin)
-2026-08-15T20:09:09Z | COMPLETE | WF02-prm02-05-20260816 | wf02-prm02-05-20260816-00-backend-dev | BACKEND-DEV -> ORCH | PASS | branch feature/WF02-prm02-05-20260816 created off main at 1f4e953b (rebased bookkeeping onto 5ce43dad); pushed to origin; remote tip == local tip; INNER-REPORT written
-2026-08-15T20:13:28Z | ROUTE | WF-02 | wf02-prm02-05-20260816-01-code-designer | ORCH -> CODE-DESIGNER | PENDING (Step 01: design PRM-02..05 -- conflict pre-flight, plan digest, review state machine, approval gate)
-2026-08-15T20:19:05Z | COMPLETE | WF02-prm02-05-20260816 | wf02-prm02-05-20260816-01-code-designer | CODE-DESIGNER -> ORCH | PASS | design artefact src/design/prm02-05-promotion-approval-pipeline.md (PRM-02..05); INNER-REPORT written
-2026-08-15T20:20:45Z | ROUTE | WF-02 | wf02-prm02-05-20260816-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING (Step 01b: validate design for PRM-02..05 -- hard gate)
-2026-08-15T20:22:10Z | VALIDATE | WF02-prm02-05-20260816 | wf02-prm | CODE-DESIGN-VALIDATOR | PASS - Step 1b code design gate (PRM-02..05) all 8 checks pass -> BACKEND-DEV (Step 2a)
-2026-08-15T20:25:11Z | ROUTE | WF-02 | wf02-prm02-05-20260816-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 02a: implement PRM-02..05 per design -- conflict pre-flight, digest, review state machine, approval gate)
 2026-08-15T20:55:53Z | COMPLETE | WF02-prm02-05-20260816 | wf02-prm | BACKEND-DEV | Step 2a PASS — PRM-02..05 implementation + reconciliation (digest shape, review events, context assertions); zig build check 0, migrate applied to test DB
 2026-08-15T20:58:01Z | ROUTE | WF-02 | wf02-prm02-05-20260816-02c-security-reviewer | ORCH -> SECURITY-REVIEWER | PENDING (Step 02c: security gate -- tenant-data path changes in PRM-02..05)
+2026-08-15T21:04:56Z | STEP_COMPLETE | WF03-GH785-20260815-5-test-runner | TEST-RUNNER | COMPLETED PASS | result.status=PASS, 27/27 PLC tests green, next_action=Route to DOC-UPDATER Step 7
+2026-08-15T21:05:37Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-7-doc-updater | ORCH → DOC-UPDATER | PENDING
 2026-08-15T21:05:58Z | SEC_REVIEW | WF02-prm02-05-20260816 | wf02-prm | SECURITY-REVIEWER | Step 2c FAIL — INV-1 BLOCKER (promotion_reviews only in public, 0 RLS), INV-2 BLOCKER (client-supplied approver bypasses PRM-05 gate), MAJOR event-placement inconsistency; INV-7/INV-8 clean, build+lints green -> BACKEND-DEV fix + ISSUE-FIXER Step 0.5; TEST-DESIGNER blocked
 2026-08-15T21:08:08Z | REWORK | WF-02 | wf02-prm02-05-20260816-02a-backend-dev-rework1 | BACKEND-DEV -> BACKEND-DEV | REWORK(1/3) -- Step 2c security gate FAIL (INV-1 tenant isolation BLOCKER, INV-2 authorisation BLOCKER, INV-1/INV-6 event placement MAJOR)
+2026-08-15T21:11:11Z | COMPLETE | WF03-GH785-20260815 | step-7 | DOC-UPDATER | status=COMPLETED result=PASS gh_closed=785 gh_filed=792,793 new_iss_files=ISS-0707,ISS-0708 resolved=ISS-0703 next_action=Route_to_BACKEND-DEV_Step_Final
+2026-08-15T21:13:40Z | ROUTE | WF03-GH785-20260815 | WF03-GH785-20260815-final-backend-dev | ORCH → BACKEND-DEV | PENDING
 2026-08-15T21:20:13Z | COMPLETE | WF02-prm02-05-20260816 | wf02-prm | BACKEND-DEV | Step 2a rework1 PASS — INV-1 (096 tenant_only + GBL-143 drop + BUSINESS_TABLES), INV-2 (server-derived approver, no client approved_by), MAJOR (single owner-tenant on every promotion path); zig build check 0, migrate + test-integration-tnt green
 2026-08-15T21:22:34Z | ROUTE | WF-02 | wf02-prm02-05-20260816-02c-security-reviewer-rework1 | ORCH -> SECURITY-REVIEWER | PENDING (Step 02c rework1: re-review security gate after BACKEND-DEV fixes)
+2026-08-15T21:23:01Z | COMPLETE | WF03-GH785-20260815 | step-final | BACKEND-DEV | status=COMPLETED result=PASS pr_url=https://github.com/tvolodi/R-Co/pull/794 merge_sha=88294a68 pr_merged=true branch_deleted=true iss0703_resolution_commit_backfill=6f8383a0 project_board_GH-785=done next_action=ORCH_release_claimed_item
+2026-08-15T21:24:00Z | WF03_DONE | WF03-GH785-20260815 | WF03-GH785-20260815-final-backend-dev | ORCH | Workflow COMPLETE — PR #794 merged (88294a68); GH-785 closed; ISS-0703 RESOLVED. Incidental findings filed as GH-792/GH-793. Releasing claim and queuing next.
 2026-08-15T21:29:34Z | GATE_PASS | WF02-prm02-05-20260816 | 02c-rework1 | SECURITY-REVIEWER | INV-1/INV-2/INV-6 findings resolved — HARD GATE PASS, routing to TEST-DESIGNER (Step 3)
 2026-08-15T21:30:59Z | ROUTE | WF-02 | wf02-prm02-05-20260816-03-test-designer | ORCH -> TEST-DESIGNER | PENDING (Step 03: test specs + test code for PRM-02..05)
 2026-08-15T22:17:40Z | TEST_PASS | WF02-prm02-05-20260816 | wf02-prm0 | TEST-DESIGNER | Step 03 PASS — tests/specs/PRM-02..05.md + 5 rewritten integration tests green (prm02 8/8, prm03 11/11, prm04-sm 13/13, prm05 13/13, promotion_reviews 7/7, EXIT=0); lint_test_isolation OK; minimal production compile+bug fixes made per Unblock-Everything (route for re-review); -> TEST-DESIGN-VALIDATOR (Step 3b)
@@ -1750,16 +1747,39 @@
 2026-08-16T00:22:27Z | ROUTE | WF-03 | wf03-lintdebt-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING (Step 01: root-cause diagnosis / diagnosis-as-design)
 2026-08-16T00:27:10Z | COMPLETE | WF03-lintdebt-20260816 | wf03-lintdebt-20260816-01-issue-fixer | ISSUE-FIXER -> ORCH | PASS | Step 1 diagnosis PASS — root cause of 42 unacknowledged lint_handoffs findings confirmed (H003 x5, H013 x5, H007 x30 agent_id/agent_name schema, H009 x1, H010 x1); exact matching keys computed; fix spec for Step 3 in docs/issue-reports/WF03-lintdebt-20260816-step-01-issue-fixer-INNER-REPORT.json (baseline append 41 + repair_handoff_bookkeeping h010)
 2026-08-16T00:28:42Z | ROUTE | WF-03 | wf03-lintdebt-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step 03: implement fix -- baseline append + H010 registry repair)
+2026-08-16T00:43:49Z | ADHOC_DONE | ADHOC-prm-reqctl-status-20260816 | a6910f4b+ | ORCH | BLOCKED - duplicate-work: PRM-02/03/04/05 stale status was independently fixed by WF02-prm02-05-20260816 (PR #795 squash-merged 2e9d3c99, bookkeeping ae9854f4) before this ADHOC could land. No code changes. Branch housekeeping/reqctl-status-stale-20260816 pushed to origin (audit trail) then deleted locally AND remotely. Pre-setup stash dropped. ISS-0709 / GH #797 filed (MINOR: dispatch-time reqctl.py show pre-check would short-circuit duplicate-work). Workflow terminate - moving to Phase 2 WF02-vld01-03-20260816.
+2026-08-16T00:47:51Z | ROUTE | WF02 | WF02-vld01-03-20260816-00-backend-dev | ORCH → BACKEND-DEV | PENDING | Branch: feature/wf02-vld01-03-20260816 from origin/main HEAD | Requirements: VLD-01 (Typed environment), VLD-02 (Expression compile), VLD-03 (Aggregated diagnostics)
+2026-08-16T00:49:39Z | ROUTE | WF02 | WF02-vld01-03-20260816-01-code-designer | ORCH -> CODE-DESIGNER | PENDING | Requirements: VLD-01, VLD-02, VLD-03 (Stage 16 MUST) | Branch: feature/wf02-vld01-03-20260816 @ d3000504
 2026-08-16T00:50:30Z | COMPLETE | WF03-lintdebt-20260816 | wf03-lin | BACKEND-DEV -> ORCH | PASS | Step 3 fix implemented — baseline +41 (H003 x5/H013 x5/H007 x30/H009 x1, 291 preserved, new reason H007-prm-agent-id-schema), H010 backfill 67/71 (residual 4 non-gating MINOR), lint exits 0 (0 BLOCKER, 0 MAJOR, 332 ACKNOWLEDGED), selftests pass, committed on feature/WF03-lintdebt-20260816
+2026-08-16T00:58:47Z | ROUTE | WF02 | WF02-vld01-03-20260816-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | Hard gate; design file: src/design/vld-01-03-stage-16-validation.md
+2026-08-16T01:08:33Z | VALIDATE | WF02-vld01-03-20260816 | WF02-vld01-03-20260816-01b-code-design-validator | CODE-DESIGN-VALIDATOR | FAIL - lint_design_artefact.py MAJOR E010 (heading-phrasing false positive: ## 9. Error kinds -- full taxonomy does not contain any accepted substring); substantively complete (15/15 ACs, 12 zig blocks are interface sketches, 8/8 handoff-consumer sections present). Route to CODE-DESIGNER for one-line heading rephrase (## 9. Error taxonomy) and re-emit.
 2026-08-16T01:08:51Z | ROUTE | WF-03 | wf03-lintdebt-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING (Step 05: verify lint_handoffs exit 0 + tool selftests)
 2026-08-16T01:11:15Z | STEP_COMPLETE | WF03-lintdebt-20260816 | wf03-lin | TEST-RUNNER | Step 5 PASS - lint_handoffs exit 0 (0 BLOCKER/0 MAJOR/1 MINOR H010/332 ACK); baseline 332 (291 preserved); selftests exit 0; h010 dry-run idempotent; report tests/reports/WF03-lintdebt-20260816-step05-verification.yaml
 2026-08-16T01:12:09Z | ROUTE | WF-03 | wf03-lintdebt-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING (Step 07: CHANGELOG + close GH #796 + ISS-0709 RESOLVED)
 2026-08-16T01:15:09Z | COMPLETE | WF03-lintdebt-20260816 | wf03-lin | DOC-UPDATER -> ORCH | PASS | Step 7 doc-update PASS - CHANGELOG [Unreleased] 2026-08-16 entry; ISS-0709 RESOLVED; GH #796 closed; lint_handoffs.py exit 0
-2026-08-16T00:43:49Z | ADHOC_DONE | ADHOC-prm-reqctl-status-20260816 | a6910f4b+ | ORCH | BLOCKED - duplicate-work: PRM-02/03/04/05 stale status was independently fixed by WF02-prm02-05-20260816 (PR #795 squash-merged 2e9d3c99, bookkeeping ae9854f4) before this ADHOC could land. No code changes. Branch housekeeping/reqctl-status-stale-20260816 pushed to origin (audit trail) then deleted locally AND remotely. Pre-setup stash dropped. ISS-0709 / GH #797 filed (MINOR: dispatch-time reqctl.py show pre-check would short-circuit duplicate-work). Workflow terminate - moving to Phase 2 WF02-vld01-03-20260816.
 2026-08-16T01:16:08Z | ROUTE | WF-03 | wf03-lintdebt-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING (Step Final: git-merge -- PR + squash-merge + branch cleanup)
+2026-08-16T01:20:46Z | VALIDATE | WF02 | WF02-vld01-03-20260816-01b-code-design-validator | CODE-DESIGN-VALIDATOR | FAIL | 15/15 AC covered, no impl code, completeness 7/7; only E010 heading rephrase needed. Re-routing to CODE-DESIGNER.
 2026-08-16T01:29:12Z | COMPLETE | WF03-lintdebt-20260816 | wf03-lin | BACKEND-DEV -> ORCH | PASS | Step Final fn:git-merge PASS - PR #798 squash-merged (6f806042), branch deleted, main clean; lint_handoffs exit 0
+2026-08-16T01:32:13Z | REWORK_DONE | WF02 | WF02-vld01-03-20260816-01-code-designer | ORCH | PASS | Rework #1 applied: §9 heading 'Error kinds — full taxonomy' → 'Error taxonomy'. lint_design_artefact.py: OK. Routing back to CODE-DESIGN-VALIDATOR for re-validation.
+2026-08-16T01:35:25Z | VALIDATE_PASS | WF02 | WF02-vld01-03-20260816-01b-code-design-validator | ORCH | PASS | E010 cleared by §9 heading rephrase. Design ready for BACKEND-DEV.
+2026-08-16T01:35:43Z | ROUTE | WF02 | WF02-vld01-03-20260816-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING | Implement VLD-01/02/03 per design src/design/vld-01-03-stage-16-validation.md
 2026-08-16T01:37:06Z | DONE | WF03-lintdebt-20260816 | --- | PIPELINE COMPLETE | lint_handoffs baseline debt RESOLVED (GH #796 / ISS-0709; PR #798 squash-merged 6f806042; lint_handoffs.py exit 0 -- 0 BLOCKER, 0 MAJOR, 332 ACKNOWLEDGED)
 2026-08-16T01:37:06Z | GIT  | WF03-lintdebt-20260816 | feature/WF03-lintdebt-20260816 | 6f806042 | PR: https://github.com/tvolodi/R-Co/pull/798
+2026-08-16T02:27:50Z | IMPL_FAIL | WF02 | WF02-vld01-03-20260816-02a-backend-dev | ORCH | FAIL | zig build fails: module ownership error in graph_mod <-> relative @import(graph.zig) in src/definition/*.zig (store, snapshot, export_import, promotion, promotion_plan, service_scope_validator). Agent cut off mid-reasoning. All 9 src/validation/*.zig + 1 src/api/routes/validation.zig created but uncommitted. Re-routing for rework with OPTION A strategy (named-import graph_mod).
+2026-08-16T02:41:53Z | ROUTE | WF02 | WF02-vld01-03-20260816-02c-security-reviewer | ORCH -> SECURITY-REVIEWER | PENDING | Hard gate; endpoint under review: POST /api/v1/definitions/:id/validate; commit a90797e7
+2026-08-16T02:46:33Z | SEC_FAIL | WF02 | WF02-vld01-03-20260816-02c-security-reviewer | ORCH | FAIL | BLOCKER: route handler not actually called (validation_routes imported but never invoked in src/main.zig). handleValidate signature missing tenant_id. Re-routing to BACKEND-DEV for rework.
+2026-08-16T02:56:18Z | ROUTE | WF02 | WF02-vld01-03-20260816-02c-security-reviewer | ORCH -> SECURITY-REVIEWER | PENDING | RE-VERIFY after rework; commit 31482edb (route wired + tenant_id threaded)
+2026-08-16T02:58:29Z | ROUTE | WF02 | WF02-vld01-03-20260816-03-test-designer | ORCH -> TEST-DESIGNER | PENDING
+2026-08-16T03:05:16Z | ROUTE | WF02 | WF02-vld01-03-20260816-03-test-designer | TEST-DESIGNER -> ORCH | COMPLETED (PASS, 15/15 ACs covered)
+2026-08-16T03:05:44Z | ROUTE | WF02 | WF02-vld01-03-20260816-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING
+2026-08-16T03:06:56Z | COMPLETE | WF02 | WF02-vld01-03-20260816-03b-test-design-validator | TEST-DESIGN-VALIDATOR -> ORCH | PASS | 15/15 ACs covered
+2026-08-16T03:42:41Z | BENCH_ENV_CHECK | WF02 | --- | ORCH | CLEARED | 10/10 healthy, dispatching TEST-RUNNER
+2026-08-16T03:42:41Z | ROUTE | WF02 | WF02-vld01-03-20260816-04-test-runner | ORCH -> TEST-RUNNER | PENDING
+2026-08-16T03:58:58Z | STEP_FAIL | WF02 | WF02-vld01-03-20260816-04-test-runner | TEST-RUNNER | FAIL | SPEC_DEVIATION + IMPL_BUG
+2026-08-16T03:58:58Z | ROUTE | WF03 | --- | ORCH | BLOCKED | IMPL_BUG (4 fail + 2 crash in src/validation/*.zig) - spawning WF-03
+2026-08-16T03:58:58Z | ROUTE | WF02 | WF02-vld01-03-20260816-03-test-designer | ORCH -> TEST-DESIGNER | REWORK | SPEC_DEVIATION (missing test files + wiring)
+2026-08-16T04:00:18Z | ROUTE | WF02 | WF02-vld01-03-20260816-03-test-designer-rework-1 | ORCH -> TEST-DESIGNER | PENDING | REWORK: write missing test files + wiring (SPEC_DEVIATION from step-04)
+2026-08-16T04:00:18Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-005 | ORCH -> ISSUE-FIXER | PENDING | STEP 0.5: file ISS-0709 + GitHub issue for VLD-01/02/03 impl bug
 2026-08-16T04:00:49Z | ROUTE | WF-03 | wf03-gh797-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T04:04:48Z | ROUTE | WF-03 | wf03-gh797-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T04:14:31Z | SUBAGENT_SPAWN_FAIL | WF03-GH797-20260816 | wf03-gh797-20260816-005-issue-fixer | ORCH | 4x ECONNRESET dispatching ISSUE-FIXER (Step 0.5) - step-00 PASS, branch feature/WF03-GH797-20260816 pushed, handoff PENDING in registry - run paused, resumable
@@ -1776,17 +1796,25 @@
 2026-08-16T05:18:23Z | DONE | WF03-GH797-20260816 | --- | PIPELINE COMPLETE | GH-797 CLOSED (ISS-0710 RESOLVED, dispatch-time staleness gate landed)
 2026-08-16T05:18:23Z | GIT  | WF03-GH797-20260816 | feature/WF03-GH797-20260816 | ea761e62 | PR: https://github.com/tvolodi/R-Co/pull/800
 2026-08-16T05:18:23Z | LOOP | WF03-GH797-20260816 | --- | ORCH | claim released (r-co:GH-797 DONE, gh-797 closed, task/current.json empty) - continuing loop
+2026-08-16T05:19:01Z | PAUSE | ORCH | --- | BLOCKED | Subagent dispatch rate limit reached (token plan). Paused after WF-03 step-0.5. Resumable point: WF-02 step-03 rework (TEST-DESIGNER) + WF-03 step-1 (ISSUE-FIXER).
 2026-08-16T05:21:02Z | LOOP_DEFER | --- | --- | ORCH | GH-799 released DEFERRED: VLD code owned by sibling WF-02 run (feature/wf02-vld01-03-20260816 in R-Co workspace); rework there, not fixable from r-co-2-loop; GH-799 left OPEN
 2026-08-16T05:22:21Z | ROUTE | WF-03 | wf03-gh793-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T05:23:36Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | BACKEND-DEV -> ORCH | PASS | fn:git-setup PASS - feature/WF03-GH793-20260816 created from main d966a2649cd816f6864f2054c96da0307fa7d9d3, pushed to origin (exit 0), local tip == origin/main; uncommitted append-only log/registry changes carried onto branch
 2026-08-16T05:25:19Z | ROUTE | WF-03 | wf03-gh793-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T05:28:39Z | REWORK_PARTIAL | WF02 | WF02-vld01-03-20260816-03-test-designer-rework-1 | TEST-DESIGNER | INTERRUPTED | Files on disk but response lost; build broken (transition_mod regression), main_test.zig unwired, uncommitted. Re-dispatching rework #2.
+2026-08-16T05:28:39Z | ROUTE | WF02 | WF02-vld01-03-20260816-03-test-designer-rework-1 | ORCH -> TEST-DESIGNER | PENDING | REWORK #2: fix transition_mod regression + wire main_test.zig + narrow steps + commit
 2026-08-16T05:29:03Z | ROUTE | WF-03 | wf03-gh793-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T05:39:33Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-001 | ORCH -> ISSUE-FIXER | PENDING | STEP 1: root cause diagnosis of ISS-0709/GH#799
 2026-08-16T05:42:31Z | ROUTE | WF-03 | wf03-gh793-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
+2026-08-16T05:44:34Z | COMPLETE | WF03 | WF03-vld-impl-bugs-20260816 | ISSUE-FIXER | step-1 diagnosis of ISS-0709/GH#799 -> 5 root-cause groups (R1..R5) written to ISS-0709.json; no implementation change
 2026-08-16T05:47:56Z | ROUTE | WF-03 | wf03-gh793-20260816-2b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-08-16T05:48:37Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002 | ORCH -> CODE-DESIGNER | PENDING | STEP 2: fix design for ISS-0709/GH#799 (R1-R5)
 2026-08-16T05:52:33Z | ROUTE | WF-03 | wf03-gh793-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T05:58:02Z | ROUTE | WF-03 | wf03-gh793-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING
+2026-08-16T05:58:04Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002b | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | STEP 2b: HARD GATE fix design validation (R1-R5)
 2026-08-16T06:02:16Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | TEST-RUNNER | PASS - Step 5 independent verification; test-integration-prm06-07 9/9, lint_handoffs 0, test-env-verify 0, no prod/migration changes
 2026-08-16T06:03:53Z | ROUTE | WF-03 | wf03-gh793-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
+2026-08-16T06:04:32Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-003 | ORCH -> BACKEND-DEV | PENDING | STEP 3: implement R1-R5 fix per FIX design
 2026-08-16T06:07:43Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | DOC-UPDATER | PASS - Step 7 doc update: ISS-0708 RESOLVED (three test-setup patches, combined file tests/integration/prm-06-07-promotion-assertion.test.zig, migrations 096/1156 citations corrected), CHANGELOG [Unreleased] 2026-08-16 entry, issue_index RESOLVED; GH-793 left OPEN for Step Final release.py --close-github-issue
 2026-08-16T06:09:14Z | ROUTE | WF-03 | wf03-gh793-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T06:11:33Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | BACKEND-DEV | PASS - Step Final git-merge: PR #801 squash-merged (19be9a64), branch deleted, claim released (GH-793 closed)
@@ -1797,26 +1825,38 @@
 2026-08-16T06:16:34Z | COMPLETE | ADHOC-prm08-fixture-defect-20260816 | adhoc-prm | ISSUE-FIXER | PASS - Step 0.5 filed incidental prm-08 fixture defect: ISS-0711 registered + GitHub issue #802 (bug) created; no fix (claimable loop item)
 2026-08-16T06:18:35Z | ROUTE | WF-03 | wf03-gh802-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T06:20:59Z | ROUTE | WF-03 | wf03-gh802-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T06:21:12Z | COMPLETE | WF03 | WF03-vld-impl-bugs-20260816-003 | BACKEND-DEV | FAIL | R1-R5 implemented (38/38 unit); integration gates blocked by out-of-scope defects (scope.zig/graph.zig/emitEmptyExpression/fixture/vld-http 42P01); commit 6c079980
 2026-08-16T06:25:42Z | COMPLETE | WF03-GH802-20260816 | wf03-gh80 | ISSUE-FIXER | PASS - Step 0.5 verified ISS-0711 correct for GH-802, updated workflow_id/run_id/handoff_id + handoff_history to WF03-GH802-20260816, index consistent (next_issue_id 712); no fix (deferred to Step 3)
 2026-08-16T06:26:16Z | ROUTE | WF-03 | wf03-gh802-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T06:29:27Z | STEP_PARTIAL | WF03 | WF03-vld-impl-bugs-20260816-003 | BACKEND-DEV | FAIL | R1-R5 done + test-validation 38/38; 5 out-of-scope blockers remain (scope.zig env, vld_02_01 fixture, vld_02_05 whitespace, vld_03_01/04 graph gate, http 42P01). Routing to CODE-DESIGNER for scope expansion (R6+).
+2026-08-16T06:29:42Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002-r1 | ORCH -> CODE-DESIGNER | PENDING | STEP 2-r1: design scope expansion R6-R10
 2026-08-16T06:33:35Z | step-complete | WF03-GH802-20260816 | wf03-gh802-20260816-01 | ISSUE-FIXER | Step 1 PASS: diagnosis-as-design for GH-802/ISS-0711 (prm-08 23502 confirmed+reproduced; fix spec = mirror GH-793 Cluster A). Filed ISS-0712/GH-803 (production 42883 supersede) + ISS-0713/GH-804 (fixture tenant/def_id mismatch). No fix implemented.
 2026-08-16T06:35:31Z | ROUTE | WF-03 | wf03-gh802-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
 2026-08-16T06:37:53Z | COMPLETE | WF03-GH802-20260816 | wf03-gh802-20260816-02 | CODE-DESIGNER | PASS - Step 2 design: src/design/iss0711-gh802-prm08-fixture-fix.md (Type E, GH-793 Cluster A mirror; 23502 fixture fix in prm-08-rollback-sandbox.test.zig); GH-803/GH-804 out of scope; lint_design_artefact exit 0; no impl code
 2026-08-16T06:39:24Z | ROUTE | WF-03 | wf03-gh802-20260816-2b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-08-16T06:41:04Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 002-r1 | CODE-DESIGNER | PASS | Step 2-r1: design scope expansion R6-R10 (ISS-0709/GH#799)
+2026-08-16T06:43:28Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002b-r1 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | STEP 2b-r1: HARD GATE validate expanded design R6-R10
 2026-08-16T06:48:38Z | ROUTE | WF-03 | wf03-gh802-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T06:50:55Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-003-r1 | ORCH -> BACKEND-DEV | PENDING | STEP 3-r1: R6/R8/R9 impl
+2026-08-16T06:50:55Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-004-r1 | ORCH -> TEST-DESIGNER | PENDING | STEP 4-r1: R7/R10 fixtures (parallel)
 2026-08-16T06:54:05Z | step-completed | WF03-GH802-20260816 | wf03-gh8 | BACKEND-DEV | step-03 prm-08 fixture fix (ISS-0711/GH-802) COMPLETED result=PASS; 23502 eliminated; residuals 42883=GH-803 + seed-mismatch=GH-804 documented out-of-scope
 2026-08-16T06:55:50Z | ROUTE | WF-03 | wf03-gh802-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING
+2026-08-16T06:55:51Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 003-r1 | BACKEND-DEV | PASS | Step 3-r1: R6/R8/R9 impl (ISS-0709/GH#799), commit 22b69578
 2026-08-16T06:58:17Z | HANDOFF_COMPLETE | WF03-GH802-20260816 | wf03-gh8 | TEST-RUNNER | step-05: independent verification PASS for GH-802/ISS-0711 (prm-08 fixture fix); 23502 eliminated, residual TC-PRM-08-03 -> GH-803/GH-804 out of scope; report tests/reports/report-20260816-WF03-GH802-20260816.yaml
 2026-08-16T06:59:34Z | ROUTE | WF-03 | wf03-gh802-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
 2026-08-16T07:03:06Z | HANDOFF_COMPLETE | WF03-GH802-20260816 | wf03-gh8 | DOC-UPDATER | step-07: ISS-0711/GH-802 doc update COMPLETED result=PASS; CHANGELOG [Unreleased] 2026-08-16 entry; ISS-0711 RESOLVED; issue_index updated; GH-802 left OPEN for Step Final release.py --close-github-issue; GH-803/GH-804 untouched
 2026-08-16T07:04:19Z | ROUTE | WF-03 | wf03-gh802-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T07:06:43Z | HANDOFF_COMPLETE | WF03-GH802-20260816 | wf03-gh8 | BACKEND-DEV | step-final: fn:git-merge PASS (PR #805 squash-merged f462dfaa, branch deleted, main clean); release.py exit 0 (GH-802 closed, claimed-by-r-co-2-loop label cleared, task/current.json {})
+2026-08-16T07:06:49Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 004-r1 | TEST-DESIGNER | FAIL | Step 4-r1: R7/R10 fixtures (ISS-0709/GH#799), commit 491f35a5 - gates not met (B1 typecheck cmp_expr gap / B2 http_200 empty-env fixture / B3 cross_tenant tenant-B provisioning)
 2026-08-16T07:08:16Z | DONE | WF03-GH802-20260816 | --- | PIPELINE COMPLETE | GH-802 CLOSED (ISS-0711 RESOLVED, prm-08 fixture fix landed)
 2026-08-16T07:08:16Z | GIT  | WF03-GH802-20260816 | feature/WF03-GH802-20260816 | f462dfaa | PR: https://github.com/tvolodi/R-Co/pull/805
 2026-08-16T07:08:16Z | LOOP | WF03-GH802-20260816 | --- | ORCH | claim released (r-co:GH-802 DONE, gh-802 closed, task/current.json empty) - continuing loop; GH-803/GH-804 remain OPEN
 2026-08-16T07:09:14Z | ROUTE | WF-03 | wf03-gh804-20260816-00-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T07:09:14Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-003-r2 | ORCH -> BACKEND-DEV | PENDING | B1 cmp_expr operand compat
+2026-08-16T07:09:14Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-004-r2 | ORCH -> TEST-DESIGNER | PENDING | B2/B3 http fixture+harness (parallel)
 2026-08-16T07:10:28Z | COMPLETE | WF03-GH804-20260816 | wf03-gh8 | BACKEND-DEV -> ORCH | PASS | fn:git-setup PASS - feature/WF03-GH804-20260816 created from main cda90ceadfc60fa3038d84f6c83e971cb703ad5b, pushed to origin (exit 0), local tip == origin/main; uncommitted append-only log/registry changes carried onto branch
 2026-08-16T07:11:56Z | ROUTE | WF-03 | wf03-gh804-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
+2026-08-16T07:15:14Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 003-r2 | BACKEND-DEV | PASS | Step 3-r2: B1 operand-compat in cmp_expr (ISS-0709/GH#799), commit 844c2016
 2026-08-16T07:15:50Z | ROUTE | WF-03 | wf03-gh804-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T07:20:05Z | ROUTE | WF-03 | wf03-gh804-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
 2026-08-16T07:22:34Z | complete | WF03-GH804-20260816 | wf03-gh8 | CODE-DESIGNER | Step 2 design PASS; artefact src/design/iss0713-gh804-prm08-seed-fix.md; lint_design_artefact exit 0; next: CODE-DESIGN-VALIDATOR (Step 2b)
@@ -1824,6 +1864,7 @@
 2026-08-16T07:28:31Z | ROUTE | WF-03 | wf03-gh804-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T07:33:26Z | ROUTE | WF-03 | wf03-gh804-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING
 2026-08-16T07:37:15Z | complete | WF03-GH804-20260816 | wf03-gh8 | TEST-RUNNER | Step 5 verification PASS: seed fix correct (no 23502; tenant=DEFAULT_TENANT_ID, def_id=def_id_v2); residual TC-PRM-08-03 42883 attributed to GH-803 (out of scope); lint_handoffs exit 0; no prod/migrations modified; test-env-verify exit 0; report tests/reports/report-20260816-WF03-GH804-20260816.yaml
+2026-08-16T07:37:15Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 004-r2 | TEST-DESIGNER | PASS | Step 4-r2: B2/B3 http fixture+harness (ISS-0709/GH#799), commit 1c3a6065 - vld-http 5/5, 0 leaks, no 42P01; vld-unit 14/14
 2026-08-16T07:38:13Z | ROUTE | WF-03 | wf03-gh804-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
 2026-08-16T07:39:53Z | complete | WF03-GH804-20260816 | wf03-gh8 | DOC-UPDATER | Step 7 doc update PASS: CHANGELOG [Unreleased] 2026-08-16 entry for GH-804/ISS-0713 prm-08 TC-PRM-08-03 fixture seed fix (test-code only); ISS-0713 -> RESOLVED (resolved_at 2026-08-16T07:39:53Z, resolution + prevention, step-07 history); issue_index.json updated (ISS-0713 RESOLVED); GH-804 intentionally left OPEN for Step Final (release.py --close-github-issue, loop-mode); GH-803/ISS-0712 untouched; lint_handoffs exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACK)
 2026-08-16T07:42:20Z | ROUTE | WF-03 | wf03-gh804-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
@@ -1836,13 +1877,22 @@
 2026-08-16T07:50:08Z | ROUTE | WF-03 | wf03-gh803-20260816-005-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T07:53:55Z | ROUTE | WF-03 | wf03-gh803-20260816-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING
 2026-08-16T07:57:26Z | COMPLETE | WF03-GH803-20260816 | wf03-gh8 | ISSUE-FIXER | Step 1 diagnosis PASS: confirmed 42883 supersede defect (rollback.zig Step 5 def_id = $3::uuid vs TEXT def_id, swallowed by catch null); Step 3 fix spec delivered (drop ::uuid on $3; SQLSTATE 42P01 catch distinction) in docs/issue-reports/WF03-GH803-20260816-step-1-issue-fixer-INNER-REPORT.yaml
+2026-08-16T07:58:08Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-004b | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | STEP 4b: HARD GATE test-design validation (vld 14/14 + 5/5)
 2026-08-16T07:59:39Z | ROUTE | WF-03 | wf03-gh803-20260816-02-code-designer | ORCH -> CODE-DESIGNER | PENDING
+2026-08-16T08:06:23Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-005-r | ORCH -> TEST-RUNNER | PENDING | STEP 5: verify ISS-0709 fix (vld 14/14 + 5/5 + 40/40)
 2026-08-16T08:06:34Z | ROUTE | WF-03 | wf03-gh803-20260816-2b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
 2026-08-16T08:09:15Z | COMPLETE | WF03-GH803-20260816 | wf03-gh8 | CODE-DESIGN-VALIDATOR | Step 2b design validation (hard gate) result.status=PASS: src/design/iss0712-gh803-rollback-supersede-fix.md validated, 14/14 checks PASS, lint_design_artefact exit 0, lint_handoffs exit 0 -> route to BACKEND-DEV (Step 3)
 2026-08-16T08:11:04Z | ROUTE | WF-03 | wf03-gh803-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T08:13:32Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-006 | ORCH -> RELEASE-VALIDATOR | PENDING | STEP 6: release decision VLD-01/02/03 (BLOCKER severity)
+2026-08-16T08:19:22Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-007 | ORCH -> DOC-UPDATER | PENDING | STEP 7: mark VLD-01/02/03 RELEASED + changelog
 2026-08-16T08:21:48Z | ROUTE | WF-03 | wf03-gh803-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING
+2026-08-16T08:24:32Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 007 | DOC-UPDATER | PASS | Step 7: mark VLD-01/02/03 RELEASED + changelog (reqctl set-status + render-status + CHANGELOG [Unreleased] 2026-08-16)
+2026-08-16T08:27:04Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-008-final | ORCH -> BACKEND-DEV | PENDING | STEP Final: git-merge feature branch to main
 2026-08-16T08:29:03Z | complete-handoff | WF03-GH803-20260816 | wf03-gh8 | TEST-RUNNER | Step 5 PASS — production supersede fix verified (prm08 4/4, no 42883; lint 0; scope rollback.zig only; test-env-verify 0; unit 0). report=tests/reports/report-20260816-WF03-GH803-20260816.yaml
 2026-08-16T08:31:02Z | ROUTE | WF-03 | wf03-gh803-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
 2026-08-16T08:40:32Z | complete-handoff | WF03-GH803-20260816 | wf03-gh803-20260816-07-doc-updater | DOC-UPDATER | Step 7 PASS - CHANGELOG updated, ISS-0712 RESOLVED, issue_index updated; GH-803 left OPEN for Step Final release.py --close-github-issue
 2026-08-16T08:41:43Z | ROUTE | WF-03 | wf03-gh803-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
 2026-08-16T08:48:37Z | WF03-GH803-20260816 Step Final (BACKEND-DEV): fn:git-merge PASS - PR #807 squash-merged into main at e5dbb40b, feature branch deleted, claim released (GH-803 CLOSED, claimed-by-r-co-2-loop cleared, task/current.json {}); handoff COMPLETED (result PASS)
+[2026-08-12T17:35:00Z] | DONE | WF02-batch-5-20260812 | wf02batc-Final | BACKEND-DEV | PASS: PR #749 merged (squash), feature branch deleted, main clean at 6495b759
+
+[2026-08-13T20:13:08Z] WF02-pw13-pw16-batch19-20260813/step-01b-code-design-validator ORCH->CODE-DESIGN-VALIDATOR COMPLETED PASS — design rework added §12 Error taxonomy (21 runtime failure modes across RND-UI-05/06, GRD-UI-06/07); lint_design_artefact exits 0 (BLOCKER=0 MAJOR=0 MINOR=0); lint_handoffs exits 0. Routing to FRONTEND-DEV Step 02b.

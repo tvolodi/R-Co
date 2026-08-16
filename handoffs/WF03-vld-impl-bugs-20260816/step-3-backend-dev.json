@@ -1,0 +1,97 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-003",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-3-backend-dev.json",
+  "created_at": "2026-08-16T06:04:21Z",
+  "started_at": "2026-08-16T06:04:21Z",
+  "completed_at": "2026-08-16T06:21:12Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 3 — Implement ISS-0709 / GH #799 fix (R1-R5)",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-002b",
+      "wf03-vld-impl-bugs-20260816-002",
+      "wf03-vld-impl-bugs-20260816-001"
+    ],
+    "artifacts_in": [
+      "src/design/vld-01-03-stage-16-validation-FIX.md",
+      "docs/issues/ISS-0709.json (root_cause_analysis)",
+      "src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 3: Implement the fix for ISS-0709 / GH #799 per the validated design at src/design/vld-01-03-stage-16-validation-FIX.md. The design is the authority — follow it exactly. It specifies 5 root-cause groups (R1-R5): R1 freeSites backing-slice leak in site.zig; R2 typecheck test-scaffolding double-free (fix tests, NOT the public TypedEnv contract); R3 mapDeclaredTypeName missing 'number'/'bool'/'timestamp' in env.zig (+ mod.zig message sync); R4 PD-06 per-site gate -> expr.parse in pd06.zig + gate-before-env ordering in mod.zig (R4a/R4b); R5 findings backing leak in mod.zig per-site loop. Implement all fixes. Verification gates (per design §6): zig build exit 0; zig build test-validation -> 38/38 (no fail, no crash, no leak-detection panics); zig build test-integration-vld-unit -> 14/14; zig build test-integration-vld-http -> 5/5; full zig build test -> 0 fail / 0 crash. Commit on the feature branch with a conventional message.",
+    "acceptance_criteria": [
+      "All 5 root-cause groups R1-R5 fixed per design",
+      "zig build exits 0",
+      "zig build test-validation passes 38/38 (no fail, no crash, no leak panics)",
+      "zig build test-integration-vld-unit passes 14/14",
+      "zig build test-integration-vld-http passes 5/5",
+      "Full zig build test has 0 fail / 0 crash",
+      "No regression to non-VLD integration suites",
+      "Fix committed on feature branch"
+    ],
+    "functions_to_call": [
+      "fn:implement-fix",
+      "fn:check-zig-build",
+      "fn:check-zig-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Implemented ISS-0709 / GH #799 fix R1-R5 per src/design/vld-01-03-stage-16-validation-FIX.md. R1 freeSites now frees the []Site toOwnedSlice backing (site.zig); R2 typecheck test scaffolding converted to the owned-slice pattern (TypedEnv public contract unchanged); R3 mapDeclaredTypeName adds number/bool/timestamp + mod.zig UnknownVariableType message sync; R4a pd06 per-site gate moved to expr.parse (dangling operators 'amount >' now CEL_SYNTAX_INVALID); R4b mod.zig runs the PD-06 gate before any env finding (AC4 short-circuit literal); R5 mod.zig per-site loop frees the []Finding backing (transfer, not deep copy). Also fixed a pre-existing env-builder owned_node leak in mod.zig (addEntry re-dupes source_node_id). Verification: zig build exit 0; test-validation 38/38 (0 fail, 0 crash, 0 leaks); error-set check clean. The 14/14 and 5/5 integration gates are NOT met (9/14 vld-unit; vld-http red): remaining failures stem from defects OUTSIDE the R1-R5 scope (scope.zig absent-producer bailout, typecheck emitEmptyExpression source preservation, graph-level EDGE_MISSING_CONDITION vs EmptyExpression conflict, int_vld_02_01 fixture defect, vld-http 42P01 env/schema) - see issues.",
+    "artifacts_out": [
+      "src/validation/site.zig",
+      "src/validation/typecheck.zig",
+      "src/validation/env.zig",
+      "src/validation/pd06.zig",
+      "src/validation/mod.zig"
+    ],
+    "commit_sha": "6c079980",
+    "root_causes_fixed": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5"
+    ],
+    "verification": {
+      "zig_build": "exit 0",
+      "test_validation": "38/38 (0 fail, 0 crash, 0 leaked allocations)",
+      "test_integration_vld_unit": "9/14 (5 failures, all outside R1-R5 scope)",
+      "test_integration_vld_http": "2/5 + 95 leaks (42P01 schema/env + out-of-scope handler)",
+      "full_zig_build_test": "run corpus 1105/1169 passed (64 skipped) = 0 fail / 0 crash; build step red from 3 PRE-EXISTING test-root compile errors (transition.zig:13, store.zig:12 'no module named graph') not caused by this fix"
+    },
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "test-integration-vld-unit 9/14 (not 14/14). All 5 remaining failures are outside R1-R5 scope: (1) int_vld_01_04 - scope.zig envForSite returns an EMPTY per-site env when any service_result/module_output producer node is absent from the graph, so global variable_schema entries become invisible (design §7 declares scope.zig out of scope); (2) int_vld_02_01 - test fixture defect: arithmetic ops (+ - * /) listed as 'positive' on a bool-expecting gateway guard so `a + b` legitimately yields TypeMismatch; (3) int_vld_02_05 - typecheck.zig emitEmptyExpression dups '' instead of preserving the whitespace source (spec VLD-03 AC2 requires preservation; design §3 R2 scopes typecheck.zig to test scaffolding only, so a behavior change is a documented deviation not taken); (4) int_vld_03_01/03_04 - graph.zig validateEdgeConditions CHK-EC-03 flags an EMPTY-string condition as EDGE_MISSING_CONDITION so the PD-06 gate fires (findings=0) instead of EmptyExpression+OperandTypeError+UnknownVariable (design §2.2/§7 declares graph.zig out of scope)."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "test-integration-vld-http not 5/5 (2/5 + 95 leaks). Handler-driven setup hits sqlstate 42P01 (undefined table) on process_definitions in the bpm_test DB tenant path (environment/schema provisioning), plus out-of-scope handler/test-harness code (src/api/routes/validation.zig is 'not changed' per design §7). Needs env/schema provisioning or a separate issue routed to TEST-DESIGNER/TEST-RUNNER."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Full `zig build test` build step is red from 3 PRE-EXISTING test-root compile errors unrelated to this fix: 'no module named graph available within module root' in src/engine/transition.zig:13 and src/definition/store.zig:12 (plus one more root). Among tests that run: 0 fail / 0 crash. These existed before this fix (pre-fix summary was 6 failed steps vs 3 now)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Documented in-scope-file deviation: also fixed a pre-existing owned_node memory leak in mod.zig env-builder (service_results/module_outputs/form_fields passed a caller-duped node_id to addEntry which re-dupes it, leaking the caller's copy on the success path). In the R5-touched module and required by the design's own 'zero leaked allocations' verification; cleared int_vld_01_03/01_05a/01_05b. Also adjusted the design's R5 pseudocode `try ... catch continue` to valid Zig (try and catch cannot be combined)."
+      }
+    ],
+    "next_action": "Route to ORCH / CODE-DESIGNER for scope expansion before TEST-DESIGNER rework: (a) scope.zig envForSite absent-producer handling, (b) typecheck emitEmptyExpression source preservation (spec VLD-03 AC2), (c) graph-level EDGE_MISSING_CONDITION vs EmptyExpression conflict, (d) int_vld_02_01 fixture defect (TEST-DESIGNER), (e) vld-http 42P01 env/schema provisioning. R1-R5 itself is complete and unit-verified (38/38)."
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

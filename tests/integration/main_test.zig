@@ -224,6 +224,9 @@ const mig02_mig03_migration_fanout_integration = @import("migration_fanout_test.
 // PinResolver.resolveServiceCatalogRef() tenant scoping (bound ::uuid param,
 // not the dropped bpm_effective_tenant_id() SQL function).
 const pin01_rework1_tenant_scope_integration = @import("pin01_service_catalog_tenant_scope_test.zig");
+// Stage 16 — Semantic validation (VLD-01, VLD-02, VLD-03)
+const vld_unit_integration = @import("validation_vld_unit_test.zig");
+const vld_http_integration = @import("validation_vld_http_test.zig");
 
 comptime {
     _ = std;
@@ -329,6 +332,8 @@ comptime {
     _ = mig01_platform_migrations_control_table_integration;
     _ = mig02_mig03_migration_fanout_integration;
     _ = pin01_rework1_tenant_scope_integration;
+    _ = vld_unit_integration;
+    _ = vld_http_integration;
 }
 
 test "integration placeholder" {

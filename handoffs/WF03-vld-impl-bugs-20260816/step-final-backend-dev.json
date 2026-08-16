@@ -1,0 +1,39 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-008-final",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "Final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-final-backend-dev.json",
+  "created_at": "2026-08-16T08:26:42Z",
+  "started_at": "2026-08-16T08:26:42Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step Final / WF-02 Step Final — git-merge feature branch to main",
+    "requirement_ids": ["VLD-01", "VLD-02", "VLD-03"],
+    "related_handoff_ids": ["wf03-vld-impl-bugs-20260816-007", "wf03-vld-impl-bugs-20260816-006", "wf03-vld-impl-bugs-20260816-005-r"],
+    "artifacts_in": [
+      "feature/wf02-vld01-03-20260816 (HEAD affb4962)",
+      "docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml (APPROVED)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 / WF-02 Step Final: Complete the feature branch to main. Requirements VLD-01/02/03 are RELEASED and RELEASE-VALIDATOR APPROVED. Steps: (1) reconcile the working tree — the uncommitted src/validation/mod.zig change is a pre-existing whitespace-only diff (zig fmt) that DOC-UPDATER left unstaged; decide whether to include it (run `zig fmt src/validation/mod.zig` and check `git diff` — if whitespace-only, include it in the merge or revert it; do NOT ship an unintended semantic change). (2) Ensure all handoff/registry/bookkeeping files for BOTH runs (WF02-vld01-03-20260816 and WF03-vld-impl-bugs-20260816) are committed. (3) Run `python tools/lint_handoffs.py` — must be clean for this run (pre-existing baseline acceptable). (4) Push feature/wf02-vld01-03-20260816 to origin. (5) Create PR to main, squash-merge, delete the remote branch. (6) Return to clean main. Use fn:git-merge.",
+    "acceptance_criteria": [
+      "Working tree reconciled (no unintended uncommitted source changes)",
+      "lint_handoffs.py clean for this run",
+      "Feature branch pushed",
+      "PR created and squash-merged to main",
+      "Remote + local feature branch deleted",
+      "Clean main checkout",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": ["fn:git-merge", "fn:git-setup"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2
+}

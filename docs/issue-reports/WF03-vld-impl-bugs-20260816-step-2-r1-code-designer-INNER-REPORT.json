@@ -1,0 +1,46 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-2-r1-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "2-r1",
+  "created_at": "2026-08-16T06:41:04Z",
+  "summary": "WF-03 Step 2 REWORK 1 (ISS-0709 / GH #799): expanded the fix design at src/design/vld-01-03-stage-16-validation-FIX.md with a 'SCOPE EXPANSION R6-R10' section covering the 5 integration blockers BACKEND-DEV step-3 classified as outside R1-R5. Each blocker was classified and routed: R6 (int_vld_01_04) impl defect in scope.zig envForSite absent-producer bailout -> BACKEND-DEV; R7 (int_vld_02_01) test-fixture defect (arithmetic ops on bool gateway guard) -> TEST-DESIGNER; R8 (int_vld_02_05) impl defect emitEmptyExpression source preservation -> BACKEND-DEV; R9 (int_vld_03_01/03_04 + shared gate blocking int_vld_02_05) design-intent clarification -> impl defect at the VLD boundary (pd06.zig runSyntaxCheck graph-level filter; graph.zig stays out of scope) -> BACKEND-DEV; R10 (test-integration-vld-http) three harness defects (int_vld_03_02 five-fields assertion on an empty-findings PD-06 body, 95 leaks from missing created.deinit, 42P01 DELETE FROM process_definitions on public search_path after handleValidate clears the tenant context) -> TEST-DESIGNER, re-verified by TEST-RUNNER. All 5 blocker signatures were re-confirmed empirically on the feature branch against a live bpm_test DB (test-integration-vld-unit 9/14; test-integration-vld-http 2/5 + 95 leaks). R1-R5 section left intact. Design lint passes 0 issues. No src/*.zig or tests/integration/*.zig modified (design only).",
+  "files_created": [
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-2-r1-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/design/vld-01-03-stage-16-validation-FIX.md"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-vld-unit (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)",
+      "status": "fail",
+      "detail": "9/14 — confirmed the 5 remaining blockers: int_vld_01_04 'expected 0, found 2' (scope.zig empty env); int_vld_02_01 'expected 0, found 1' (arith on bool guard); int_vld_02_05 findings.len>=1 false (PD-06 gate fires on whitespace condition); int_vld_03_01 'expected 3, found 0' and int_vld_03_04 findings.len>=3 false (PD-06 gate fires on empty condition)."
+    },
+    {
+      "name": "zig build test-integration-vld-http (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)",
+      "status": "fail",
+      "detail": "2/5 + 95 leaks — int_vld_03_02 fails at line 286 ('\"source\":' absent on the PD-06 short-circuit body with empty findings); 95 leaked allocations traced to def_store.create without created.deinit; '[pool] exec failed; sqlstate=42P01 ... DELETE FROM process_definitions' from cleanupDefinition on a public-routed connection after handleValidate cleared the tenant context."
+    },
+    {
+      "name": "python tools/lint_design_artefact.py src/design/vld-01-03-stage-16-validation-FIX.md",
+      "status": "pass",
+      "detail": "OK — 1 file checked, no issues (baseline clean before append and after the R6-R10 section)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "task.functions_to_call lists fn:design-fix which is not in docs/agents/FUNCTIONS.md; used the canonical chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff (same stale-fn pattern as the original step-2 handoff)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "lint_handoffs.py exits 1 with a standing pre-existing baseline (10 BLOCKER H013, 31 MAJOR H007/H009, MINOR H010 historical) on OTHER runs; verified 0 occurrences of this handoff (WF03-vld-impl-bugs-20260816 / step-2-code-designer-rework / registry WF03-vld-impl-bugs-20260816-002-r1) in the lint output. No new issue on this handoff; historical handoffs left untouched."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 2b-r1) to validate the R6-R10 scope expansion against the source (per blocker: BACKEND-DEV files scope/typecheck/pd06/finding; TEST-DESIGNER files validation_vld_unit_test/validation_vld_http_test).",
+    "After validation, dispatch BACKEND-DEV for R6/R8/R9 and TEST-DESIGNER for R7/R10, then TEST-RUNNER re-verifies test-validation 38/38, test-integration-vld-unit 14/14, test-integration-vld-http 5/5 with 0 leaks."
+  ],
+  "blockers": []
+}

@@ -14,7 +14,7 @@
 const std = @import("std");
 const definition_store = @import("../../definition/store.zig");
 const export_import = @import("../../definition/export_import.zig");
-const graph_mod = @import("../../definition/graph.zig");
+const graph_mod = @import("graph");
 const pagination = @import("../pagination.zig");
 
 // ---------------------------------------------------------------------------

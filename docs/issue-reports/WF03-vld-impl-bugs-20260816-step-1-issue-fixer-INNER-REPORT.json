@@ -1,0 +1,41 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-1-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "1",
+  "created_at": "2026-08-16T05:44:34Z",
+  "summary": "WF-03 Step 1 root-cause diagnosis of ISS-0709 / GH #799 (VLD-01/02/03 semantic validation in-file test failures). Read the handoff, the issue record, the TEST-RUNNER report §1/§3.1 and all src/validation/*.zig sources; confirmed every hypothesis by running `zig build test-validation` (32/38 passed, 4 failed, 2 crashed, 11 leaks). The 10 failing tests collapse into 5 root causes: R1 freeSites leaks the []Site backing from enumerateSites' toOwnedSlice (3 site tests + pd06 malformed test — pure leak panics, logic correct); R2 TypedEnv.deinit double-frees a borrowed ArrayList backing in the typecheck tests ('Invalid free' panic); R3 env.zig mapDeclaredTypeName('number') returns null -> spurious UnknownVariableType + variable absent from env -> clean-path 'expected 0, found 3' and unknown-var no-suggestion failures; R4 PD-06 gate under-detection (isValidCelSyntax delimiter-only accepts dangling operators) plus env findings accumulated before the gate -> VLD-02 AC4 short-circuit unreachable (malformed-guard + ordering tests); R5 mod.zig per-site loop leaks the []Finding backing from checkSite's toOwnedSlice (secondary leak). Analysis written into docs/issues/ISS-0709.json (root_cause_analysis: 10 per-test entries, 5 grouped root causes, fix_scope, one design decision flagged for R3). DIAGNOSIS ONLY — no src/*.zig file modified.",
+  "files_created": [
+    "scratch/write_iss0709_analysis.py",
+    "scratch/complete_step1_handoff.py"
+  ],
+  "files_modified": [
+    "docs/issues/ISS-0709.json",
+    "handoffs/WF03-vld-impl-bugs-20260816/step-1-issue-fixer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-validation (VLD-01/02/03 module in-file tests)",
+      "status": "fail",
+      "detail": "32/38 passed, 4 failed, 2 crashed, 11 leaks — used to confirm each root cause (leak panics, 'Invalid free', 'expected 0, found 3', assertion lines 395/449/474)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "R5: mod.zig per-site loop leaks the []Finding backing from checkSite's toOwnedSlice (appendSlice shallow-copies; `owned` never freed). Surfaces as leaks once the logic assertions are fixed."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Registry handoff_id uses WF03- prefix while the handoff file's handoff_id field is lowercase wf03- — lint H010 matching must be case-insensitive or the file/registry ids aligned."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGNER (WF-03 Step 2) to design the fix from the grouped root causes in ISS-0709.json root_cause_analysis.",
+    "Then BACKEND-DEV (WF-03 Step 3) to implement (site.zig freeSites, typecheck.zig test scaffolding, env.zig mapping, pd06.zig/graph.zig gate, mod.zig ordering+leak).",
+    "Independently: TEST-DESIGNER re-dispatch for the missing tests/integration/validation_vld_*.zig (SPEC_DEVIATION, out of scope here)."
+  ],
+  "blockers": []
+}

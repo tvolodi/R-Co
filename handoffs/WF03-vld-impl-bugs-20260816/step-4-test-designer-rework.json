@@ -1,0 +1,87 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-004-r1",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "4-r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-4-test-designer-rework.json",
+  "created_at": "2026-08-16T06:50:34Z",
+  "started_at": "2026-08-16T06:50:34Z",
+  "completed_at": "2026-08-16T07:06:49Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 4 REWORK 1 \u2014 Implement R7/R10 (TEST-DESIGNER scope)",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-002b-r1",
+      "wf03-vld-impl-bugs-20260816-002-r1"
+    ],
+    "artifacts_in": [
+      "src/design/vld-01-03-stage-16-validation-FIX.md (SCOPE EXPANSION R6-R10 \u2014 R7, R10 are yours)",
+      "tests/integration/validation_vld_unit_test.zig",
+      "tests/integration/validation_vld_http_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 4 REWORK 1: Implement the R7 and R10 fixture/harness fixes per the validated SCOPE EXPANSION section of src/design/vld-01-03-stage-16-validation-FIX.md. R6/R8/R9 are routed to BACKEND-DEV (different handoff) \u2014 do NOT touch src/validation/*.zig. R7: in tests/integration/validation_vld_unit_test.zig, the int_vld_02_01 fixture lists arithmetic ops (+ - * /) as 'positive' on a bool-expecting EXCLUSIVE_GATEWAY guard \u2014 relocate those arithmetic cases to a number-expecting site (computed_from) or wrap in a comparison, so they are genuinely positive. R10: in tests/integration/validation_vld_http_test.zig \u2014 three fixes: (1) the 42P01 (DELETE FROM process_definitions after handleValidate clears tenant context -> public search_path): set `bpm.api_tenant_context.set(<default>)` in cleanup, (2) the 95 leaks: all 5 `def_store.create` calls lack `created.deinit` \u2014 add `defer created.deinit(alloc)` (Definition.deinit exists), (3) the int_vld_03_02 five-fields assertion: fix the fixture so it does NOT short-circuit to empty findings (bad_syntax_graph currently triggers PD-06/edge gate instead of producing the 5-field findings). Verify: zig build exit 0; the R7/R10-specific tests now pass in test-integration-vld-unit (int_vld_02_01) and test-integration-vld-http (all 5 + 0 leaks + no 42P01). Note: int_vld_01_04/02_05/03_01/03_04 route to BACKEND-DEV \u2014 may still fail until R6/R8/R9 land. Commit on the feature branch with a conventional message.",
+    "acceptance_criteria": [
+      "R7: int_vld_02_01 arithmetic cases relocated to number-expecting site \u2014 test passes",
+      "R10-1: http cleanup sets api_tenant_context \u2014 no 42P01",
+      "R10-2: all def_store.create calls have created.deinit \u2014 0 leaks",
+      "R10-3: int_vld_03_02 fixture produces 5-field findings \u2014 five-fields assertion passes",
+      "zig build exits 0",
+      "test-integration-vld-http passes 5/5 with 0 leaks, no 42P01",
+      "int_vld_02_01 passes in test-integration-vld-unit",
+      "No regression to existing test patterns",
+      "Fix committed on feature branch"
+    ],
+    "functions_to_call": [
+      "fn:implement-fix",
+      "fn:check-zig-build",
+      "fn:check-zig-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "WF-03 Step 4-r1 TEST-DESIGNER rework for ISS-0709/GH#799: implemented the validated R7 and R10 fixture/harness fixes. R7: relocated the four arithmetic operators (+ - * /) from the bool-expecting EXCLUSIVE_GATEWAY guard to a number-expecting HUMAN_TASK form computed_from site (field type \"number\") so all twelve positive operator cases yield 0 findings. R10-1: cleanupDefinition re-establishes the default tenant context (api_tenant_context.set) before acquiring the pool connection (no more DELETE 42P01). R10-2: added defer created.deinit(alloc) to all 5 def_store.create calls (0 leaks). R10-3: int_vld_03_02 now drives happy_graph (semantic UnknownVariable findings) instead of bad_syntax_graph, asserting the five mandatory finding fields on a real non-empty findings body. Verification: zig build exit 0; test-validation 38/38 (no R6/R8/R9 regression); test-integration-vld-unit 13/14 (the R7 positive cases now pass, but the int_vld_02_01 NEGATIVE case \"s > 0\" -> OperandTypeError fails with 0 findings); test-integration-vld-http 3/5 (int_vld_03_02 five-fields now passes, 0 leaks, no cleanup DELETE 42P01; two pre-existing failures remain). The 14/14 and 5/5 gates are NOT met because three additional blockers sit OUTSIDE the validated R7/R10 scope - see issues.",
+    "artifacts_out": [
+      "tests/integration/validation_vld_unit_test.zig",
+      "tests/integration/validation_vld_http_test.zig"
+    ],
+    "commit_sha": "491f35a5",
+    "root_causes_fixed": [
+      "R7",
+      "R10"
+    ],
+    "verification": {
+      "zig_build": "exit 0",
+      "test_validation": "38/38 (0 fail, 0 crash, 0 leaks) - no R6/R8/R9 regression",
+      "test_integration_vld_unit": "13/14 - int_vld_02_01 positive operator cases (R7) PASS; int_vld_02_01 negative case 's > 0' FAILS with 0 findings (BLOCKER B1)",
+      "test_integration_vld_http": "3/5 - int_vld_03_02 five-fields PASS (R10-3), 0 leaks (R10-2), no cleanup DELETE 42P01 (R10-1); int_vld_03_http_200 FAILS 422-vs-200 (BLOCKER B2); int_vld_03_cross_tenant_404 FAILS 500-vs-404, SELECT 42P01 (BLOCKER B3)",
+      "lint_test_isolation": "OK - 179 files, no isolation issues (exit 0)"
+    },
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "B1 - int_vld_02_01 negative case (tests/integration/validation_vld_unit_test.zig): \"s > 0\" (string > number) on a bool-expecting gateway guard yields 0 findings, so the expect(findings.len >= 1) + expect(saw_operand_error) assertions fail. Root cause: src/validation/typecheck.zig inferType .cmp_expr branch infers both operand types but NEVER validates operand-type compatibility - it unconditionally returns .bool. Spec tests/specs/vld-01-03-stage-16-validation.spec.md lines 265 and 322 require a finding for string > number (OperandTypeError per line 265 / TypeMismatch per table line 322). This is an IMPLEMENTATION defect in src/validation/typecheck.zig, which TEST-DESIGNER is forbidden from touching (constraint: do NOT modify src/validation/*.zig; R6/R8/R9 are BACKEND-DEV). The failure was MASKED before this rework because the earlier arithmetic-loop assertion aborted the test block first. Fix: BACKEND-DEV adds an operand-compatibility check in the .cmp_expr branch (emit OperandTypeError when operands are not same-typed comparable), satisfying the spec. No test-only change can legitimately make this pass without either removing the negative case (loses coverage) or altering what the test measures (violates core-directives)."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "B2 - int_vld_03_http_200 (tests/integration/validation_vld_http_test.zig): happy_graph conditions \"amount > 0\" / \"amount <= 0\" reference variable `amount`, but handleValidate passes an EMPTY env (Definition has no variable_schemas column yet - VLD-04 will pre-fetch), so `amount` is unknown -> UnknownVariable finding -> HTTP 422, expected 200. Pre-existing test-harness/fixture defect NOT in the validated R10 list. Same classification as R10-3 (all http-layer fixes are test-file-only per design R10). Proposed fix (TEST-DESIGNER, needs scope-expansion validation): drive the happy-path HTTP fixture with literal-only conditions (e.g. \"1 > 0\" / \"1 <= 0\") that resolve to 0 findings under the empty handler env, preserving the test intent (clean def -> 200)."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "B3 - int_vld_03_cross_tenant_404 (tests/integration/validation_vld_http_test.zig): handler invoked as tenant B (random UUID) returns 500 not 404 - [pool] query failed sqlstate=42P01 on the getById SELECT (SELECT id, name, version, ... FROM process_definitions). Root cause: tenant B is not provisioned, so pool.applyRequestStorageRouting resolves storage_mode via resolveAndCacheStorageMode to LEGACY_RLS fallback -> SET search_path TO public -> process_definitions does not exist in public (it lives in tenant_default in SCHEMA mode per migrations 087/1135). The 404 relies on RLS (LEGACY_RLS) or on a provisioned tenant_b schema (SCHEMA). Pre-existing harness defect NOT in the validated R10 list. Proposed fix (needs design confirmation + TEST-RUNNER env): provision tenant B via bpm.provisioning.provisionTenantSchema (as other integration tests do, e.g. idn05_role_registry_test.zig) so its search_path routes to tenant_<b>,public and the empty schema yields DefinitionNotFound -> 404."
+      }
+    ],
+    "next_action": "Route to ORCH: expand the fix scope (like SCOPE EXPANSION R6-R10) for the three newly-surfaced blockers - B1 (typecheck.zig .cmp_expr operand-compat gap) to BACKEND-DEV; B2 (int_vld_03_http_200 empty-env fixture) and B3 (int_vld_03_cross_tenant_404 tenant-B schema provisioning) as TEST-DESIGNER/TEST-RUNNER harness fixes. R7 positive-cases + R10 (all three sub-fixes) are complete and verified in commit 491f35a5."
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

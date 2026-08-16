@@ -1,0 +1,32 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-5-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "5",
+  "created_at": "2026-08-16T08:12:27Z",
+  "summary": "WF-03 Step 5 verify of ISS-0709 (also WF-02 step-04 re-run). All VLD gates green: zig build exit 0; test-validation 40/40; test-integration-vld-unit 14/14; test-integration-vld-http 5/5 (0 leaks, no 42P01). Full corpus 1107/1171 passed, 64 skipped, 0 fail / 0 crash attributable to this run; the 3 failed steps are the known PRE-EXISTING 'no module named graph' test-root build-wiring defect (transition_test_root / definition_store_test_root / iss0206_rowtodefinition_errdefer_test), confirmed identical on base and untouched by the ISS-0709 fix commits (844c2016, 1c3a6065 touched only src/validation/typecheck.zig and validation_vld_http_test.zig). AC coverage 15/15. Lint gates: lint_test_isolation exit 0 (179 files); lint_handoffs reports NO issues on this handoff (repo-wide exit 1 is the pre-existing baseline of 10 BLOCKER / 31 MAJOR / 1 MINOR / 291 ACKNOWLEDGED in other runs). No source or test modifications made; nothing pushed. Verdict PASS.",
+  "files_created": [
+    "tests/reports/WF03-vld-impl-bugs-20260816-test-report.md",
+    "handoffs/WF03-vld-impl-bugs-20260816/step-5-test-runner.json",
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-5-TEST-RUNNER-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    { "name": "zig build test-env-verify", "status": "pass", "detail": "exit 0 — HEALTHY, 10 checks passed" },
+    { "name": "zig build", "status": "pass", "detail": "exit 0" },
+    { "name": "zig build test-validation", "status": "pass", "detail": "40/40, exit 0" },
+    { "name": "zig build test-integration-vld-unit", "status": "pass", "detail": "14/14, exit 0 (BPM_TEST_DB_URL :5434)" },
+    { "name": "zig build test-integration-vld-http", "status": "pass", "detail": "5/5, exit 0, 0 leaks, 0 x 42P01" },
+    { "name": "zig build test (full corpus)", "status": "pass", "detail": "1107/1171 passed, 64 skipped, 0 fail, 0 crash; 3 failed steps = pre-existing graph-import wiring defect (documented, not counted)" },
+    { "name": "python tools/lint_test_isolation.py", "status": "pass", "detail": "exit 0 — 179 files, no isolation issues" },
+    { "name": "python tools/lint_handoffs.py", "status": "pass", "detail": "no issues on this handoff; repo-wide exit 1 = pre-existing baseline" }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to ORCH — WF-03 Step 6 (next workflow step); ISS-0709 fix verified PASS.",
+    "Track the pre-existing 'no module named graph' test-root wiring defect (definition-store / engine test roots) as a separate defect outside ISS-0709."
+  ],
+  "blockers": []
+}

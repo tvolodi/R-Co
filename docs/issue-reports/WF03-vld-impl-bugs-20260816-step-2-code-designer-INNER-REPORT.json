@@ -1,0 +1,35 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-2-code-designer-INNER-REPORT",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "2",
+  "created_at": "2026-08-16T05:54:53Z",
+  "summary": "WF-03 Step 2 (fix design for ISS-0709 / GH #799): produced src/design/vld-01-03-stage-16-validation-FIX.md covering all 5 root-cause groups R1-R5. R1: freeSites must allocator.free(items) (owned toOwnedSlice contract) — audited every freeSites call site and specified the required companion scaffolding change in the 4 typecheck.zig checkSite tests (they pass a live ArrayList backing and would double-free). R2: fixed the typecheck test scaffolding via entries.toOwnedSlice + drop entries.deinit (option a), leaving TypedEnv.deinit's public contract untouched. R3 decision: EXTEND the mapping table with number->.number (plus bool->.bool, timestamp->.timestamp) rather than change fixtures — justified because canonical fixtures (mod.zig in-file + validation_vld_unit_test.zig happy fixture) derive from the natural CEL type names and .number is a first-class TypeTag; also specified the UnknownVariableType message-string sync. R4: moved the per-site PD-06 gate to expr.parse (graph.zig isValidCelSyntax untouched, scoped to src/validation/) and reordered mod.zig so the gate fires before env findings accumulate (AC4 literal). R5: free the []Finding backing after appendSlice (transfer, not deep-copy; do not freeFindings). Design lint (tools/lint_design_artefact.py) passes with 0 issues. No src/*.zig files were modified (design only).",
+  "files_created": [
+    "src/design/vld-01-03-stage-16-validation-FIX.md",
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-2-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-vld-impl-bugs-20260816/step-2-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/vld-01-03-stage-16-validation-FIX.md",
+      "status": "pass",
+      "detail": "1 file(s) checked, no issues (BLOCKER=0 MAJOR=0 MINOR=0). One E060 MINOR (requirement-id extractor matched 'requirement-scope change' under IGNORECASE) was fixed by rephrasing before re-lint."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Handoff task.functions_to_call lists 'fn:design-fix', which is not defined in docs/agents/FUNCTIONS.md (no fn-design-fix.md exists). Followed the canonical CODE-DESIGNER completion chain (fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff) instead. Registry/library discrepancy to fix at the source."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (WF-03 Step 2b) to validate the fix design artefact (lint_design_artefact passes already).",
+    "BACKEND-DEV (WF-03 Step 3) implements R1-R5 per the FIX design; verify 38/38 test-validation, 14/14 test-integration-vld-unit, 5/5 test-integration-vld-http, no leaks, full zig build test 0 fail/0 crash.",
+    "Amend the original design doc §8 table + §9.4 accepted-set message to match the extended mapping table (traceability; can be done by BACKEND-DEV in the same PR or DOC-UPDATER)."
+  ],
+  "blockers": []
+}

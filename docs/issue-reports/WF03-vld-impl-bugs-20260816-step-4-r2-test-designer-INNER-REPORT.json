@@ -1,0 +1,45 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-4-r2-TEST-DESIGNER-INNER-REPORT",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "4-r2",
+  "created_at": "2026-08-16T07:37:15Z",
+  "summary": "WF-03 Step 4 REWORK 2 (ISS-0709 / GH #799): fixed the two HTTP-boundary blockers B2 and B3 in tests/integration/validation_vld_http_test.zig. B2: int_vld_03_http_200 was driving happy_graph (conditions \"amount > 0\" / \"amount <= 0\") through handleValidate, which passes an EMPTY env (Definition has no variable_schemas column yet — VLD-04 pre-fetches), so `amount` resolved UnknownVariable -> HTTP 422. Added a dedicated literal-only fixture happy_literal_graph (conditions \"1 > 0\" / \"1 <= 0\" — number-vs-number comparisons that type-check to .bool with zero env lookups) and pointed int_vld_03_http_200 at it -> genuinely 0 findings -> HTTP 200 + semantically_valid. The shared happy_graph is preserved for int_vld_03_02 (which asserts UnknownVariable findings -> 422, R10-3) and int_vld_03_cross_tenant_404 (graph content is irrelevant — the handler 404s on the tenant-scoped read before validation). B3: int_vld_03_cross_tenant_404 returned 500 not 404 because tenant B was not provisioned — resolveAndCacheStorageMode fell through to LEGACY_RLS (search_path = public), where process_definitions does not exist (sqlstate 42P01). Fixed by provisioning tenant B's physical schema via bpm.provisioning.provisionTenantSchema(alloc, &pool, tenant_b, build_options.migrations_dir) BEFORE the cross-tenant read, plus a cleanupTenantSchema defer (DROP SCHEMA + DELETE public.tenant_schemas/tenant) matching idn05_role_registry_test.zig. The handler's own api_tenant_context.set(tenant_b) then routes the read to the empty tenant_<b> schema -> getById returns DefinitionNotFound -> HTTP 404 (no findings leak). Verification: zig build exit 0; test-integration-vld-http 5/5 passed (0 leaks, no 42P01); test-integration-vld-unit 14/14 (B1 landed by BACKEND-DEV, R7 preserved — no regression); lint_test_isolation.py exit 0 (179 files, no issues). Committed on feature/wf02-vld01-03-20260816 (1c3a6065). B1 was fixed separately by BACKEND-DEV (844c2016); this handoff's http suite is 5/5 from TEST-DESIGNER changes alone.",
+  "files_created": [
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-4-r2-test-designer-INNER-REPORT.json",
+    "handoffs/WF03-vld-impl-bugs-20260816/step-4-test-designer-rework2.json"
+  ],
+  "files_modified": [
+    "tests/integration/validation_vld_http_test.zig",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "exit 0 (the BENCH_MIGRATE_URL_INFO stderr note is a PowerShell NativeCommandError false-positive; real exit code 0)."
+    },
+    {
+      "name": "test-integration-vld-http",
+      "status": "pass",
+      "detail": "5/5 passed (run test 5 pass (5 total)), INT_EXIT=0, 0 leaks, no 42P01. Includes B2 (int_vld_03_http_200 -> 200), B3 (int_vld_03_cross_tenant_404 -> 404), and R10-3 (int_vld_03_02 five-fields)."
+    },
+    {
+      "name": "test-integration-vld-unit",
+      "status": "pass",
+      "detail": "14/14 passed (B1 operand-compat in cmp_expr landed by BACKEND-DEV commit 844c2016; R7 arithmetic-positive cases preserved — no regression)."
+    },
+    {
+      "name": "tools/lint_test_isolation.py tests/integration",
+      "status": "pass",
+      "detail": "exit 0 — 179 file(s) checked, no isolation issues (no hardcoded fixture UUIDs, no SkipZigTest on MUST, no production-defaulting tenant creation)."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-DESIGN-VALIDATOR (WF-03 Step 3b) to re-validate the HTTP suite: B2 literal-only happy fixture -> 200, B3 provisioned tenant B -> 404, 5/5 with 0 leaks and no 42P01.",
+    "TEST-RUNNER (WF-02 Step 4) executes the suite against the provisioned integration DB; note the DB is on host port 5434 (docker-compose.override.yml remap), BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test.",
+    "Optional spec touch-up: tests/specs/vld-01-03-stage-16-validation.spec.md §3.1 documents Fixture A (variable-based happy fixture); the HTTP 200 path now uses a literal-only variant documented in the test file — no spec case-count change (still 5 http tests)."
+  ],
+  "blockers": []
+}

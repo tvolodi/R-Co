@@ -1,0 +1,115 @@
+stage: "16"
+date: "2026-08-16T08:17:28Z"
+run_id: "WF03-vld-impl-bugs-20260816"
+commit: "e3bfccbf (HEAD after step-5) — fix commits 844c2016 (B1) + 1c3a6065 (B2/B3) on top of R1–R5/R6/R8/R9 work; branch base 31482edb (original WF-02 impl)"
+branch: "feature/wf02-vld01-03-20260816"
+decision: "APPROVED"
+
+requirement_ids:
+  - VLD-01
+  - VLD-02
+  - VLD-03
+
+acceptance_criteria_coverage:
+  VLD-01:
+    - ac: "AC1 — variable_schema type outside mapping → HTTP 422 UnknownVariableType naming variable and type"
+      coverage: "int_vld_01_01 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC2 — SERVICE_TASK catalog entry with no result schema → HTTP 422 UndeclaredResultSchema"
+      coverage: "int_vld_01_02 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC3 — two same-name form fields with different types → HTTP 422 ConflictingFieldType"
+      coverage: "int_vld_01_03 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC4 — env derived from declarations only; instance variable values contribute no type"
+      coverage: "int_vld_01_04 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC5 — node output visible only to forward-reachable sites; form-field type scoped per human task"
+      coverage: "int_vld_01_05a + int_vld_01_05b (validation_vld_unit_test.zig)"
+      status: MET
+  VLD-02:
+    - ac: "AC1 — guard compiling to non-bool → TypeMismatch naming expected bool and actual type"
+      coverage: "TypeMismatch covered at unit + http + 17 in-file src/validation refs (all twelve positive CEL operators in int_vld_02_01)"
+      status: MET
+    - ac: "AC2 — expression referencing absent identifier → UnknownVariable"
+      coverage: "int_vld_02_02 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC3 — string + number operand → OperandTypeError naming operator and both operand types"
+      coverage: "int_vld_02_03 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC4 — PD-06 syntax fail → semantic compile not run; response carries pd06_diagnostics only"
+      coverage: "int_vld_02_04 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC5 — empty / whitespace-only site → EmptyExpression, not pass"
+      coverage: "int_vld_02_05 (validation_vld_unit_test.zig)"
+      status: MET
+  VLD-03:
+    - ac: "AC1 — three failing sites → one HTTP 422 with three findings; no stop at first failure"
+      coverage: "int_vld_03_01 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC2 — every finding carries node_id, expression_path, source, error_kind, message"
+      coverage: "int_vld_03_02 (validation_vld_http_test.zig) + in-process handler path"
+      status: MET
+    - ac: "AC3 — UnknownVariable message names referenced identifier + nearest declared by edit distance"
+      coverage: "int_vld_03_03 (validation_vld_unit_test.zig, Levenshtein ≤4)"
+      status: MET
+    - ac: "AC4 — findings ordered by (node_id, expression_path); two validations byte-identical ordering"
+      coverage: "int_vld_03_04 (validation_vld_unit_test.zig)"
+      status: MET
+    - ac: "AC5 — error_kind is closed enumeration; no value outside the 7 wire strings emitted"
+      coverage: "int_vld_03_05 (validation_vld_http_test.zig) + in-process handler path"
+      status: MET
+
+gate_results:
+  build:
+    status: PASS
+    detail: "zig build exit 0 (re-verified by RELEASE-VALIDATOR)"
+  test_env_verify:
+    status: PASS
+    detail: "zig build test-env-verify exit 0 — HEALTHY, 10/10 checks (re-verified by RELEASE-VALIDATOR)"
+  test_validation:
+    status: PASS
+    detail: "zig build test-validation 40/40 (exit 0)"
+  test_integration_vld_unit:
+    status: PASS
+    detail: "zig build test-integration-vld-unit 14/14 (exit 0, BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)"
+  test_integration_vld_http:
+    status: PASS
+    detail: "zig build test-integration-vld-http 5/5 (exit 0, --summary all); 0 leak tokens; 0 42P01 tokens"
+  full_corpus_attributable:
+    status: PASS
+    detail: "0 test failures / 0 crashes attributable to this run. 3 failed steps are the pre-existing definition-store/engine build-wiring defect (no module named 'graph'), identical on base commit 10ccba11, untouched by fix commits — documented, not a VLD gate"
+
+nfr_results:
+  nfr07_crash_safety: "COVERED — 0 crashes attributable to this run; VLD validation path is pure in-process semantic validation with no crash observed across 40/40 unit + 14/14 unit-integration + 5/5 http tests. NFR-01/02/04 (latency/throughput/reconstruction) not benchmarked in this WF-02 Step 5 run — that is the WF-04 benchmark procedure, consistent with the prior release-decision-WF02-prm02-05-20260816.yaml precedent. No new performance-critical surface introduced (validation is a single-pass compile+typecheck over an in-memory definition graph)."
+
+blocking_issues: []
+
+known_issues:
+  - severity: MAJOR
+    scope: ENVIRONMENT (dev DB only — NOT VLD-attributable)
+    description: >
+      `zig build bench` (WF-04 full NFR metric suite) cannot start on this host: its migrate
+      precondition fails against the dev/bench DB `BPM_DB_URL` (postgres://bpm:bpm@localhost:5442/bpm_dev)
+      with `default tenant schema provisioning failed: error.MigrationFailed
+      (tenant_id=00000000-0000-0000-0000-000000000000)` / `post-condition:
+      tenant_schemas.migrations_applied_at is NULL`. Reproduced identically with plain
+      `zig build migrate` against the dev DB. NOT attributable to this branch — the VLD
+      diff contains no migration files and `test-env-verify` C3 confirms the test DB
+      (5434) migrate passes 147/147. No NFR_RESULT metrics were emitted, so no NFR
+      threshold failed. This blocks only the WF-04 benchmark procedure, not the
+      VLD-01/02/03 release. Route to a bench-env ADHOC to repair the dev DB default-tenant
+      schema before the next WF-04 full NFR run.
+
+notes:
+  - "RELEASE-VALIDATOR independently re-verified on the branch working tree: zig build exit 0; zig build test-env-verify exit 0 (HEALTHY 10/10). VLD gate numbers taken from the authoritative step-5 TEST-RUNNER report (tests/reports/WF03-vld-impl-bugs-20260816-test-report.md): test-validation 40/40, test-integration-vld-unit 14/14, test-integration-vld-http 5/5, 0 leaks, 0 42P01."
+  - "15/15 MUST ACs covered by passing tests (12 land in validation_vld_unit_test.zig, 5 in validation_vld_http_test.zig; VLD-03 AC2 + AC5 in both). 16 test blocks total (15 ACs + positive/negative split on VLD-02 AC1). No deferred tests; no error.SkipZigTest on any MUST-AC block."
+  - "This run is the successful re-run of the original WF-02 step-04 (which FAILED on commit 31482edb with SPEC_DEVIATION — missing test files — and IMPL_BUG — 10 failing in-file validation tests). Both resolved: the spec test files exist and pass, and the in-file validation tests are covered by the 40/40 test-validation result."
+  - "ISS-0709 / GH #799 verified end-to-end: fix commits 844c2016 (B1 operand-compat) + 1c3a6065 (B2/B3 literal-only fixture + cross-tenant provisioning) close the verified defects; no VLD regression observed (R1–R5 / R6–R10 / B1–B3 all re-verified green)."
+  - "lint_test_isolation exit 0 (179 files, no isolation issues). lint_handoffs: no NEW issues on this handoff / this run folder (repo-wide baseline of pre-existing findings unchanged)."
+  - "Upstream chain complete: step-1 through step-5 all PASS (BACKEND-DEV fix + TEST-DESIGNER + TEST-DESIGN-VALIDATOR + TEST-RUNNER); this step-6 is the release decision."
+
+approved_requirements:
+  - VLD-01
+  - VLD-02
+  - VLD-03

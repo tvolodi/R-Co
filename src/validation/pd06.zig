@@ -1,0 +1,275 @@
+//! PD-06 syntax gate — VLD-02 AC4 (hard gate before semantic compile).
+//!
+//! Requirement IDs: VLD-02 AC4
+//! Design artefact:  src/design/vld-01-03-stage-16-validation.md §6.2.4, §7.3
+//!
+//! The semantic compiler (`typecheck.zig`) only runs after every expression
+//! site has cleared the PD-06 syntax gate. The graph-level edge checks keep
+//! using the pre-existing `isValidCelSyntax` (`src/definition/graph.zig`);
+//! the per-site gate uses the authoritative `expr.parse` parser (ISS-0709
+//! R4a) so dangling operators ("amount >") are rejected. When any site fails
+//! syntax, the validator short-circuits the entire semantic loop and returns
+//! a `ValidationFailure` whose `findings` slice is empty and whose
+//! `pd06_diagnostics` field carries the verbatim PD-06 violation list
+//! (codes + messages) — the same shape
+//! `graph.validateEdgeConditions`/`validateEdgeTransforms` already produce.
+//!
+//! This module is the "wide" PD-06 surface: it aggregates the existing edge
+//! checks (PD-06 as-is) PLUS a per-site syntax check across the additional
+//! sites enumerated by `site.zig` (transition guards, assignment, timer
+//! delay, service-task input mapping, form visible_when, form computed_from).
+//!
+//! Pure module: no I/O, no DB, no logging, no clock reads.
+
+const std = @import("std");
+const graph_mod = @import("graph");
+const expr_mod = @import("expr");
+const site_mod = @import("site.zig");
+
+pub const DefinitionGraph = graph_mod.DefinitionGraph;
+pub const Violation = graph_mod.Violation;
+pub const ValidationResult = graph_mod.ValidationResult;
+pub const Site = site_mod.Site;
+
+// ---------------------------------------------------------------------------
+// Pd06Diagnostic — verbatim carry-over from graph.validateEdgeConditions
+// ---------------------------------------------------------------------------
+
+/// A single PD-06 diagnostic, lifted verbatim from
+/// `graph.validateEdgeConditions` / `validateEdgeTransforms`. The wire
+/// format is the existing violation shape (`code` + `message`).
+pub const Pd06Diagnostic = struct {
+    code: []const u8,
+    message: []const u8,
+    /// Optional node id — populated for the per-site checks below; null
+    /// for the graph-level (validateEdgeConditions) checks.
+    node_id: ?[]const u8 = null,
+    /// Optional expression_path — populated for per-site checks; null for
+    /// graph-level checks.
+    expression_path: ?[]const u8 = null,
+};
+
+pub fn freePd06Diagnostic(allocator: std.mem.Allocator, d: Pd06Diagnostic) void {
+    allocator.free(d.message);
+    if (d.node_id) |n| allocator.free(n);
+    if (d.expression_path) |p| allocator.free(p);
+}
+
+pub fn freePd06Diagnostics(allocator: std.mem.Allocator, items: []Pd06Diagnostic) void {
+    for (items) |d| freePd06Diagnostic(allocator, d);
+    allocator.free(items);
+}
+
+/// Extract the first single-quoted token from a violation message — the edge
+/// id, e.g. `'e2'` in "Edge 'e2' leaves EXCLUSIVE_GATEWAY 'gw' ...". Returns
+/// null when the message carries no single-quoted token.
+fn firstQuotedToken(message: []const u8) ?[]const u8 {
+    const start = std.mem.indexOfScalar(u8, message, '\'') orelse return null;
+    const end = std.mem.indexOfScalarPos(u8, message, start + 1, '\'') orelse return null;
+    return message[start + 1 .. end];
+}
+
+// ---------------------------------------------------------------------------
+// runSyntaxCheck — aggregate PD-06 across graph + every site
+// ---------------------------------------------------------------------------
+
+pub const Pd06Error = error{OutOfMemory};
+
+/// Run PD-06 syntax check against:
+///   1. The graph-level edge conditions and edge transforms (existing
+///      `validateEdgeConditions` + `validateEdgeTransforms`).
+///   2. The additional per-site expressions enumerated by `site.zig`.
+/// Returns the *combined* list. When non-empty, the orchestrator short-circuits
+/// the semantic compile loop and returns 422 with these diagnostics carried
+/// verbatim.
+///
+/// `node_id_owned` / `expression_path_owned` are allocator-owned (the
+/// caller's `Site` slices are duplicated so the resulting diagnostic is
+/// independent of the input graph's lifetime).
+pub fn runSyntaxCheck(
+    allocator: std.mem.Allocator,
+    graph: DefinitionGraph,
+    sites: []Site,
+) Pd06Error![]Pd06Diagnostic {
+    var diagnostics: std.ArrayList(Pd06Diagnostic) = .empty;
+    errdefer {
+        for (diagnostics.items) |d| freePd06Diagnostic(allocator, d);
+        diagnostics.deinit(allocator);
+    }
+
+    // 1) Edge conditions + edge transforms.
+    const cond = graph_mod.validateEdgeConditions(allocator, graph) catch
+        return try diagnostics.toOwnedSlice(allocator);
+    defer {
+        for (cond.violations) |v| allocator.free(v.message);
+        allocator.free(cond.violations);
+    }
+    // ISS-0709 R9: defer present empty/whitespace edge conditions to VLD-02
+    // AC5. The set S holds every edge id whose condition is PRESENT
+    // (`condition != null`) and empty-or-whitespace. Graph-level structural
+    // violations (EDGE_MISSING_CONDITION / EDGE_INVALID_CEL) for those edges
+    // are skipped so the per-site semantic loop can emit an EmptyExpression
+    // finding; `condition == null` edges still fire EDGE_MISSING_CONDITION (a
+    // null condition enumerates no site, so only the structural gate can
+    // signal it).
+    var deferred_edges = std.StringHashMap(void).init(allocator);
+    defer deferred_edges.deinit();
+    for (graph.edges) |e| {
+        if (e.condition != null and site_mod.isEmptyOrWhitespace(e.condition.?)) {
+            try deferred_edges.put(e.id, {});
+        }
+    }
+    for (cond.violations) |v| {
+        const is_edge_cond_violation =
+            std.mem.eql(u8, v.code, "EDGE_MISSING_CONDITION") or
+            std.mem.eql(u8, v.code, "EDGE_INVALID_CEL");
+        if (is_edge_cond_violation) {
+            if (firstQuotedToken(v.message)) |edge_id| {
+                if (deferred_edges.contains(edge_id)) continue;
+            }
+        }
+        try diagnostics.append(allocator, .{
+            .code = v.code,
+            .message = try allocator.dupe(u8, v.message),
+            .node_id = null,
+            .expression_path = null,
+        });
+    }
+
+    const xform = graph_mod.validateEdgeTransforms(allocator, graph) catch
+        return try diagnostics.toOwnedSlice(allocator);
+    defer {
+        for (xform.violations) |v| allocator.free(v.message);
+        allocator.free(xform.violations);
+    }
+    for (xform.violations) |v| {
+        try diagnostics.append(allocator, .{
+            .code = v.code,
+            .message = try allocator.dupe(u8, v.message),
+            .node_id = null,
+            .expression_path = null,
+        });
+    }
+
+    // 2) Per-site syntax check across the additional sites.
+    for (sites) |s| {
+        // Skip empty/whitespace first — VLD-02 AC5 owns empties at the
+        // typecheck boundary (EmptyExpression is a separate diagnostic
+        // category), so they are never parsed here.
+        if (site_mod.isEmptyOrWhitespace(s.source)) continue;
+
+        // ISS-0709 R4a: the gate is the authoritative CEL parser, not the
+        // delimiter-balance `isValidCelSyntax`. Dangling operators ("amount >",
+        // "amount <=", "x >", "y <") fail parse at end-of-input ("expected
+        // expression"), so VLD-02 AC4's short-circuit fires.
+        const pr = expr_mod.parse(allocator, s.source) catch continue; // OOM -> skip site
+        switch (pr) {
+            .ok => |ast| {
+                // Syntactically valid — release the arena and continue.
+                var ast_mut = ast;
+                ast_mut.deinit();
+            },
+            .fail => |errs| {
+                allocator.free(errs);
+
+                const max_display: usize = 80;
+                const display_len = if (s.source.len > max_display) max_display else s.source.len;
+                const message = try std.fmt.allocPrint(
+                    allocator,
+                    "Node '{s}' at '{s}' has a syntactically invalid CEL expression: '{s}'",
+                    .{ s.node_id, s.expression_path, s.source[0..display_len] },
+                );
+                errdefer allocator.free(message);
+                const owned_node = try allocator.dupe(u8, s.node_id);
+                errdefer allocator.free(owned_node);
+                const owned_path = try allocator.dupe(u8, s.expression_path);
+                errdefer allocator.free(owned_path);
+                try diagnostics.append(allocator, .{
+                    .code = "CEL_SYNTAX_INVALID",
+                    .message = message,
+                    .node_id = owned_node,
+                    .expression_path = owned_path,
+                });
+            },
+        }
+    }
+
+    return try diagnostics.toOwnedSlice(allocator);
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+test "runSyntaxCheck: clean graph + empty sites -> no diagnostics" {
+    const alloc = std.testing.allocator;
+    const n1 = graph_mod.GraphNode{ .id = "a", .node_type = .START, .attributes = null };
+    const n2 = graph_mod.GraphNode{ .id = "b", .node_type = .END, .attributes = null };
+    const e1 = graph_mod.GraphEdge{ .id = "e1", .source = "a", .target = "b" };
+
+    const sites = try site_mod.enumerateSites(alloc, DefinitionGraph{
+        .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
+    });
+    defer site_mod.freeSites(alloc, sites);
+
+    const diag = try runSyntaxCheck(alloc, DefinitionGraph{
+        .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
+    }, sites);
+    defer freePd06Diagnostics(alloc, diag);
+    try std.testing.expectEqual(@as(usize, 0), diag.len);
+}
+
+test "runSyntaxCheck: malformed per-site expression -> CEL_SYNTAX_INVALID diagnostic" {
+    const alloc = std.testing.allocator;
+    const attrs = "{\"delay\":\"now( + 60000\"}"; // unbalanced paren
+    const n1 = graph_mod.GraphNode{ .id = "t1", .node_type = .TIMER, .attributes = attrs };
+    const n2 = graph_mod.GraphNode{ .id = "end", .node_type = .END, .attributes = null };
+    const e1 = graph_mod.GraphEdge{ .id = "e1", .source = "t1", .target = "end" };
+
+    const sites = try site_mod.enumerateSites(alloc, DefinitionGraph{
+        .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
+    });
+    defer site_mod.freeSites(alloc, sites);
+
+    const diag = try runSyntaxCheck(alloc, DefinitionGraph{
+        .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
+    }, sites);
+    defer freePd06Diagnostics(alloc, diag);
+
+    try std.testing.expect(diag.len >= 1);
+    var found = false;
+    for (diag) |d| {
+        if (std.mem.eql(u8, d.code, "CEL_SYNTAX_INVALID")) {
+            found = true;
+            try std.testing.expect(d.node_id != null);
+            try std.testing.expect(d.expression_path != null);
+        }
+    }
+    try std.testing.expect(found);
+}
+
+test "runSyntaxCheck: empty source skipped (VLD-02 AC5 handles those downstream)" {
+    const alloc = std.testing.allocator;
+    const attrs = "{\"delay\":\"\"}"; // empty
+    const n1 = graph_mod.GraphNode{ .id = "t1", .node_type = .TIMER, .attributes = attrs };
+    const n2 = graph_mod.GraphNode{ .id = "end", .node_type = .END, .attributes = null };
+    const e1 = graph_mod.GraphEdge{ .id = "e1", .source = "t1", .target = "end" };
+
+    const sites = try site_mod.enumerateSites(alloc, DefinitionGraph{
+        .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
+    });
+    defer site_mod.freeSites(alloc, sites);
+
+    const diag = try runSyntaxCheck(alloc, DefinitionGraph{
+        .nodes = &[_]graph_mod.GraphNode{ n1, n2 },
+        .edges = &[_]graph_mod.GraphEdge{e1},
+    }, sites);
+    defer freePd06Diagnostics(alloc, diag);
+
+    try std.testing.expectEqual(@as(usize, 0), diag.len);
+}

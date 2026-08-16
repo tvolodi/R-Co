@@ -1,0 +1,66 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-002b",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T05:57:53Z",
+  "started_at": "2026-08-16T05:57:53Z",
+  "completed_at": "2026-08-16T06:01:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 2b — Fix design validation (HARD GATE)",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-002",
+      "wf03-vld-impl-bugs-20260816-001"
+    ],
+    "artifacts_in": [
+      "src/design/vld-01-03-stage-16-validation-FIX.md",
+      "docs/issues/ISS-0709.json (root_cause_analysis)",
+      "src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b: Validate the fix design at src/design/vld-01-03-stage-16-validation-FIX.md before BACKEND-DEV implements it. Verify: (1) the design covers all 5 root-cause groups R1-R5 from ISS-0709's root_cause_analysis, (2) the design has no implementation code, (3) each fix is specific enough for BACKEND-DEV to implement without ambiguity, (4) the R3 type-table decision is sound, (5) ownership/leak fixes respect Zig allocator semantics. Hard gate — return PASS only if all checks pass.",
+    "acceptance_criteria": [
+      "Design covers R1, R2, R3, R4, R5",
+      "Design contains no implementation code (interfaces/pseudocode OK)",
+      "Each fix is actionable without re-diagnosis",
+      "R3 decision (extend type table with 'number') is sound and justified",
+      "R1/R5 ownership fixes match Zig allocator semantics (toOwnedSlice must be freed, no double-free)",
+      "R2 fix avoids changing the public TypedEnv contract",
+      "R4 PD-06 gate fix is scoped and correct (no graph.zig regression)",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "gate": "PASS",
+    "summary": "Fix design src/design/vld-01-03-stage-16-validation-FIX.md validated against ISS-0709 root_cause_analysis and the actual source. PASS — all 8 acceptance criteria met. Check 1: R1-R5 all covered (design §1 table + §3 subsections map each ISS-0709 grouped root cause; R4 split into R4a parser-gate + R4b gate-ordering). Check 2: no implementation code — lint_design_artefact.py exit 0; the 8 fenced blocks are short before->after change deltas/pseudocode (no full module implementation). Check 3: every fix names exact file/function/field + new behaviour (actionable without re-diagnosis). Check 4: R3 sound — fixtures use amount:number (mod.zig + integration happy fixture); adding number/bool/timestamp to mapDeclaredTypeName is natural-CEL-synonym widening consistent with original design §8 (integer/decimal/money->number, boolean->bool, date/datetime->timestamp), no new TypeTag, table stays source of truth, mod.zig message literal synced. Check 5: R1 freeSites frees the toOwnedSlice backing (all non-test callers pass owned slices; the 4 typecheck tests converted to owned-slice pattern) and R5 frees the []Finding backing after appendSlice without freeFindings (no double-free); R2 changes only test scaffolding, TypedEnv.deinit untouched (envForSite returns owned toOwnedSlice, scope.zig:201). Check 6: R4 scoped to src/validation/ (pd06.zig per-site gate -> expr.parse; graph.zig explicitly unchanged; mod.zig gate-before-env ordering specified in 6 numbered steps; empty findings on gate path safe). 2 MINOR issues recorded (fn:validate-design not in FUNCTIONS.md; R4a catch-continue OOM deviation) — non-blocking.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Handoff task.functions_to_call lists 'fn:validate-design' which does not exist in docs/agents/FUNCTIONS.md / docs/agents/functions/. Mandatory chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff executed instead. Fix at source (ORCH handoff template)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "FIX design R4a per-site gate uses `catch continue` on expr.parse OutOfMemory ('OOM -> skip site'), deviating from pd06.zig's Pd06Error=error{OutOfMemory} convention. Explicit and unambiguous, so not a gate failure; recommend BACKEND-DEV consider propagating OOM."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3) to implement R1-R5 per FIX design §6 order; then TEST-RUNNER re-runs test-validation / test-integration-vld-unit / test-integration-vld-http"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

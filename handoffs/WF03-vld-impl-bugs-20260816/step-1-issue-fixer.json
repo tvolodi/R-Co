@@ -1,0 +1,111 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-001",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-1-issue-fixer.json",
+  "created_at": "2026-08-16T05:39:22Z",
+  "started_at": "2026-08-16T05:39:22Z",
+  "completed_at": "2026-08-16T05:44:34Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 1 — Root cause diagnosis of ISS-0709 / GH #799",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-005",
+      "WF02-vld01-03-20260816-04-test-runner"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0709.json",
+      "tests/reports/WF02-vld01-03-20260816-test-report.md",
+      "src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig",
+      "src/api/routes/validation.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1: Root-cause diagnosis of ISS-0709 / GH #799. The VLD-01/02/03 validation implementation reports findings on clean definitions: 'mod.test.validateDefinition: clean linear definition with one guard -> expected 0, found 3' — plus 9 other in-file unit tests fail inside src/validation/{site,pd06,typecheck,mod}.zig (runtime panics / assertions). Diagnose the ROOT CAUSE of each failure family. Do NOT implement a fix in this step (that is CODE-DESIGNER + BACKEND-DEV's job). Deliverable: a root-cause analysis written into the ISS-0709.json file (append a 'root_cause_analysis' section) listing for each failing test: root cause, affected module, and the minimal fix approach. The analysis must be specific enough for CODE-DESIGNER (WF-03 Step 2) to write a fix design without re-doing the diagnosis.",
+    "acceptance_criteria": [
+      "Root cause identified for the 'clean definition returns 3 findings' failure (mod.zig)",
+      "Root cause identified for each of the site.zig / pd06.zig / typecheck.zig failures",
+      "Analysis written into docs/issues/ISS-0709.json (new root_cause_analysis section)",
+      "Classification: which failures share a common root cause vs independent",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:update-issue",
+      "fn:diagnose"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root-cause diagnosis complete for ISS-0709/GH#799: the 10 failing VLD-01/02/03 in-file tests collapse into 5 root causes. R1 site.zig freeSites leaks the []Site backing from enumerateSites' toOwnedSlice (3 site tests + pd06 malformed test — all pure leak panics; enumeration logic is correct). R2 TypedEnv.deinit double-frees a borrowed ArrayList backing in the two typecheck tests ('Invalid free' panic; checkSite logic correct). R3 env.zig mapDeclaredTypeName('number') returns null -> spurious UnknownVariableType + 'amount' absent from env -> clean-path 'expected 0, found 3' and the unknown-var no-suggestion failures. R4 PD-06 gate under-detection (graph.isValidCelSyntax is delimiter-balance-only and accepts 'amount >'/'x <' dangling operators) plus mod.zig accumulating env findings BEFORE the gate -> VLD-02 AC4 short-circuit unreachable (malformed-guard + ordering tests). R5 mod.zig per-site loop leaks the []Finding backing from checkSite's toOwnedSlice (secondary leak). Full analysis appended to docs/issues/ISS-0709.json (root_cause_analysis: 10 per-test entries, 5 grouped root causes, fix_scope, one R3 design decision). No src/*.zig modified — diagnosis only.",
+    "artifacts_out": [
+      "docs/issues/ISS-0709.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Registry handoff_id casing (WF03-) differs from the handoff file's handoff_id field (wf03-); align or case-insensitive-match in lint H010."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2) with the grouped root causes; then BACKEND-DEV (Step 3). SPEC_DEVIATION (missing validation_vld_*.zig) routes to TEST-DESIGNER independently.",
+    "root_cause_groups": [
+      {
+        "id": "R1",
+        "root_cause": "site.zig freeSites does not free the []Site backing from enumerateSites' toOwnedSlice -> leak-detection panic",
+        "affected_tests": [
+          "site gateway edge",
+          "site timer delay",
+          "site form visible_when/computed_from",
+          "pd06 malformed per-site expression"
+        ],
+        "module": "src/validation/site.zig"
+      },
+      {
+        "id": "R2",
+        "root_cause": "TypedEnv.deinit frees the entries backing; typecheck tests build TypedEnv from a borrowed ArrayList.items slice and also deinit the ArrayList -> double-free 'Invalid free' panic",
+        "affected_tests": [
+          "typecheck unknown variable identifier",
+          "typecheck '+' over number and string"
+        ],
+        "module": "src/validation/typecheck.zig (test scaffolding) / src/validation/env.zig"
+      },
+      {
+        "id": "R3",
+        "root_cause": "env.zig mapDeclaredTypeName('number') returns null -> spurious UnknownVariableType + variable absent from env -> clean-path 'expected 0, found 3' + unknown-var no-suggestion",
+        "affected_tests": [
+          "mod clean linear definition (expected 0, found 3)",
+          "mod guard references unknown identifier"
+        ],
+        "module": "src/validation/env.zig / src/validation/mod.zig"
+      },
+      {
+        "id": "R4",
+        "root_cause": "PD-06 gate under-detection (isValidCelSyntax delimiter-only accepts dangling operators) + env findings accumulated before the gate -> VLD-02 AC4 short-circuit (empty findings + pd06 populated) unreachable",
+        "affected_tests": [
+          "mod malformed CEL guard -> pd06_diagnostics",
+          "mod findings ordered by (node_id, expression_path)"
+        ],
+        "module": "src/definition/graph.zig / src/validation/pd06.zig / src/validation/mod.zig"
+      },
+      {
+        "id": "R5",
+        "root_cause": "mod.zig per-site loop leaks the []Finding backing from checkSite's toOwnedSlice (appendSlice shallow-copies; owned never freed)",
+        "affected_tests": [
+          "mod validateDefinition all paths (secondary leak)"
+        ],
+        "module": "src/validation/mod.zig"
+      }
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

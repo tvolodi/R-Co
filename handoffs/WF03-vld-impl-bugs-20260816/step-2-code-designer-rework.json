@@ -1,0 +1,95 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-002-r1",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "2-r1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-2-code-designer-rework.json",
+  "created_at": "2026-08-16T06:29:30Z",
+  "started_at": "2026-08-16T06:29:30Z",
+  "completed_at": "2026-08-16T06:41:04Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 2 REWORK 1 — Design scope expansion (R6-R10) for ISS-0709 / GH #799",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-003",
+      "wf03-vld-impl-bugs-20260816-002b",
+      "wf03-vld-impl-bugs-20260816-002"
+    ],
+    "artifacts_in": [
+      "src/design/vld-01-03-stage-16-validation-FIX.md (approved R1-R5)",
+      "handoffs/WF03-vld-impl-bugs-20260816/step-3-backend-dev.json (result.issues — 5 remaining blockers)",
+      "src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig",
+      "tests/integration/validation_vld_unit_test.zig",
+      "tests/integration/validation_vld_http_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2 REWORK 1: Expand the fix design to cover 5 blockers that surfaced AFTER the R1-R5 fixes were implemented (test-validation now 38/38, but integration gates not yet met). BACKEND-DEV classified these as outside the original R1-R5 scope. Analyze each, decide for each whether it is (a) an implementation defect to fix, (b) a test-fixture defect to fix in the tests, or (c) a design-intent clarification, then append a 'SCOPE EXPANSION R6-R10' section to src/design/vld-01-03-stage-16-validation-FIX.md specifying the exact change per blocker. Do NOT write implementation code.",
+    "acceptance_criteria": [
+      "Each of the 5 blockers is classified (impl fix / fixture fix / design clarification)",
+      "R6-R10 design additions specify exact files+functions+new behavior",
+      "The 5 blockers: (1) int_vld_01_04 scope.zig envForSite empty env when service_result producer absent from graph; (2) int_vld_02_01 test fixture defect (arithmetic ops + - * / listed as positive on bool gateway guard); (3) int_vld_02_05 emitEmptyExpression dups '' / spec VLD-03 AC2 requires preserving whitespace source; (4) int_vld_03_01/03_04 graph.validateEdgeConditions flags empty condition as EDGE_MISSING_CONDITION so gate fires instead of 3 findings; (5) test-integration-vld-http 42P01 schema/env provisioning in bpm_test tenant path",
+      "Design notes which blocker routes to BACKEND-DEV (impl) vs TEST-DESIGNER (fixture) vs TEST-RUNNER (harness)",
+      "No implementation code in the design",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:design-fix"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Scope expansion R6-R10 appended to src/design/vld-01-03-stage-16-validation-FIX.md covering the 5 integration blockers from BACKEND-DEV step-3. R6 impl defect: scope.zig envForSite must skip absent-producer service_result/module_output entries (both orelse-return-empty-env bailouts -> break :blk false), not empty the whole site env (int_vld_01_04). R7 test-fixture defect: relocate + - * / to a number-expecting site in int_vld_02_01 (TEST-DESIGNER). R8 impl defect: emitEmptyExpression preserves site.source instead of duping \"\" (int_vld_02_05, with R9). R9 design-intent clarification -> impl defect at VLD boundary: pd06.zig runSyntaxCheck must defer empty/whitespace gateway conditions to VLD-02 AC5 (graph-level filter on EDGE_MISSING_CONDITION/EDGE_INVALID_CEL for present-empty/whitespace edges; graph.zig stays out of scope) - fixes int_vld_03_01/03_04 and unblocks int_vld_02_05. R10 harness defect: int_vld_03_02 five-fields assertion must target a semantic-findings body, add defer created.deinit(alloc) after every def_store.create (95 leaks), and cleanupDefinition must re-set the default tenant context before its DELETE (42P01) (TEST-DESIGNER, TEST-RUNNER re-verify). All 5 signatures re-confirmed empirically (test-integration-vld-unit 9/14; test-integration-vld-http 2/5 + 95 leaks). R1-R5 section intact. Design lint passes 0 issues.",
+    "artifacts_out": [
+      "src/design/vld-01-03-stage-16-validation-FIX.md"
+    ],
+    "classifications": {
+      "R6": {
+        "blocker": "int_vld_01_04 scope.zig envForSite empty env when service_result/module_output producer absent",
+        "classification": "implementation defect (a)",
+        "routing": "BACKEND-DEV"
+      },
+      "R7": {
+        "blocker": "int_vld_02_01 arithmetic ops (+ - * /) as positive on bool gateway guard",
+        "classification": "test-fixture defect (b)",
+        "routing": "TEST-DESIGNER"
+      },
+      "R8": {
+        "blocker": "int_vld_02_05 emitEmptyExpression dups \"\" instead of preserving whitespace source",
+        "classification": "implementation defect (a)",
+        "routing": "BACKEND-DEV"
+      },
+      "R9": {
+        "blocker": "int_vld_03_01/03_04 (+ shared gate blocking int_vld_02_05) validateEdgeConditions flags empty/whitespace condition, gate fires instead of semantic findings",
+        "classification": "design-intent clarification -> implementation defect at VLD boundary (a)",
+        "routing": "BACKEND-DEV"
+      },
+      "R10": {
+        "blocker": "test-integration-vld-http 42P01 DELETE process_definitions on public search_path + 95 leaks + int_vld_03_02 five-fields assertion on empty-findings body",
+        "classification": "test-harness/fixture defect (b)",
+        "routing": "TEST-DESIGNER (re-verified by TEST-RUNNER)"
+      }
+    },
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "task.functions_to_call lists fn:design-fix which is not in docs/agents/FUNCTIONS.md; used the canonical chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff."
+      },
+      {
+        "severity": "MINOR",
+        "description": "lint_handoffs.py exits 1 with a standing pre-existing baseline (10 BLOCKER H013, 31 MAJOR H007/H009, MINOR H010) on OTHER runs; verified 0 occurrences of this handoff in the lint output. No new issue on this handoff; historical handoffs left untouched."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b-r1) to validate the R6-R10 scope expansion"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

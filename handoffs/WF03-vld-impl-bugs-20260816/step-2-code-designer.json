@@ -1,0 +1,73 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-002",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-2-code-designer.json",
+  "created_at": "2026-08-16T05:48:25Z",
+  "started_at": "2026-08-16T05:48:25Z",
+  "completed_at": "2026-08-16T05:54:53Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 2 — Fix design artefact for ISS-0709 / GH #799",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-001",
+      "wf03-vld-impl-bugs-20260816-005"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0709.json (root_cause_analysis section)",
+      "src/design/vld-01-03-stage-16-validation.md (original design)",
+      "src/validation/{mod,env,scope,typecheck,site,pd06,finding,wire}.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2: Produce a fix design artefact for ISS-0709 / GH #799, based on the root-cause analysis in docs/issues/ISS-0709.json (5 groups R1-R5). The design must specify the exact changes to fix each root cause WITHOUT writing implementation code. Write the design to src/design/vld-01-03-stage-16-validation-FIX.md. For each root cause group: specify the module(s) to change, the precise change (function signatures, ownership contract, type-mapping entries, gate logic), the affected tests, and the verification approach. The design must be complete enough for BACKEND-DEV to implement without ambiguity, and must NOT contain implementation code (pseudocode/interfaces OK).",
+    "acceptance_criteria": [
+      "Design covers all 5 root-cause groups (R1-R5)",
+      "R3 design decision resolved: extend type-mapping table with 'number' vs change fixtures — pick one and justify",
+      "Ownership/leak fixes (R1, R5) specify the correct free/ownership contract per Zig allocator semantics",
+      "R2 test-scaffolding double-free fix specified without changing the public TypedEnv contract if avoidable",
+      "R4 PD-06 gate improvement specified (isValidCelSyntax stricter than delimiter-balance-only OR accept that VLD-02 AC4 needs graph.zig change)",
+      "No implementation code in the design",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:design-fix"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix design for ISS-0709/GH#799 written to src/design/vld-01-03-stage-16-validation-FIX.md covering all 5 root-cause groups R1-R5. R1 freeSites frees the []Site toOwnedSlice backing (+ companion typecheck test-scaffolding change); R2 typecheck tests use entries.toOwnedSlice, TypedEnv public contract unchanged; R3 DECISION: extend mapDeclaredTypeName with number/bool/timestamp (table is source of truth; fixtures derive from natural CEL names), + sync UnknownVariableType message; R4 per-site PD-06 gate moves to expr.parse (graph.zig untouched) and mod.zig gate runs before env findings; R5 free the []Finding backing after appendSlice (transfer, not deep-copy). Design lint passes 0 issues. No src/*.zig modified (design only).",
+    "artifacts_out": [
+      "src/design/vld-01-03-stage-16-validation-FIX.md"
+    ],
+    "root_causes_covered": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "task.functions_to_call lists fn:design-fix which is not in docs/agents/FUNCTIONS.md; used canonical chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff instead."
+      },
+      {
+        "severity": "MINOR",
+        "description": "lint_handoffs.py exits 1 with 10 BLOCKER (H013), 31 MAJOR (H007/H009), 1 MINOR (H010) — ALL pre-existing historical findings (documented baseline on this branch; verified 0 occurrences of WF03-vld-impl-bugs-20260816 / step-2-code-designer / registry.json in the lint output). No new issue on this handoff; historical handoffs left untouched (append-only / never satisfy a gate by editing what it measures)."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (WF-03 Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}
