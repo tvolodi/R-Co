@@ -1,0 +1,171 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: OBP-04 (Outbox gate hysteresis and escalation) — the per-tenant gate
+# state table the hysteresis state machine records into.
+# See src/design/obp-04-outbox-gate-hysteresis-escalation.md for the full module design
+# this migration supports, and docs/processes/system/outbox-backpressure.md
+# (sys-outbox-backpressure, PW-08) for the authoritative process this table serves
+# (process doc's Outputs table: "plat_outbox_gate | Per-tenant gate state: open or
+# closed, with the timestamp of the last transition").
+#
+# Naming: plat_ prefix per DDL-05's reserved platform namespace
+# (src/platform/ddl_namespace.zig) — a platform-owned control table living in every
+# tenant schema (unqualified name, default migration scope, matching the
+# effects_outbox precedent: per-tenant outbox state written by the drainer/middleware
+# while inside that tenant's schema). tenant_schema is the PRIMARY KEY so one tenant's
+# depth can never refuse another tenant's ingress (OBP-04 AC6).
+#
+# This migration only creates the table shape; the gate state machine that reads and
+# writes it is Type E (src/outbox/gate.zig), per templates/lego-catalog.md's selection
+# rules.
+
+schema_version: 1
+migration_number: 1164   # next free number under migrations/ (highest existing: 1163)
+name: obp04_plat_outbox_gate
+requirement_ids: [OBP-04]
+purpose: |
+  Creates plat_outbox_gate, one row per tenant schema recording the outbox ingress
+  gate state (open/closed), the last observed depth, the cap and the 80% low-water
+  hysteresis mark, the timestamp of the last transition, and the AC4/AC5 escalation
+  counters (refusal window + closed duration). The gate module (src/outbox/gate.zig)
+  persists every transition here in one transaction with the EXECUTION_OUTBOX_GATE_OPENED
+  event append (OBP-04 AC2); the row is keyed by tenant_schema so one tenant's depth
+  never refuses another tenant's ingress (OBP-04 AC6). low_water is writable so the
+  flapping recovery (OBP-04 AC3) can restore the 80% hysteresis mark in place.
+
+tables:
+  - mode: create
+    name: plat_outbox_gate
+    columns:
+      # AC6: the per-tenant key. One row per tenant schema.
+      - { name: tenant_schema,       type: text,          pk: true }
+      - { name: state,               type: text,          not_null: true,   default: "'open'", check: "state IN ('open','closed')" }
+      - { name: depth,               type: bigint,        not_null: true,   default: 0, check: "depth >= 0" }
+      # BPM_OUTBOX_DEPTH_CAP; the gate closes when depth reaches it.
+      - { name: cap,                 type: bigint,        not_null: true,   check: "cap > 0" }
+      # BPM_OUTBOX_LOW_WATER = 80% of cap (default 40000); the gate reopens only here.
+      - { name: low_water,           type: bigint,        not_null: true,   check: "low_water > 0 AND low_water < cap" }
+      # "timestamp of the last transition" (OBP-04 body) — close_now and reopen_now both stamp it.
+      - { name: last_transition_at,  type: "timestamptz", not_null: true,   default: "now()" }
+      # Start of the most recent closed period; drives AC5's closed-duration evaluation.
+      - { name: closed_at,           type: "timestamptz", not_null: false }
+      # Duration the gate was closed — written at reopen, carried by EXECUTION_OUTBOX_GATE_OPENED (AC2).
+      - { name: closed_duration_ms,  type: bigint,        not_null: true,   default: 0, check: "closed_duration_ms >= 0" }
+      # AC4's rolling one-minute refusal window.
+      - { name: refusal_count_1m,    type: bigint,        not_null: true,   default: 0, check: "refusal_count_1m >= 0" }
+      - { name: refusal_window_started_at, type: "timestamptz", not_null: true, default: "now()" }
+      - { name: created_at,          type: "timestamptz", not_null: true,   default: "now()" }
+      - { name: updated_at,          type: "timestamptz", not_null: true,   default: "now()" }
+    indexes:
+      # AC5's sweep: which tenants have been closed longest, so the escalation pass
+      # scans only closed gates and orders by closed_at.
+      - name: idx_plat_outbox_gate_closed
+        columns: [state, closed_at]
+        where: "state = 'closed'"
+
+fixtures:
+  - name: tenant_schema_value
+    kind: random_string
+  - name: other_tenant_schema_value
+    kind: random_string
+  - name: seed_closed_gate
+    kind: sql_setup
+    sql: |
+      INSERT INTO plat_outbox_gate
+        (tenant_schema, state, depth, cap, low_water, closed_at, closed_duration_ms)
+      VALUES
+        ($1, 'closed', 49999, 50000, 40000, now() - interval '400 seconds', 0);
+    params: [tenant_schema_value]
+  - name: seed_open_gate_other_tenant
+    kind: sql_setup
+    sql: |
+      INSERT INTO plat_outbox_gate
+        (tenant_schema, state, depth, cap, low_water)
+      VALUES
+        ($1, 'open', 1000, 50000, 40000);
+    params: [other_tenant_schema_value]
+
+test_cases:
+  - name: per_tenant_keying_keeps_rows_independent
+    description: >
+      OBP-04 AC6 — two tenants have independent gate rows; one tenant's closed state
+      and depth never affect the other's row.
+    requirement_ref: OBP-04
+    arrange: ""
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          "SELECT state, depth FROM plat_outbox_gate ORDER BY tenant_schema",
+          &.{});
+    assertions: |
+      // CUSTOM: assert exactly 2 rows: one 'closed' with depth 49999 for
+      // fx.tenant_schema_value and one 'open' with depth 1000 for
+      // fx.other_tenant_schema_value — the closed tenant's depth does not
+      // touch the other tenant's row.
+
+  - name: state_check_constraint_rejects_unknown_value
+    description: A state outside open/closed is rejected by the CHECK constraint.
+    requirement_ref: OBP-04
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_outbox_gate (tenant_schema, state, cap, low_water) VALUES ($1, 'flapping', 50000, 40000)",
+          &.{fx.tenant_schema_value},
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (SQLSTATE 23514) and that
+      // exactly one row exists for fx.tenant_schema_value (the seeded one).
+
+  - name: low_water_must_be_below_cap
+    description: >
+      The 80% hysteresis invariant — low_water must be strictly below cap. A row
+      with low_water equal to or above cap (the AC3 misconfiguration) is rejected
+      by the CHECK constraint, so a gate can never be configured to reopen at the cap.
+    requirement_ref: OBP-04
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_outbox_gate (tenant_schema, state, cap, low_water) VALUES ($1, 'open', 50000, 50000)",
+          &.{fx.other_tenant_schema_value},
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (23514); the AC3 defect
+      // (low_water == cap) cannot be persisted — it must be repaired by restoring
+      // low_water to floor(cap * 4 / 5) = 40000 instead.
+
+  - name: closed_gate_sweep_finds_long_closed_tenant
+    description: >
+      OBP-04 AC5 — the partial index over closed gates ordered by closed_at finds a
+      gate closed longer than 300 s (seeded closed 400 s ago) without scanning open
+      gates.
+    requirement_ref: OBP-04
+    arrange: ""
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          "SELECT tenant_schema, closed_at FROM plat_outbox_gate WHERE state = 'closed' AND closed_at <= now() - interval '300 seconds' ORDER BY closed_at",
+          &.{});
+    assertions: |
+      // CUSTOM: assert result.rows.len == 1 and tenant_schema ==
+      // fx.tenant_schema_value (the open gate for fx.other_tenant_schema_value is
+      // excluded), confirming the AC5 sweep scans only closed gates.
+
+  - name: reopen_persists_transition_and_duration
+    description: >
+      OBP-04 AC2 — the reopen transition persists state='open', stamps
+      last_transition_at, and records the closed duration, so the
+      EXECUTION_OUTBOX_GATE_OPENED event can carry it.
+    requirement_ref: OBP-04
+    arrange: ""
+    act: |
+      try h.conn.exec(
+          "UPDATE plat_outbox_gate SET state = 'open', depth = 40000, closed_duration_ms = extract(epoch from (now() - closed_at))::bigint * 1000, last_transition_at = now(), updated_at = now() WHERE tenant_schema = $1",
+          &.{fx.tenant_schema_value},
+      );
+    assertions: |
+      // CUSTOM: assert the row for fx.tenant_schema_value now reads state='open',
+      // depth=40000, closed_duration_ms >= 400000 (400 s from the seed), and
+      // last_transition_at has been refreshed — the data the AC2 event carries.
+
+rollback_strategy: |
+  Forward-only. plat_outbox_gate is a per-tenant control table; no DROP migration.
+  If retired, a future migration archives gate state before any structural change, per
+  docs/anti-patterns.md's "DROP TABLE ... without a matching data-preservation
+  migration" entry.

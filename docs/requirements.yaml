@@ -11275,7 +11275,7 @@ requirements:
     title: Idempotent batched backfill
     stage: '16'
     priority: MUST
-    status: DRAFT
+    status: IN_PROGRESS
     body: |-
       > **Extends:** DDL-03, specifying the backfill phase.
 
@@ -11293,8 +11293,10 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:59Z'
+    last_updated: '2026-08-16T17:35:11Z'
     workflow: PW-05
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED per
+      docs/agents/AGENT_SYSTEM.md; IN_PROGRESS used as closest legal status.
   DDL-05:
     id: DDL-05
     title: Reserved plat_ object namespace
@@ -11948,7 +11950,7 @@ requirements:
     title: Outbox gate hysteresis and escalation
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: IN_PROGRESS
     body: |-
       > The ingress gate SHALL close at `BPM_OUTBOX_DEPTH_CAP` and reopen only when depth falls to `BPM_OUTBOX_LOW_WATER`, fixed at 80 per cent of the cap with a default of 40000. It SHALL NOT reopen at the cap itself. Gate state SHALL be recorded per tenant in `plat_outbox_gate` with the timestamp of the last transition, and each reopen SHALL append `EXECUTION_OUTBOX_GATE_OPENED` carrying the duration the gate was closed.
 
@@ -11964,8 +11966,10 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:27Z'
+    last_updated: '2026-08-16T17:35:12Z'
     workflow: PW-08
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
+      used as closest legal status.
   ORD-01:
     id: ORD-01
     title: Effect completion claim guard
@@ -12032,7 +12036,7 @@ requirements:
     title: Sequence order guard and gap sweeping
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: IN_PROGRESS
     body: |-
       > A completion SHOULD be applied only when `sequence_no = applied_seq + 1`, where `applied_seq` is read from `plat_correlation_cursor` for that `correlation_id` while the execute guard of ORD-02 is held. A completion that is not next in sequence SHALL cause a silent `ROLLBACK` with no error and no retry-count increment, leaving the row `PENDING`. The apply and the cursor advance `UPDATE plat_correlation_cursor SET applied_seq = $2 WHERE correlation_id = $1 AND applied_seq = $2 - 1` SHALL commit in one transaction.
 
@@ -12048,8 +12052,10 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:30Z'
+    last_updated: '2026-08-16T17:35:13Z'
     workflow: PW-07
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
+      used as closest legal status.
   ORD-04:
     id: ORD-04
     title: Cross-correlation parallelism and lag metrics
@@ -13248,7 +13254,7 @@ requirements:
     title: Validation gate at authoring and promotion
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: IN_PROGRESS
     body: |-
       > The platform SHALL enforce semantic validation at two points: on definition draft save and on `POST /api/v1/definitions/{id}/validate`, and again at promotion submit before the PRM-01 plan is computed. A clean pass records a `semantically_valid` verdict on the definition version together with the CEL compiler version that produced it; a verdict produced by a different compiler version is re-verified rather than trusted. Compilation is bounded at 5 seconds per definition.
 
@@ -13263,8 +13269,10 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:15Z'
+    last_updated: '2026-08-16T17:35:14Z'
     workflow: PW-02
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
+      used as closest legal status.
   BRW-MOB-1:
     id: BRW-MOB-1
     title: Generic definition-interpreter mobile app

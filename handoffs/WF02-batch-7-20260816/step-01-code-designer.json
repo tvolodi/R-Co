@@ -1,0 +1,78 @@
+{
+  "handoff_id": "cf7ade4c-1723-47ce-979f-b1f802c23b06",
+  "run_id": "WF02-batch-7-20260816",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-batch-7-20260816/step-01-code-designer.json",
+  "created_at": "2026-08-16T17:24:22Z",
+  "started_at": "2026-08-16T17:24:41Z",
+  "completed_at": "2026-08-16T17:35:47Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-04",
+      "OBP-04",
+      "ORD-03",
+      "VLD-04"
+    ],
+    "related_handoff_ids": [
+      "00fade61-b49f-4132-b06d-b4ab356872b8",
+      "6990badc-0478-490a-9f05-b572df501b27"
+    ],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "docs/agents/FUNCTIONS.md",
+      "docs/agents/templates/lego-catalog.md",
+      "handoffs/WF02-batch-7-20260816/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Produce design artefacts for WF-02 batch 7 (stage 16): DDL-04 (Idempotent batched backfill - extends DDL-03 three-phase form, backfill loop with IS NULL predicate, plat_migration_state recording), OBP-04 (Outbox gate hysteresis and escalation - extends OBP-01/02/03 outbox family, low-water mark at 80% of cap, plat_outbox_gate state, EXECUTION_OUTBOX_GATE_OPENED event, admin escalation thresholds), ORD-03 (Sequence order guard and gap sweeping - extends ORD-01/02/04 ordering family, applied_seq cursor advance, gap sweeper on 60s cadence, DEAD status + DLQ routing, ON CONFLICT DO NOTHING), VLD-04 (Validation gate at authoring and promotion - semantic validation on draft save + /validate + promotion submit, semantically_valid verdict with CEL compiler version, 5s bound, DEFINITION_VALIDATED/DEFINITION_VALIDATION_FAILED events). Read the full requirement bodies in docs/requirements.yaml (DDL-04 at line 11267, OBP-04 at 11940, ORD-03 at 12024, VLD-04 at 13240) - all acceptance criteria are authoritative. Read the referenced module families (src/platform/ddl_validate.zig for DDL-03, outbox/OBP modules, src/ordering/ for ORD-01/02/04, validation/VLD modules) and produce design artefacts under src/design/ covering interfaces, types, and data flow for each requirement, with no implementation code. Each requirement's design must cover every acceptance criterion explicitly.",
+    "acceptance_criteria": [
+      "A design artefact exists in src/design/ for each of DDL-04, OBP-04, ORD-03, VLD-04",
+      "Every acceptance criterion of each requirement is explicitly addressed in its design",
+      "Designs contain no implementation code (interfaces/types/data-flow only)",
+      "Designs reference the existing module families they extend and the exact files to be touched",
+      "Requirement status updated to DESIGNED via tools/reqctl.py set-status for all four IDs"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for DDL-04, OBP-04, ORD-03, VLD-04 (stage 16) \u2014 types: DDL-04 [C,E], OBP-04 [C,E], ORD-03 [E], VLD-04 [C,E]. 4 Type E designs under src/design/ + 3 Type C migration YAMLs under templates/specs/. All lint + codegen --dry-run pass. Every AC of each requirement addressed explicitly. Requirement statuses advanced to IN_PROGRESS (DESIGNED not a legal reqctl value \u2014 flagged).",
+    "artifacts_out": [
+      "src/design/ddl-04-idempotent-batched-backfill.md",
+      "templates/specs/ddl-04-plat-migration-state.migration.yaml",
+      "src/design/obp-04-outbox-gate-hysteresis-escalation.md",
+      "templates/specs/obp-04-plat-outbox-gate.migration.yaml",
+      "src/design/ord-03-sequence-order-guard-gap-sweeping.md",
+      "src/design/vld-04-validation-gate-authoring-promotion.md",
+      "templates/specs/vld-04-definition-semantic-verdict.migration.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Acceptance criterion #5 requested set-status DESIGNED; reqctl.py VALID_STATUSES does not include DESIGNED (tool-vs-spec drift vs docs/agents/AGENT_SYSTEM.md lifecycle). Set IN_PROGRESS for all four IDs with explanatory notes; recommend adding DESIGNED to VALID_STATUSES or amending the criterion."
+      },
+      {
+        "severity": "MINOR",
+        "description": "VLD-04: DEFINITION_VALIDATED/DEFINITION_VALIDATION_FAILED not yet seeded in event_type_registry; BACKEND-DEV must seed (1152 pattern) before gate persistVerdict appends."
+      },
+      {
+        "severity": "MINOR",
+        "description": "OBP-01/02/03 not yet implemented; OBP-04 designs the gate interface they will call. AC5 drainer restart is an operator/infra hook."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
