@@ -1972,3 +1972,5 @@
 2026-08-16T21:51:27Z | DOC-UPDATER COMPLETE | WF02-spt02-04-20260816 | step-06 | DOC-UPDATER | SPT-02/03/04 RELEASED; GH-812 closed; ISS-0715 RESOLVED; changelog updated; lint_handoffs 0; git-merge left to BACKEND-DEV Step Final
 2026-08-16T21:53:12Z | ROUTE | WF-02 | WF02-spt02-04-20260816-final-backend-dev | ORCH → BACKEND-DEV | PENDING | Step Final: git-merge feature branch to main
 2026-08-16T21:57:40Z | COMPLETE | WF02-spt02-04-20260816 | step-final | BACKEND-DEV | Step Final PASS: PR #815 squash-merged into main (09366c00), feature branch deleted local+remote, clean main confirmed, lint_handoffs 0
+2026-08-16T21:59:49Z | DONE | WF02-spt02-04-20260816 | --- | PIPELINE COMPLETE | SPT-02/03/04 RELEASED (Schema-Per-Tenant Migration) — PR #815 squash-merged 09366c00; ISS-0715/GH-812 fixed in-run; NFR bench overall_passed=true
+2026-08-16T21:59:49Z | GIT | WF02-spt02-04-20260816 | feature/WF02-spt02-04-20260816 | 09366c00 | PR: https://github.com/tvolodi/R-Co/pull/815
