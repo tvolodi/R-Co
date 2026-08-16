@@ -1940,3 +1940,4 @@
 2026-08-16T15:50:08Z | DISPATCH_STALE | ADHOC-gh799-close-20260816 | --- | ORCH | CLEARED — ISS-0709 status OPEN at origin/main HEAD (not already RESOLVED)
 2026-08-16T15:50:08Z | ROUTE | ADHOC | adhoc-gh799-close-20260816-001 | ORCH → DOC-UPDATER | PENDING | GH #799/ISS-0709 closure bookkeeping (PR #808 already merged, fix verified)
 2026-08-16T16:06:13Z | COMPLETE | ADHOC-gh799-close-20260816 | adhoc-gh | DOC-UPDATER | GH #799 closed (PR #808, commit 91a48040); ISS-0709 RESOLVED; issue_index updated; bookkeeping pushed to clean main; lint_handoffs.py exit 0
+2026-08-16T16:24:59Z | ROUTE | WF-02 | WF02-spt02-04-20260816-00-backend-dev | ORCH → BACKEND-DEV | PENDING
