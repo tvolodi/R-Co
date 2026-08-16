@@ -1,0 +1,31 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-0.5b-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "0.5b",
+  "handoff_id": "wf03-vld-impl-bugs-20260816-009-issue",
+  "created_at": "2026-08-16T09:30:57Z",
+  "summary": "Filed the RELEASE-VALIDATOR incidental finding (dev/bench DB default-tenant schema provisioning fails, tenant_schemas.migrations_applied_at NULL, blocks WF-04) as ISS-0714 + GitHub issue #809. fn:search-issues confirmed this is a NEW defect, not a duplicate: ISS-0706/GH-791 (GBL-116 bench pre-flight) is CLOSED and its fix (the leg-(d) loud post-condition in src/tools/migrate.zig) is exactly what surfaces this deeper dev-DB provisioning failure; ISS-0604/0605 are RESOLVED and cover different root causes. Registered the local ISS record (docs/issues/ISS-0714.json, next free ID per issue_index next_issue_id=714), advanced the index to 715, filed the GitHub issue with title 'bench env: dev DB default-tenant schema provisioning fails (tenant_schemas.migrations_applied_at NULL) blocks WF-04' and pre-existing labels bug,process (same pair as the sibling GH-791), and recorded the GH URL in the ISS. File-only action — no fix implemented (future ADHOC/WF-03 run). No tests run (documentation/registry action).",
+  "files_created": [
+    "docs/issues/ISS-0714.json",
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-0.5b-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-vld-impl-bugs-20260816/step-08-issue-fixer-bench-env.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Bookkeeping drift: docs/issues/ISS-0706.json still records status OPEN / pr_url null, but GH-791 is CLOSED (2026-08-15T20:03:53Z) and CHANGELOG.md documents the GBL-116 bench pre-flight fix as GH-791/ISS-0706 (RESOLVED) on feature/WF03-GH791-20260815. Recommend DOC-UPDATER flip ISS-0706.json status to RESOLVED (with resolution_commit / pr_url) in a bookkeeping pass. Not filed as a separate GitHub issue — it is internal-registry bookkeeping, not a product defect."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route a bench-env ADHOC / WF-03 cycle against GH-809 (ISS-0714) to diagnose which migration fails in the default-tenant runForSchema pass on the dev/bench DB (5442/bpm_dev), repair the dev DB (public.schema_migrations / public.tenant_schemas reconciliation) so migrations_applied_at is set, and re-verify zig build migrate exit 0 + zig build bench runs the full NFR suite.",
+    "DOC-UPDATER (next bookkeeping pass): flip ISS-0706.json status OPEN -> RESOLVED to match the closed GH-791."
+  ],
+  "blockers": []
+}

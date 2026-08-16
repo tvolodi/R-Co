@@ -1,0 +1,86 @@
+{
+  "iss_id": "ISS-0714",
+  "id": "ISS-0714",
+  "issue_id": "ISS-0714",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/809",
+  "github_issue_number": 809,
+  "github_issue_confirmed": true,
+  "github_issue_filed_at": "2026-08-16T09:29:12Z",
+  "title": "bench env: dev DB default-tenant schema provisioning fails (tenant_schemas.migrations_applied_at NULL) blocks WF-04",
+  "status": "OPEN",
+  "classification": "ENV_ISSUE",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-vld-impl-bugs-20260816",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "handoff_id": "wf03-vld-impl-bugs-20260816-009-issue",
+  "triggered_by": "RELEASE-VALIDATOR WF-03 step-6, 2026-08-16",
+  "discovered_at": "2026-08-16T08:17:28Z",
+  "discovered_by": "RELEASE-VALIDATOR (WF03-vld-impl-bugs-20260816 step-6)",
+  "branch": "main",
+  "created_at": "2026-08-16T09:29:12Z",
+  "registered_at": "2026-08-16T09:29:12Z",
+  "registered_by": "ISSUE-FIXER (WF03-vld-impl-bugs-20260816 step-08 / step-0.5b)",
+  "labels": [
+    "bug",
+    "process"
+  ],
+  "labels_requested_unavailable": [],
+  "summary": "The dev/bench DB (`BPM_DB_URL` -> postgres://bpm:bpm@localhost:5442/bpm_dev) cannot complete default-tenant schema provisioning: `provisionTenantSchema()` for the default tenant (00000000-0000-0000-0000-000000000000) returns `error.MigrationFailed`, so `public.tenant_schemas.migrations_applied_at` stays NULL. The ISS-0706/GH-791 leg-(d) post-condition added to `src/tools/migrate.zig` then hard-exits `zig build migrate`, which also blocks `zig build bench` (the WF-04 full NFR benchmark procedure). Not VLD-attributable: the branch diff has no migration files and the test DB (5434/bpm_test) migrate passes 147/147. Severity MAJOR — environmental, dev/bench DB only; does not block the VLD-01/02/03 release.",
+  "scope": "Environment defect on the dev/bench database (BPM_DB_URL, postgres://bpm:bpm@localhost:5442/bpm_dev). Default-tenant (`tenant_default` for tenant 00000000-0000-0000-0000-000000000000) schema provisioning fails, leaving `public.tenant_schemas.migrations_applied_at` NULL and causing the ISS-0706 leg-(d) post-condition in `src/tools/migrate.zig` to abort `zig build migrate` / `zig build bench`. Affects ONLY the bench path (WF-04 full NFR run). CI / test-DB path unaffected (migrate 147/147 on 5434/bpm_test).",
+  "description": "During WF03-vld-impl-bugs-20260816 step-6 (RELEASE-VALIDATOR, 2026-08-16T08:17:28Z), the NFR benchmark prerequisite was found to fail against the dev/bench DB. `zig build bench` (WF-04 full NFR metric suite) cannot start: its migrate precondition fails against BPM_DB_URL (postgres://bpm:bpm@localhost:5442/bpm_dev) with `default tenant schema provisioning failed: error.MigrationFailed (tenant_id=00000000-0000-0000-0000-000000000000)` followed by `post-condition: default tenant_schemas.migrations_applied_at is NULL after provisionTenantSchema() returned -- aborting migrate`. The same failure reproduces with a plain `zig build migrate` against the dev DB. The failure is emitted by the ISS-0706/GH-791 leg-(d) post-condition check in `src/tools/migrate.zig` (the fix that made bench provisioning failures loud instead of silently swallowed). The post-condition firing proves `provisionTenantSchema()` genuinely fails on the dev DB (it returned `error.MigrationFailed` from the `runForSchema` migration pass for the default tenant), which is a distinct, deeper defect from the fresh-DB pre-flight gate that GH-791 fixed. Not VLD-attributable: the WF03-vld-impl-bugs-20260816 branch diff contains no migration files, and `test-env-verify` C3 confirms the test DB (5434/bpm_test) migrate passes 147/147. No NFR_RESULT metrics were emitted, so no NFR threshold failed; the block is on the WF-04 benchmark procedure only.",
+  "symptom": "zig build bench (and plain zig build migrate) against the dev/bench DB BPM_DB_URL (postgres://bpm:bpm@localhost:5442/bpm_dev) hard-exits 1 during the default-tenant provisioning step with `default tenant schema provisioning failed: error.MigrationFailed (tenant_id=00000000-0000-0000-0000-000000000000)` and `post-condition: default tenant_schemas.migrations_applied_at is NULL after provisionTenantSchema() returned -- aborting migrate`. The WF-04 full NFR benchmark cannot start.",
+  "investigation_notes": "Registered and filed 2026-08-16T09:29:12Z by ISSUE-FIXER (WF03-vld-impl-bugs-20260816 step-08 / step-0.5b). fn:search-issues over docs/issues/ + issue_index.json and `gh issue list` checks: (1) ISS-0706 / GH-791 (GBL-116 bench pre-flight) is the closest prior issue — CLOSED on 2026-08-15T20:03:53Z; its fix added the exact post-condition message observed here (src/tools/migrate.zig leg (d)), so the new finding is the deeper root cause on the existing dev DB that GH-791's post-condition was designed to surface, NOT the fresh-DB pre-flight gate GH-791 fixed. (2) ISS-0604 (RESOLVED) and ISS-0605 (RESOLVED) cover fresh-DB bootstrap circular-dependency and tenant-registry/schema consistency respectively — different root causes, both resolved. (3) `gh issue list --search 'bench in:title'` returns only GH-791 (closed) and GH-732 (NFR-04 benchmark fidelity, unrelated). (4) No GitHub issue references 'ISS-0714'; GitHub issue #714 is an unrelated closed lint issue (different numbering sequence, no collision per prior-run convention). New issue. File-only action per the ORCH task: this issue does NOT implement a fix (future ADHOC/WF-03 run). Evidence sources: handoffs/WF03-vld-impl-bugs-20260816/step-6-release-validator.json (result.issues MAJOR) and docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml (known_issues).",
+  "reproduction": "Set BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev and run `zig build migrate` (or `zig build bench`): migrate aborts at default-tenant provisioning with `default tenant schema provisioning failed: error.MigrationFailed (tenant_id=00000000-0000-0000-0000-000000000000)` / `post-condition: default tenant_schemas.migrations_applied_at is NULL after provisionTenantSchema() returned -- aborting migrate`; exit code 1. Contrast: the same migrate against the test DB (postgres://bpm:bpm@localhost:5434/bpm_test) passes 147/147.",
+  "acceptance_criteria": [
+    "zig build migrate against BPM_DB_URL=postgres://bpm:bpm@localhost:5442/bpm_dev exits 0 and completes default-tenant provisioning (public.tenant_schemas.migrations_applied_at IS NOT NULL for tenant 00000000-0000-0000-0000-000000000000)",
+    "zig build bench (WF-04 full NFR procedure) starts and runs to completion on this host",
+    "The underlying failing migration (the runForSchema failure behind MigrationFailed on the dev DB) is identified and either repaired on the dev DB or fixed in the migration set",
+    "No regression on the test-DB path (5434/bpm_test migrate still 147/147)",
+    "Re-run produces no NEW lint_handoffs findings on the filing run"
+  ],
+  "files_affected": [
+    "src/tools/migrate.zig",
+    "src/db/provisioning.zig",
+    "src/db/migrations.zig",
+    "migrations/"
+  ],
+  "affected_areas": [
+    "src/tools/migrate.zig",
+    "src/db/provisioning.zig",
+    "src/db/migrations.zig",
+    "migrations/",
+    "dev/bench DB provisioning path (zig build bench -> zig build migrate)"
+  ],
+  "context": {
+    "release_decision": "docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml (known_issues: MAJOR ENVIRONMENT — dev/bench DB default-tenant provisioning fails)",
+    "release_validator_handoff": "handoffs/WF03-vld-impl-bugs-20260816/step-6-release-validator.json (result.issues: MAJOR — dev/bench DB provisioning fails, not VLD-attributable)",
+    "this_handoff": "handoffs/WF03-vld-impl-bugs-20260816/step-08-issue-fixer-bench-env.json",
+    "related": "ISS-0706 / GH-791 (CLOSED 2026-08-15) — GBL-116 bench pre-flight fix; its leg-(d) post-condition (src/tools/migrate.zig) surfaces this deeper dev-DB provisioning failure. This issue tracks the dev-DB root cause, distinct from the fresh-DB pre-flight gate GH-791 fixed.",
+    "not_attributable": "WF03-vld-impl-bugs-20260816 branch diff contains no migration files; test DB (5434/bpm_test) migrate passes 147/147."
+  },
+  "links": [
+    {
+      "type": "github_issue",
+      "url": "https://github.com/tvolodi/R-Co/issues/809",
+      "note": "Filed 2026-08-16T09:29:12Z via `gh issue create --title \"bench env: dev DB default-tenant schema provisioning fails (tenant_schemas.migrations_applied_at NULL) blocks WF-04\" --label bug --label process` (both labels pre-existing; GH-791 sibling bench issue used the same two). Body carries <!-- rco-sync-ref: ISS-0714 -->."
+    },
+    {
+      "type": "release_decision",
+      "url": "docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml",
+      "note": "known_issues MAJOR ENVIRONMENT entry — the finding this issue files."
+    },
+    {
+      "type": "related_issue",
+      "url": "https://github.com/tvolodi/R-Co/issues/791",
+      "note": "ISS-0706 / GH-791 (CLOSED) — GBL-116 bench pre-flight fix whose leg-(d) post-condition surfaces this deeper dev-DB provisioning failure."
+    }
+  ],
+  "fix_file": null,
+  "fix_line": null,
+  "fix_diff": null,
+  "resolution": null,
+  "prevention": null,
+  "pr_url": null,
+  "pr_merged_at": null,
+  "pr_merge_commit": null
+}

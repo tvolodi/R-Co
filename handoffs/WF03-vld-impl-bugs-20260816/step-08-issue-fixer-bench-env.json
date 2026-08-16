@@ -1,0 +1,53 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-009-issue",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "0.5b",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-08-issue-fixer-bench-env.json",
+  "created_at": "2026-08-16T09:26:23Z",
+  "started_at": "2026-08-16T09:26:23Z",
+  "completed_at": "2026-08-16T09:30:57Z",
+  "status": "COMPLETED",
+  "priority": "MEDIUM",
+  "context": {
+    "stage": "WF-03 follow-up — File incidental finding: dev/bench DB default-tenant schema provisioning",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-006"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-vld-impl-bugs-20260816/step-6-release-validator.json (result.issues — the dev-bench finding)",
+      "docs/status/release-decision-WF03-vld-impl-bugs-20260816.yaml (known_issues)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 follow-up: File an incidental finding discovered by RELEASE-VALIDATOR. `zig build bench` / `zig build migrate` against the dev/bench DB (BPM_DB_URL port 5442/bpm_dev) fail at default-tenant schema provisioning (tenant_schemas.migrations_applied_at NULL), blocking the WF-04 full benchmark procedure. This is a real defect, NOT VLD-attributable (branch diff has no migrations; test-DB migrate passes 147/147). Create the local ISS record (next free ISS number after ISS-0709 — check docs/issues/issue_index.json for the next_issue_id) and file a GitHub issue via gh issue create with title 'bench env: dev DB default-tenant schema provisioning fails (tenant_schemas.migrations_applied_at NULL) blocks WF-04' and labels matching repo convention (check existing labels first, e.g. gh issue list --limit 200). Record the GH URL in the ISS record.",
+    "acceptance_criteria": [
+      "ISS record created (next free ID)",
+      "GitHub issue filed with title + body + appropriate labels",
+      "ISS record contains the GH URL",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Filed incidental RELEASE-VALIDATOR finding (dev/bench DB default-tenant schema provisioning fails, tenant_schemas.migrations_applied_at NULL, blocks WF-04) as ISS-0714 + GitHub issue #809. fn:search-issues confirmed new defect (ISS-0706/GH-791 CLOSED, distinct root cause surfaced by its leg-(d) post-condition). File-only: no fix implemented (future ADHOC/WF-03). Registry next_issue_id 714 -> 715.",
+    "artifacts_out": [
+      "docs/issues/ISS-0714.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-0.5b-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/809",
+    "next_action": "Route to ORCH: bench-env ADHOC/WF-03 against GH-809 to fix dev DB default-tenant provisioning before next WF-04 full NFR run"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}
