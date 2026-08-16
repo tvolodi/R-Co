@@ -53,9 +53,22 @@ pub fn freeSite(allocator: std.mem.Allocator, s: Site) void {
     allocator.free(s.source);
 }
 
+/// Free every Site's strings AND the backing slice. `items` must be an owned
+/// slice — the result of `enumerateSites`' `toOwnedSlice` — never a live
+/// ArrayList's `.items`.
+///
+/// Ownership contract:
+///   - `enumerateSites(allocator, graph)` returns an *owned* `[]Site`: the
+///     backing buffer is produced by `ArrayList.toOwnedSlice(allocator)`, and
+///     every per-`Site` string (`node_id`, `expression_path`, `source`) is
+///     allocator-owned (each is `allocator.dupe`'d or `allocPrint`'d by the
+///     walker).
+///   - `freeSite(allocator, s)` frees one `Site`'s three strings only. The
+///     struct itself lives inside the caller-owned backing slice — `freeSite`
+///     must NOT free the struct storage.
 pub fn freeSites(allocator: std.mem.Allocator, items: []Site) void {
     for (items) |s| freeSite(allocator, s);
-    // Caller owns the backing storage (e.g. ArrayList's allocatedSlice).
+    allocator.free(items); // R1: free the toOwnedSlice backing
 }
 
 // ---------------------------------------------------------------------------

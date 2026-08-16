@@ -130,6 +130,35 @@ pub fn validateDefinition(
         findings.deinit(allocator);
     }
 
+    // ── VLD-02 AC4: PD-06 syntax gate runs FIRST, on every site, BEFORE any
+    // env-level finding can accumulate (ISS-0709 R4b). This makes the AC4
+    // short-circuit "findings stays empty" literal rather than dependent on
+    // VLD-01 findings that may have been emitted below.
+    const sites = site_mod.enumerateSites(allocator, input.graph) catch
+        return error.OutOfMemory;
+    defer site_mod.freeSites(allocator, sites);
+
+    var pd06_diags = pd06_mod.runSyntaxCheck(allocator, input.graph, sites) catch
+        return error.OutOfMemory;
+    errdefer pd06_mod.freePd06Diagnostics(allocator, pd06_diags);
+
+    if (pd06_diags.len > 0) {
+        // VLD-02 AC4 — short-circuit the semantic compile loop and return
+        // 422 with the PD-06 diagnostics verbatim. Findings stays empty by
+        // construction (no finding has been emitted yet).
+        const validated_at = try allocator.dupe(u8, "");
+        const compiler_version = try allocator.dupe(u8, COMPILER_VERSION);
+        return ValidationFailure{
+            .findings = &.{},
+            .pd06_diagnostics = pd06_diags,
+            .validated_at = validated_at,
+            .compiler_version = compiler_version,
+        };
+    }
+    // PD-06 clean — release the now-empty diagnostic list before allocating.
+    pd06_mod.freePd06Diagnostics(allocator, pd06_diags);
+    pd06_diags = &.{};
+
     // ── VLD-01: build the typed env from the four declaration sources ─────
     var env_builder: std.ArrayList(Entry) = .empty;
     defer {
@@ -149,7 +178,7 @@ pub fn validateDefinition(
             // VLD-01 AC1 — UnknownVariableType finding (root-level).
             const message = try std.fmt.allocPrint(
                 allocator,
-                "UnknownVariableType: variable '{s}' declares type '{s}' which is outside the mapping table (string, text, enum, integer, decimal, money, boolean, date, datetime, list<T>, object)",
+                "UnknownVariableType: variable '{s}' declares type '{s}' which is outside the mapping table (string, text, enum, integer, decimal, money, boolean, date, datetime, list<T>, object, number, bool, timestamp)",
                 .{ vs.name, vs.var_type },
             );
             errdefer allocator.free(message);
@@ -171,10 +200,10 @@ pub fn validateDefinition(
 
     // 2) Service catalog results (per-node)
     for (input.service_results) |sr| {
-        const owned_node = try allocator.dupe(u8, sr.node_id);
-        errdefer allocator.free(owned_node);
         if (sr.tag == .dyn) {
             // VLD-01 AC2 — UndeclaredResultSchema when the schema is missing.
+            const owned_node = try allocator.dupe(u8, sr.node_id);
+            errdefer allocator.free(owned_node);
             const message = try std.fmt.allocPrint(
                 allocator,
                 "UndeclaredResultSchema: SERVICE_TASK node '{s}' references catalog entry with no response_schema",
@@ -193,15 +222,17 @@ pub fn validateDefinition(
                 .message = message,
             });
         } else {
-            env_mod.addEntry(&env_builder, allocator, sr.name, sr.tag, null, .service_result, owned_node) catch {};
+            // addEntry dupes `name` and `source_node_id` into the env row; pass
+            // the borrowed node id. The previous caller-owned dupe was leaked on
+            // the success path (ISS-0709 — integration-suite leak at this site).
+            env_mod.addEntry(&env_builder, allocator, sr.name, sr.tag, null, .service_result, sr.node_id) catch {};
         }
     }
 
     // 3) Process module outputs
     for (input.module_outputs) |mo| {
-        const owned_node = try allocator.dupe(u8, mo.node_id);
-        errdefer allocator.free(owned_node);
-        env_mod.addEntry(&env_builder, allocator, mo.name, mo.tag, null, .module_output, owned_node) catch {};
+        // addEntry owns its dupes; pass the borrowed node id (no leak).
+        env_mod.addEntry(&env_builder, allocator, mo.name, mo.tag, null, .module_output, mo.node_id) catch {};
     }
 
     // 4) Human-task form fields
@@ -252,9 +283,8 @@ pub fn validateDefinition(
                     try node_names.append(allocator, ff.node_id);
                     try node_field_types.append(allocator, mapped);
                 }
-                const owned_node = try allocator.dupe(u8, ff.node_id);
-                errdefer allocator.free(owned_node);
-                env_mod.addEntry(&env_builder, allocator, ff.field_name, mapped, null, .form_field, owned_node) catch {};
+                // addEntry owns its dupes; pass the borrowed node id (no leak).
+                env_mod.addEntry(&env_builder, allocator, ff.field_name, mapped, null, .form_field, ff.node_id) catch {};
             }
         }
     }
@@ -263,31 +293,6 @@ pub fn validateDefinition(
     const reach = scope_mod.computeReachability(allocator, input.graph) catch
         return error.OutOfMemory;
     defer reach.deinit(allocator);
-
-    // ── VLD-02 AC4: PD-06 syntax gate runs FIRST, on every site ────────────
-    const sites = site_mod.enumerateSites(allocator, input.graph) catch
-        return error.OutOfMemory;
-    defer site_mod.freeSites(allocator, sites);
-
-    var pd06_diags = pd06_mod.runSyntaxCheck(allocator, input.graph, sites) catch
-        return error.OutOfMemory;
-    errdefer pd06_mod.freePd06Diagnostics(allocator, pd06_diags);
-
-    if (pd06_diags.len > 0) {
-        // VLD-02 AC4 — short-circuit the semantic compile loop and return
-        // 422 with the PD-06 diagnostics verbatim. Findings stays empty.
-        const validated_at = try allocator.dupe(u8, "");
-        const compiler_version = try allocator.dupe(u8, COMPILER_VERSION);
-        return ValidationFailure{
-            .findings = findings.toOwnedSlice(allocator) catch return error.OutOfMemory,
-            .pd06_diagnostics = pd06_diags,
-            .validated_at = validated_at,
-            .compiler_version = compiler_version,
-        };
-    }
-    // PD-06 clean — release the now-empty diagnostic list before allocating.
-    pd06_mod.freePd06Diagnostics(allocator, pd06_diags);
-    pd06_diags = &.{};
 
     // ── VLD-02 AC1/AC2/AC3/AC5: per-site semantic compile ────────────────
     const global_env_slice = env_builder.items;
@@ -301,15 +306,19 @@ pub fn validateDefinition(
         ) catch continue;
         defer site_env.deinit(allocator);
 
-        var site_findings = typecheck_mod.checkSite(allocator, site_env, site) catch
+        // `checkSite` returns Allocator.Error![]Finding; `catch continue`
+        // (OOM -> skip site) — the design's `try ... catch continue` is
+        // pseudocode; `try` and `catch` cannot be combined in Zig.
+        const owned = typecheck_mod.checkSite(allocator, site_env, site) catch
             continue;
-        // Steal the per-site findings into the shared list.
-        const owned = site_findings; // already owned
-        site_findings = &.{};
         try findings.appendSlice(allocator, owned);
-        // site_findings was re-set to empty; the per-site allocator-backed
-        // strings have been adopted by `findings`. The empty slice needs no
-        // free.
+        // R5: transfer, not deep copy — `appendSlice` shallow-copies the
+        // Finding structs into the shared list (each Finding's four strings
+        // are adopted by pointer and owned by `findings`/`deinit` from here
+        // on). Free only the `owned` []Finding backing buffer itself; do NOT
+        // call `finding_mod.freeFindings` here (that would free the adopted
+        // strings a second time).
+        allocator.free(owned);
     }
 
     // ── VLD-03 AC4: deterministic ordering by (node_id, expression_path) ──

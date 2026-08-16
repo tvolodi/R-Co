@@ -4,11 +4,14 @@
 //! Design artefact:  src/design/vld-01-03-stage-16-validation.md §6.2.4, §7.3
 //!
 //! The semantic compiler (`typecheck.zig`) only runs after every expression
-//! site has cleared the existing PD-06 syntax check (`isValidCelSyntax` in
-//! `src/definition/graph.zig`). When any site fails syntax, the validator
-//! short-circuits the entire semantic loop and returns a `ValidationFailure`
-//! whose `findings` slice is empty and whose `pd06_diagnostics` field carries
-//! the verbatim PD-06 violation list (codes + messages) — the same shape
+//! site has cleared the PD-06 syntax gate. The graph-level edge checks keep
+//! using the pre-existing `isValidCelSyntax` (`src/definition/graph.zig`);
+//! the per-site gate uses the authoritative `expr.parse` parser (ISS-0709
+//! R4a) so dangling operators ("amount >") are rejected. When any site fails
+//! syntax, the validator short-circuits the entire semantic loop and returns
+//! a `ValidationFailure` whose `findings` slice is empty and whose
+//! `pd06_diagnostics` field carries the verbatim PD-06 violation list
+//! (codes + messages) — the same shape
 //! `graph.validateEdgeConditions`/`validateEdgeTransforms` already produce.
 //!
 //! This module is the "wide" PD-06 surface: it aggregates the existing edge
@@ -20,6 +23,7 @@
 
 const std = @import("std");
 const graph_mod = @import("graph");
+const expr_mod = @import("expr");
 const site_mod = @import("site.zig");
 
 pub const DefinitionGraph = graph_mod.DefinitionGraph;
@@ -117,29 +121,45 @@ pub fn runSyntaxCheck(
 
     // 2) Per-site syntax check across the additional sites.
     for (sites) |s| {
-        if (graph_mod.isValidCelSyntax(s.source)) continue;
-        // Skip empty/whitespace — VLD-02 AC5 handles those at the typecheck
-        // boundary (EmptyExpression is a separate diagnostic category).
+        // Skip empty/whitespace first — VLD-02 AC5 owns empties at the
+        // typecheck boundary (EmptyExpression is a separate diagnostic
+        // category), so they are never parsed here.
         if (site_mod.isEmptyOrWhitespace(s.source)) continue;
 
-        const max_display: usize = 80;
-        const display_len = if (s.source.len > max_display) max_display else s.source.len;
-        const message = try std.fmt.allocPrint(
-            allocator,
-            "Node '{s}' at '{s}' has a syntactically invalid CEL expression: '{s}'",
-            .{ s.node_id, s.expression_path, s.source[0..display_len] },
-        );
-        errdefer allocator.free(message);
-        const owned_node = try allocator.dupe(u8, s.node_id);
-        errdefer allocator.free(owned_node);
-        const owned_path = try allocator.dupe(u8, s.expression_path);
-        errdefer allocator.free(owned_path);
-        try diagnostics.append(allocator, .{
-            .code = "CEL_SYNTAX_INVALID",
-            .message = message,
-            .node_id = owned_node,
-            .expression_path = owned_path,
-        });
+        // ISS-0709 R4a: the gate is the authoritative CEL parser, not the
+        // delimiter-balance `isValidCelSyntax`. Dangling operators ("amount >",
+        // "amount <=", "x >", "y <") fail parse at end-of-input ("expected
+        // expression"), so VLD-02 AC4's short-circuit fires.
+        const pr = expr_mod.parse(allocator, s.source) catch continue; // OOM -> skip site
+        switch (pr) {
+            .ok => |ast| {
+                // Syntactically valid — release the arena and continue.
+                var ast_mut = ast;
+                ast_mut.deinit();
+            },
+            .fail => |errs| {
+                allocator.free(errs);
+
+                const max_display: usize = 80;
+                const display_len = if (s.source.len > max_display) max_display else s.source.len;
+                const message = try std.fmt.allocPrint(
+                    allocator,
+                    "Node '{s}' at '{s}' has a syntactically invalid CEL expression: '{s}'",
+                    .{ s.node_id, s.expression_path, s.source[0..display_len] },
+                );
+                errdefer allocator.free(message);
+                const owned_node = try allocator.dupe(u8, s.node_id);
+                errdefer allocator.free(owned_node);
+                const owned_path = try allocator.dupe(u8, s.expression_path);
+                errdefer allocator.free(owned_path);
+                try diagnostics.append(allocator, .{
+                    .code = "CEL_SYNTAX_INVALID",
+                    .message = message,
+                    .node_id = owned_node,
+                    .expression_path = owned_path,
+                });
+            },
+        }
     }
 
     return try diagnostics.toOwnedSlice(allocator);

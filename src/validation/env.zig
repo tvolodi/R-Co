@@ -205,6 +205,16 @@ pub fn addEntry(
 ///
 /// The mapping is case-sensitive: `"String"`, `"INTEGER"`, etc. all return
 /// `null`. This is deliberate (per the design §8 footnote).
+///
+/// Natural CEL synonyms are accepted alongside the design §8 names
+/// (ISS-0709 R3): `number` (same TypeTag as `integer`/`decimal`/`money`),
+/// `bool` (same as `boolean`), and `timestamp` (same as `date`/`datetime`).
+/// Deliberately NOT added: `duration` (no `TypeTag` exists — mapping it to
+/// `.timestamp` would be a semantic lie, and adding a `duration` variant is a
+/// taxonomy change with VLD-03 AC5 implications), bare `list` (a type
+/// constructor without an element type; `list<T>` is accepted), and bare
+/// `map` (`object` already maps to `.map`). This decision must not be
+/// reverted without a CODE-DESIGNER + VLD-03 AC5 review.
 pub fn mapDeclaredTypeName(name: []const u8) ?TypeTag {
     if (std.mem.eql(u8, name, "string")) return .string;
     if (std.mem.eql(u8, name, "text")) return .string;
@@ -212,9 +222,12 @@ pub fn mapDeclaredTypeName(name: []const u8) ?TypeTag {
     if (std.mem.eql(u8, name, "integer")) return .number;
     if (std.mem.eql(u8, name, "decimal")) return .number;
     if (std.mem.eql(u8, name, "money")) return .number;
+    if (std.mem.eql(u8, name, "number")) return .number; // natural CEL name (ISS-0709 R3)
     if (std.mem.eql(u8, name, "boolean")) return .bool;
+    if (std.mem.eql(u8, name, "bool")) return .bool; // natural CEL synonym of boolean (ISS-0709 R3)
     if (std.mem.eql(u8, name, "date")) return .timestamp;
     if (std.mem.eql(u8, name, "datetime")) return .timestamp;
+    if (std.mem.eql(u8, name, "timestamp")) return .timestamp; // natural CEL synonym of date/datetime (ISS-0709 R3)
     if (std.mem.eql(u8, name, "object")) return .map;
     if (std.mem.startsWith(u8, name, "list<")) {
         // Element type is informational only at this point — the env records

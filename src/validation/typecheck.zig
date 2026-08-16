@@ -372,11 +372,13 @@ test "checkSite: empty source -> EmptyExpression" {
     defer env.deinit(alloc);
 
     var sites_buf: std.ArrayList(Site) = .empty;
-    defer sites_buf.deinit(alloc);
     try sites_buf.append(alloc, try SiteStub.s(alloc, "   ", .bool, false));
-    defer site_mod.freeSites(alloc, sites_buf.items);
+    // R1/R2: transfer the backing to an owned slice so `freeSites` frees the
+    // per-site strings AND the backing exactly once.
+    const owned_sites = try sites_buf.toOwnedSlice(alloc);
+    defer site_mod.freeSites(alloc, owned_sites);
 
-    const findings = try checkSite(alloc, env, sites_buf.items[0]);
+    const findings = try checkSite(alloc, env, owned_sites[0]);
     defer finding_mod.freeFindings(alloc, findings);
 
     try std.testing.expectEqual(@as(usize, 1), findings.len);
@@ -389,11 +391,12 @@ test "checkSite: number literal where bool expected -> TypeMismatch" {
     defer env.deinit(alloc);
 
     var sites_buf: std.ArrayList(Site) = .empty;
-    defer sites_buf.deinit(alloc);
     try sites_buf.append(alloc, try SiteStub.s(alloc, "1", .bool, false));
-    defer site_mod.freeSites(alloc, sites_buf.items);
+    // R1/R2: owned-slice pattern so `freeSites` frees strings + backing once.
+    const owned_sites = try sites_buf.toOwnedSlice(alloc);
+    defer site_mod.freeSites(alloc, owned_sites);
 
-    const findings = try checkSite(alloc, env, sites_buf.items[0]);
+    const findings = try checkSite(alloc, env, owned_sites[0]);
     defer finding_mod.freeFindings(alloc, findings);
 
     try std.testing.expect(findings.len >= 1);
@@ -407,18 +410,18 @@ test "checkSite: number literal where bool expected -> TypeMismatch" {
 test "checkSite: unknown variable identifier -> UnknownVariable" {
     const alloc = std.testing.allocator;
     var entries: std.ArrayList(env_mod.Entry) = .empty;
-    defer entries.deinit(alloc);
     try env_mod.addEntry(&entries, alloc, "amount", .number, null, .variable_schema, null);
-
-    const env = TypedEnv{ .entries = entries.items };
+    // R2: transfer ownership of the entries backing to TypedEnv; do NOT also
+    // `deinit` the (now-empty) ArrayList — that would double-free.
+    const env = TypedEnv{ .entries = try entries.toOwnedSlice(alloc) };
     defer env.deinit(alloc);
 
     var sites_buf: std.ArrayList(Site) = .empty;
-    defer sites_buf.deinit(alloc);
     try sites_buf.append(alloc, try SiteStub.s(alloc, "amont > 0", .bool, false));
-    defer site_mod.freeSites(alloc, sites_buf.items);
+    const owned_sites = try sites_buf.toOwnedSlice(alloc);
+    defer site_mod.freeSites(alloc, owned_sites);
 
-    const findings = try checkSite(alloc, env, sites_buf.items[0]);
+    const findings = try checkSite(alloc, env, owned_sites[0]);
     defer finding_mod.freeFindings(alloc, findings);
 
     var saw_unknown = false;
@@ -436,19 +439,19 @@ test "checkSite: unknown variable identifier -> UnknownVariable" {
 test "checkSite: '+' over number and string -> OperandTypeError" {
     const alloc = std.testing.allocator;
     var entries: std.ArrayList(env_mod.Entry) = .empty;
-    defer entries.deinit(alloc);
     try env_mod.addEntry(&entries, alloc, "amount", .number, null, .variable_schema, null);
     try env_mod.addEntry(&entries, alloc, "name", .string, null, .variable_schema, null);
-
-    const env = TypedEnv{ .entries = entries.items };
+    // R2: transfer ownership of the entries backing to TypedEnv; no residual
+    // `entries.deinit` (would double-free).
+    const env = TypedEnv{ .entries = try entries.toOwnedSlice(alloc) };
     defer env.deinit(alloc);
 
     var sites_buf: std.ArrayList(Site) = .empty;
-    defer sites_buf.deinit(alloc);
     try sites_buf.append(alloc, try SiteStub.s(alloc, "amount + name", .number, false));
-    defer site_mod.freeSites(alloc, sites_buf.items);
+    const owned_sites = try sites_buf.toOwnedSlice(alloc);
+    defer site_mod.freeSites(alloc, owned_sites);
 
-    const findings = try checkSite(alloc, env, sites_buf.items[0]);
+    const findings = try checkSite(alloc, env, owned_sites[0]);
     defer finding_mod.freeFindings(alloc, findings);
 
     var saw_operand = false;
