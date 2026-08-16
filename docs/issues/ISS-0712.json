@@ -6,9 +6,9 @@
   "title": "src/definition/rollback.zig supersede UPDATE compares def_id = $3::uuid but promotion_reviews.def_id is TEXT -> sqlstate 42883 (operator does not exist); swallowed by catch null so superseded_review_id is always null (PRM-08 AC4 never works)",
   "status": "OPEN",
   "severity": "MAJOR",
-  "workflow_id": "WF03-GH802-20260816",
-  "run_id": "WF03-GH802-20260816",
-  "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+  "workflow_id": "WF03-GH803-20260816",
+  "run_id": "WF03-GH803-20260816",
+  "handoff_id": "wf03-gh803-20260816-005-issue-fixer",
   "classification": "IMPL_BUG/production",
   "incidental_of": {
     "run_id": "WF03-GH802-20260816",
@@ -46,6 +46,26 @@
     "The catch-null guard distinguishes a genuinely missing table (SQLSTATE 42P01) from other query errors"
   ],
   "notes": "Discovered during WF03-GH802-20260816 step-1 diagnosis while reproducing ISS-0711/GH-802. This is PRODUCTION code and cannot be folded into GH-802 (whose acceptance criteria require 'no production code changed'). It is a hard blocker for the GH-802 acceptance criterion 'zig build test-integration-prm08 passes' because TC-PRM-08-03's superseded_review_id assertion can never pass while it is present. Recommend ORCH sequence this fix before or alongside GH-802 Step 3.",
+  "handoff_history": [
+    {
+      "step": "step-1-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T06:33:35Z",
+      "summary": "Filed this issue during WF03-GH802-20260816 Step 1 diagnosis (ISSUE-FIXER) per No-Issue-Left-Local-Only: empirical reproduction of the prm-08 target against the current schema recorded [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status = 'superseded' ... — a PRODUCTION defect distinct from the ISS-0711/GH-802 fixture 23502. Registered as ISS-0712 + GitHub issue #803 (labels bug, claimed-by-r-co-2-loop). No fix implemented."
+    },
+    {
+      "step": "step-0.5-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH803-20260816",
+      "handoff_id": "wf03-gh803-20260816-005-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T07:52:13Z",
+      "summary": "WF-03 Step 0.5 for GH-803: verified ISS-0712 is the correct, non-colliding local record for GitHub issue #803 (title/severity/status/labels match; GH-803 OPEN with labels bug, claimed-by-r-co-2-loop; only one index entry references #803). No new ISS number and no new GitHub issue (GH-803 already exists and is filed). Updated workflow_id/run_id/handoff_id to WF03-GH803-20260816 (active fix run) and recorded this run in handoff_history. issue_index.json confirmed consistent (ISS-0712 present once; next_issue_id 714 = correct). Fix implementation deferred to Step 3 per WF-03."
+    }
+  ],
   "prevention": {
     "actions": [
       "SQL predicates must be type-checked against the actual column types in the applied migrations; casting a bound parameter to a type that differs from the column type (here ::uuid vs TEXT def_id) is a compile-time-invisible runtime error that only surfaces at execution.",
