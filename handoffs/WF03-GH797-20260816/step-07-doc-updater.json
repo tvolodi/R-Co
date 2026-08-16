@@ -1,0 +1,67 @@
+{
+  "handoff_id": "wf03-gh797-20260816-07-doc-updater",
+  "run_id": "WF03-GH797-20260816",
+  "workflow_id": "WF-03",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH797-20260816/step-07-doc-updater.json",
+  "created_at": "2026-08-16T05:10:01Z",
+  "started_at": "2026-08-16T05:10:15Z",
+  "completed_at": "2026-08-16T05:12:36Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 7 -- doc update",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/797",
+    "iss_id": "ISS-0710",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh797-20260816-00-backend-dev",
+      "wf03-gh797-20260816-005-issue-fixer",
+      "wf03-gh797-20260816-01-issue-fixer",
+      "wf03-gh797-20260816-02-code-designer",
+      "wf03-gh797-20260816-2b-code-design-validator",
+      "wf03-gh797-20260816-03-backend-dev",
+      "wf03-gh797-20260816-05-test-runner"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0710.json",
+      "docs/issues/issue_index.json",
+      "src/design/iss0710-gh797-dispatch-staleness-gate.md",
+      "tests/reports/report-20260816-WF03-GH797-20260816.yaml"
+    ],
+    "branch_name": "feature/WF03-GH797-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 7 for run WF03-GH797-20260816 (ISS-0710 / GH-797): fn:update-changelog + fn:update-issue. (1) fn:update-changelog: add an entry for this fix under [Unreleased] dated 2026-08-16 \u2014 the ORCH dispatch-time staleness gate (new ORCHESTRATOR.md \u00a78f + \u00a75 rule 7, mirrored to .claude/agents/orchestrator.md and both .github/ adapters) that short-circuits an ADHOC run with BLOCKER before step-00 when the target work is already complete at origin/main. (2) fn:update-issue: set docs/issues/ISS-0710.json status to RESOLVED, fill resolved_at, resolution (summary of the implemented gate + verification), prevention (dispatch-time staleness check before any ADHOC step-00; always git fetch origin before reading target status). (3) Update docs/issues/issue_index.json: set ISS-0710 status RESOLVED with resolved_at. IMPORTANT: do NOT close GitHub issue #797 via gh issue close \u2014 this is a loop-mode run; Step Final (release.py --close-github-issue) closes it. Do NOT modify requirement statuses (PRM-02/03/04/05 remain RELEASED \u2014 out of scope).",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated under [Unreleased] 2026-08-16 with the dispatch-time staleness gate entry",
+      "docs/issues/ISS-0710.json status = RESOLVED with resolved_at, resolution, and prevention filled",
+      "docs/issues/issue_index.json updated (ISS-0710 RESOLVED with resolved_at)",
+      "GitHub issue #797 NOT closed by this step (left open for Step Final release.py --close-github-issue)",
+      "No requirement statuses touched (PRM-02/03/04/05 stay RELEASED)",
+      "Work on branch feature/WF03-GH797-20260816"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 7 complete for ISS-0710/GH-797: CHANGELOG.md updated under [Unreleased] 2026-08-16 with the ORCH dispatch-time staleness gate fix entry (GH-797/ISS-0710, Type E docs-only). docs/issues/ISS-0710.json set to RESOLVED (resolved_at 2026-08-16T05:11:50Z, resolution + prevention filled, step-07 history appended). docs/issues/issue_index.json updated (ISS-0710 status RESOLVED with resolved_at/resolved_by; last_updated bumped). GitHub issue #797 intentionally left OPEN for Step Final release.py --close-github-issue (loop-mode run). No requirement statuses touched (PRM-02/03/04/05 remain RELEASED). lint_handoffs gate clean.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0710.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-GH797-20260816-step-07-doc-updater-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Step Final: run release.py --close-github-issue (closes GH-797), squash-merge feature/WF03-GH797-20260816 to main, delete branch, return repo to clean main"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

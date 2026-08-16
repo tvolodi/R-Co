@@ -1,0 +1,28 @@
+{
+  "report_id": "WF03-GH797-20260816-step-005-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH797-20260816",
+  "step": "0.5",
+  "created_at": "2026-08-16T04:43:11Z",
+  "summary": "WF-03 Step 0.5 for GH-797 (process: duplicate stale-status fix for PRM-02/03/04/05). Registry lookup confirmed GH-797 had NO dedicated ISS (grep over docs/issues/ found no GH-797/prm-reqctl/reqctl-status-stale reference) and that its body incorrectly pointed at ISS-0709 (the unrelated lint_handoffs/GH-796 issue). Created docs/issues/ISS-0710.json as the dedicated local record (collision-checked: next_issue_id 710, ISS-0710.json absent, `gh issue list --search 'ISS-0710'` no matches; ISS-0709 left untouched), appended it to docs/issues/issue_index.json advancing next_issue_id 710 -> 711 (last_updated 2026-08-16T04:40:49Z), corrected the GH-797 body reference on GitHub via `gh issue edit 797` (verified 'Tracked as `ISS-0710` in `docs/issues/ISS-0710.json`') and added a traceability comment (#issuecomment-5305763462). Captured the process-gap recommendation (lightweight dispatch-time check `reqctl.py show <id>` / `git show HEAD:<file>`) in ISS-0710 notes for Step 1/2. Did NOT implement the fix (deferred to Step 3 per task). All acceptance criteria met. No tests run (bookkeeping-only step); JSON validity of all touched files verified; lint_handoffs.py gate to be verified before completion.",
+  "files_created": [
+    "docs/issues/ISS-0710.json",
+    "docs/issue-reports/WF03-GH797-20260816-step-005-issue-fixer-INNER-REPORT.json",
+    "scratch/update_issue_index_gh797.py",
+    "scratch/gh797_body_fixed.md",
+    "scratch/gh797_body_orig.md"
+  ],
+  "files_modified": [
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH797-20260816/step-005-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH: route Step 1/2 (CODE-DESIGNER -> BACKEND-DEV) to implement the process-gap disposition per ISS-0710 notes (lightweight dispatch-time check to short-circuit ADHOCs dispatched against an outdated repo view).",
+    "ORCH: delete housekeeping branch housekeeping/reqctl-status-stale-20260816 and drop the orphaned stash ADHOC-prm-reqctl-status-20260816-pre-setup-stash (per GH-797 body).",
+    "DOC-UPDATER (Step 7): add CHANGELOG entry for ISS-0710 if warranted and run Step-Final git-merge on feature/WF03-GH797-20260816."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,50 @@
+report_id: WF03-GH797-20260816-step-07-doc-updater
+agent_id: DOC-UPDATER
+run_id: WF03-GH797-20260816
+step: "07"
+created_at: 2026-08-16T05:11:50Z
+summary: >-
+  WF-03 Step 7 for ISS-0710 / GH-797 on branch feature/WF03-GH797-20260816. (1)
+  fn:update-changelog: prepended a fix(process) entry under [Unreleased] — 2026-08-16
+  documenting the ORCH dispatch-time staleness gate (GH-797/ISS-0710, Type E docs-only)
+  — the new ORCHESTRATOR.md §5 rule 7 + §8f gate that short-circuits an ADHOC run with a
+  BLOCKER before step-00 when the target work is already complete at origin/main, mirrored
+  to .claude/agents/orchestrator.md and both .github/ adapters, with the Step-05
+  independent-verification PASS summary. (2) fn:update-issue: docs/issues/ISS-0710.json set
+  to status RESOLVED with resolved_at 2026-08-16T05:11:50Z, resolved_by
+  DOC-UPDATER (WF03-GH797-20260816 step-07), resolution (implemented gate + verification
+  details) and prevention (dispatch-time staleness check before any ADHOC step-00; always
+  git fetch origin before reading target status; judge by exit code only) filled; a
+  step-07 handoff_history entry added. (3) docs/issues/issue_index.json updated: ISS-0710
+  status RESOLVED with resolved_at and resolved_by; top-level last_updated bumped. GitHub
+  issue #797 intentionally NOT closed (loop-mode; Step Final release.py --close-github-issue
+  handles it). No requirement statuses touched (PRM-02/03/04/05 remain RELEASED — out of
+  scope). JSON parse validation OK for both issue files; lint_handoffs.py runs clean.
+
+files_created:
+  - docs/issue-reports/WF03-GH797-20260816-step-07-doc-updater-INNER-REPORT.yaml
+
+files_modified:
+  - CHANGELOG.md
+  - docs/issues/ISS-0710.json
+  - docs/issues/issue_index.json
+  - handoffs/WF03-GH797-20260816/step-07-doc-updater.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: python -c "json.load(ISS-0710.json); json.load(issue_index.json)"
+    status: pass
+    detail: "both docs/issues JSON files parse cleanly (utf-8-sig tolerant)"
+  - name: python tools/lint_handoffs.py
+    status: pass
+    detail: "handoff lint gate (see step-05 report for full run-wide numbers; this step adds no new findings)"
+
+issues_found: []
+
+next_steps:
+  - Step Final: run release.py (--close-github-issue to close GH-797), squash-merge
+    feature/WF03-GH797-20260816 to main, delete the feature branch, and return the repo
+    to a clean main.
+
+blockers: []

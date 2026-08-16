@@ -1,0 +1,57 @@
+{
+  "handoff_id": "wf03-gh797-20260816-00-backend-dev",
+  "run_id": "WF03-GH797-20260816",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH797-20260816/step-00-backend-dev.json",
+  "created_at": "2026-08-16T04:00:49Z",
+  "started_at": "2026-08-16T04:01:41Z",
+  "completed_at": "2026-08-16T04:02:37Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_SETUP.md",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md",
+      "docs/agents/protocols/LOOP_PROTOCOL.md"
+    ],
+    "branch_name": "feature/WF03-GH797-20260816",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/797"
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md for WF-03 run WF03-GH797-20260816 (process/duplicate GitHub issue GH-797: PRM-02/03/04/05 stale-status ADHOC-prm-reqctl-status-20260816 abort BLOCKER; underlying fix already landed via WF02-prm02-05-20260816 / PR #795). Create feature branch feature/WF03-GH797-20260816 from a freshly pulled main, push it to origin as the coordination signal, and confirm the local repo is on that branch with tip == origin/main. Record branch_name, base_commit_sha, and push_status in your result.",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exited 0",
+      "git branch --show-current outputs feature/WF03-GH797-20260816",
+      "git push -u origin feature/WF03-GH797-20260816 exited 0",
+      "result.git_evidence.branch_name == feature/WF03-GH797-20260816, base_commit_sha set, push_status ok"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created feature branch feature/WF03-GH797-20260816 from freshly pulled main (base dac6353a8ea7e134e4fab89d811c2a28ff96f9d5) and pushed to origin as the coordination signal; local repo is on the branch with tip == origin/main.",
+    "artifacts_out": [
+      "branch: feature/WF03-GH797-20260816"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to next step per active workflow",
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH797-20260816",
+      "base_commit_sha": "dac6353a8ea7e134e4fab89d811c2a28ff96f9d5",
+      "push_status": "ok",
+      "tip_matches_origin_main": true
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

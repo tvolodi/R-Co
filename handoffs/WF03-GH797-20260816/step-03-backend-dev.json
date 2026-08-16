@@ -1,0 +1,72 @@
+{
+  "handoff_id": "wf03-gh797-20260816-03-backend-dev",
+  "run_id": "WF03-GH797-20260816",
+  "workflow_id": "WF-03",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH797-20260816/step-03-backend-dev.json",
+  "created_at": "2026-08-16T05:00:15Z",
+  "started_at": "2026-08-16T05:00:29Z",
+  "completed_at": "2026-08-16T05:04:47Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 3 -- implement fix",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/797",
+    "iss_id": "ISS-0710",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh797-20260816-02-code-designer",
+      "wf03-gh797-20260816-2b-code-design-validator"
+    ],
+    "artifacts_in": [
+      "src/design/iss0710-gh797-dispatch-staleness-gate.md",
+      "docs/issues/ISS-0710.json",
+      "docs/agents/ORCHESTRATOR.md",
+      ".claude/agents/orchestrator.md",
+      ".github/instructions/orchestrator.instructions.md",
+      ".github/agents/orchestrator.agent.md"
+    ],
+    "branch_name": "feature/WF03-GH797-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 3 for ISS-0710 / GH-797: implement the ORCH dispatch-time staleness gate per the validated design at src/design/iss0710-gh797-dispatch-staleness-gate.md (Type E \u2014 docs/process change, NO production code, NO migrations). Implement EXACTLY per design \u00a711 (\u00a78f) and \u00a712 (rule 7) with the verbatim wording specified there: (1) add new \u00a78f 'Dispatch-Time Staleness Check \u2014 BEFORE an ADHOC run's Step 00' to docs/agents/ORCHESTRATOR.md (placed after \u00a78e per the validator's note), mirroring the \u00a78a/\u00a78e shape \u2014 exit-code-only verdict, log line on both branches, DISPATCH_STALE BLOCKER log line, short-circuit before step-00 (no branch/stash, result.status BLOCKED + BLOCKER issue entry); (2) add \u00a75 construction rule 7 (dispatch-time end-state precondition); (3) mirror the new gate into .claude/agents/orchestrator.md (canonical per-role) and the GitHub-harness adapters .github/instructions/orchestrator.instructions.md + .github/agents/orchestrator.agent.md per AGENT_SYSTEM.md \u00a79/A007 (adapters must not drift). Do NOT touch any other docs or any source/migration files. Verify per design \u00a714 (lint_handoffs exit 0, no new A007 drift). This is a docs-only change: no TEST-DESIGNER/4b steps apply.",
+    "acceptance_criteria": [
+      "docs/agents/ORCHESTRATOR.md contains the new \u00a78f with the verbatim wording from design \u00a711 (including the DISPATCH_STALE log line and the BLOCKER short-circuit semantics)",
+      "docs/agents/ORCHESTRATOR.md \u00a75 contains construction rule 7 (dispatch-time end-state precondition) with the verbatim wording from design \u00a712",
+      "The gate is mirrored into .claude/agents/orchestrator.md, .github/instructions/orchestrator.instructions.md, and .github/agents/orchestrator.agent.md (no drift from the canonical text)",
+      "No production code, no migrations, no other docs touched",
+      "python tools/lint_handoffs.py exits 0",
+      "Work on branch feature/WF03-GH797-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented the ORCH dispatch-time staleness gate per the validated design (docs/process change only, no production code, no migrations): added \u00a78f Dispatch-Time Staleness Check after \u00a78e and \u00a75 construction rule 7 to docs/agents/ORCHESTRATOR.md (verbatim per design \u00a711/\u00a712, incl. DISPATCH_STALE log lines and BLOCKER short-circuit before step-00); mirrored the gate into .claude/agents/orchestrator.md and both .github/ adapters (no A007 drift; orchestrator similarity moved up 0.40->0.43 / 0.42->0.45, baseline record updated). Verified per design \u00a714: lint_handoffs.py exit 0, lint_agent_docs.py exit 0.",
+    "artifacts_out": [
+      "docs/agents/ORCHESTRATOR.md",
+      ".claude/agents/orchestrator.md",
+      ".github/instructions/orchestrator.instructions.md",
+      ".github/agents/orchestrator.agent.md",
+      "tools/lint_agent_docs.baseline.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "fn:register-inner-report.md specifies inner reports as .json but core-directives.md requires .yaml (authoritative). Report written as .yaml. Pre-existing drift, re-flagged (same as Step 1/2/2b)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "lint_handoffs H010: 2 pre-existing handoffs absent from registry (ADHOC-prm-env-20260814, WF02-iss201); not from this run; lint_handoffs exits 0."
+      }
+    ],
+    "next_action": "Docs-only change \u2014 no TEST-DESIGNER/4b steps apply. Route to DOC-UPDATER (Step 7) then Step Final (git-merge) per WF-03 pipeline."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

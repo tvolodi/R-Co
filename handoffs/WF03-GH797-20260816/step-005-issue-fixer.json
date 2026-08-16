@@ -1,0 +1,55 @@
+{
+  "handoff_id": "wf03-gh797-20260816-005-issue-fixer",
+  "run_id": "WF03-GH797-20260816",
+  "workflow_id": "WF-03",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH797-20260816/step-005-issue-fixer.json",
+  "created_at": "2026-08-16T04:04:48Z",
+  "started_at": "2026-08-16T04:05:05Z",
+  "completed_at": "2026-08-16T04:43:23Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh797-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/ISSUE_QUEUE.md",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md"
+    ],
+    "branch_name": "feature/WF03-GH797-20260816",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/797"
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 for run WF03-GH797-20260816: registry lookup + create ISS file + reconcile the GitHub issue. The claimed item is GitHub issue #797 (https://github.com/tvolodi/R-Co/issues/797, OPEN, labels: duplicate, process, claimed-by-r-co-2-loop): 'process: duplicate stale-status fix for PRM-02/03/04/05 \u2014 ADHOC-prm-reqctl-status-20260816 abort BLOCKER (fixed independently by WF02-prm02-05-20260816 / PR #795)'. Verified: PRM-02/03/04/05 are all already `status: RELEASED` in docs/requirements.yaml (released 2026-08-15T23:28:2xZ via PR #795); the housekeeping branch `housekeeping/reqctl-status-stale-20260816` and stash `ADHOC-prm-reqctl-status-20260816-pre-setup-stash` no longer exist. IMPORTANT bookkeeping defect: GH-797's body says 'Tracked as ISS-0709', but docs/issues/ISS-0709.json is the lint_handoffs 42-findings issue (GH-796, RESOLVED) \u2014 GH-797 has NO dedicated ISS file (grep over docs/issues/ found no reference to GH-797 / prm-reqctl / reqctl-status-stale). Per No-Issue-Left-Local-Only: create the correct ISS file in docs/issues/ for GH-797 (registry next_issue_id is currently 710 \u2014 verify before using; do not collide), append it to docs/issues/issue_index.json, and correct the wrong 'Tracked as ISS-0709' reference in the GH-797 body via a comment or edit so the record points at the correct ISS. Do NOT implement the fix (that is Step 3). The process-gap recommendation from the issue body (a lightweight pre-dispatch check \u2014 e.g. `reqctl.py show <id>` or `git show HEAD:<file>` \u2014 to short-circuit an ADHOC dispatched against an outdated repo view) must be captured as an issue note in the ISS for Step 1/2 to consider.",
+    "acceptance_criteria": [
+      "ISS file created in docs/issues/ for GH-797 with the correct content (not the lint_handoffs content), and entry appended to docs/issues/issue_index.json (next_issue_id advanced)",
+      "No ID collision: local ISS-NNNN number verified against issue_index.json and GitHub (do not reuse ISS-0709 or an unrelated GitHub issue)",
+      "The wrong 'Tracked as ISS-0709' reference in GH-797's body is corrected so the GitHub issue points at the correct ISS",
+      "The process-gap recommendation is captured in the ISS notes for Step 1/2",
+      "Work on branch feature/WF03-GH797-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 0.5 for GH-797: registered dedicated ISS-0710 (docs/issues/ISS-0710.json) for the duplicate PRM-02/03/04/05 stale-status ADHOC, appended it to docs/issues/issue_index.json (next_issue_id 710->711), corrected GH-797's body 'Tracked as ISS-0709' -> 'Tracked as ISS-0710' on GitHub (gh issue edit 797 + traceability comment), and captured the process-gap recommendation (lightweight dispatch-time check) in ISS-0710 notes. No fix implemented (deferred to Step 3).",
+    "artifacts_out": [
+      "docs/issues/ISS-0710.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-GH797-20260816-step-005-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER -> BACKEND-DEV (WF-03 Step 3) to implement the process-gap disposition; ORCH to delete housekeeping/reqctl-status-stale-20260816 branch + drop orphaned stash."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generated_at": "2026-08-10T22:31:20Z",
+  "generated_at": "2026-08-16T05:03:40Z",
   "source": "tools/lint_agent_docs.py --no-baseline (A007 first run)",
   "regenerated_by": "WF03-GH693-20260811 (GitHub #693 / ISS-0661): A007 is a NEW check added in this run, so this file's initial content is not a cleanup of pre-existing findings against an established check — it is the acknowledgment record for the drift the check discovers on its first run. GH-291/PI-01 explicitly scoped a full 18-file, section-by-section Copilot-harness reconciliation OUT of that issue's effort (it would have roughly doubled PI-01's scope). GH-693 keeps that same scoping decision: it prioritizes building the drift-detection mechanism (this check) over retroactively reconciling every file today. These 6 entries are today's known divergence, acknowledged so A007 does not fail every future PR on debt this run did not introduce and did not commit to clearing. Two of the issue's own named examples (backend-dev.agent.md's codegen content, bo-swiftroute.agent.md's Mode B workflow) were verified during this run to already be resolved in .claude/agents/ as a side effect of GH-291's reconciliation -- so backend-dev.agent.md's continued presence here reflects a *different*, still-open gap (see similarity score/reasons below), not the originally-reported one.",
   "reasons": {
     "A007-backend-dev": "backend-dev.agent.md (0.46) and backend-dev.instructions.md (0.45) both predate PI-03/PI-04: they lack the `zig build check` gate, the `make.ps1` single-command wrapper, and the pointer to docs/agents/instructions/security-invariants.md that .claude/agents/backend-dev.md gained afterward. This is a genuine content gap, not just reformatting -- tracked here rather than fixed in this MINOR-severity run per its scope decision (fix the detector, not necessarily every existing finding).",
-    "A007-orchestrator": "orchestrator.agent.md (0.40) and orchestrator.instructions.md (0.42) are the two lowest-similarity files in the corpus -- .claude/agents/orchestrator.md carries substantially more of the WF-01..WF-05/loop-mode detail that accumulated in CLAUDE.md before PI-01 split it out. Largest known gap; a candidate for the next Copilot-harness reconciliation pass, not this one.",
+    "A007-orchestrator": "orchestrator.agent.md (0.43) and orchestrator.instructions.md (0.45) are the two lowest-similarity files in the corpus -- .claude/agents/orchestrator.md carries substantially more of the WF-01..WF-05/loop-mode detail that accumulated in CLAUDE.md before PI-01 split it out. Largest known gap; a candidate for the next Copilot-harness reconciliation pass, not this one. Updated by WF03-GH797-20260816 (ISS-0710 / GH-797, 2026-08-16): the dispatch-time staleness gate (rule 7 + §8f prose) was mirrored into the canonical file and both adapters, moving similarity up from 0.40/0.42; still below threshold and still tracked debt.",
     "A007-req-validator": "req-validator.agent.md sits essentially at the 0.55 threshold (0.55, i.e. right at the boundary) -- borderline drift, not a severe gap. Left as baseline debt rather than fixed here to keep this run proportional to its MINOR severity.",
     "A007-test-runner": "test-runner.agent.md (0.52) has different section structure (fewer, differently-named headings) than .claude/agents/test-runner.md's Infrastructure Health Checklist / bench-env-check breakdown, per spot check during GH-693. Not one of the two examples the issue named; left as tracked debt."
   },
@@ -18,10 +18,10 @@
       "reason_ref": "A007-backend-dev"
     },
     {
-      "matching_key": "A007|.github/agents/orchestrator.agent.md|.claude/agents/orchestrator.md|0.4",
+      "matching_key": "A007|.github/agents/orchestrator.agent.md|.claude/agents/orchestrator.md|0.43",
       "path": ".github/agents/orchestrator.agent.md",
       "canonical": ".claude/agents/orchestrator.md",
-      "similarity": 0.4,
+      "similarity": 0.43,
       "reason_ref": "A007-orchestrator"
     },
     {
@@ -46,10 +46,10 @@
       "reason_ref": "A007-backend-dev"
     },
     {
-      "matching_key": "A007|.github/instructions/orchestrator.instructions.md|.claude/agents/orchestrator.md|0.42",
+      "matching_key": "A007|.github/instructions/orchestrator.instructions.md|.claude/agents/orchestrator.md|0.45",
       "path": ".github/instructions/orchestrator.instructions.md",
       "canonical": ".claude/agents/orchestrator.md",
-      "similarity": 0.42,
+      "similarity": 0.45,
       "reason_ref": "A007-orchestrator"
     }
   ]

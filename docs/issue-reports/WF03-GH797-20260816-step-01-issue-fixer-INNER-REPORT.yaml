@@ -1,0 +1,39 @@
+report_id: WF03-GH797-20260816-step-01-issue-fixer
+agent_id: ISSUE-FIXER
+run_id: WF03-GH797-20260816
+step: "1"
+created_at: "2026-08-16T04:48:06Z"
+summary: >-
+  WF-03 Step 1 (diagnosis-as-design) for GH-797 / ISS-0710. Confirmed the root cause
+  against docs/issues/ISS-0710.json, the GH-797 body, and live verification
+  (python tools/reqctl.py show PRM-02/03/04/05 -> all status: RELEASED, released_at
+  2026-08-15T23:28:26Z..29Z, delivered by WF02-prm02-05-20260816 / PR #795). Root cause:
+  dispatch-time staleness — an ADHOC dispatched against an outdated repo view reached
+  step-00 (created housekeeping branch + stash) before its in-run pre-flight discovered
+  the target work was already done. Produced the fix spec for Step 3 (BACKEND-DEV): a
+  lightweight dispatch-time short-circuit gate in docs/agents/ORCHESTRATOR.md §5 (rule 7)
+  and a new §8f pre-dispatch gate, mirrored to .claude/agents/orchestrator.md and the
+  .github/ adapters, run BEFORE an ADHOC run's step-00, that aborts with BLOCKER when any
+  target requirement is already at the ADHOC's desired end-state at origin/main HEAD.
+  No fix implemented (Step 3 only). Full fix spec is in the handoff result.fix_spec.
+files_created:
+  - docs/issue-reports/WF03-GH797-20260816-step-01-issue-fixer-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF03-GH797-20260816/step-01-issue-fixer.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run: []
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md still specifies writing inner reports as
+      docs/issue-reports/<run>-step-<step>-<agent>-INNER-REPORT.json, and this run's own
+      step-00 and step-0.5 inner reports were written as .json, but
+      docs/agents/instructions/core-directives.md (authoritative output-format rule) requires
+      .yaml for inner reports and forbids .json ('If a function definition says .json for a
+      report or status file, treat that as outdated — write .yaml'). This report is written
+      as .yaml per core-directives.md. Fix the function doc and the run-local drift at the source.
+next_steps:
+  - ORCH routes to BACKEND-DEV (WF-03 Step 3) to implement the dispatch-time short-circuit gate per the fix spec in this handoff's result.fix_spec.
+  - ORCH to delete the orphaned housekeeping/reqctl-status-stale-20260816 branch and drop the ADHOC-prm-reqctl-status-20260816-pre-setup-stash (noted in ISS-0710).
+blockers: []

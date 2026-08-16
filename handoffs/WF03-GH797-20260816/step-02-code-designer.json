@@ -1,0 +1,62 @@
+{
+  "handoff_id": "wf03-gh797-20260816-02-code-designer",
+  "run_id": "WF03-GH797-20260816",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH797-20260816/step-02-code-designer.json",
+  "created_at": "2026-08-16T04:50:18Z",
+  "started_at": "2026-08-16T04:50:33Z",
+  "completed_at": "2026-08-16T04:54:10Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2 -- fix design",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/797",
+    "issue_id": "ISS-0710",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh797-20260816-00-backend-dev",
+      "wf03-gh797-20260816-005-issue-fixer",
+      "wf03-gh797-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0710.json",
+      "handoffs/WF03-GH797-20260816/step-01-issue-fixer.json",
+      "docs/issue-reports/WF03-GH797-20260816-step-01-issue-fixer-INNER-REPORT.yaml",
+      "docs/agents/ORCHESTRATOR.md",
+      "docs/agents/AGENT_SYSTEM.md"
+    ],
+    "branch_name": "feature/WF03-GH797-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 2: produce the design artefact for ISS-0710 / GH-797 \u2014 the ORCH dispatch-time staleness gate. The fix (docs/process change, no production code) is fully specified in the Step 1 result and inner report: add a dispatch-time short-circuit check so an ADHOC run never reaches step-00 against an already-completed target. Design artefact must cover: (1) ORCHESTRATOR.md \u00a75 construction rule 7 \u2014 dispatch-time end-state precondition; (2) new ORCHESTRATOR.md \u00a78f 'Dispatch-Time Staleness Check \u2014 BEFORE an ADHOC run's Step 00' mirroring the \u00a78a/\u00a78e shape (exit-code-only verdict, log line on both branches); (3) the check mechanics: `git fetch origin`, then per-target requirement ID read status at origin/main via `python tools/reqctl.py show <id>` (or `git show origin/main:docs/requirements.yaml` + parse); compare against the ADHOC's declared desired end-state; (4) short-circuit behavior: if ANY target already at desired end-state at origin/main HEAD, ORCH does NOT create/dispatch step-00 (no branch, no stash), aborts with result.status BLOCKED + BLOCKER issue entry naming the already-done IDs and the delivering run/PR, and logs `<ts> | DISPATCH_STALE | <run-id> | --- | ORCH | BLOCKER \u2014 target already at <status> at origin/main HEAD (<delivering run/PR>) \u2014 ADHOC short-circuited before step-00`; (5) keep the existing in-run pre-flight as defense-in-depth for the dispatch-to-execution race; (6) mirror into .claude/agents/orchestrator.md and the GitHub-harness adapters .github/instructions/orchestrator.instructions.md + .github/agents/orchestrator.agent.md per AGENT_SYSTEM.md \u00a79 (A007 \u2014 adapters must not drift). Write the design to src/design/iss0710-gh797-dispatch-staleness-gate.md.",
+    "acceptance_criteria": [
+      "src/design/iss0710-gh797-dispatch-staleness-gate.md created and passes tools/lint_design_artefact.py (BLOCKER=0 MAJOR=0) if the linter applies to a process/docs design (check first)",
+      "Design covers all six elements in task.description (rule 7, \u00a78f, check mechanics, short-circuit behavior, defense-in-depth, adapter mirroring)",
+      "No implementation code written (design only; implementation is Step 3)",
+      "Exact wording for the \u00a78f section and the DISPATCH_STALE log line specified"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 2 fix design for GH-797/ISS-0710 complete. Classified as Lego Type E (novel/cross-cutting process/docs change) and produced src/design/iss0710-gh797-dispatch-staleness-gate.md covering all six required elements: (1) ORCHESTRATOR.md \u00a75 construction rule 7 (dispatch-time end-state precondition, exact wording specified); (2) new \u00a78f Dispatch-Time Staleness Check BEFORE an ADHOC run's Step 00 mirroring the \u00a78a/\u00a78e shape (exit-code-only verdict, DISPATCH_STALE log line on both branches, exact wording specified); (3) check mechanics (git fetch origin, then per-target status read at origin/main via git show origin/main:docs/requirements.yaml + parse, or reqctl.py show <id> only when working tree confirmed at origin/main, compare against declared desired end-state); (4) short-circuit behavior (no step-00, no branch, no stash, result.status BLOCKED + BLOCKER issue entry naming already-done IDs and delivering run/PR, exact log line); (5) in-run pre-flight retained as defense-in-depth; (6) adapter mirroring to .claude/agents/orchestrator.md and .github adapters per AGENT_SYSTEM.md \u00a79 (A007). Design-only, no implementation code. Lint passes: tools/lint_design_artefact.py exit 0, BLOCKER=0 MAJOR=0.",
+    "artifacts_out": [
+      "src/design/iss0710-gh797-dispatch-staleness-gate.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "fn:register-inner-report.md still specifies inner reports as .json, but core-directives.md (authoritative output-format rule) requires .yaml. Inner report written as .yaml per core-directives.md; fix the function doc at the source (same drift flagged MINOR by Step 1)."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b) to validate the design artefact, then to BACKEND-DEV (Step 3) to implement the \u00a78f gate + \u00a75 rule 7 and mirror to the canonical + adapter surfaces per the design."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
