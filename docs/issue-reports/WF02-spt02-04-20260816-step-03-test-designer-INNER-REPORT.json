@@ -1,0 +1,74 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-03-test-designer",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "03",
+  "created_at": "2026-08-16T18:23:18Z",
+  "summary": "TEST-DESIGNER (WF-02 Step 3) produced the SPT-02/SPT-03/SPT-04 test suite for the schema-per-tenant migration: three test specs (tests/specs/SPT-02.md, SPT-03.md, SPT-04.md), a new 16-test integration binary (tests/integration/spt02_03_04_schema_tenant_migration_test.zig) covering all 16 MUST acceptance criteria (SPT-02: 6, SPT-03: 5, SPT-04: 5), the SPT-04 per-test schema provision/drop helpers in tests/integration/helpers.zig (provisionTestTenantSchema/dropTestTenantSchema), and build.zig wiring (narrow step test-integration-spt + barrier-chained umbrella run, ISS-0106 pattern). Verified against the live bpm_test DB (port 5434): 10/16 tests PASS. The remaining 6 tests (TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04) are CORRECT but BLOCKED by a pre-existing production defect: fresh tenant-schema provisioning fails because migration 020_obs03_audit_entries.sql's unqualified CREATE OR REPLACE FUNCTION bpm_audit_resource_info (OUT resource_id UUID) resolves public's same-signature TEXT-typed copy (GBL-120/GBL-121) across search_path and PostgreSQL rejects the OUT-type change ('cannot change return type of existing function'). This also breaks the already-released SPT-01 provisioning tests. Filed as GitHub issue #812 + docs/issues/ISS-0715.json (BLOCKER, root cause + candidate fix). Migration 020 is BACKEND-DEV scope (AGENT_SYSTEM.md §3), so TEST-DESIGNER did not modify it. lint_test_isolation.py (new files + full tests/integration) exit 0; lint_handoffs.py exit 0 (0 BLOCKER/MAJOR).",
+  "files_created": [
+    "tests/specs/SPT-02.md",
+    "tests/specs/SPT-03.md",
+    "tests/specs/SPT-04.md",
+    "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+    "docs/issues/ISS-0715.json",
+    "docs/issue-reports/WF02-spt02-04-20260816-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/helpers.zig",
+    "build.zig",
+    "docs/issues/issue_index.json",
+    "handoffs/WF02-spt02-04-20260816/step-03-test-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-spt (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)",
+      "status": "pass",
+      "detail": "Binary compiles and runs; 10/16 PASS. Passing: TC-SPT-02-01/03/04/05/06, TC-SPT-03-01, TC-SPT-04-01/02/03/05. Failing (6): TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04 — all fail at provisionTestTenantSchema() -> runForSchema -> migration 020 bpm_audit_resource_info OUT-type conflict (ISS-0715, pre-existing production defect)."
+    },
+    {
+      "name": "python tools/lint_test_isolation.py tests/integration/spt02_03_04_schema_tenant_migration_test.zig tests/integration/helpers.zig",
+      "status": "pass",
+      "detail": "EXIT=0, no isolation issues (no T010 hardcoded UUIDs, no T020 module var, no T040 SkipZigTest, BPM_TEST_DB_URL referenced)."
+    },
+    {
+      "name": "python tools/lint_test_isolation.py tests/integration",
+      "status": "pass",
+      "detail": "EXIT=0, 180 files checked, no BLOCKER/MAJOR (117 pre-existing baseline-suppressed)."
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "EXIT=0, 0 BLOCKER, 0 MAJOR (1 pre-existing MINOR H010 registry status mismatch resolved on completion)."
+    },
+    {
+      "name": "zig build --summary none",
+      "status": "pass",
+      "detail": "EXIT=0 — build graph parses with the build.zig SPT wiring (BENCH_MIGRATE_URL_INFO stderr line is the known PowerShell native-stderr false positive)."
+    },
+    {
+      "name": "scratch/spt_provision_diag.py (migration-020 reproduction)",
+      "status": "pass",
+      "detail": "Confirmed root cause: applying per-tenant migration chain to a fresh schema fails at 020_obs03_audit_entries.sql with 'cannot change return type of existing function bpm_audit_resource_info(text,jsonb,jsonb)' because public carries the TEXT-typed copy (GBL-120/121)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "BLOCKER",
+      "description": "ISS-0715 / GitHub #812: fresh tenant-schema provisioning fails — migration 020_obs03_audit_entries.sql's unqualified CREATE OR REPLACE FUNCTION bpm_audit_resource_info (OUT resource_id UUID) conflicts with public's TEXT-typed same-signature copy (GBL-120/GBL-121) across search_path; PostgreSQL rejects with 'cannot change return type of existing function'. Blocks 6 of 16 SPT tests + the released SPT-01 provisioning tests. Pre-existing (regression since GBL-121), not introduced by this run. Candidate fix (BACKEND-DEV): schema-aware DROP-then-CREATE in 020 (EXECUTE format('DROP FUNCTION IF EXISTS %I.bpm_audit_resource_info(text,jsonb,jsonb)', current_schema())) mirroring the 1139/GBL-120 pattern. ORCH to create an ADHOC for BACKEND-DEV."
+    },
+    {
+      "severity": "MINOR",
+      "description": "SPT-04 AC1 broad suite rework (the ~118 tests/integration/ files that still carry legacy row-based tenancy fixtures — adp02/adp03/env02/03/05/par06/pin01/prm01/svc04 etc.) is NOT completed in this handoff. Those files still pass at runtime (tenant_default retains the tenant_id columns, bpm_effective_tenant_id() and set_config('bpm.tenant_id') still function against the tenant schema), but they remain on the legacy model. This handoff's SPT suite introduces the schema-isolated pattern (provisionTestTenantSchema/dropTestTenantSchema) and covers the 16 ACs; the broader rework is a follow-up SPT batch (consistent with SECURITY-REVIEWER Step 2c notes)."
+    }
+  ],
+  "next_steps": [
+    "ORCH: create ADHOC/BACKEND-DEV handoff for ISS-0715 (GitHub #812) — fix migration 020 bpm_audit_resource_info schema-aware DROP-then-CREATE so fresh tenant provisioning works.",
+    "Route this handoff to TEST-DESIGN-VALIDATOR (WF-02 Step 3b) — specs (16 cases) match implemented test count (16 blocks), no SkipZigTest, fixtures isolated, lint clean.",
+    "After ISS-0715 lands, re-run zig build test-integration-spt — all 16 tests should pass; then TEST-RUNNER (Step 5) runs the SPT suite under the umbrella.",
+    "Follow-up SPT batch: rework the remaining legacy-model tests/integration/ files (adp02/adp03/env*/par06/pin01/prm01/svc04) to per-test provisioned schemas, per design §9.2."
+  ],
+  "blockers": [
+    "ISS-0715 / GitHub #812 — fresh tenant-schema provisioning blocked by migration 020 bpm_audit_resource_info OUT-type conflict (needs BACKEND-DEV ADHOC)"
+  ]
+}

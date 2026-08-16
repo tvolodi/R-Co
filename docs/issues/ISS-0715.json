@@ -1,0 +1,29 @@
+{
+  "id": "ISS-0715",
+  "title": "Fresh tenant-schema provisioning fails: migration 020 bpm_audit_resource_info conflicts with public's TEXT-typed copy (cannot change return type)",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "schema-provisioning",
+  "run_id": "WF02-spt02-04-20260816",
+  "handoff_id": "WF02-spt02-04-20260816-03-test-designer",
+  "affected_areas": [
+    "migrations/020_obs03_audit_entries.sql",
+    "src/db/provisioning.zig",
+    "tests/integration/spt01_provisioning_test.zig",
+    "tests/integration/spt02_03_04_schema_tenant_migration_test.zig"
+  ],
+  "created_at": "2026-08-16T18:23:18Z",
+  "resolved_at": null,
+  "notes": "Discovered by TEST-DESIGNER (WF-02 Step 3, run WF02-spt02-04-20260816) while verifying the SPT-02/03/04 integration suite. Every test that provisions a FRESH per-test tenant schema via provisionTenantSchema()/provisionTestTenantSchema() fails inside runForSchema when applying migration 020_obs03_audit_entries.sql. Reproduction: apply the per-tenant migration chain to a throwaway schema (search_path = <tenant_schema>,public) — 020 aborts with ERROR: cannot change return type of existing function bpm_audit_resource_info(text,jsonb,jsonb). Blocks 6 of 16 SPT-02/03/04 test blocks (TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04) and the already-released SPT-01 provisioning tests.",
+  "root_cause": "migration 020 creates bpm_audit_resource_info(table_name TEXT, old_row JSONB, new_row JSONB, OUT resource_type TEXT, OUT resource_id UUID) via unqualified CREATE OR REPLACE FUNCTION. GBL-120/GBL-121 (ISS-103) changed the PUBLIC-schema copy to OUT resource_id TEXT. When 020 runs inside a FRESH tenant schema, its unqualified CREATE OR REPLACE resolves the same-signature function in public (found via search_path = <tenant_schema>,public) and attempts to REPLACE it with a UUID-typed version — PostgreSQL rejects this with 'cannot change return type of existing function'. migration 1139 (ISS-0116 fix) repairs EXISTING tenant schemas' copies but runs AFTER 020 in the numeric chain, so it cannot make FRESH provisioning work. Regression window: since GBL-121 landed (public copy became TEXT), i.e. pre-existing before run WF02-spt02-04-20260816.",
+  "candidate_resolution": "BACKEND-DEV: make migration 020 schema-aware when (re)creating bpm_audit_resource_info — DROP the function in the CURRENT schema before CREATE (EXECUTE format('DROP FUNCTION IF EXISTS %I.bpm_audit_resource_info(text,jsonb,jsonb)', current_schema())), mirroring the 1139/GBL-120 DROP-then-CREATE pattern, so a per-tenant run creates the UUID-typed copy in the tenant schema without touching/replacing public's TEXT copy. Then re-verify fresh provisioning (zig build test-integration-spt, SPT-01 provisioning).",
+  "files_to_change": [
+    "migrations/020_obs03_audit_entries.sql"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/812",
+  "prevention": [
+    "Per-schema migrations that CREATE OR REPLACE a shared-named function must schema-qualify the DROP (or use the DROP-then-CREATE pattern in the target schema) so an unqualified CREATE OR REPLACE never resolves a same-signature function in public and fails on an OUT-type change.",
+    "When a GBL-*/ISS-* migration changes a shared function's signature in public, the corresponding per-schema (numeric) migration that FIRST creates the function must be kept type-compatible with the public copy.",
+    "The SPT-01 provisioning suite is the canary for fresh tenant provisioning — run it whenever a migration touching shared functions lands."
+  ]
+}
