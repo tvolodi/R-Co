@@ -1,0 +1,72 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-03-unblock-backend-dev",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "03-unblock",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-spt02-04-20260816/step-03-unblock-backend-dev.json",
+  "created_at": "2026-08-16T18:26:15Z",
+  "started_at": "2026-08-16T18:26:33Z",
+  "completed_at": "2026-08-16T18:50:10Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-03-test-designer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0715.json",
+      "migrations/020_obs03_audit_entries.sql",
+      "migrations/1139_iss0116_audit_dlq_rename_tenant_functions.sql",
+      "src/db/provisioning.zig",
+      "tests/integration/spt02_03_04_schema_tenant_migration_test.zig"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "UNBLOCK-EVERYTHING within the current run. TEST-DESIGNER (Step 3) returned PARTIAL: 6 of 16 SPT-02/03/04 test blocks (TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04) and the released SPT-01 provisioning tests are blocked by a pre-existing production defect, filed as ISS-0715/GH-812 (BLOCKER). Root cause: migration 020 creates bpm_audit_resource_info(table_name TEXT, old_row JSONB, new_row JSONB, OUT resource_type TEXT, OUT resource_id UUID) via unqualified CREATE OR REPLACE; GBL-120/121 changed the PUBLIC copy to OUT resource_id TEXT; inside a fresh tenant schema the unqualified CREATE OR REPLACE resolves the public same-signature function and PostgreSQL rejects 'cannot change return type'. This blocks this run's Step 4 gate from going green, so it MUST be fixed here — not forwarded. Candidate resolution in ISS-0715: make migration 020 schema-aware (DROP the function in the current schema before CREATE, mirroring the 1139/GBL-120 DROP-then-CREATE pattern)."
+  },
+  "task": {
+    "description": "Fix ISS-0715/GH-812 (BLOCKER) in this run so the SPT-02/03/04 suite and released SPT-01 provisioning tests can pass. Per the candidate_resolution in docs/issues/ISS-0715.json: make migration 020_obs03_audit_entries.sql schema-aware when (re)creating bpm_audit_resource_info — DROP the function in the CURRENT schema before CREATE (EXECUTE format('DROP FUNCTION IF EXISTS %I.bpm_audit_resource_info(text,jsonb,jsonb)', current_schema())), mirroring the 1139/GBL-120 DROP-then-CREATE pattern, so a per-tenant run creates the UUID-typed copy in the tenant schema without touching/replacing public's TEXT copy. Then verify: (1) fresh per-tenant schema provisioning succeeds (zig build test-integration-spt), (2) SPT-01 provisioning tests pass, (3) the 6 previously-blocked SPT test blocks pass, (4) zig build exits 0. Apply the migration to the live bpm_test DB (zig build migrate) and confirm no regression to existing tenant schemas (public copy of bpm_audit_resource_info stays TEXT). Do NOT change the public function's signature. Run python tools/lint_handoffs.py and report its exit code.",
+    "acceptance_criteria": [
+      "migration 020 made schema-aware (DROP-then-CREATE in current schema) with public TEXT copy untouched",
+      "Fresh per-tenant schema provisioning succeeds (test-integration-spt green, incl. SPT-01 provisioning)",
+      "All 16 SPT-02/03/04 test blocks pass (the 6 previously-blocked now green)",
+      "zig build exits 0",
+      "lint_handoffs.py exit code reported"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed ISS-0715/GH-812 (BLOCKER): fresh per-tenant schema provisioning now succeeds. Verified the IMMEDIATE blocker is migration 094_entity_subsystem.sql (per-tenant re-run of public-qualified tenant_id indexes on GLOBAL_REGISTRY entity tables after GBL-123 removed public tenant_id -> 42703), NOT 020 as originally attributed; migration 020 is a latent re-provision defect. Fixes: (1) 020 made schema-aware (DO EXECUTE format DROP FUNCTION IF EXISTS %I.bpm_audit_resource_info(text,jsonb,jsonb) current_schema before CREATE, mirroring GBL-120/1139); (2) 094 tenant_id-dependent public indexes guarded behind column-exists check. Verified: test-integration-spt 16/16 PASS (all 6 previously blocked green), test-integration-spt01-iss68 3/3 PASS, zig build 0, zig build test 0, zig build migrate 0, lint_migration_schema 0 violations, lint_handoffs exit 0. No regression: public TEXT copy preserved, tenant_default unchanged.",
+    "artifacts_out": [
+      "migrations/020_obs03_audit_entries.sql",
+      "migrations/094_entity_subsystem.sql",
+      "docs/issues/ISS-0715.json",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-03-unblock-backend-dev-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0715/GH-812 original root cause (020 cannot change return type) was wrong for the fresh-provisioning path; verified immediate blocker is 094_entity_subsystem.sql tenant_id index on public GLOBAL_REGISTRY tables (42703). Both fixed; ISS-0715.json corrected. Recurrence of the ISS-0112/ISS-0630 public-qualified-work-in-all_schemas-migration defect class; lint-level prevention is a follow-up."
+      },
+      {
+        "severity": "MINOR",
+        "description": "zig build test shows stale failed-command lines for test-iss0173-orphan / test-differential binaries that pass standalone (cached-run artifact); migrations-only change cannot affect Zig unit tests."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR then TEST-RUNNER (WF-02 Step 3b/5): SPT-02/03/04 suite 16/16 green and SPT-01 provisioning 3/3 green — Step 4 gate blocker cleared."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

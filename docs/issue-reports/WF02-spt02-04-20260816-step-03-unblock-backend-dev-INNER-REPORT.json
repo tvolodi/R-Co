@@ -1,0 +1,91 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-03-unblock-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "03-unblock",
+  "created_at": "2026-08-16T18:49:26Z",
+  "summary": "BACKEND-DEV (WF-02 Step 3 UNBLOCK-EVERYTHING) fixed ISS-0715 / GitHub #812 (BLOCKER): fresh per-tenant schema provisioning now succeeds. Verified root cause with a faithful per-tenant migration-chain reproducer (scratch/repro_iss0715.py) and live-bootstrap evidence (a partially-provisioned fresh schema's ledger stops at 093): the IMMEDIATE blocker is migration 094_entity_subsystem.sql, whose all_schemas per-tenant re-run tries CREATE INDEX ... ON public.entity_definitions (tenant_id, ...) / entity_record_latest (tenant_id, ...) after GBL-123 removed tenant_id from those public GLOBAL_REGISTRY tables (sqlstate 42703, ComputeIndexAttrs). Migration 020 applies cleanly on a fresh schema (it is in the fresh schema's ledger); its documented 'cannot change return type' failure is a LATENT re-provision defect (re-running 020 after 1139 installed the TEXT copy in the current schema). Fixes applied: (1) migration 020 made schema-aware — DO $$ EXECUTE format('DROP FUNCTION IF EXISTS %I.bpm_audit_resource_info(text,jsonb,jsonb)', current_schema()) $$ before the unqualified CREATE OR REPLACE, mirroring GBL-120/1139 DROP-then-CREATE; (2) migration 094's four tenant_id-dependent public indexes guarded behind an information_schema column-exists check so they are created in the public pass and become no-ops per-tenant. Verification: zig build exit 0; zig build test exit 0; zig build migrate exit 0 (No new migrations to apply, applies cleanly); zig build test-integration-spt 16/16 PASS (incl. the 6 previously blocked: TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04); test-integration-spt01-iss68 3/3 PASS (SPT-01 provisioning); lint_migration_schema 0 violations; lint_handoffs exit 0. No regression: public.bpm_audit_resource_info still TEXT (resource_id text), tenant_default unchanged (resource_id uuid), public entity tables still lack tenant_id. ISS-0715.json root cause corrected to the verified reality.",
+  "files_created": [
+    "scratch/repro_iss0715.py",
+    "docs/issue-reports/WF02-spt02-04-20260816-step-03-unblock-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "migrations/020_obs03_audit_entries.sql",
+    "migrations/094_entity_subsystem.sql",
+    "docs/issues/ISS-0715.json",
+    "handoffs/WF02-spt02-04-20260816/step-03-unblock-backend-dev.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "EXIT=0 (BENCH_MIGRATE_URL_INFO stderr line is the known PowerShell native-stderr false positive). Includes migration lints (lint_test_table_refs OK, lint_test_wiring PASS)."
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "EXIT=0. Two unit-test binaries (test-iss0173-orphan, test-differential/ISS-602) showed stale 'failed command:' build-runner lines but pass standalone (All 4 / All 3 tests passed, exit 0) — cached-step artifact, not a real failure; migrations-only change cannot affect Zig unit tests."
+    },
+    {
+      "name": "zig build migrate (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)",
+      "status": "pass",
+      "detail": "EXIT=0 — 'No new migrations to apply'; 020/094 already recorded on public/tenant_default (not re-run), fresh-tenant provisioning re-applies them via runForSchema (validated by the suite)."
+    },
+    {
+      "name": "zig build test-integration-spt (BPM_TEST_DB_URL=...:5434/bpm_test)",
+      "status": "pass",
+      "detail": "EXIT=0. Direct binary run: 16/16 PASS — 'All 16 tests passed.' All 6 previously-blocked blocks now green: TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04."
+    },
+    {
+      "name": "zig build test-integration-spt01-iss68 (SPT-01 provisioning)",
+      "status": "pass",
+      "detail": "EXIT=0. Direct binary run: 3/3 PASS — 'All 3 tests passed.' (TC-SPT-01-ISS68-01/02/03)."
+    },
+    {
+      "name": "python tools/lint_migration_schema.py",
+      "status": "pass",
+      "detail": "EXIT=0 — 150 file(s) scanned, 0 violations (only pre-existing M002 MINOR permitted-platform-table notes)."
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "EXIT=0 — 3017 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010 registry-index absence), 332 ACKNOWLEDGED."
+    },
+    {
+      "name": "error-set validation (zig build 2>&1 | grep 'error set')",
+      "status": "pass",
+      "detail": "No output — no uncovered error sets."
+    },
+    {
+      "name": "scratch/repro_iss0715.py (per-tenant migration-chain reproducer, 98 files)",
+      "status": "pass",
+      "detail": "Before fix: FAILS at #63 094_entity_subsystem.sql (42703 column tenant_id does not exist, ComputeIndexAttrs). After fix: ALL 98 per-tenant migrations apply cleanly; probe schema gets its own bpm_audit_resource_info while public keeps its TEXT copy."
+    },
+    {
+      "name": "Regression check — public copy / existing tenant schemas",
+      "status": "pass",
+      "detail": "public.bpm_audit_resource_info OUT = text,text (TEXT preserved). tenant_default OUT = text,uuid (unchanged, pre-existing shape). public entity tables have no tenant_id (GBL-123 state intact)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "ISS-0715 / GitHub #812 root-cause attribution was WRONG for the fresh-provisioning path: TEST-DESIGNER attributed the fresh-schema failure to migration 020 'cannot change return type'. BACKEND-DEV verified the IMMEDIATE blocker is migration 094_entity_subsystem.sql (per-tenant re-run of public-qualified tenant_id indexes on GLOBAL_REGISTRY tables after GBL-123 removed public tenant_id; 42703). 020 is a real but LATENT re-provision defect (re-running 020 in a schema that already carries the TEXT copy from 1139). Both were fixed in this run; ISS-0715.json corrected."
+    },
+    {
+      "severity": "MINOR",
+      "description": "094's all_schemas/public-qualified-work defect class is a recurrence of the pattern documented in ISS-0112/ISS-0630 (entity_definitions/entity_record_latest GLOBAL_REGISTRY vs per-tenant re-run). This fix guards the indexes; the underlying lint-level prevention (flag schema-qualified CREATE INDEX inside an all_schemas migration whose table's columns changed in a later public-only migration) is a candidate follow-up, not implemented here."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Two unit-test binaries (test-iss0173-orphan, test-differential) intermittently print 'failed command:' lines under zig build test while passing standalone and with the overall step exiting 0 — believed to be a stale cached-run artifact; not caused by this change (migrations-only diff)."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-DESIGN-VALIDATOR / TEST-RUNNER (WF-02 Step 3b/5): the SPT-02/03/04 suite is now fully green (16/16) and SPT-01 provisioning is green (3/3) — the Step 4 gate blocker is cleared.",
+    "At the run's Step Final, close GitHub #812 / ISS-0715 referencing this fix (020 schema-aware DROP-then-CREATE + 094 tenant_id-index guard).",
+    "Consider the lint-level follow-up: flag public-qualified CREATE INDEX inside an all_schemas migration whose referenced public table lost a column in a later public-only migration (ISS-0112/ISS-0630 recurrence prevention)."
+  ],
+  "blockers": []
+}

@@ -51,14 +51,30 @@ BEGIN
 EXCEPTION WHEN duplicate_table THEN NULL;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_entity_defs_tenant_name
-    ON public.entity_definitions (tenant_id, name);
-
-CREATE INDEX IF NOT EXISTS idx_entity_defs_status
-    ON public.entity_definitions (tenant_id, status);
-
-CREATE INDEX IF NOT EXISTS idx_entity_defs_content_hash
-    ON public.entity_definitions (content_hash);
+-- ISS-0715 / GH-812: the tenant_id-dependent indexes must not be created in
+-- the per-tenant pass. entity_definitions is GLOBAL_REGISTRY (public canonical,
+-- ISS-0185): GBL-123 removed public.entity_definitions.tenant_id, so a
+-- per-tenant re-run of this all_schemas file would abort with 42703 on the
+-- unguarded CREATE INDEX below. Guard on the column existing: in the public
+-- pass the indexes are created (tenant_id still exists at order 94); in a
+-- per-tenant pass they become no-ops. idx_entity_defs_content_hash has no
+-- tenant_id dependency and is always created.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'entity_definitions'
+          AND column_name = 'tenant_id'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_entity_defs_tenant_name
+            ON public.entity_definitions (tenant_id, name);
+        CREATE INDEX IF NOT EXISTS idx_entity_defs_status
+            ON public.entity_definitions (tenant_id, status);
+    END IF;
+    CREATE INDEX IF NOT EXISTS idx_entity_defs_content_hash
+        ON public.entity_definitions (content_hash);
+END;
+$$;
 
 -- ── Entity Type Instances ────────────────────────────────────────────────────
 -- Maps entity type names to synthetic instance IDs for event store integration.
@@ -96,11 +112,24 @@ BEGIN
 EXCEPTION WHEN duplicate_table THEN NULL;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_erl_tenant_type
-    ON public.entity_record_latest (tenant_id, entity_type);
-
-CREATE INDEX IF NOT EXISTS idx_erl_tenant_type_updated
-    ON public.entity_record_latest (tenant_id, entity_type, updated_at DESC);
+-- ISS-0715 / GH-812: same guard as the entity_definitions indexes above —
+-- entity_record_latest is GLOBAL_REGISTRY (public canonical) and lost its
+-- public tenant_id column via GBL-123, so these indexes must be created in the
+-- public pass only and become no-ops in a per-tenant pass.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'entity_record_latest'
+          AND column_name = 'tenant_id'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_erl_tenant_type
+            ON public.entity_record_latest (tenant_id, entity_type);
+        CREATE INDEX IF NOT EXISTS idx_erl_tenant_type_updated
+            ON public.entity_record_latest (tenant_id, entity_type, updated_at DESC);
+    END IF;
+END;
+$$;
 
 -- ── Entity Event Type Seeds ──────────────────────────────────────────────────
 -- Register ENTITY_RECORD_CREATED, ENTITY_RECORD_UPDATED, ENTITY_RECORD_DELETED

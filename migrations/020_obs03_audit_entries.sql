@@ -154,6 +154,25 @@ BEGIN
 END;
 $$;
 
+-- ISS-0715 / GH-812: schema-aware recreation. This migration is all_schemas
+-- (it also runs in every per-tenant pass). bpm_audit_resource_info's
+-- resource_id OUT column is UUID here but TEXT in `public` (GBL-120/121
+-- widened public's copy; 1139 converts tenant copies to TEXT). If the CURRENT
+-- schema already carries a copy with a different result type (e.g. a
+-- re-provision/ledger-reconcile re-run of 020 after 1139 installed the TEXT
+-- shape, or any schema whose copy diverged), the unqualified CREATE OR REPLACE
+-- below would fail with "cannot change return type of existing function".
+-- DROP the function in the CURRENT schema first (mirroring GBL-120 / 1139's
+-- DROP-then-CREATE pattern) so this pass re-creates the UUID-typed copy in
+-- the current schema WITHOUT touching/replacing public's TEXT-typed copy.
+-- The public pass is unaffected: public's copy is re-typed to TEXT later by
+-- GBL-120/121 (order 1120/1121).
+DO $$
+BEGIN
+    EXECUTE format('DROP FUNCTION IF EXISTS %I.bpm_audit_resource_info(text,jsonb,jsonb)', current_schema());
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION bpm_audit_resource_info(
     table_name TEXT,
     old_row JSONB,
