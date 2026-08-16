@@ -1,0 +1,77 @@
+{
+  "handoff_id": "ADHOC-close-released-req-issues-20260816-001-doc-updater",
+  "run_id": "ADHOC-close-released-req-issues-20260816",
+  "workflow_id": "ADHOC",
+  "step": "001",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/ADHOC-close-released-req-issues-20260816/step-001-doc-updater.json",
+  "created_at": "2026-08-16T22:03:52Z",
+  "started_at": "2026-08-16T22:04:13Z",
+  "completed_at": "2026-08-16T22:08:09Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "bookkeeping",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04",
+      "PLC-01",
+      "PLC-02",
+      "PLC-03",
+      "PLC-04",
+      "PRM-02",
+      "PRM-03",
+      "PRM-04",
+      "PRM-05",
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/status/requirement_status.yaml",
+      "docs/requirements.yaml",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md"
+    ],
+    "branch_name": null,
+    "orchestrator_notes": "Step Final bookkeeping gap: 14 requirement-tracking GitHub issues (label 'requirement') remain OPEN although their requirements are RELEASED in docs/status/requirement_status.yaml. Verified by ORCH via gh issue list cross-referenced against requirement_status.yaml. SPT-02/03/04 were RELEASED by WF02-spt02-04-20260816 (PR #815, commit 09366c00). This ADHOC is pure GitHub-side closure (no code/migrations/tracked status change — requirement_status.yaml already says RELEASED). Follow the ADHOC-gh799-close-20260816 convention: commit any bookkeeping directly to main, no feature branch. Note: a parallel run (origin/feature/WF02-batch-7-20260816) is in progress — do not touch that branch or its files."
+  },
+  "task": {
+    "description": "Close the 14 requirement-tracking GitHub issues whose requirements are RELEASED, with a comment citing the release evidence. Issues to close: #262 (SPT-02), #263 (SPT-03), #264 (SPT-04), #231 (PLC-01), #232 (PLC-02), #233 (PLC-03), #234 (PLC-04), #236 (PRM-02), #308 (PRM-03), #237 (PRM-04), #238 (PRM-05), #268 (VLD-01), #269 (VLD-02), #270 (VLD-03). For each: verify the requirement is RELEASED in docs/status/requirement_status.yaml (gh issue view <n> first to confirm it is still OPEN and not already closed), then gh issue close <n> --comment referencing the requirement's release_run/release_decision (look them up in requirement_status.yaml; e.g. SPT-02/03/04 → WF02-spt02-04-20260816 / PR #815 / commit 09366c00). Update docs/issues/issue_index.json if it tracks these issue numbers. Commit any bookkeeping directly to main and push (per ADHOC-gh799-close convention). Run python tools/lint_handoffs.py and report its exit code.",
+    "acceptance_criteria": [
+      "All 14 issues closed with release-evidence comments (gh issue view confirms CLOSED state)",
+      "SPT-02/03/04 closure cites WF02-spt02-04-20260816 / PR #815 / 09366c00",
+      "No issue closed that was already closed by someone else (race-safe: verify OPEN before closing)",
+      "issue_index.json updated if it tracks these numbers",
+      "Bookkeeping committed directly to main and pushed (clean main)",
+      "lint_handoffs.py exit code reported",
+      "result.status == PASS"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Closed 14 requirement-tracking issues (label 'requirement') whose requirements are RELEASED: SPT-02/03/04 (#262/#263/#264, WF02-spt02-04-20260816 / PR #815 / 09366c00), PLC-01..04 (#231/#232/#233/#234, WF02-plc-batch-a-20260815 / PR #787 / 51170eed(590a6624)), PRM-02/03/04/05 (#236/#308/#237/#238, WF02-prm02-05-20260816 / PR #795 / 2e9d3c99), VLD-01/02/03 (#268/#269/#270, WF03-vld-impl-bugs-20260816 / PR #808 / 91a48040). Each verified OPEN immediately before closing (race-safe; no races found) and confirmed CLOSED (stateReason=completed) after. docs/issues/issue_index.json does not track these numbers (no update needed). Inner report registered. Bookkeeping committed to main and pushed; lint_handoffs.py exit 0.",
+    "artifacts_out": [
+      "docs/issue-reports/ADHOC-close-released-req-issues-20260816-step-001-doc-updater-INNER-REPORT.json",
+      "handoffs/ADHOC-close-released-req-issues-20260816/step-001-doc-updater.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "docs/issues/issue_index.json does not track these 14 GH requirement-issue numbers; no index update was required."
+      }
+    ],
+    "next_action": "Workflow complete for this stage / cycle — repo on clean main"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

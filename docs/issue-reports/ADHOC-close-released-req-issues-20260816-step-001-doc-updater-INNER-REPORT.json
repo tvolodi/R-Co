@@ -1,0 +1,43 @@
+{
+  "report_id": "ADHOC-close-released-req-issues-20260816-step-001-doc-updater",
+  "agent_id": "DOC-UPDATER",
+  "run_id": "ADHOC-close-released-req-issues-20260816",
+  "step": "001",
+  "created_at": "2026-08-16T22:08:09Z",
+  "summary": "Step Final bookkeeping: closed 14 requirement-tracking GitHub issues (label 'requirement') whose requirements are RELEASED in docs/status/requirement_status.yaml. Each issue was verified OPEN (race-safe) immediately before closing, then closed with a comment citing its release_run / PR / merge commit / released_at. SPT-02/03/04 (#262/#263/#264) cited WF02-spt02-04-20260816 (PR #815, commit 09366c00); PLC-01..04 (#231/#232/#233/#234) cited WF02-plc-batch-a-20260815 (PR #787, commit 51170eed/590a6624, release-decision-WF02-plc-batch-a-20260815.yaml); PRM-02/03/04/05 (#236/#308/#237/#238) cited WF02-prm02-05-20260816 (PR #795, commit 2e9d3c99, release-decision-WF02-prm02-05-20260816.yaml); VLD-01/02/03 (#268/#269/#270) cited WF03-vld-impl-bugs-20260816 (PR #808, commit 91a48040, release-decision-WF03-vld-impl-bugs-20260816.yaml). All 14 confirmed CLOSED (stateReason=completed) after closure. No already-closed races encountered. docs/issues/issue_index.json was checked and does not track these GH issue numbers (no update required). Bookkeeping committed directly to main and pushed (ADHOC convention, no feature branch). lint_handoffs.py exit code reported in the handoff result.",
+  "files_created": [
+    "docs/issue-reports/ADHOC-close-released-req-issues-20260816-step-001-doc-updater-INNER-REPORT.json",
+    "handoffs/ADHOC-close-released-req-issues-20260816/registry.json"
+  ],
+  "files_modified": [
+    "handoffs/ADHOC-close-released-req-issues-20260816/step-001-doc-updater.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "gh issue view (pre-close state check)",
+      "status": "pass",
+      "detail": "All 14 issues confirmed OPEN with label 'requirement' before closing."
+    },
+    {
+      "name": "gh issue view (post-close verification)",
+      "status": "pass",
+      "detail": "All 14 issues confirmed CLOSED with stateReason=completed."
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "Exit code 0 (hard gate) after handoff completion."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "docs/issues/issue_index.json does not track these 14 GH requirement-issue numbers (166 issue entries, none reference #262/#263/#264/#231/#232/#233/#234/#236/#308/#237/#238/#268/#269/#270). No index update was required by the task."
+    }
+  ],
+  "next_steps": [
+    "None — this ADHOC run is complete. Repo returned to clean main after push."
+  ],
+  "blockers": []
+}
