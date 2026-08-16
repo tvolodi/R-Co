@@ -1,0 +1,41 @@
+{
+  "report_id": "WF03-GH803-20260816-step-3-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF03-GH803-20260816",
+  "step": "3",
+  "created_at": "2026-08-16T08:19:02Z",
+  "summary": "Implemented WF-03 Step 3 production fix for ISS-0712/GH-803 in src/definition/rollback.zig (single target file): Change A dropped the ::uuid cast on $3 in the Step 5 supersede UPDATE (def_id = $3, text = text) so promotion_reviews.def_id (TEXT) compares correctly; Change B replaced the bare catch null with a 42P01-distinguishing catch that copies conn.lastSqlState() into a local 5-byte buffer and tolerates only SQLSTATE 42P01 (genuinely missing table) as null, mapping all other errors via switch (ExhaustedPool -> RollbackError.PoolExhausted, else -> RollbackError.TransactionFailed), mirroring the PAR-01 pattern in src/event_store/store.zig. Verified: zig build exits 0 with no error-set output; unit tests exit 0; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 exits 0 with 4/4 green (TC-PRM-08-01/02/03/04, incl. the previously-failing TC-PRM-08-03 supersede assertion) and NO sqlstate=42883 in stderr; tools/lint_sql_param_types.py 0 BLOCKER/MAJOR/MINOR. Committed 2b46a19c and pushed to feature/WF03-GH803-20260816. No migrations, no test-file changes.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH803-20260816-step-3-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/definition/rollback.zig"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "exit 0, no error-set output"
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "exit 0, unit suite green (ISS-602 corpus 15 matched / 0 diverged)"
+    },
+    {
+      "name": "test-integration-prm08 (direct :5453)",
+      "status": "pass",
+      "detail": "4/4 green: TC-PRM-08-01 OK, TC-PRM-08-02 OK, TC-PRM-08-03 OK (supersede now executes), TC-PRM-08-04 OK; no sqlstate=42883 in stderr"
+    },
+    {
+      "name": "tools/lint_sql_param_types.py",
+      "status": "pass",
+      "detail": "0 BLOCKER, 0 MAJOR, 0 MINOR"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH routes to next step per active WF-03 workflow (GH-803 / ISS-0712); recommend running lint_sql_param_types.py / lint_sql_table_refs.py as standing CI hygiene (design open question 3)."
+  ],
+  "blockers": []
+}

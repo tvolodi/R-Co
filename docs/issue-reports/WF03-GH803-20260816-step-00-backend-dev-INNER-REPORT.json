@@ -1,0 +1,22 @@
+{
+  "report_id": "WF03-GH803-20260816-step-00-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF03-GH803-20260816",
+  "step": "00",
+  "created_at": "2026-08-16T07:48:58Z",
+  "summary": "fn:git-setup for WF03-GH803-20260816: pulled origin/main (ff-only, exit 0), created and pushed feature/WF03-GH803-20260816 (base 531c301991e30022d58aff8046c7461146faaf7c == origin/main), pre-existing uncommitted handoffs/orchestrator.log + handoffs/registry.json audit-trail changes carried onto the branch unmodified.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH803-20260816-step-00-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH803-20260816/step-00-backend-dev.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH routes to next step per active WF-03 workflow (GH-803 / ISS-0712 backend fix)."
+  ],
+  "blockers": []
+}

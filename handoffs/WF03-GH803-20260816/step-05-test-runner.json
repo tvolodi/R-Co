@@ -1,0 +1,66 @@
+{
+  "handoff_id": "wf03-gh803-20260816-05-test-runner",
+  "run_id": "WF03-GH803-20260816",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH803-20260816/step-05-test-runner.json",
+  "created_at": "2026-08-16T08:21:48Z",
+  "started_at": "2026-08-16T08:22:08Z",
+  "completed_at": "2026-08-16T08:29:03Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 5 -- independent verification",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
+    "iss_id": "ISS-0712",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh803-20260816-00-backend-dev",
+      "wf03-gh803-20260816-005-issue-fixer",
+      "wf03-gh803-20260816-01-issue-fixer",
+      "wf03-gh803-20260816-02-code-designer",
+      "wf03-gh803-20260816-2b-code-design-validator",
+      "wf03-gh803-20260816-03-backend-dev"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH803-20260816/step-03-backend-dev.json",
+      "src/design/iss0712-gh803-rollback-supersede-fix.md",
+      "src/definition/rollback.zig"
+    ],
+    "branch_name": "feature/WF03-GH803-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 5 for run WF03-GH803-20260816: independently verify the PRODUCTION supersede fix (ISS-0712 / GH-803) on branch feature/WF03-GH803-20260816. The fix (Step 3) changed src/definition/rollback.zig: (a) def_id = $3 (no ::uuid cast, text = text); (b) catch now distinguishes SQLSTATE 42P01 (null) from other errors (RollbackError mapping). Verify: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (direct, NOT the stale-5433 wrapper) exits 0 with 4/4 passing (TC-PRM-08-03 supersede now works) and NO sqlstate=42883 in stderr; (b) python tools/lint_handoffs.py exits 0; (c) the change is confined to src/definition/rollback.zig (git diff --name-only against the Step-00 base 531c3019 \u2014 no migrations, no test files); (d) zig build test-env-verify exit 0; (e) zig build test (unit suite) exit 0. Produce a structured verification report in tests/reports/ as .yaml. Return PASS only if all checks pass.",
+    "acceptance_criteria": [
+      "test-integration-prm08 exits 0 with 4/4 passing (TC-PRM-08-03 supersede works) and no sqlstate=42883 in stderr",
+      "python tools/lint_handoffs.py exits 0",
+      "Change confined to src/definition/rollback.zig (no migrations, no test files)",
+      "zig build test-env-verify exit 0",
+      "zig build test (unit suite) exit 0",
+      "Verification report written to tests/reports/ as .yaml"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independently verified the PRODUCTION supersede fix for ISS-0712/GH-803 on branch feature/WF03-GH803-20260816. All checks PASS: test-integration-prm08 (direct, :5453) exits 0 with 4/4 passing (TC-PRM-08-01..04, TC-PRM-08-03 supersede now works) and no sqlstate=42883 in stderr; python tools/lint_handoffs.py exit 0; production change confined to src/definition/rollback.zig (git diff 531c3019..HEAD: no migrations, no test files); zig build test-env-verify exit 0 (HEALTHY, 10 checks); zig build test exit 0 (unit suite). Verification report written to tests/reports/report-20260816-WF03-GH803-20260816.yaml.",
+    "artifacts_out": [
+      "tests/reports/report-20260816-WF03-GH803-20260816.yaml",
+      "docs/issue-reports/WF03-GH803-20260816-step-5-test-runner-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing H010: 4 of 2964 handoffs absent from handoffs/registry.json. None are in run WF03-GH803-20260816 (this step-05 is registered). Not introduced by this run."
+      }
+    ],
+    "next_action": "Route to next WF-03 step (Step Final / merge) for GH-803"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

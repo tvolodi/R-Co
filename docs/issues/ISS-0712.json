@@ -4,17 +4,17 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
   "github_issue_confirmed": true,
   "title": "src/definition/rollback.zig supersede UPDATE compares def_id = $3::uuid but promotion_reviews.def_id is TEXT -> sqlstate 42883 (operator does not exist); swallowed by catch null so superseded_review_id is always null (PRM-08 AC4 never works)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
-  "workflow_id": "WF03-GH802-20260816",
-  "run_id": "WF03-GH802-20260816",
-  "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+  "workflow_id": "WF03-GH803-20260816",
+  "run_id": "WF03-GH803-20260816",
+  "handoff_id": "wf03-gh803-20260816-005-issue-fixer",
   "classification": "IMPL_BUG/production",
   "incidental_of": {
     "run_id": "WF03-GH802-20260816",
     "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
-    "finding_id": "step-1 diagnosis — prm-08 reproduction trace",
-    "trigger": "WF03-GH802 step-1 diagnosis (ISSUE-FIXER) reproduced the prm-08 target against the current schema; the trace showed [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status = 'superseded' ... — a production defect distinct from the ISS-0711/GH-802 fixture 23502",
+    "finding_id": "step-1 diagnosis \u2014 prm-08 reproduction trace",
+    "trigger": "WF03-GH802 step-1 diagnosis (ISSUE-FIXER) reproduced the prm-08 target against the current schema; the trace showed [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status = 'superseded' ... \u2014 a production defect distinct from the ISS-0711/GH-802 fixture 23502",
     "context": "PRODUCTION defect in src/definition/rollback.zig Step 5 supersede. Distinct from and in addition to ISS-0711/GH-802 (test fixture 23502). Filed per No-Issue-Left-Local-Only. Blocks the GH-802 acceptance criterion 'zig build test-integration-prm08 passes' because TC-PRM-08-03's superseded_review_id path can never succeed while this defect is present."
   },
   "created_at": "2026-08-16T06:31:51Z",
@@ -34,11 +34,11 @@
   "discovered_at": "2026-08-16T06:28:00Z",
   "discovered_by": "ISSUE-FIXER (WF03-GH802-20260816 step-1 diagnosis, empirical reproduction)",
   "root_cause": "Type mismatch between the supersede predicate and the schema: rollback.zig Step 5 casts the bound def id as ::uuid and compares it to promotion_reviews.def_id, which migration 096 declares as TEXT. No implicit text = uuid operator exists, so the statement raises 42883 at execution time. The `catch null` wrapper (added to tolerate the table not existing when PRM-04 is a later batch) conflates 'table missing' with 'query failed' and swallows the real error, masking the defect in every passing test and in production.",
-  "investigation_notes": "Confirmed 2026-08-16: (1) Empirical reproduction — BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 against the current (unfixed) tree failed TC-PRM-08-03 with the fixture INSERT sqlstate 23502 (ISS-0711/GH-802) and separately recorded [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status = 'superseded', superseded_by = $1::uuid WHERE tenant_id = $2::uuid AND def_id = $3:... (the Step 5 supersede from rollback.zig). (2) Static trace — src/definition/rollback.zig lines 286-298: WHERE tenant_id = $2::uuid AND def_id = $3::uuid AND status IN ('applied','approved') RETURNING id::text, params [event_id, tenant_id, current_active_id]; current_active_id is a uuid string bound as text. (3) migrations/096_promotion_reviews.sql: def_id text NOT NULL confirmed (also requested_by uuid NOT NULL, def_type text NOT NULL, serialised_plan text NOT NULL). (4) fn:search-issues over docs/issues/ + gh issue list --search 'rollback supersede def_id 42883' / 'superseded_review_id' / 'prm-08' --state all: no existing ISS or GitHub issue covers this production supersede defect (ISS-0702/GH-780 covers zig 0.16 compile errors only; ISS-0711/GH-802 covers the test-fixture 23502 only). New issue.",
+  "investigation_notes": "Confirmed 2026-08-16: (1) Empirical reproduction \u2014 BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 against the current (unfixed) tree failed TC-PRM-08-03 with the fixture INSERT sqlstate 23502 (ISS-0711/GH-802) and separately recorded [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status = 'superseded', superseded_by = $1::uuid WHERE tenant_id = $2::uuid AND def_id = $3:... (the Step 5 supersede from rollback.zig). (2) Static trace \u2014 src/definition/rollback.zig lines 286-298: WHERE tenant_id = $2::uuid AND def_id = $3::uuid AND status IN ('applied','approved') RETURNING id::text, params [event_id, tenant_id, current_active_id]; current_active_id is a uuid string bound as text. (3) migrations/096_promotion_reviews.sql: def_id text NOT NULL confirmed (also requested_by uuid NOT NULL, def_type text NOT NULL, serialised_plan text NOT NULL). (4) fn:search-issues over docs/issues/ + gh issue list --search 'rollback supersede def_id 42883' / 'superseded_review_id' / 'prm-08' --state all: no existing ISS or GitHub issue covers this production supersede defect (ISS-0702/GH-780 covers zig 0.16 compile errors only; ISS-0711/GH-802 covers the test-fixture 23502 only). New issue.",
   "reproduction": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 with the promotion_reviews table present (clean_test_db applies migration 096 to tenant_default). Any TC-PRM-08-01/02/03 rollback that reaches Step 5 executes the supersede UPDATE; the statement raises sqlstate 42883 (swallowed by catch null), and superseded_review_id is null. With -Dlog-pg-errors=true the raw server error 'operator does not exist: text = uuid' is visible.",
   "fix_file": "src/definition/rollback.zig",
   "fix_line": "286-298 (Step 5 supersede UPDATE)",
-  "fix_diff": "Drop the ::uuid cast on the bound def id so the predicate matches the TEXT column: change `AND def_id = $3::uuid` to `AND def_id = $3` (current_active_id is already a uuid string bound as text; with no cast PostgreSQL infers text = text). Do NOT wrap real query errors in the same catch-null as a missing table — consider distinguishing 'relation does not exist' (SQLSTATE 42P01) from other errors so genuine failures surface instead of being silently treated as 'table may not exist'.",
+  "fix_diff": "Drop the ::uuid cast on the bound def id so the predicate matches the TEXT column: change `AND def_id = $3::uuid` to `AND def_id = $3` (current_active_id is already a uuid string bound as text; with no cast PostgreSQL infers text = text). Do NOT wrap real query errors in the same catch-null as a missing table \u2014 consider distinguishing 'relation does not exist' (SQLSTATE 42P01) from other errors so genuine failures surface instead of being silently treated as 'table may not exist'.",
   "acceptance_criteria": [
     "src/definition/rollback.zig Step 5 supersede UPDATE no longer raises sqlstate 42883; it matches promotion_reviews.def_id (TEXT) correctly",
     "superseded_review_id is populated when a matching 'applied'/'approved' promotion_reviews row exists for (tenant_id, current_active def_id)",
@@ -46,11 +46,53 @@
     "The catch-null guard distinguishes a genuinely missing table (SQLSTATE 42P01) from other query errors"
   ],
   "notes": "Discovered during WF03-GH802-20260816 step-1 diagnosis while reproducing ISS-0711/GH-802. This is PRODUCTION code and cannot be folded into GH-802 (whose acceptance criteria require 'no production code changed'). It is a hard blocker for the GH-802 acceptance criterion 'zig build test-integration-prm08 passes' because TC-PRM-08-03's superseded_review_id assertion can never pass while it is present. Recommend ORCH sequence this fix before or alongside GH-802 Step 3.",
+  "handoff_history": [
+    {
+      "step": "step-1-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T06:33:35Z",
+      "summary": "Filed this issue during WF03-GH802-20260816 Step 1 diagnosis (ISSUE-FIXER) per No-Issue-Left-Local-Only: empirical reproduction of the prm-08 target against the current schema recorded [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status = 'superseded' ... \u2014 a PRODUCTION defect distinct from the ISS-0711/GH-802 fixture 23502. Registered as ISS-0712 + GitHub issue #803 (labels bug, claimed-by-r-co-2-loop). No fix implemented."
+    },
+    {
+      "step": "step-0.5-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH803-20260816",
+      "handoff_id": "wf03-gh803-20260816-005-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T07:52:13Z",
+      "summary": "WF-03 Step 0.5 for GH-803: verified ISS-0712 is the correct, non-colliding local record for GitHub issue #803 (title/severity/status/labels match; GH-803 OPEN with labels bug, claimed-by-r-co-2-loop; only one index entry references #803). No new ISS number and no new GitHub issue (GH-803 already exists and is filed). Updated workflow_id/run_id/handoff_id to WF03-GH803-20260816 (active fix run) and recorded this run in handoff_history. issue_index.json confirmed consistent (ISS-0712 present once; next_issue_id 714 = correct). Fix implementation deferred to Step 3 per WF-03."
+    },
+    {
+      "step": "step-1-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH803-20260816",
+      "handoff_id": "wf03-gh803-20260816-01-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T07:57:26Z",
+      "summary": "WF-03 Step 1 (diagnosis-as-design): CONFIRMED the 42883 supersede diagnosis against the ACTUAL src/definition/rollback.zig Step 5 (def_id = $3::uuid vs TEXT promotion_reviews.def_id, swallowed by bare `catch null`) and migration 096. Defined the exact Step 3 fix spec: drop ::uuid on $3 (text = text); replace the bare `catch null` with a SQLSTATE-42P01 distinction (copy conn.lastSqlState(); 42P01 -> null, else map to RollbackError) mirroring src/event_store/store.zig PAR-01. `zig build check` exit 0 (runtime-only). Issue remains OPEN pending Step 3 fix."
+    },
+    {
+      "step": "step-07-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH803-20260816",
+      "handoff_id": "wf03-gh803-20260816-07-doc-updater",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T08:33:19Z",
+      "summary": "WF-03 Step 7 for GH-803: CHANGELOG.md updated under [Unreleased] 2026-08-16 with the production rollback supersede fix entry (Change A def_id = $3 text=text + Change B 42P01-distinguishing catch). ISS-0712 marked RESOLVED with resolved_at / resolution / prevention; docs/issues/issue_index.json updated (ISS-0712 RESOLVED with resolved_at/resolved_by). GitHub issue #803 intentionally NOT closed by this step — left open for Step Final (release.py --close-github-issue) per the loop-mode instruction."
+    }
+  ],
   "prevention": {
     "actions": [
       "SQL predicates must be type-checked against the actual column types in the applied migrations; casting a bound parameter to a type that differs from the column type (here ::uuid vs TEXT def_id) is a compile-time-invisible runtime error that only surfaces at execution.",
-      "Do not use a broad `catch null` to tolerate a missing table — check the specific SQLSTATE (42P01 relation does not exist) so a missing table is skipped but any other query error propagates.",
-      "The lint_sql_param_types.py / lint_sql_table_refs.py linters already catch C42883 patterns elsewhere (see ISS-0124, ISS-0637/0638, ISS-0632); extend or run them over src/definition/rollback.zig so this class is caught statically next time."
+      "Do not use a broad `catch null` to tolerate a missing table \u2014 check the specific SQLSTATE (42P01 relation does not exist) so a missing table is skipped but any other query error propagates.",
+      "The lint_sql_param_types.py / lint_sql_table_refs.py linters already catch C42883 patterns elsewhere (see ISS-0124, ISS-0637/0638, ISS-0632); extend or run them over src/definition/rollback.zig so this class is caught statically next time.",
+      "When a query binds a value into a column, the parameter type must match the column type — TEXT columns must not be compared with ::uuid-cast parameters; a bare `catch null` must never swallow real query errors — distinguish SQLSTATE 42P01 from other failures."
     ]
-  }
+  },
+  "resolved_at": "2026-08-16T08:33:19Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH803-20260816 step-07)",
+  "resolution": "RESOLVED via run WF03-GH803-20260816 (branch feature/WF03-GH803-20260816). The production supersede defect in src/definition/rollback.zig Step 5 was fixed (production change, per src/design/iss0712-gh803-rollback-supersede-fix.md). Step 1 (ISSUE-FIXER) confirmed the 42883 diagnosis against the actual code: the supersede UPDATE compared promotion_reviews.def_id (TEXT, migration 096) against $3::uuid (no implicit text = uuid operator -> sqlstate 42883), and the bare `catch null` wrapper swallowed the error so superseded_review_id was always null (PRM-08 AC4 never worked). Step 3 (BACKEND-DEV) implemented the two-part fix in src/definition/rollback.zig ONLY: Change A — line 290 `AND def_id = $3::uuid` -> `AND def_id = $3` (drop the ::uuid cast so the TEXT column compares text = text; $1::uuid/$2::uuid unchanged); Change B — line 295 bare `catch null` replaced with a SQLSTATE-distinguishing catch mirroring the PAR-01 pattern in src/event_store/store.zig (copy conn.lastSqlState() into a 5-byte buffer; 42P01 -> null for a genuinely missing table, else switch PoolError.ExhaustedPool -> RollbackError.PoolExhausted / else -> RollbackError.TransactionFailed) so real query failures surface as RollbackError. No migration needed (schema is correct; the bug was the query cast). Step 5 (TEST-RUNNER) independent verification PASS (tests/reports/report-20260816-WF03-GH803-20260816.yaml): BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 exit 0 — 4/4 green (TC-PRM-08-01..04 including the previously-failing TC-PRM-08-03 supersede; superseded_review_id now populated), no sqlstate=42883 in stderr; change-scope audit confirms the production change is confined to src/definition/rollback.zig (no migrations/, no tests/); test-env-verify HEALTHY 10/10; zig build test exit 0 (lint_test_wiring PASS). lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACK). Step 7 (DOC-UPDATER) updated CHANGELOG.md under [Unreleased] 2026-08-16 and marked ISS-0712 RESOLVED. GitHub issue #803 left OPEN for Step Final (release.py --close-github-issue, loop-mode)."
 }

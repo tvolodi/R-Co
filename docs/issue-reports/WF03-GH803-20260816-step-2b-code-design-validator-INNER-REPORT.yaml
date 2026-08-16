@@ -1,0 +1,48 @@
+report_id: WF03-GH803-20260816-step-2b-code-design-validator
+agent_id: CODE-DESIGN-VALIDATOR
+run_id: WF03-GH803-20260816
+step: "2b"
+created_at: "2026-08-16T08:09:15Z"
+summary: >-
+  WF-03 Step 2b (HARD GATE) for ISS-0712 / GH-803: validated the Type E (PRODUCTION code
+  fix) design artefact src/design/iss0712-gh803-rollback-supersede-fix.md against the
+  WF-02 Step 1b checks and the task acceptance criteria. RESULT: PASS. The design's Change A
+  (drop ::uuid on $3 at rollback.zig:290 -> text=text vs promotion_reviews.def_id TEXT per
+  migration 096) and Change B (replace bare `catch null` at rollback.zig:295 with a
+  SQLSTATE-42P01-distinguishing labeled-block catch mirroring the canonical PAR-01 pattern
+  in src/event_store/store.zig ~795-807; copy conn.lastSqlState() [pool.zig:563] into [5]u8
+  before compare; 42P01 -> null, ExhaustedPool -> PoolExhausted, else -> TransactionFailed)
+  were verified line-exact against the actual source, the applied migration, the canonical
+  reference pattern, and the sole production caller's error mapping
+  (definition_rollback.zig:84-89). tools/lint_design_artefact.py exited 0 with no issues
+  (BLOCKER=0 MAJOR=0). fn:validate-completeness: all 8 task acceptance criteria MET.
+  Design is a patch-shape-only Type E artefact (no function bodies, no DDL, no JSX), makes
+  no schema decisions, documents blast radius / no-migration rationale / verification plan
+  (zig build; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build
+  test-integration-prm08 expected 4/4 green; no sqlstate=42883 in [pool] stderr), and fix
+  scope is 1 file (<= 5). Step 3 (BACKEND-DEV) MAY start.
+
+files_created:
+  - "handoffs/WF03-GH803-20260816/step-2b-code-design-validator.json (completed)"
+  - "docs/issue-reports/WF03-GH803-20260816-step-2b-code-design-validator-INNER-REPORT.yaml"
+files_modified:
+  - "handoffs/registry.json (entry wf03-gh803-20260816-2b-code-design-validator -> COMPLETED/PASS)"
+tests_run:
+  - name: "tools/lint_design_artefact.py src/design/iss0712-gh803-rollback-supersede-fix.md"
+    status: pass
+    detail: "exit 0 — 'OK — 1 file(s) checked, no issues' (BLOCKER=0 MAJOR=0 MINOR=0)"
+  - name: "source-truth cross-check (grep/read)"
+    status: pass
+    detail: "rollback.zig:290 `def_id = $3::uuid` and :295 `) catch null;` match the design's line-exact claims; migration 096 `def_id text NOT NULL` confirmed; pool.zig:563 lastSqlState() confirmed; PAR-01 copy-then-compare shape at store.zig ~795-807 confirmed; caller error map at definition_rollback.zig:84-89 confirmed; build.zig:3147 test-integration-prm08 target confirmed; PRM-08 AC4 (promotion_reviews row moves to superseded with superseded_by naming the rollback event) confirmed in docs/requirements.yaml."
+issues_found:
+  - severity: MINOR
+    description: >-
+      Design line reference imprecision: "handleRollback in src/api/routes/definition_rollback.zig
+      (line 76)" — line 76 is the rollbackDefinitionVersion CALL site; pub fn handleRollback is
+      defined at line 41. The cited error-mapping range (lines 84-89) and the blast-radius table
+      (403/422/404/503/500) are exact, so this is cosmetic only; no impact on Step 3.
+next_steps:
+  - "ORCH: route to BACKEND-DEV (Step 3) to implement the two-part fix in src/definition/rollback.zig (Change A line 290, Change B line 295) per the validated design."
+  - "Step 3 verification: zig build exit 0; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 -> 4/4 green; no sqlstate=42883 in [pool] stderr."
+  - "Optional follow-up (ISS-0712 prevention): run lint_sql_param_types.py / lint_sql_table_refs.py over src/definition/rollback.zig so a ::uuid-vs-TEXT comparison is caught statically next time (recommended to ORCH, not a Step 3 requirement)."
+blockers: []
