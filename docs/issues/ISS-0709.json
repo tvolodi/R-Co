@@ -1,0 +1,318 @@
+{
+  "iss_id": "ISS-0709",
+  "id": "ISS-0709",
+  "issue_id": "ISS-0709",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/799",
+  "github_issue_number": 799,
+  "github_issue_confirmed": true,
+  "github_issue_filed_at": "2026-08-16T04:00:57Z",
+  "title": "VLD-01/02/03 implementation: validateDefinition returns findings on clean definitions (4 fail + 2 crash in src/validation/*.zig)",
+  "status": "OPEN",
+  "classification": "IMPL_BUG",
+  "severity": "BLOCKER",
+  "workflow_id": "WF03-vld-impl-bugs-20260816",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "handoff_id": "wf03-vld-impl-bugs-20260816-005",
+  "triggered_by": "WF02 step-04 TEST-RUNNER FAIL on 2026-08-16",
+  "branch": "feature/wf02-vld01-03-20260816",
+  "commit_sha": "31482edb",
+  "requirement_ids": [
+    "VLD-01",
+    "VLD-02",
+    "VLD-03"
+  ],
+  "created_at": "2026-08-16T04:00:57Z",
+  "registered_at": "2026-08-16T04:00:57Z",
+  "registered_by": "ISSUE-FIXER (WF03-vld-impl-bugs-20260816 step-05, WF-03 Step 0.5)",
+  "discovered_at": "2026-08-16T03:56:50Z",
+  "discovered_by": "TEST-RUNNER (WF02-vld01-03-20260816 step-04)",
+  "labels": [
+    "bug",
+    "issue"
+  ],
+  "labels_requested_unavailable": [
+    "wf03",
+    "vld",
+    "stage-16"
+  ],
+  "summary": "On feature/wf02-vld01-03-20260816 @ 31482edb, `zig build test` reports 4 failing + 2 crashing in-file unit tests, all inside src/validation/. The strongest signal is the clean-path test `mod.test.validateDefinition: clean linear definition with one guard`, which expects 0 findings but observes 3 — the validator emits false positives on a definition that should be valid. The helper modules (site, pd06, typecheck) also fail their own unit tests with runtime panics/assertions, so the validation route wired in 31482edb (src/api/routes/validation.zig) cannot deliver the VLD-01/02/03 acceptance criteria end-to-end. Unit test gate is RED; this blocks the VLD-01/02/03 release.",
+  "scope": "Implementation defect in the Stage 16 semantic validation modules under src/validation/ (site enumeration, PD-06 syntax check, CEL type check, and the aggregating validateDefinition entry point).",
+  "files_affected": [
+    "src/validation/mod.zig",
+    "src/validation/site.zig",
+    "src/validation/pd06.zig",
+    "src/validation/typecheck.zig",
+    "src/api/routes/validation.zig"
+  ],
+  "affected_areas": [
+    "src/validation/mod.zig",
+    "src/validation/site.zig",
+    "src/validation/pd06.zig",
+    "src/validation/typecheck.zig",
+    "src/api/routes/validation.zig"
+  ],
+  "failing_tests": [
+    {
+      "test": "site.test.enumerateSites: gateway edge condition -> one Site per edge",
+      "file": "src/validation/site.zig",
+      "failure_mode": "runtime panic / assertion"
+    },
+    {
+      "test": "site.test.enumerateSites: timer delay -> Site with expected_type timestamp",
+      "file": "src/validation/site.zig",
+      "failure_mode": "runtime panic / assertion"
+    },
+    {
+      "test": "site.test.enumerateSites: form visible_when and computed_from -> form_sites",
+      "file": "src/validation/site.zig",
+      "failure_mode": "runtime panic / assertion"
+    },
+    {
+      "test": "pd06.test.runSyntaxCheck: malformed per-site expression -> CEL_SYNTAX_INVALID",
+      "file": "src/validation/pd06.zig",
+      "failure_mode": "runtime panic / assertion"
+    },
+    {
+      "test": "typecheck.test.checkSite: unknown variable identifier -> UnknownVariable",
+      "file": "src/validation/typecheck.zig",
+      "failure_mode": "runtime panic / assertion"
+    },
+    {
+      "test": "typecheck.test.checkSite: '+' over number and string -> OperandTypeError",
+      "file": "src/validation/typecheck.zig",
+      "failure_mode": "runtime panic / assertion"
+    },
+    {
+      "test": "mod.test.validateDefinition: clean linear definition with one guard -> 0 findings",
+      "file": "src/validation/mod.zig",
+      "failure_mode": "expected 0, found 3 (PRIMARY SIGNAL — false positives on a valid definition)"
+    },
+    {
+      "test": "mod.test.validateDefinition: guard references unknown identifier -> UnknownVariable",
+      "file": "src/validation/mod.zig",
+      "failure_mode": "assertion"
+    },
+    {
+      "test": "mod.test.validateDefinition: malformed CEL guard -> pd06_diagnostics populated",
+      "file": "src/validation/mod.zig",
+      "failure_mode": "assertion"
+    },
+    {
+      "test": "mod.test.validateDefinition: findings are ordered by (node_id, expression_path)",
+      "file": "src/validation/mod.zig",
+      "failure_mode": "assertion"
+    }
+  ],
+  "symptom": "zig build test exits 1 with build summary `95/107 steps succeeded (6 failed); 981/1056 tests passed (69 skipped, 4 fail, 2 crash)`. All 4 failures and 2 crashes are in-file unit tests inside src/validation/. `mod.test.validateDefinition: clean linear definition with one guard` fails with `expected 0, found 3`.",
+  "description": "The Stage 16 semantic validation implementation landed in commit 31482edb does not satisfy its own in-file unit tests. Three distinct symptom clusters: (A) src/validation/site.zig — enumerateSites panics/asserts on gateway edge conditions, timer delays, and form visible_when/computed_from sites, so site enumeration does not produce the expected Site set. (B) src/validation/pd06.zig — runSyntaxCheck does not surface CEL_SYNTAX_INVALID for a malformed per-site expression. (C) src/validation/typecheck.zig — checkSite fails to report UnknownVariable for an unknown identifier and OperandTypeError for '+' over number and string. These three helper defects propagate into src/validation/mod.zig, where validateDefinition (i) reports 3 findings on a definition that should yield 0, (ii) does not produce the expected UnknownVariable finding for an unknown guard identifier, (iii) does not populate pd06_diagnostics for a malformed CEL guard, and (iv) does not order findings by (node_id, expression_path). The false-positive clean-path result is the strongest signal and should be diagnosed first, since it likely shares a root cause with the site-enumeration defects.",
+  "investigation_notes": "Bench environment was verified HEALTHY by TEST-RUNNER before the run: `zig build test-env-verify` exit 0 (`verify_test_env: HEALTHY — 10 checks passed`), migrations 147/147 applied, schema baseline matches migrations/, no stale locks (C6), no config drift (C9). Therefore this is NOT an ENV_ISSUE. A second, independent blocker was reported in the same test report and is deliberately NOT part of this issue: the spec's integration test files tests/integration/validation_vld_unit_test.zig and tests/integration/validation_vld_http_test.zig do not exist on the branch or in git history (SPEC_DEVIATION → routes back to TEST-DESIGNER). Because those files are absent, spec coverage is 0/15 and the VLD acceptance criteria have no end-to-end evidence either way; this issue is scoped strictly to the implementation defects observable from the in-file unit tests.",
+  "reproduction": "git checkout feature/wf02-vld01-03-20260816 (commit 31482edb); zig build test → exit 1; observe 4 fail + 2 crash, all under src/validation/. The clean-path failure reproduces deterministically as `mod.test.validateDefinition: clean linear definition with one guard -> expected 0, found 3`.",
+  "acceptance_criteria": [
+    "mod.validateDefinition returns 0 findings for the clean linear definition with one guard",
+    "All three site.test.enumerateSites tests pass without panic (gateway edge condition, timer delay, form visible_when/computed_from)",
+    "pd06.test.runSyntaxCheck emits CEL_SYNTAX_INVALID for the malformed per-site expression",
+    "Both typecheck.test.checkSite tests pass (UnknownVariable, OperandTypeError)",
+    "The remaining three mod.test.validateDefinition tests pass (unknown identifier, malformed CEL guard -> pd06_diagnostics, ordering by (node_id, expression_path))",
+    "zig build test reports 0 fail / 0 crash across the full corpus"
+  ],
+  "context": {
+    "test_report": "tests/reports/WF02-vld01-03-20260816-test-report.md",
+    "test_report_sections": [
+      "§1 Summary — verdict (failure table)",
+      "§3.1 zig build test (unit tests, full corpus)"
+    ],
+    "spec": "tests/specs/vld-01-03-stage-16-validation.spec.md",
+    "upstream_handoff": "handoffs/WF02-vld01-03-20260816/step-04-test-runner.json",
+    "this_handoff": "handoffs/WF03-vld-impl-bugs-20260816/step-05-issue-fixer.json",
+    "related_requirement_issues": [
+      "https://github.com/tvolodi/R-Co/issues/268",
+      "https://github.com/tvolodi/R-Co/issues/269",
+      "https://github.com/tvolodi/R-Co/issues/270"
+    ],
+    "duplicate_search": "gh issue list --label vld -> no issues match; gh issue list --search 'VLD-01 OR VLD-02 OR VLD-03 OR validateDefinition in:title' -> only requirement issues #268/#269/#270/#271 (VLD-01..04) plus cross-repo noise. No existing implementation-defect issue for src/validation/*.zig. Filed as a new GitHub issue."
+  },
+  "fix_file": "src/validation/mod.zig; src/validation/site.zig; src/validation/pd06.zig; src/validation/typecheck.zig",
+  "fix_line": "TBD — start at mod.validateDefinition's finding-accumulation path (source of the 3 spurious findings on the clean definition), then site.enumerateSites, pd06.runSyntaxCheck, typecheck.checkSite.",
+  "fix_diff": null,
+  "resolution": null,
+  "prevention": null,
+  "pr_url": null,
+  "pr_merged_at": null,
+  "pr_merge_commit": null,
+  "links": [
+    {
+      "type": "github_issue",
+      "url": "https://github.com/tvolodi/R-Co/issues/799",
+      "note": "Filed 2026-08-16T04:00:57Z via `gh issue create` with labels bug,issue. Labels wf03/vld/stage-16 were requested by the handoff but do not exist in tvolodi/R-Co (gh label list) and were omitted to avoid the create failing; recorded under labels_requested_unavailable."
+    },
+    {
+      "type": "test_report",
+      "url": "tests/reports/WF02-vld01-03-20260816-test-report.md",
+      "note": "Source of the failure table (§1) and the build summary (§3.1)."
+    }
+  ],
+  "handoff_history": [
+    {
+      "step": "step-04-test-runner",
+      "agent": "TEST-RUNNER",
+      "run_id": "WF02-vld01-03-20260816",
+      "handoff_id": "WF02-vld01-03-20260816-04-test-runner",
+      "status": "FAIL",
+      "completed_at": "2026-08-16T03:56:50Z",
+      "summary": "Reported two blockers: SPEC_DEVIATION (spec integration test files absent) and IMPL_BUG (4 fail + 2 crash in src/validation/ in-file unit tests). This issue covers the IMPL_BUG only."
+    },
+    {
+      "step": "step-05-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-vld-impl-bugs-20260816",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-005",
+      "status": "FILED",
+      "completed_at": "2026-08-16T04:00:57Z",
+      "summary": "WF-03 Step 0.5 — registered ISS-0709 and filed the corresponding GitHub issue per the 'No Issue Left Local-Only' directive. No implementation fix attempted at this step."
+    }
+  ],
+  "root_cause_analysis": {
+    "analyzed_at": "2026-08-16T05:44:34Z",
+    "analyzed_by": "ISSUE-FIXER (WF03-vld-impl-bugs-20260816 step-1, WF-03 Step 1 diagnosis)",
+    "analysis_type": "root-cause diagnosis only — no implementation change made in this step",
+    "verification": {
+      "method": "zig build test-validation on feature/wf02-vld01-03-20260816 @ 92f17c07 (task allowed running tests to confirm; no src/*.zig modified)",
+      "result": "32/38 tests passed (4 failed, 2 crashed); 11 leaked allocations",
+      "empirical_signals": [
+        "site/pd06 enumerateSites tests: 'leaked 1 allocations' — DebugAllocator trace points at src/validation/site.zig:85 (enumerateSites -> sites.toOwnedSlice); logic assertions in those tests PASS",
+        "typecheck checkSite tests: 'thread panic: Invalid free' — debug allocator double-free",
+        "mod clean-path: 'expected 0, found 3' at mod.zig:358 (expectEqual on findings.len)",
+        "mod unknown-var: expect(saw_suggestion) fails at mod.zig:395",
+        "mod malformed-guard: expectEqual(0, findings.len) fails at mod.zig:449",
+        "mod ordering: expect(pd06_diagnostics != null) fails at mod.zig:474"
+      ]
+    },
+    "per_test": [
+      {
+        "test": "site.test.enumerateSites: gateway edge condition -> one Site per edge",
+        "module": "src/validation/site.zig (enumerateSites / freeSites)",
+        "root_cause": "Memory leak, not logic: enumerateSites returns sites.toOwnedSlice(allocator); freeSites frees the per-site strings but never the []Site backing slice, so std.testing.allocator panics at test teardown ('leaked 1 allocations'). The enumeration logic itself is correct (2 sites, node_id 'gw', expected_type bool, /edges/1/condition all match the test's assertions).",
+        "fix_approach": "Make freeSites also allocator.free(items) — every caller passes the result of enumerateSites (an owned toOwnedSlice), so freeSites should own and release the whole []Site. Update the function doc/comment to match the contract. Do NOT change the enumeration walker."
+      },
+      {
+        "test": "site.test.enumerateSites: timer delay -> Site with expected_type timestamp",
+        "module": "src/validation/site.zig (enumerateSites / freeSites)",
+        "root_cause": "Same leak as the gateway test: the []Site backing from enumerateSites' toOwnedSlice is never freed (1 allocation). Enumeration logic is correct (1 site, expected_type .timestamp).",
+        "fix_approach": "Same as gateway test: freeSites frees the backing slice."
+      },
+      {
+        "test": "site.test.enumerateSites: form visible_when and computed_from -> form_sites",
+        "module": "src/validation/site.zig (enumerateSites / freeSites)",
+        "root_cause": "Same leak (1 allocation). Enumeration logic is correct (2 form sites, visible_when -> bool, computed_from -> .number via mapDeclaredTypeName('integer')).",
+        "fix_approach": "Same as gateway test: freeSites frees the backing slice."
+      },
+      {
+        "test": "pd06.test.runSyntaxCheck: malformed per-site expression -> CEL_SYNTAX_INVALID",
+        "module": "src/validation/pd06.zig (test) / src/validation/site.zig (freeSites)",
+        "root_cause": "Pure leak. isValidCelSyntax correctly rejects 'now( + 60000' (unbalanced paren), the CEL_SYNTAX_INVALID diagnostic IS emitted, node_id/expression_path are non-null — every logic assertion in the test passes. The test fails only because its defer site_mod.freeSites(...) leaks the []Site backing (site.zig:85 toOwnedSlice).",
+        "fix_approach": "Same freeSites fix as the site tests. No pd06 runSyntaxCheck logic change is required for this test to pass."
+      },
+      {
+        "test": "typecheck.test.checkSite: unknown variable identifier -> UnknownVariable",
+        "module": "src/validation/typecheck.zig (test scaffolding) / src/validation/env.zig (TypedEnv.deinit)",
+        "root_cause": "Double-free ('Invalid free' panic). The test builds TypedEnv{ .entries = entries.items } from a live std.ArrayList and defers BOTH env.deinit(alloc) and entries.deinit(alloc). TypedEnv.deinit unconditionally frees self.entries when len > 0 (it assumes ownership, transferred via toOwnedSlice / envForSite), so the ArrayList's backing buffer is freed a second time by entries.deinit. The checkSite logic itself is correct (the UnknownVariable with 'did you mean' would be produced).",
+        "fix_approach": "Fix the TEST scaffolding to honour TypedEnv's ownership contract — do not double-deinit. Either (a) hand TypedEnv an owned slice (entries.toOwnedSlice(allocator)) and drop the entries.deinit, or (b) drop env.deinit and free each entry's name manually before entries.deinit. Do NOT change TypedEnv.deinit (it is correct for envForSite's owned slices)."
+      },
+      {
+        "test": "typecheck.test.checkSite: '+' over number and string -> OperandTypeError",
+        "module": "src/validation/typecheck.zig (test scaffolding) / src/validation/env.zig (TypedEnv.deinit)",
+        "root_cause": "Identical double-free to the previous typecheck test: TypedEnv{ .entries = entries.items } (borrowed slice) + env.deinit + entries.deinit free the same backing buffer twice -> 'Invalid free' panic. checkSite's arithmetic-compat logic is correct (number + string -> OperandTypeError).",
+        "fix_approach": "Same as the previous typecheck test: fix the test's memory ownership, not checkSite."
+      },
+      {
+        "test": "mod.test.validateDefinition: clean linear definition with one guard -> 0 findings",
+        "module": "src/validation/mod.zig + src/validation/env.zig (mapDeclaredTypeName)",
+        "root_cause": "PRIMARY SIGNAL. variable_schema declares amount:number; mapDeclaredTypeName('number') returns null — the §8 table maps string/text/enum/integer/decimal/money/boolean/date/datetime/object/list<T> but NOT the plain CEL type name 'number'. Consequences, in order: (a) mod.zig emits a spurious UnknownVariableType finding for the row; (b) 'amount' is never added to the env; (c) both gateway guard sites ('amount > 0', 'amount <= 0') then emit UnknownVariable -> exactly 3 findings ('expected 0, found 3'). Empirically consistent: the leaked-allocation trace for this test shows two UnknownVariable emissions (checkSite path) plus the sites-backing leak.",
+        "fix_approach": "Reconcile the declared-type table with the natural CEL type name 'number'. Preferred: add 'number' -> .number (and consider 'int'/'double') to env.zig mapDeclaredTypeName and to the accepted-set string embedded in mod.zig's UnknownVariableType message. Alternative: change the test fixtures to a mapped name (e.g. 'decimal'). CODE-DESIGNER must confirm against the design §8 table (which today deliberately omits 'number'); because .number is a first-class TypeTag in the validator and the clean-path AC expects 0 findings, extending the table is the semantically aligned fix."
+      },
+      {
+        "test": "mod.test.validateDefinition: guard references unknown identifier -> UnknownVariable",
+        "module": "src/validation/mod.zig + src/validation/env.zig (mapDeclaredTypeName)",
+        "root_cause": "Same 'number' not-mapped root cause as the clean-path test. amount:number is rejected, so the env is EMPTY. The guard 'amont > 0' does emit an UnknownVariable finding (saw_unknown passes), but emitUnknownVariable iterates an empty env, finds no nearest candidate and emits the no-suggestion message — so expect(saw_suggestion) fails at mod.zig:395.",
+        "fix_approach": "Same as clean-path: once 'number' maps (or the fixture declares a mapped type), amount is in the env, editDistance('amont','amount')=1 <= SUGGESTION_THRESHOLD, and the 'did you mean \"amount\"?' message is produced, satisfying the assertion."
+      },
+      {
+        "test": "mod.test.validateDefinition: malformed CEL guard -> pd06_diagnostics populated, findings empty",
+        "module": "src/validation/mod.zig + src/definition/graph.zig (isValidCelSyntax) + src/validation/pd06.zig",
+        "root_cause": "Two compounding defects. (a) PD-06 under-detection: isValidCelSyntax is a delimiter-balance-only check and ACCEPTS 'amount >' / 'amount <=' (dangling binary operator) as syntactically valid, so runSyntaxCheck returns no diagnostics and the VLD-02 AC4 short-circuit never fires -> pd06_diagnostics stays null. (b) Ordering: mod.zig accumulates env-level findings (the UnknownVariableType from the 'number' row) BEFORE the PD-06 gate, so even when the gate fires, findings is non-empty -> expectEqual(0, findings.len) fails (actual 1).",
+        "fix_approach": "(a) Strengthen the per-site syntax gate so truncated/dangling-operator expressions are rejected — the correct gate is the real expr.parse (pd06.zig runSyntaxCheck per-site loop), not delimiter balance. (b) Move the PD-06 gate before any env-level finding is accumulated (or reset findings to empty on the gate path) so the AC4 short-circuit returns empty findings. Plus the clean-path 'number' mapping fix (or fixture change), which removes the spurious env-level finding."
+      },
+      {
+        "test": "mod.test.validateDefinition: findings are ordered by (node_id, expression_path)",
+        "module": "src/validation/mod.zig + src/definition/graph.zig (isValidCelSyntax)",
+        "root_cause": "The test is a PD-06 gate test in disguise: it expects 'x >' / 'y <' to be malformed so the gate fires (findings empty + pd06 non-null). Because isValidCelSyntax accepts 'x >' / 'y <' (delimiter balance only), the gate never fires -> pd06_diagnostics is null -> expect(pd06_diagnostics != null) fails at mod.zig:474. The actual sortByLocation ordering logic is never reached (the gate should short-circuit first).",
+        "fix_approach": "Same as the malformed-guard test's (a): strengthen the per-site gate (expr.parse-based) so truncated operators are flagged CEL_SYNTAX_INVALID. Once the gate fires, this test's assertions pass as written (findings empty + pd06 non-null). Note the ordering assertion inside it is vacuous by design (gate short-circuits); real ordering is covered by finding.zig's own sortByLocation test."
+      }
+    ],
+    "grouped_root_causes": [
+      {
+        "id": "R1",
+        "root_cause": "site.zig freeSites does not free the []Site backing slice returned by enumerateSites' toOwnedSlice -> std.testing.allocator leak-detection panic ('leaked 1 allocations')",
+        "affected_tests": [
+          "site.test.enumerateSites: gateway edge condition",
+          "site.test.enumerateSites: timer delay",
+          "site.test.enumerateSites: form visible_when and computed_from",
+          "pd06.test.runSyntaxCheck: malformed per-site expression"
+        ],
+        "module": "src/validation/site.zig"
+      },
+      {
+        "id": "R2",
+        "root_cause": "TypedEnv.deinit unconditionally frees self.entries (ownership contract); the typecheck tests construct TypedEnv from a borrowed ArrayList.items slice and also deinit the ArrayList -> double-free 'Invalid free' panic",
+        "affected_tests": [
+          "typecheck.test.checkSite: unknown variable identifier",
+          "typecheck.test.checkSite: '+' over number and string"
+        ],
+        "module": "src/validation/typecheck.zig (test scaffolding) / src/validation/env.zig (TypedEnv.deinit contract)"
+      },
+      {
+        "id": "R3",
+        "root_cause": "env.zig mapDeclaredTypeName('number') returns null (the §8 table omits the plain CEL type name 'number') -> spurious UnknownVariableType finding + the variable is absent from the env -> downstream UnknownVariable false positives",
+        "affected_tests": [
+          "mod.test.validateDefinition: clean linear definition (expected 0, found 3)",
+          "mod.test.validateDefinition: guard references unknown identifier (no suggestion)"
+        ],
+        "module": "src/validation/env.zig / src/validation/mod.zig"
+      },
+      {
+        "id": "R4",
+        "root_cause": "PD-06 syntax gate under-detection: graph.isValidCelSyntax is delimiter-balance-only and accepts truncated/dangling-operator expressions ('amount >', 'amount <=', 'x >', 'y <') so the VLD-02 AC4 short-circuit never fires; plus mod.zig accumulates env-level findings BEFORE the gate, so the AC4 'findings stays empty' contract is unreachable",
+        "affected_tests": [
+          "mod.test.validateDefinition: malformed CEL guard -> pd06_diagnostics populated",
+          "mod.test.validateDefinition: findings are ordered by (node_id, expression_path)"
+        ],
+        "module": "src/definition/graph.zig (isValidCelSyntax) / src/validation/pd06.zig (per-site gate) / src/validation/mod.zig (gate ordering)"
+      },
+      {
+        "id": "R5",
+        "root_cause": "mod.zig per-site loop leaks the []Finding backing returned by checkSite's toOwnedSlice: findings.appendSlice(allocator, owned) shallow-copies the Finding structs (strings adopted) but the `owned` slice backing is never freed. Does not fail a test by itself (logic assertions fire first) but contributes to the 11 leaked allocations and will surface once the logic is fixed",
+        "affected_tests": [
+          "mod.test.validateDefinition: all paths (clean-path, unknown-var, malformed-guard, ordering) via the per-site semantic loop"
+        ],
+        "module": "src/validation/mod.zig"
+      }
+    ],
+    "fix_scope": {
+      "note": "Modules needing changes to satisfy all 10 failing tests. This is DIAGNOSIS ONLY — CODE-DESIGNER (WF-03 Step 2) writes the design from these, BACKEND-DEV implements in Step 3.",
+      "required": [
+        "src/validation/site.zig — freeSites frees the []Site backing (R1)",
+        "src/validation/typecheck.zig — fix test scaffolding ownership (R2)",
+        "src/validation/env.zig — mapDeclaredTypeName: add 'number' (or reconcile fixtures) (R3)",
+        "src/validation/pd06.zig — per-site syntax gate uses expr.parse so dangling operators are rejected (R4a)",
+        "src/definition/graph.zig — isValidCelSyntax is the shared gate; strengthen if the per-site check keeps using it (R4a)",
+        "src/validation/mod.zig — run the PD-06 gate before env findings (R4b); free the per-site []Finding backing (R5)"
+      ],
+      "unchanged": [
+        "src/validation/finding.zig (sortByLocation / editDistance verified correct by its own passing tests)",
+        "src/validation/wire.zig (no failing test; serialiser untouched)",
+        "src/validation/scope.zig (its own tests pass; envForSite ownership is correct)"
+      ],
+      "design_decision_needed": "R3: whether to extend the declared-type table with 'number' (semantically aligned — .number is a first-class TypeTag and the clean-path AC requires 0 findings) or to change the mod.zig fixtures to a mapped name such as 'decimal'. The design §8 table currently omits 'number'; this must be reconciled explicitly, and the change (either direction) documented so it is not silently reverted."
+    }
+  }
+}

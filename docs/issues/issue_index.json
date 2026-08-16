@@ -1,8 +1,30 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-15T21:11:11Z",
-  "next_issue_id": 709,
+  "last_updated": "2026-08-16T04:00:57Z",
+  "next_issue_id": 710,
   "issues": [
+    {
+      "id": "ISS-0709",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/799",
+      "severity": "BLOCKER",
+      "status": "OPEN",
+      "title": "VLD-01/02/03 implementation: validateDefinition returns findings on clean definitions (4 fail + 2 crash in src/validation/*.zig)",
+      "run_id": "WF03-vld-impl-bugs-20260816",
+      "workflow_id": "WF03-vld-impl-bugs-20260816",
+      "handoff_id": "wf03-vld-impl-bugs-20260816-005",
+      "created_at": "2026-08-16T04:00:57Z",
+      "labels": [
+        "bug",
+        "issue"
+      ],
+      "affected_areas": [
+        "src/validation/mod.zig",
+        "src/validation/site.zig",
+        "src/validation/pd06.zig",
+        "src/validation/typecheck.zig",
+        "src/api/routes/validation.zig"
+      ]
+    },
     {
       "id": "ISS-0702",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/780",
