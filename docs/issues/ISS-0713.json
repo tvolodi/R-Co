@@ -6,9 +6,9 @@
   "title": "tests/integration prm-08 TC-PRM-08-03: fixture promotion_reviews row seeded under random tenant_id + zero def_id cannot match rollback supersede (tenant_id=DEFAULT, def_id=current_active) -> 'superseded' assertion fails after ISS-0711/GH-802 and ISS-0712 fixes",
   "status": "OPEN",
   "severity": "MAJOR",
-  "workflow_id": "WF03-GH802-20260816",
-  "run_id": "WF03-GH802-20260816",
-  "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+  "workflow_id": "WF03-GH804-20260816",
+  "run_id": "WF03-GH804-20260816",
+  "handoff_id": "wf03-gh804-20260816-005-issue-fixer",
   "classification": "IMPL_BUG/test-fixture",
   "incidental_of": {
     "run_id": "WF03-GH802-20260816",
@@ -45,6 +45,26 @@
     "No production code or migration files changed"
   ],
   "notes": "Discovered during WF03-GH802-20260816 step-1 diagnosis. Test-code-only, so it is compatible with GH-802's 'no production code changed' boundary and MAY be folded into GH-802 Step 3 (recommended: otherwise GH-802's acceptance criterion 'zig build test-integration-prm08 passes' is unachievable). Whether it is folded into GH-802 or run as its own WF-03 cycle is ORCH's decision.",
+  "handoff_history": [
+    {
+      "step": "step-1-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T06:33:35Z",
+      "summary": "Filed this issue during WF03-GH802-20260816 Step 1 diagnosis (ISSUE-FIXER) per No-Issue-Left-Local-Only: static trace of TC-PRM-08-03's supersede path found the seeded promotion_reviews fixture row (random tenant UUID + helper hardcoded zero def_id) can never satisfy the production supersede WHERE (tenant_id = DEFAULT_TENANT_ID, def_id = current_active V2 id), so the 'superseded' assertion fails once ISS-0711/GH-802 and ISS-0712/GH-803 fixes are in. Registered as ISS-0713 + GitHub issue #804 (labels bug, claimed-by-r-co-2-loop). No fix implemented."
+    },
+    {
+      "step": "step-0.5-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH804-20260816",
+      "handoff_id": "wf03-gh804-20260816-005-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T07:13:15Z",
+      "summary": "WF-03 Step 0.5 for GH-804: verified ISS-0713 is the correct, non-colliding local record for GitHub issue #804 (title/severity/status/labels match; GH-804 OPEN with labels bug, claimed-by-r-co-2-loop; only one index entry references #804). No new ISS number and no new GitHub issue (GH-804 already exists and is filed). Updated workflow_id/run_id/handoff_id to WF03-GH804-20260816 (active fix run) and recorded this run in handoff_history. issue_index.json confirmed consistent (ISS-0713 present once; next_issue_id 714 = correct). Fix implementation deferred to Step 3 per WF-03."
+    }
+  ],
   "prevention": {
     "actions": [
       "When a test seeds a fixture row that a production query is expected to match, the fixture's key columns (tenant_id, foreign/def ids) must equal the values the production query predicates on — derive them from the same variables the test uses for the production call (here DEFAULT_TENANT_ID and def_id_v2) instead of hardcoded sentinels.",

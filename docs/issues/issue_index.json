@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-16T07:01:32Z",
+  "last_updated": "2026-08-16T07:13:15Z",
   "next_issue_id": 714,
   "issues": [
     {
@@ -2765,8 +2765,8 @@
       "severity": "MAJOR",
       "status": "OPEN",
       "title": "tests/integration prm-08 TC-PRM-08-03: fixture promotion_reviews row seeded under random tenant_id + zero def_id cannot match rollback supersede (tenant_id=DEFAULT, def_id=current_active) -> 'superseded' assertion fails after ISS-0711/GH-802 and ISS-0712 fixes",
-      "run_id": "WF03-GH802-20260816",
-      "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+      "run_id": "WF03-GH804-20260816",
+      "handoff_id": "wf03-gh804-20260816-005-issue-fixer",
       "category": "integration-test-failure/fixture-supersede-mismatch",
       "affected_areas": [
         "tests/integration/prm-08-rollback-sandbox.test.zig (TC-PRM-08-03 call site line 466; insertPromotionReviewsRow helper lines 233-258)"
@@ -2774,7 +2774,7 @@
       "created_at": "2026-08-16T06:31:51Z",
       "step_1_diagnosis_completed_at": "2026-08-16T06:31:51Z",
       "github_issue_confirmed": true,
-      "branch": "feature/WF03-GH802-20260816"
+      "branch": "feature/WF03-GH804-20260816"
     }
   ]
 }
