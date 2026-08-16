@@ -1,0 +1,23 @@
+{
+  "report_id": "WF03-GH793-20260816-step-005-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH793-20260816",
+  "step": "0.5",
+  "created_at": "2026-08-16T05:26:56Z",
+  "summary": "WF-03 Step 0.5 for GH-793 (tests/integration PRM-06/07: three test failures — TC-PRM-06-03 NOT NULL requested_by, TC-PRM-07-03 FK promotion_reviews, TC-PRM-07-01 sandbox teardown). Registry lookup (fn:search-issues) confirmed docs/issues/ISS-0708.json is the correct, non-colliding local record for GitHub issue #793: title/severity/status/github_issue all match, and `gh issue view 793` confirms GH-793 is OPEN with labels bug, issue, claimed-by-r-co-2-loop. No prior-resolved match needed and no new ISS number required. GitHub filing already done (GH-793 exists) — no new GitHub issue created. Updated ISS-0708.json workflow_id/run_id to WF03-GH793-20260816 (active fix run) and appended a handoff_history entry for this run (step-0.5-issue-fixer, ISSUE-FIXER, COMPLETED). Synced docs/issues/issue_index.json ISS-0708 entry (run_id/workflow_id -> WF03-GH793-20260816); confirmed index consistency (ISS-0708 present exactly once; next_issue_id 711 correct — highest existing ISS is ISS-0710, no collision). Did NOT implement the fix (deferred to Step 3 per task). Worked on branch feature/WF03-GH793-20260816. No tests run (bookkeeping-only step); JSON validity of all touched files verified; lint_handoffs.py gate verified before completion.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH793-20260816-step-005-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/issues/ISS-0708.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH793-20260816/step-005-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH: route WF-03 GH-793 to Step 3 (ISSUE-FIXER fix) to implement the three PRM-06/07 test-helper fixes per ISS-0708 fix_diff: (A) prm-06 insertPromotionReviewsRow add requested_by UUID; (B) prm-07 seed parent promotion_reviews row before promotion_assertion_runs; (C) prm-07 sandbox-teardown simulation flag alignment."
+  ],
+  "blockers": []
+}

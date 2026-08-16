@@ -1,0 +1,118 @@
+{
+  "handoff_id": "wf03-gh793-20260816-2b-code-design-validator",
+  "run_id": "WF03-GH793-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH793-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T05:47:56Z",
+  "started_at": "2026-08-16T05:48:10Z",
+  "completed_at": "2026-08-16T05:50:01Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2b -- design validation (hard gate)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/793",
+    "iss_id": "ISS-0708",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh793-20260816-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0708-gh793-prm0607-test-fixes.md",
+      "docs/issues/ISS-0708.json",
+      "tests/integration/prm-06-07-promotion-assertion.test.zig"
+    ],
+    "design_artefact": "src/design/iss0708-gh793-prm0607-test-fixes.md",
+    "branch_name": "feature/WF03-GH793-20260816",
+    "hard_gate": true
+  },
+  "task": {
+    "description": "Step 2b \u2014 Design Validation (HARD GATE). Validate the design artefact at src/design/iss0708-gh793-prm0607-test-fixes.md (Type E \u2014 test-code-only fix, no production code) against the WF-02 Step 1b checks applied to a fix design. Step 3 (implementation) MUST NOT start until this returns PASS. Checks: (a) design addresses the diagnosed root_cause from ISS-0708 (three failing PRM-06/07 integration tests: TC-PRM-06-03 requested_by NOT NULL 23502; TC-PRM-07-03 FK 23503; TC-PRM-07-01 teardown_failed vs passed due to unqualified UPDATE resolving to tenant_default); (b) the three cluster patches are precise and confined to tests/integration/prm-06-07-promotion-assertion.test.zig (no production code, no migrations); (c) no implementation code in the design beyond the patch shape; (d) tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0); (e) verification plan documented (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 must exit 0, 9/9); (f) fix scope <= 5 files.",
+    "expected_outputs": [
+      "Validation report (PASS or FAIL) for src/design/iss0708-gh793-prm0607-test-fixes.md"
+    ],
+    "acceptance_criteria": [
+      "Design addresses root_cause from ISS-0708",
+      "All three cluster patches precise and confined to the single test file (no production code/migrations)",
+      "No implementation code in design (patch shape only)",
+      "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+      "Verification plan documented (test-integration-prm06-07, :5453 test DB)",
+      "Fix scope <= 5 files",
+      "Step 3 MUST NOT start until PASS"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss0708-gh793-prm0607-test-fixes.md validated - all 7 acceptance criteria PASS. Type E test-code-only fix for ISS-0708/GH-793 covers all three root causes (Cluster A 23502 requested_by NOT NULL; Cluster B 23503 conditional review FK; Cluster C unqualified teardown UPDATE resolving to tenant_default); all patches confined to tests/integration/prm-06-07-promotion-assertion.test.zig; lint exit 0 (BLOCKER=0 MAJOR=0); verification plan (:5453 test-integration-prm06-07, 9/9) documented; scope 1 file (<=5).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ISS-0708.json fix_file/scope/affected_areas name non-existent split files (prm-06-promotion-assertion.test.zig / prm-07-assertion-rerun.test.zig) and stale migration numbers (1144/1145); design correctly names the combined file and migrations 096/1156. Documentation drift in the issue record - recommend updating ISS-0708.json."
+      },
+      {
+        "severity": "MINOR",
+        "description": "7x lint E030 schema-qualified public.promotion_assertion_runs in design - inherent to the fix subject (qualifying the UPDATE to public is the point of Cluster C); BLOCKER=0 MAJOR=0 so not a fail."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3) - Step 3 may start; design is PASS.",
+    "checks": [
+      {
+        "id": "CHK-1-root-cause",
+        "name": "Design addresses root_cause from ISS-0708",
+        "result": "PASS",
+        "evidence": "All three root causes mapped to clusters. A: 23502 requested_by NOT NULL - verified migration 096_promotion_reviews.sql declares requested_by/def_type/serialised_plan NOT NULL. B: 23503 - verified migration 1156 adds promotion_assertion_runs_review_fk conditionally via to_regclass. C: unqualified UPDATE -> tenant_default (zero UUID -> schemaNameForTenant pool.zig:154) vs public INSERT; production recordTeardownFailure (assertion_rerun.zig:607) confirmed WHERE id=. Issue body 1144/1145 citations corrected to 096/1156."
+      },
+      {
+        "id": "CHK-2-patch-scope",
+        "name": "Three cluster patches precise and confined to single test file (no production code/migrations)",
+        "result": "PASS",
+        "evidence": "All Before/After shapes target tests/integration/prm-06-07-promotion-assertion.test.zig only: helper lines 99-113 (def at 99, only call site at 482), TC-PRM-07-01 UPDATE lines ~694-702 (unqualified -> fix qualifies to public), TC-PRM-07-03 INSERT lines ~905-928 (adds parent seed). No production code, no migrations; production recordTeardownFailure + handleGetPromotion (promotion_read.zig:49) confirmed correct and untouched."
+      },
+      {
+        "id": "CHK-3-no-impl-code",
+        "name": "No implementation code in design (patch shape only)",
+        "result": "PASS",
+        "evidence": "Design contains Before/After patch-shape snippets only - the permitted form for a test-code-only fix design per the task acceptance criterion. No production implementation, no SQL DDL/schema decisions, no new modules. Implementation explicitly deferred to Step 3."
+      },
+      {
+        "id": "CHK-4-lint",
+        "name": "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+        "result": "PASS",
+        "evidence": "Executed: python tools/lint_design_artefact.py src/design/iss0708-gh793-prm0607-test-fixes.md -> exit 0, BLOCKER=0, MAJOR=0, MINOR=7 (E030 schema-qualified names inherent to subject)."
+      },
+      {
+        "id": "CHK-5-verification-plan",
+        "name": "Verification plan documented (test-integration-prm06-07, :5453 test DB)",
+        "result": "PASS",
+        "evidence": "Plan: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 must exit 0 (9/9). Confirmed .env:55 BPM_TEST_DB_URL=:5453; combined target at build.zig:3130; no split prm-06/prm-07 targets exist (files absent)."
+      },
+      {
+        "id": "CHK-6-scope",
+        "name": "Fix scope <= 5 files",
+        "result": "PASS",
+        "evidence": "Single target file tests/integration/prm-06-07-promotion-assertion.test.zig; scope = 1 <= 5."
+      },
+      {
+        "id": "CHK-7-completeness",
+        "name": "Completeness/correctness checklist (purpose, signatures, error taxonomy, dependencies, data-flow diagram, open questions, classification)",
+        "result": "PASS",
+        "evidence": "Module purpose = one clear paragraph; changed helper signature + contract documented in Public interface; error taxonomy table; Dependencies + Must NOT depend on sections; ASCII data-flow diagram; 3 open questions flagged (not guessed); Type E classification correct (not A/B/C/D; no reusable Lego parameter file)."
+      },
+      {
+        "id": "CHK-8-gate",
+        "name": "Step 3 MUST NOT start until PASS",
+        "result": "PASS",
+        "evidence": "PASS recorded in result.status; ORCH may dispatch Step 3 (BACKEND-DEV)."
+      }
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

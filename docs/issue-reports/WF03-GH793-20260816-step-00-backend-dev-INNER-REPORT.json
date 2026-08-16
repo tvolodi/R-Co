@@ -1,0 +1,28 @@
+{
+  "report_id": "WF03-GH793-20260816-step-00-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF03-GH793-20260816",
+  "step": "00",
+  "created_at": "2026-08-16T05:23:36Z",
+  "summary": "fn:git-setup per docs/agents/protocols/GIT_SETUP.md for WF-03 run WF03-GH793-20260816 (GH-793/ISS-0708: test-code bugs in PRM-06/07 integration tests). git pull --ff-only origin main exited 0 (already up to date); created feature branch feature/WF03-GH793-20260816 from main at d966a2649cd816f6864f2054c96da0307fa7d9d3; git push -u origin feature/WF03-GH793-20260816 exited 0 (coordination signal); confirmed local tip == origin/main (both d966a264). Pre-existing uncommitted append-only handoffs/orchestrator.log + handoffs/registry.json changes from the prior WF03-GH797-20260816 run were carried onto the branch untouched (not reverted, not committed).",
+  "files_created": [
+    "docs/issue-reports/WF03-GH793-20260816-step-00-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH793-20260816/step-00-backend-dev.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "git evidence verification",
+      "status": "pass",
+      "detail": "branch=feature/WF03-GH793-20260816; HEAD==origin/main==d966a2649cd816f6864f2054c96da0307fa7d9d3; push -u exit 0; pull --ff-only exit 0"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH routes to next step per WF-03 (code fix for GH-793: TC-PRM-06-03 requested_by NOT NULL, TC-PRM-07-03 FK promotion_reviews, TC-PRM-07-01 sandbox teardown)."
+  ],
+  "blockers": []
+}

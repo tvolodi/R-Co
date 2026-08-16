@@ -1,0 +1,40 @@
+{
+  "report_id": "WF03-GH793-20260816-step-2-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF03-GH793-20260816",
+  "step": "2",
+  "created_at": "2026-08-16T05:46:31Z",
+  "summary": "WF-03 Step 2 (fix design) for ISS-0708 / GH-793. Classified the task Type E (novel cross-cutting test-setup fix; no Type A-D template applies) and produced src/design/iss0708-gh793-prm0607-test-fixes.md covering the three clusters with exact before/after patch shapes in the single target file tests/integration/prm-06-07-promotion-assertion.test.zig. (A) TC-PRM-06-03: insertPromotionReviewsRow (lines 99-113) gains a requested_by param + requested_by/def_type/serialised_plan INSERT columns; single call site (line 482) passes a fresh randomUuidStr(alloc). (C) TC-PRM-07-01: manual recordTeardownFailure UPDATE (lines 694-702) qualified to public.promotion_assertion_runs (unqualified target resolved to tenant_default -> 0 rows), with optional run_id-capture refinement mirroring production assertion_rerun.zig:607. (B) TC-PRM-07-03: parent promotion_reviews row seeded via the fixed helper before the run-row INSERT (defensive vs conditional review FK from migration 1156). Verified no separate test-integration-prm-06/-07 target exists (combined test-integration-prm06-07 at build.zig:3130) and the test DB is :5453. Design linter tools/lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=7; the MINOR E030 hits document the required public. schema-qualification and are intentional). No implementation code written (Step 3 is the implementer).",
+  "files_created": [
+    "src/design/iss0708-gh793-prm0607-test-fixes.md",
+    "docs/issue-reports/WF03-GH793-20260816-step-2-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [],
+  "tests_run": [
+    {
+      "name": "python tools/lint_design_artefact.py src/design/iss0708-gh793-prm0607-test-fixes.md",
+      "status": "pass",
+      "detail": "Exit 0. BLOCKER=0 MAJOR=0 MINOR=7. The 7 MINOR E030 schema-qualified-name hits are intentional: the Cluster C patch is precisely about qualifying the teardown UPDATE to public.promotion_assertion_runs, so the design must name it."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Design linter E030 MINOR x7: design doc names public.promotion_assertion_runs to document the Cluster C qualification fix. Expected and acceptable (gate requires BLOCKER=0 MAJOR=0 only)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Latent duplicate of the insertPromotionReviewsRow NOT-NULL defect in tests/integration/prm-08-rollback-sandbox.test.zig (lines 233-258). Out of ISS-0708 scope; recorded in the design's Open questions for separate follow-up."
+    },
+    {
+      "severity": "MINOR",
+      "description": ".vscode/run-zig-test-integration.ps1 + zig-test-integration-cmd task hardcode stale port 5433; Step 3 must use BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test explicitly and not rely on those tasks."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 1b gate) to validate the Type E design artefact, then to ISSUE-FIXER/BACKEND-DEV Step 3 to implement the three test-setup patches per this design.",
+    "Verify after implementation: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 must exit 0 (9/9).",
+    "File/track the prm-08 insertPromotionReviewsRow duplicate defect as its own follow-up."
+  ],
+  "blockers": []
+}

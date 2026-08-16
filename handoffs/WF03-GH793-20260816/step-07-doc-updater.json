@@ -1,0 +1,66 @@
+{
+  "handoff_id": "wf03-gh793-20260816-07-doc-updater",
+  "run_id": "WF03-GH793-20260816",
+  "workflow_id": "WF-03",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH793-20260816/step-07-doc-updater.json",
+  "created_at": "2026-08-16T06:03:53Z",
+  "started_at": "2026-08-16T06:04:08Z",
+  "completed_at": "2026-08-16T06:07:43Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 7 -- doc update",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/793",
+    "iss_id": "ISS-0708",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh793-20260816-00-backend-dev",
+      "wf03-gh793-20260816-005-issue-fixer",
+      "wf03-gh793-20260816-01-issue-fixer",
+      "wf03-gh793-20260816-02-code-designer",
+      "wf03-gh793-20260816-2b-code-design-validator",
+      "wf03-gh793-20260816-03-backend-dev",
+      "wf03-gh793-20260816-05-test-runner"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0708.json",
+      "docs/issues/issue_index.json",
+      "src/design/iss0708-gh793-prm0607-test-fixes.md",
+      "tests/reports/report-20260816-WF03-GH793-20260816.yaml"
+    ],
+    "branch_name": "feature/WF03-GH793-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 7 for run WF03-GH793-20260816 (ISS-0708 / GH-793): fn:update-changelog + fn:update-issue. (1) fn:update-changelog: add an entry for this fix under [Unreleased] dated 2026-08-16 \u2014 PRM-06/07 integration-test fixes (TC-PRM-06-03 requested_by NOT NULL, TC-PRM-07-01 teardown UPDATE schema-qualification, TC-PRM-07-03 defensive parent-row seed) in tests/integration/prm-06-07-promotion-assertion.test.zig; test-code only, no production changes. (2) fn:update-issue: set docs/issues/ISS-0708.json status to RESOLVED, fill resolved_at, resolution (three test-setup patches, 9/9 integration tests green), prevention (integration-test fixtures must be kept in sync with schema migrations that add NOT NULL / FK columns; qualify manual UPDATE statements to the same schema as the INSERT/SELECT they target). ALSO correct the stale citations in ISS-0708.json flagged by CODE-DESIGN-VALIDATOR: fix_file/scope/affected_areas reference non-existent split files (prm-06-promotion-assertion.test.zig / prm-07-assertion-rerun.test.zig) and migrations 1144/1145 \u2014 update to the combined file tests/integration/prm-06-07-promotion-assertion.test.zig and migrations 096/1156. (3) Update docs/issues/issue_index.json: set ISS-0708 status RESOLVED with resolved_at. IMPORTANT: do NOT close GitHub issue #793 via gh issue close \u2014 this is a loop-mode run; Step Final (release.py --close-github-issue) closes it.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated under [Unreleased] 2026-08-16 with the PRM-06/07 integration-test fix entry",
+      "docs/issues/ISS-0708.json status = RESOLVED with resolved_at, resolution, prevention; stale citations corrected (combined test file + migrations 096/1156)",
+      "docs/issues/issue_index.json updated (ISS-0708 RESOLVED with resolved_at)",
+      "GitHub issue #793 NOT closed by this step (left open for Step Final release.py --close-github-issue)",
+      "Work on branch feature/WF03-GH793-20260816"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated ISS-0708 to RESOLVED for GH-793: three test-setup patches in tests/integration/prm-06-07-promotion-assertion.test.zig (TC-PRM-06-03 requested_by NOT NULL, TC-PRM-07-01 teardown UPDATE schema-qualification, TC-PRM-07-03 defensive parent-row seed); 9/9 integration tests green. Corrected stale citations per CODE-DESIGN-VALIDATOR (combined test file + migrations 096/1156). CHANGELOG.md [Unreleased] 2026-08-16 entry added; issue_index.json updated (ISS-0708 RESOLVED with resolved_at). GH-793 left OPEN for Step Final release.py --close-github-issue; branch feature/WF03-GH793-20260816 retained.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0708.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-GH793-20260816-step-7-doc-updater-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to Step Final (release.py --close-github-issue) to close GH-793 and squash-merge feature/WF03-GH793-20260816"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

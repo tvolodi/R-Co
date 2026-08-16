@@ -1,0 +1,134 @@
+{
+  "handoff_id": "wf03-gh804-20260816-2b-code-design-validator",
+  "run_id": "WF03-GH804-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH804-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T07:24:28Z",
+  "started_at": "2026-08-16T07:24:45Z",
+  "completed_at": "2026-08-16T07:26:27Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2b -- design validation (hard gate)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/804",
+    "iss_id": "ISS-0713",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh804-20260816-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0713-gh804-prm08-seed-fix.md",
+      "docs/issues/ISS-0713.json",
+      "tests/integration/prm-08-rollback-sandbox.test.zig"
+    ],
+    "design_artefact": "src/design/iss0713-gh804-prm08-seed-fix.md",
+    "branch_name": "feature/WF03-GH804-20260816",
+    "hard_gate": true
+  },
+  "task": {
+    "description": "Step 2b \u2014 Design Validation (HARD GATE). Validate the design artefact at src/design/iss0713-gh804-prm08-seed-fix.md (Type E \u2014 test-code-only fix, no production code) against the WF-02 Step 1b checks applied to a fix design. Step 3 (implementation) MUST NOT start until this returns PASS. Checks: (a) design addresses the diagnosed root_cause from ISS-0713 (TC-PRM-08-03 fixture promotion_reviews row seeded with random tenant_id + zero def_id cannot match the rollback supersede WHERE tenant_id=DEFAULT_TENANT_ID AND def_id=current_active_id); (b) the patch is precise and confined to tests/integration/prm-08-rollback-sandbox.test.zig (helper gains def_id param, call site passes DEFAULT_TENANT_ID + def_id_v2); (c) explicit out-of-scope statement (no production rollback.zig change = GH-803); (d) no implementation code in the design beyond the patch shape; (e) tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0); (f) verification plan documented (test-integration-prm08, :5453 test DB, GH-803 dependency noted); (g) fix scope <= 5 files.",
+    "expected_outputs": [
+      "Validation report (PASS or FAIL) for src/design/iss0713-gh804-prm08-seed-fix.md"
+    ],
+    "acceptance_criteria": [
+      "Design addresses root_cause from ISS-0713",
+      "Patch precise and confined to the single test file (no production code/migrations)",
+      "Out-of-scope statement explicit (GH-803 production)",
+      "No implementation code in design (patch shape only)",
+      "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+      "Verification plan documented (test-integration-prm08, :5453 test DB, GH-803 dependency)",
+      "Fix scope <= 5 files",
+      "Step 3 MUST NOT start until PASS"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design artefact src/design/iss0713-gh804-prm08-seed-fix.md (ISS-0713/GH-804) validated against all 8 acceptance criteria + WF-02 Step 1b checks. Lint exit 0; all factual claims cross-checked against the tree; fix scoped to 1 test file; GH-803 dependency explicit. Step 3 may start.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV / ISSUE-FIXER (Step 3); ORCH to sequence GH-803 (production 42883 cast fix) for full 4/4 green.",
+    "checks": [
+      {
+        "id": "AC-01",
+        "name": "Design addresses root_cause from ISS-0713",
+        "result": "PASS",
+        "evidence": "Root-cause section matches ISS-0713.root_cause: fixture seeds promotion_reviews under random tenant_id + helper hardcoded zero-UUID def_id; production supersede WHERE (rollback.zig:289-291, params [event_id,tenant_id,current_active_id]) matches tenant_id=DEFAULT_TENANT_ID AND def_id=current_active_id (=def_id_v2). Design fix passes DEFAULT_TENANT_ID + def_id_v2; verified against call site @472 and def_id_v2 @453/464."
+      },
+      {
+        "id": "AC-02",
+        "name": "Patch precise and confined to single test file (no production code/migrations)",
+        "result": "PASS",
+        "evidence": "Single target file tests/integration/prm-08-rollback-sandbox.test.zig; change = helper gains def_id param (@233) + one call site (@472). No src/ or migrations/ change proposed. prm-06-07 helper is a separate file-local fn (different file) - correctly untouched."
+      },
+      {
+        "id": "AC-03",
+        "name": "Out-of-scope statement explicit (GH-803 production)",
+        "result": "PASS",
+        "evidence": "Scope and non-goals explicitly list GH-803/ISS-0712 (production sqlstate 42883 cast in src/definition/rollback.zig Step 5) as out of scope; also lists GH-802 (already applied), migrations/, build.zig, other test files, and stale :5433 runner scripts."
+      },
+      {
+        "id": "AC-04",
+        "name": "No implementation code in design (patch shape only)",
+        "result": "PASS",
+        "evidence": "Design contains only before/after patch-shape blocks for the helper and the single call site (the permitted patch shape), plus public-interface signature, data-flow diagram, error taxonomy, state transitions, dependencies. No full new files, no production logic, no SQL DDL, no JSX."
+      },
+      {
+        "id": "AC-05",
+        "name": "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+        "result": "PASS",
+        "evidence": "python tools/lint_design_artefact.py src/design/iss0713-gh804-prm08-seed-fix.md -> exit 0, \"OK - 1 file(s) checked, no issues.\" (Type E requires lint only; no codegen per lego-catalog.md)."
+      },
+      {
+        "id": "AC-06",
+        "name": "Verification plan documented (test-integration-prm08, :5453 test DB, GH-803 dependency)",
+        "result": "PASS",
+        "evidence": "Verification plan documents BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08; target confirmed @build.zig:3147; :5453 DB only (no API/IDP needed); GH-803 dependency explicit - full 4/4 green requires GH-804 + GH-803; instructs NOT to use .vscode/run-zig-test-integration.ps1 (:5433)."
+      },
+      {
+        "id": "AC-07",
+        "name": "Fix scope <= 5 files",
+        "result": "PASS",
+        "evidence": "Scope is exactly 1 file (tests/integration/prm-08-rollback-sandbox.test.zig) - well under the 5-file cap."
+      },
+      {
+        "id": "AC-08",
+        "name": "Step 3 MUST NOT start until PASS",
+        "result": "PASS",
+        "evidence": "Hard-gate satisfied - this validation returns PASS, so BACKEND-DEV / ISSUE-FIXER (Step 3) may start."
+      },
+      {
+        "id": "CMP-01",
+        "name": "Completeness: purpose, public signatures, error taxonomy, dependencies, data-flow diagram",
+        "result": "PASS",
+        "evidence": "Module purpose (one paragraph), Public interface (helper signature before/after with types + contract), Error taxonomy table (6 conditions), Dependencies incl. \"Must NOT depend on\" (production rollback.zig change, migration change, :5433 scripts), ASCII data-flow diagram - all present."
+      },
+      {
+        "id": "SEC-01",
+        "name": "Security: input validation + access-control for any input/data-access elements",
+        "result": "PASS",
+        "evidence": "Test-fixture-only patch: no user input, no new data-access path, no auth-boundary change. Production supersede predicate and test auth paths (TC-PRM-08-04) untouched. N/A but recorded as satisfied."
+      },
+      {
+        "id": "CLS-01",
+        "name": "Classification correct per lego-catalog selection rules",
+        "result": "PASS",
+        "evidence": "Type E justified (novel cross-cutting test-fixture fix; not Type A/B/C/D; no reusable Lego parameter file) - consistent with ISS-0711/GH-802 sibling fixture fix and lego-catalog Type E validation (lint only)."
+      },
+      {
+        "id": "OPEN-01",
+        "name": "Ambiguities flagged as open questions, not guessed",
+        "result": "PASS",
+        "evidence": "Open questions section: negative-control hardening, ON CONFLICT clause form, GH-803 sequencing - all flagged with Step 3 discretion; no requirement guessing."
+      }
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

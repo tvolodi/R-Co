@@ -1,0 +1,66 @@
+{
+  "handoff_id": "wf03-lintdebt-20260816-03-backend-dev",
+  "run_id": "WF03-lintdebt-20260816",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-lintdebt-20260816/step-03-backend-dev.json",
+  "created_at": "2026-08-16T00:28:42Z",
+  "started_at": "2026-08-16T00:29:04Z",
+  "completed_at": "2026-08-16T00:50:30Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-lintdebt-20260816-00-backend-dev",
+      "wf03-lintdebt-20260816-005-issue-fixer",
+      "wf03-lintdebt-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-lintdebt-20260816/step-01-issue-fixer.json",
+      "docs/issue-reports/WF03-lintdebt-20260816-step-01-issue-fixer-INNER-REPORT.json",
+      "tools/lint_handoffs.baseline.json",
+      "tools/repair_handoff_bookkeeping.py",
+      "docs/issues/ISS-0709.json"
+    ],
+    "branch_name": "feature/WF03-lintdebt-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 3 for run WF03-lintdebt-20260816: implement the fix for the 42 unacknowledged lint_handoffs findings per the Step 1 diagnosis-as-design fix spec (handoffs/WF03-lintdebt-20260816/step-01-issue-fixer.json result + inner report). On branch feature/WF03-lintdebt-20260816: (a) append the 41 baseline entries (H003 x5, H013 x5, H007 x30, H009 x1) to tools/lint_handoffs.baseline.json using the EXACT matching_key strings computed by lint_handoffs.py's matching_key_for (full list in the Step 1 inner report), reuse the existing H003/H013/H009 reason refs, add one new reason key 'H007-prm-agent-id-schema' documenting the agent_id/agent_name schema-variant cause, and PRESERVE all 291 existing baseline entries — do NOT run tools/generate_lint_handoffs_baseline.py (it would drop the H013/H007 entries); update generated_at + regeneration_note per the GH-666 append precedent; (b) fix the H010 MINOR (71 handoffs absent from registry) by running python tools/repair_handoff_bookkeeping.py --category h010 --apply --now $(python tools/utcnow.py) to backfill the 67 backfillable entries additively (the ~4 residual non-backfillable remain as a non-gating MINOR); (c) verify python tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR; residual MINOR H010 allowed); (d) run the tool selftests (python tools/lint_handoffs.py selftest / repair_handoff_bookkeeping.py selftest) if present; (e) commit on the branch. Do NOT change any handoff file content (H003/H007/H009/H013 are out of repair scope per iss0626).",
+    "acceptance_criteria": [
+      "tools/lint_handoffs.baseline.json has 41 new entries appended, 291 existing entries preserved",
+      "New reason key 'H007-prm-agent-id-schema' added to the reasons map",
+      "python tools/repair_handoff_bookkeeping.py --category h010 --apply backfilled the 67 backfillable registry entries",
+      "python tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR; residual non-gating MINOR allowed)",
+      "Committed on feature/WF03-lintdebt-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 3 fix implemented on feature/WF03-lintdebt-20260816: (a) tools/lint_handoffs.baseline.json appended with 41 entries (H003 x5, H013 x5, H007 x30, H009 x1) using the exact matching_key strings from the Step 1 fix spec — verified 332 total entries, 0 of the 291 pre-existing entries dropped, new reason key 'H007-prm-agent-id-schema' added, generated_at + regeneration_note updated (GH-666 append precedent; NOT regenerated via generate_lint_handoffs_baseline.py); (b) H010 registry repair via repair_handoff_bookkeeping.py --category h010 --apply confirmed idempotent — 67 of 71 absent handoffs backfilled, residual 4 non-backfillable (3 agent_id/agent_name-schema files + WF02-iss201-event-return-20260611/step-final missing created_at) remain as non-gating MINOR; (c) python tools/lint_handoffs.py exits 0 — 0 BLOCKER, 0 MAJOR, 1 MINOR (H010 residual 4/2917 = 0.1%), 332 ACKNOWLEDGED; (d) both tool selftests pass (lint_handoffs.py selftest, repair_handoff_bookkeeping.py selftest); (e) committed on the branch. No handoff file content changed (H003/H007/H009/H013 out of repair scope per iss0626/iss0627).",
+    "artifacts_out": [
+      "tools/lint_handoffs.baseline.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log",
+      "handoffs/WF03-lintdebt-20260816/step-03-backend-dev.json",
+      "handoffs/WF03-lintdebt-20260816/step-01-issue-fixer.json",
+      "docs/issue-reports/WF03-lintdebt-20260816-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Residual H010 (non-gating): 4 of 2917 handoffs (0.1%) remain absent from handoffs/registry.json and are non-backfillable — ADHOC-prm-env-20260814/step-00-backend-dev.json, WF02-plc-batch-a-20260815/step-04-issue-fixer.json, WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json (all 3 missing from_agent/to_agent — agent_id/agent_name schema, acknowledged in baseline as H007-prm-agent-id-schema) and WF02-iss201-event-return-20260611/step-final-backend-dev.json (missing created_at, separate pre-existing debt). Not baseline-bound per fix spec (message embeds live count)."
+      }
+    ],
+    "next_action": "ORCH routes to TEST-RUNNER (Step 5) to verify lint_handoffs.py exits 0"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

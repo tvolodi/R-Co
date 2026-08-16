@@ -1,0 +1,50 @@
+{
+  "report_id": "WF03-GH802-20260816-step-0.5-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH802-20260816",
+  "step": "0.5",
+  "created_at": "2026-08-16T06:24:22Z",
+  "summary": "WF-03 Step 0.5 for GH-802/ISS-0711 (prm-08 integration-test fixture defect: insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan, latent sqlstate 23502). Verified ISS-0711 is the correct, non-colliding local record for GitHub issue #802 (github_issue match; title/severity/status/labels consistent; GH-802 confirmed OPEN via gh issue view 802 with labels bug, claimed-by-r-co-2-loop; no other index entry references GH-802; prior ADHOC filing already collision-checked next_issue_id 711->712). No new ISS and no new GitHub issue (GH-802 already exists/filed); no fix implemented (deferred to Step 3). Updated ISS-0711.json workflow_id/run_id/handoff_id to the active fix run WF03-GH802-20260816 and added handoff_history (2 entries: ADHOC filing 2026-08-16T06:16:34Z + this run). issue_index.json confirmed consistent: ISS-0711 present once, next_issue_id 712, ISS-0711 entry run_id/handoff_id/branch mirrored, last_updated bumped. All 5 acceptance criteria MET.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH802-20260816-step-0.5-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/issues/ISS-0711.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH802-20260816/step-005-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "gh issue view 802 (state/labels)",
+      "status": "pass",
+      "detail": "state OPEN, labels [bug, claimed-by-r-co-2-loop], title matches ISS-0711"
+    },
+    {
+      "name": "fn:search-issues equivalent (index + GitHub collision check)",
+      "status": "pass",
+      "detail": "ISS-0711 present once; only record referencing GH-802; no new ISS needed; GH-802 already filed"
+    },
+    {
+      "name": "issue_index.json consistency",
+      "status": "pass",
+      "detail": "ISS-0711 present once; next_issue_id == 712"
+    },
+    {
+      "name": "JSON validity (ISS-0711.json / issue_index.json / handoff)",
+      "status": "pass",
+      "detail": "valid UTF-8 JSON; utf-8-sig read tolerated; write utf-8 no BOM"
+    },
+    {
+      "name": "git branch check",
+      "status": "pass",
+      "detail": "on feature/WF03-GH802-20260816"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 3) to implement the ISS-0711/GH-802 fix: mirror GH-793 Cluster A patch (add requested_by param + requested_by/def_type/serialised_plan NOT NULL columns to insertPromotionReviewsRow; pass a fresh random UUID at each call site) in tests/integration/prm-08-rollback-sandbox.test.zig.",
+    "Verify the fix with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (port 5453, NOT the stale 5433 in .vscode/run-zig-test-integration.ps1)."
+  ],
+  "blockers": []
+}

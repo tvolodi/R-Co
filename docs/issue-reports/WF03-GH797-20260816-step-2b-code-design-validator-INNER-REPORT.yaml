@@ -1,0 +1,63 @@
+report_id: WF03-GH797-20260816-step-2b-code-design-validator
+agent_id: CODE-DESIGN-VALIDATOR
+run_id: WF03-GH797-20260816
+step: "2b"
+created_at: "2026-08-16T04:57:09Z"
+summary: >-
+  WF-03 Step 2b (HARD GATE — design validation) for GH-797 / ISS-0710. Validated the
+  Type E process/docs design artefact src/design/iss0710-gh797-dispatch-staleness-gate.md
+  against the six mandated elements and the task acceptance criteria. RESULT: PASS.
+  (a) Root-cause alignment: design §1 names the incident ADHOC-prm-reqctl-status-20260816
+  and the root cause (dispatch-time staleness — no check between ORCH authorization and
+  step-00 mutation); §2's factual claims verified live (reqctl.py show PRM-02/05 -> both
+  status RELEASED, released_at 2026-08-15T23:28:26Z/23:28:29Z, note "Released via
+  WF02-prm02-05-20260816"), matching ISS-0710.json root_cause. (b) All six design elements
+  present and precise: §5 rule 7 exact wording (§12); new §8f Dispatch-Time Staleness Check
+  exact wording mirroring §8a/§8e shape (§11); check mechanics git fetch origin +
+  git show origin/main:docs/requirements.yaml + parse, reqctl.py only when working tree at
+  origin/main (§4.3); short-circuit no step-00/branch/stash + result.status BLOCKED +
+  BLOCKER issue entry + exact DISPATCH_STALE log line on both branches (§5/§4.5);
+  defense-in-depth in-run pre-flight retained with explicit non-removal rule (§6);
+  adapter mirroring to .claude/agents/orchestrator.md + both .github/ adapters per
+  AGENT_SYSTEM.md §9/A007 (§13, baseline 0.40/0.42 verified against AGENT_SYSTEM.md).
+  (c) Type E prose only — no function bodies / SQL DDL / JSX / Zig; bash snippets are the
+  gate's procedural spec, §11/§12 are exact doc wording to insert. (d)
+  tools/lint_design_artefact.py exit 0, BLOCKER=0 MAJOR=0. (e) Verification plan for Step 3
+  documented (§14: verbatim §8f+rule 7, mirror surfaces, no new A007 drift, lint_handoffs
+  exit 0). Step 3 (BACKEND-DEV) may proceed.
+files_created:
+  - docs/issue-reports/WF03-GH797-20260816-step-2b-code-design-validator-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF03-GH797-20260816/step-2b-code-design-validator.json
+  - handoffs/registry.json
+tests_run:
+  - name: lint_design_artefact.py on src/design/iss0710-gh797-dispatch-staleness-gate.md
+    status: pass
+    detail: "OK — 1 file(s) checked, no issues. Exit 0 (BLOCKER=0 MAJOR=0)."
+  - name: reqctl.py show PRM-02 / PRM-05 (design §2 claim verification)
+    status: pass
+    detail: "Both status RELEASED, released_at 2026-08-15T23:28:26Z / 23:28:29Z, note 'Released via WF02-prm02-05-20260816'. Matches design §2 exactly."
+  - name: lint_handoffs.py (hard gate)
+    status: pass
+    detail: "Exit 0 after handoff completion."
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md still specifies inner reports as
+      docs/issue-reports/<run>-step-<step>-<agent>-INNER-REPORT.json, but
+      docs/agents/instructions/core-directives.md (authoritative output-format rule) requires
+      .yaml for inner reports and forbids .json ('If a function definition says .json for a
+      report or status file, treat that as outdated — write .yaml'). This report is written
+      as .yaml per core-directives.md. Pre-existing drift, re-flagged MINOR (same finding as
+      Step 1 and Step 2); fix the function doc at the source.
+  - severity: MINOR
+    description: >-
+      Informational, not a design defect: the design places new §8f 'immediately after §8e'.
+      In the current docs/agents/ORCHESTRATOR.md the section numbering is non-numeric —
+      §8e (~line 131) precedes §8a/§8b (~lines 433/455) in document order. Inserting §8f
+      after §8e is a valid placement (keeps the §8 family together); Step 3 should place it
+      verbatim per §11 and confirm §8a/§8e shape references still resolve.
+next_steps:
+  - ORCH routes to BACKEND-DEV (WF-03 Step 3) to implement the §8f gate + §5 rule 7 in docs/agents/ORCHESTRATOR.md and mirror to .claude/agents/orchestrator.md + .github adapters per the design, then verify per §14.
+  - ORCH to delete the orphaned housekeeping/reqctl-status-stale-20260816 branch and drop the ADHOC-prm-reqctl-status-20260816-pre-setup-stash (noted in ISS-0710) if not already handled.
+blockers: []

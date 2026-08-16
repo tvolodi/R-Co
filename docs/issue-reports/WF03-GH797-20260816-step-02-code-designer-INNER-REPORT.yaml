@@ -1,0 +1,45 @@
+report_id: WF03-GH797-20260816-step-02-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF03-GH797-20260816
+step: "2"
+created_at: "2026-08-16T04:54:10Z"
+summary: >-
+  WF-03 Step 2 (fix design) for GH-797 / ISS-0710. Classified the requirement as Lego
+  Type E (novel/cross-cutting process/docs change — no A/B/C/D match) and produced the
+  design artefact src/design/iss0710-gh797-dispatch-staleness-gate.md specifying the ORCH
+  dispatch-time staleness gate: a §5 construction rule 7 (dispatch-time end-state
+  precondition) plus a new ORCHESTRATOR.md §8f pre-dispatch gate mirroring the §8a/§8e
+  shape (exit-code-only verdict, log line on both branches), with exact check mechanics
+  (git fetch origin, then per-target status read at origin/main via git show
+  origin/main:docs/requirements.yaml + parse, or reqctl.py show <id> only when the working
+  tree is confirmed at origin/main), short-circuit behavior (no step-00, no branch, no
+  stash; result.status BLOCKED + BLOCKER issue entry naming already-done IDs and the
+  delivering run/PR; exact DISPATCH_STALE log line specified), retention of the in-run
+  pre-flight as defense-in-depth, and adapter mirroring to .claude/agents/orchestrator.md,
+  .github/instructions/orchestrator.instructions.md and .github/agents/orchestrator.agent.md
+  per AGENT_SYSTEM.md §9 / A007. Design-only — no implementation code written (Step 3 is
+  BACKEND-DEV). Lint: tools/lint_design_artefact.py exits 0 with BLOCKER=0 MAJOR=0.
+files_created:
+  - src/design/iss0710-gh797-dispatch-staleness-gate.md
+  - docs/issue-reports/WF03-GH797-20260816-step-02-code-designer-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF03-GH797-20260816/step-02-code-designer.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: tools/lint_design_artefact.py src/design/iss0710-gh797-dispatch-staleness-gate.md
+    status: pass
+    detail: "OK — 1 file(s) checked, no issues. exit 0 (BLOCKER=0 MAJOR=0)."
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md still specifies writing inner reports as
+      docs/issue-reports/<run>-step-<step>-<agent>-INNER-REPORT.json, but
+      docs/agents/instructions/core-directives.md (authoritative output-format rule) requires
+      .yaml for inner reports and forbids .json. This report is written as .yaml per
+      core-directives.md, same as the run's step-01 report. Same drift already recorded as a
+      MINOR by Step 1; fix the function doc at the source.
+next_steps:
+  - ORCH routes to CODE-DESIGN-VALIDATOR (Step 1b gate for this WF-03 fix run) to validate the design artefact, then to BACKEND-DEV (Step 3) to implement the §8f gate + §5 rule 7 in docs/agents/ORCHESTRATOR.md and mirror to .claude/agents/orchestrator.md + the .github adapters per the design.
+  - ORCH to delete the orphaned housekeeping/reqctl-status-stale-20260816 branch and drop the ADHOC-prm-reqctl-status-20260816-pre-setup-stash (noted in ISS-0710).
+blockers: []

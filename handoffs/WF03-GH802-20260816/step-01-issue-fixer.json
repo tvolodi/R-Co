@@ -1,0 +1,76 @@
+{
+  "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+  "run_id": "WF03-GH802-20260816",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH802-20260816/step-01-issue-fixer.json",
+  "created_at": "2026-08-16T06:26:16Z",
+  "started_at": "2026-08-16T06:26:31Z",
+  "completed_at": "2026-08-16T06:33:35Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 1 -- root-cause diagnosis",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
+    "iss_id": "ISS-0711",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh802-20260816-00-backend-dev",
+      "wf03-gh802-20260816-005-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0711.json",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "src/design/iss0708-gh793-prm0607-test-fixes.md"
+    ],
+    "branch_name": "feature/WF03-GH802-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 1 for run WF03-GH802-20260816: root-cause diagnosis (diagnosis-as-design) for the prm-08 fixture defect (ISS-0711 / GH-802). CONFIRM the diagnosis already documented in ISS-0711 and the GH-793 precedent (same class as ISS-0708/GH-793 Cluster A): insertPromotionReviewsRow in tests/integration/prm-08-rollback-sandbox.test.zig builds the promotion_reviews row without requested_by/def_type/serialised_plan which are NOT NULL in migration 096 -> latent sqlstate 23502. Read the ACTUAL test file to confirm the helper routine and its call site(s) in prm-08-rollback-sandbox.test.zig. DEFINE the fix spec for Step 3 precisely: mirror the GH-793 Cluster A patch (add requested_by parameter + include requested_by/def_type/serialised_plan in the INSERT; call sites pass freshly generated UUIDs), plus confirm the verification command (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08, or the equivalent target). Do NOT implement the fix yourself.",
+    "acceptance_criteria": [
+      "Root cause confirmed against the ACTUAL prm-08 test file (helper routine + call sites identified)",
+      "Fix spec for Step 3 fully specified (mirror GH-793 Cluster A patch; exact helper + call-site changes)",
+      "Verification command(s) specified",
+      "No fix implemented (Step 3 only)",
+      "Work on branch feature/WF03-GH802-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 1 (diagnosis-as-design) for GH-802/ISS-0711: confirmed and REPRODUCED the prm-08 fixture NOT-NULL defect (sqlstate 23502) against the ACTUAL test file — insertPromotionReviewsRow (tests/integration/prm-08-rollback-sandbox.test.zig lines 233-258) omits requested_by/def_type/serialised_plan (NOT NULL in migration 096); single call site line 466 in TC-PRM-08-03 (AC4). Defined the exact Step 3 fix spec mirroring GH-793 Cluster A (add requested_by param; include the three NOT NULL columns; call site passes a fresh randomUuidStr). Reproduction ALSO surfaced two additional latent defects filed per No-Issue-Left-Local-Only: ISS-0712/GH-803 (production rollback.zig Step 5 supersede def_id = $3::uuid vs TEXT column -> sqlstate 42883, swallowed by catch null, superseded_review_id always null) and ISS-0713/GH-804 (TC-PRM-08-03 fixture row seeded under random tenant + zero def_id can never match the supersede WHERE -> 'superseded' assertion fails post-fix). Both block the GH-802 verification command; ORCH must sequence them. No fix implemented (Step 3 only).",
+    "artifacts_out": [
+      "docs/issues/ISS-0711.json",
+      "docs/issues/ISS-0712.json",
+      "docs/issues/ISS-0713.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-GH802-20260816-step-1-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0711/GH-802 CONFIRMED + reproduced (sqlstate 23502). Fix spec delivered for Step 3 (mirror GH-793 Cluster A)."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "NEW — ISS-0712/GH-803: production src/definition/rollback.zig Step 5 supersede `def_id = $3::uuid` vs TEXT promotion_reviews.def_id -> sqlstate 42883 (operator does not exist: text = uuid), swallowed by catch null -> superseded_review_id always null. Fix: drop ::uuid cast (`def_id = $3`); distinguish missing-table 42P01 from real errors. Blocks GH-802 verification; production code — cannot be folded into GH-802."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "NEW — ISS-0713/GH-804: TC-PRM-08-03 seeds its promotion_reviews fixture row under the random tenant UUID + zero def_id, which can never match the rollback supersede WHERE (tenant_id=DEFAULT_TENANT_ID, def_id=current_active_id=V2 def_id); 'superseded' assertion fails after the 23502/42883 fixes. Fix (test-only): seed tenant_id=DEFAULT_TENANT_ID, def_id=def_id_v2. May be folded into GH-802 Step 3 (recommended) or run separately (ORCH decision)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0711.json cited call site as 'TC-PRM-08-04'; actual single call site is line 466 inside TC-PRM-08-03. Corrected in ISS-0711.json during this step."
+      }
+    ],
+    "next_action": "Route to ORCH for Step 3 scoping: implement GH-802 fix spec (mirror GH-793 Cluster A) in tests/integration/prm-08-rollback-sandbox.test.zig, and sequence ISS-0712/GH-803 (production 42883 supersede) + ISS-0713/GH-804 (fixture tenant/def_id mismatch) — all three must be fixed for 'zig build test-integration-prm08 passes'. Verification: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,53 @@
+{
+  "report_id": "WF03-GH802-20260816-step-1-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH802-20260816",
+  "step": "1",
+  "created_at": "2026-08-16T06:33:35Z",
+  "summary": "WF-03 Step 1 (diagnosis-as-design) for GH-802/ISS-0711. CONFIRMED the documented diagnosis against the ACTUAL test file and REPRODUCED it: tests/integration/prm-08-rollback-sandbox.test.zig insertPromotionReviewsRow (lines 233-258) INSERTs only (id, tenant_id, status, def_id, plan_digest, created_at), omitting the NOT NULL requested_by/def_type/serialised_plan from migration 096; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 failed TC-PRM-08-03 with sqlstate 23502 at line 240 called from line 466 (single call site, in TC-PRM-08-03 — the AC4 superseded_review_id path; the ISS body's 'TC-PRM-08-04' citation was corrected to TC-PRM-08-03). Defined the exact Step 3 fix spec mirroring GH-793 Cluster A (add requested_by param; include requested_by/def_type/serialised_plan in the INSERT; call site passes a fresh randomUuidStr). The reproduction trace ALSO surfaced two additional latent defects that block the GH-802 verification command, both filed per No-Issue-Left-Local-Only: (1) ISS-0712/GH-803 — production src/definition/rollback.zig Step 5 supersede UPDATE compares def_id = $3::uuid against TEXT promotion_reviews.def_id -> sqlstate 42883 (operator does not exist: text = uuid), swallowed by `catch null` so superseded_review_id is always null; (2) ISS-0713/GH-804 — TC-PRM-08-03 seeds its promotion_reviews row under the random tenant UUID + zero def_id, which can never match the supersede WHERE (tenant_id=DEFAULT_TENANT_ID, def_id=current_active_id), so the 'superseded' assertion fails after the 23502/42883 fixes. No fix implemented (Step 3 only).",
+  "files_created": [
+    "docs/issues/ISS-0712.json",
+    "docs/issues/ISS-0713.json",
+    "docs/issue-reports/WF03-GH802-20260816-step-1-issue-fixer-INNER-REPORT.json",
+    "handoffs/WF03-GH802-20260816/step-01-issue-fixer.json"
+  ],
+  "files_modified": [
+    "docs/issues/ISS-0711.json",
+    "docs/issues/issue_index.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-prm08 (current, unfixed tree; BPM_TEST_DB_URL=:5453)",
+      "status": "fail",
+      "detail": "3 pass, 1 fail (TC-PRM-08-03): [pool] exec failed; sqlstate=23502 params=2 sql=INSERT INTO promotion_reviews (id, tenant_id, status, def_id, plan_digest, created_at) ... at insertPromotionReviewsRow:240 called from TC-PRM-08-03:466. Also recorded [pool] queryRow failed; sqlstate=42883 params=3 sql=UPDATE promotion_reviews SET status='superseded' ... (rollback.zig Step 5 supersede, swallowed by catch null). Reproduces ISS-0711 and exposes ISS-0712/ISS-0713."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "ISS-0711/GH-802 CONFIRMED: prm-08 insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan (migration 096) -> sqlstate 23502. This is the run's scoped defect; fix spec delivered for Step 3 (mirror GH-793 Cluster A)."
+    },
+    {
+      "severity": "MAJOR",
+      "description": "NEW (filed ISS-0712/GH-803): production src/definition/rollback.zig Step 5 supersede UPDATE `def_id = $3::uuid` vs TEXT promotion_reviews.def_id -> sqlstate 42883 (operator does not exist: text = uuid), swallowed by catch null -> superseded_review_id always null; PRM-08 AC4 never works. Fix: drop ::uuid cast (`def_id = $3`); distinguish missing-table 42P01 from real errors. BLOCKS GH-802 verification command; production code so it cannot be folded into GH-802."
+    },
+    {
+      "severity": "MAJOR",
+      "description": "NEW (filed ISS-0713/GH-804): TC-PRM-08-03 seeds the promotion_reviews fixture row under the random tenant UUID + zero def_id (helper hardcoded), but the supersede WHERE matches tenant_id=DEFAULT_TENANT_ID AND def_id=current_active_id (V2), so the row can never be superseded and the 'superseded' assertion fails after the 23502/42883 fixes. Fix (test-only): seed with tenant_id=DEFAULT_TENANT_ID and def_id=def_id_v2. May be folded into GH-802 Step 3 or run separately (ORCH decision)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "ISS-0711.json fix_diff/description cited 'TC-PRM-08-04' as the call site; the ACTUAL single call site is line 466 inside TC-PRM-08-03 (AC4). Corrected in ISS-0711.json during this step."
+    }
+  ],
+  "next_steps": [
+    "Step 3 (BACKEND-DEV): implement the GH-802 fix spec (mirror GH-793 Cluster A: add requested_by param + NOT NULL columns; fresh UUID at call site 466) in tests/integration/prm-08-rollback-sandbox.test.zig. Do NOT use .vscode/run-zig-test-integration.ps1 (stale port 5433).",
+    "ORCH: decide sequencing for ISS-0712/GH-803 (production 42883 supersede fix) and ISS-0713/GH-804 (fixture tenant/def_id mismatch) — both must be fixed for 'zig build test-integration-prm08 passes' (GH-802 AC) to hold. Recommend GH-802 Step 3 also fold in the ISS-0713 test-only fixture correction, and run ISS-0712 as its own WF-03 cycle (production change).",
+    "Verification command for Step 3: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (target exists at build.zig:3147); direct run of the compiled binary from .zig-cache/o/<hash>/test.exe prints per-test progress."
+  ],
+  "blockers": [
+    "None for Step 1 (diagnosis complete). NOTE for downstream: the GH-802 acceptance criterion 'test-integration-prm08 passes' is unachievable with ONLY the Cluster A mirror because ISS-0712 (production 42883) and ISS-0713 (fixture supersede mismatch) also fail TC-PRM-08-03."
+  ]
+}

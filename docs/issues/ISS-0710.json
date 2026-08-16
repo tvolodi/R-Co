@@ -1,0 +1,74 @@
+{
+  "iss_id": "ISS-0710",
+  "id": "ISS-0710",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/797",
+  "github_issue_confirmed": true,
+  "title": "process: duplicate stale-status fix for PRM-02/03/04/05 \u2014 ADHOC-prm-reqctl-status-20260816 abort BLOCKER (fixed independently by WF02-prm02-05-20260816 / PR #795)",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-GH797-20260816",
+  "run_id": "WF03-GH797-20260816",
+  "handoff_id": "WF03-GH797-20260816/step-005-issue-fixer",
+  "branch": "feature/WF03-GH797-20260816",
+  "created_at": "2026-08-16T04:40:49Z",
+  "registered_at": "2026-08-16T04:40:49Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH797-20260816 step-0.5)",
+  "created_by": "ISSUE-FIXER (WF03-GH797-20260816 step-0.5)",
+  "labels": [
+    "process",
+    "duplicate",
+    "bookkeeping"
+  ],
+  "scope": "Duplicate-work detection + process gap. ADHOC-prm-reqctl-status-20260816 was dispatched to mark PRM-02/03/04/05 RELEASED in docs/requirements.yaml after WF02-prm-batch2-20260814 (PR #784, commit b499ef9b) had been observed to update only the rendered snapshot. Pre-flight on HEAD ae9854f4 found PRM-02/03/04/05 already status: RELEASED \u2014 the fix was independently delivered by WF02-prm02-05-20260816 (PR #795). The ADHOC aborted BLOCKER with no code/docs change; the resulting housekeeping branch and stash were orphaned. Also carries the bookkeeping defect that GH-797's body originally read 'Tracked as ISS-0709' (ISS-0709 is the unrelated lint_handoffs/GH-796 issue) instead of pointing at a dedicated ISS.",
+  "affected_areas": [
+    "docs/requirements.yaml",
+    "docs/status/requirement_status.yaml",
+    "tools/reqctl.py",
+    "handoffs/ADHOC-prm-reqctl-status-20260816/",
+    "docs/issues/ISS-0710.json"
+  ],
+  "description": "GH-797 records duplicate-work detection for the PRM-02/03/04/05 RELEASED status. ADHOC-prm-reqctl-status-20260816 was dispatched to mark PRM-02/03/04/05 RELEASED in docs/requirements.yaml after WF02-prm-batch2-20260814 (PR #784, commit b499ef9b) had been observed to update only the rendered snapshot. Pre-flight on this ADHOC found PRM-02/03/04/05 already status: RELEASED at HEAD ae9854f4 \u2014 the fix was independently delivered by WF02-prm02-05-20260816 (PR #795 squash-merged at 2e9d3c99 on 2026-08-15; bookkeeping commit ae9854f4 on 2026-08-15T23:45:54Z). Both docs/requirements.yaml (canonical) and docs/status/requirement_status.yaml (snapshot) carry the RELEASED status with released_at in the 2026-08-15T23:28:26Z..23:28:29Z window. The pre-flight precondition triggered the BLOCKER ('if already RELEASED, STOP and FAIL with BLOCKER (someone else fixed it)'); no code/docs change was performed. Housekeeping branch housekeeping/reqctl-status-stale-20260816 sits at base_commit_sha == origin/main HEAD with no work to absorb; ORCH to delete it and drop the orphaned stash@{0} (ADHOC-prm-reqctl-status-20260816-pre-setup-stash). This ISS is the dedicated local record for GH-797; the GH-797 body reference to ISS-0709 was incorrect and was corrected to ISS-0710 by this Step 0.5. Do NOT implement the fix in Step 0.5 \u2014 Step 3 decides and implements the process-gap disposition.",
+  "symptom": "A duplicate ADHOC (ADHOC-prm-reqctl-status-20260816) was dispatched to mark PRM-02/03/04/05 RELEASED against a stale repo view; its pre-flight discovered the target status already RELEASED at HEAD and aborted BLOCKER. The ADHOC produced no change but left an orphaned housekeeping branch and stash. Separately, GH-797's body stated 'Tracked as ISS-0709', which pointed at the unrelated lint_handoffs/GH-796 issue instead of a dedicated ISS for GH-797.",
+  "discovered_at": "2026-08-16T04:00:49Z",
+  "discovered_by": "ORCH (WF03-GH797-20260816 dispatch; pre-flagged from ADHOC-prm-reqctl-status-20260816 abort BLOCKER)",
+  "root_cause": "Dispatch-time staleness: an ADHOC was authorized against an outdated view of the repo; its pre-flight precondition caught the already-done state only after step-00 had already created the housekeeping branch and stash. No lightweight dispatch-time check (reqctl.py show <id> or git show HEAD:<file>) existed to short-circuit before work-branch creation. Bookkeeping: GH-797 was created with a 'Tracked as ISS-0709' line that referenced the wrong issue (ISS-0709 belongs to the unrelated lint_handoffs/GH-796 issue), and no dedicated ISS had been registered for GH-797.",
+  "investigation_notes": "Verified on 2026-08-16: (1) PRM-02/03/04/05 are status: RELEASED in docs/requirements.yaml and docs/status/requirement_status.yaml (released_at 2026-08-15T23:28:26Z..23:28:29Z), delivered by WF02-prm02-05-20260816 via PR #795 (squash-merge 2e9d3c99, bookkeeping ae9854f4); (2) grep over docs/issues/ found no existing ISS referencing GH-797 / prm-reqctl / reqctl-status-stale \u2014 GH-797 had NO dedicated ISS; (3) docs/issues/ISS-0709.json is the lint_handoffs 42-findings issue (GH-796), unrelated to GH-797; (4) registry next_issue_id is 710, docs/issues/ISS-0710.json does not exist, and `gh issue list --search 'ISS-0710' --state all` returns no matches \u2014 no local/GitHub collision; (5) GH-797 is OPEN with labels duplicate, process, claimed-by-r-co-2-loop. Step 0.5 registers ISS-0710 and reconciles the GH-797 body reference; Step 3 implements the process-gap disposition.",
+  "reproduction": "Not a runtime defect \u2014 no code reproduction required. The duplicate-run scenario: dispatch ADHOC-prm-reqctl-status-20260816 against a repo view predating PR #795; the pre-flight precondition aborts with BLOCKER ('if already RELEASED, STOP and FAIL with BLOCKER (someone else fixed it)').",
+  "notes": "PROCESS-GAP RECOMMENDATION (for Step 1/2 consideration): an ADHOC dispatched against an outdated view of the repo can target work that has already been completed. A lightweight check (reqctl.py show <id>, or git show HEAD:<file> for the affected requirement IDs) at dispatch time would have short-circuited this run before step-00 created the housekeeping branch. Step 3 should decide and implement this guard. This Step 0.5 only registers the issue and reconciles GH-797; it does NOT implement the fix.",
+  "acceptance_criteria": [
+    "ISS file created in docs/issues/ for GH-797 with the correct content (not the lint_handoffs content), and entry appended to docs/issues/issue_index.json (next_issue_id advanced)",
+    "No ID collision: local ISS-NNNN verified against issue_index.json and GitHub (ISS-0709 not reused; no unrelated GitHub issue reference)",
+    "The wrong 'Tracked as ISS-0709' reference in GH-797's body corrected so the GitHub issue points at the correct ISS",
+    "The process-gap recommendation captured in the ISS notes for Step 1/2"
+  ],
+  "handoff_history": [
+    {
+      "step": "step-0.5-issue-fixer",
+      "agent": "ISSUE-FIXER",
+      "run_id": "WF03-GH797-20260816",
+      "handoff_id": "wf03-gh797-20260816-005-issue-fixer",
+      "status": "COMPLETED",
+      "completed_at": "2026-08-16T04:43:23Z",
+      "summary": "Registered ISS-0710 as the dedicated local record for GH-797 (collision-checked, no prior ISS referenced GH-797/prm-reqctl/reqctl-status-stale), appended to docs/issues/issue_index.json (next_issue_id 710 -> 711), corrected the GH-797 body 'Tracked as ISS-0709' reference to ISS-0710 on GitHub, and captured the process-gap recommendation in notes. Fix disposition deferred to Step 3."
+    },
+    {
+      "step": "step-07-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH797-20260816",
+      "handoff_id": "wf03-gh797-20260816-07-doc-updater",
+      "status": "RESOLVED",
+      "completed_at": "2026-08-16T05:11:50Z",
+      "summary": "CHANGELOG.md updated under [Unreleased] 2026-08-16 with the ORCH dispatch-time staleness gate entry (GH-797/ISS-0710, type E docs-only). ISS-0710 marked RESOLVED with resolved_at/resolution/prevention; docs/issues/issue_index.json updated (ISS-0710 status RESOLVED with resolved_at). GitHub issue #797 intentionally NOT closed by this step \u2014 left open for Step Final (release.py --close-github-issue) per the loop-mode instruction. No requirement statuses touched (PRM-02/03/04/05 remain RELEASED, out of scope)."
+    }
+  ],
+  "resolved_at": "2026-08-16T05:11:50Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH797-20260816 step-07)",
+  "resolution": "RESOLVED via run WF03-GH797-20260816 (branch feature/WF03-GH797-20260816). The process-gap disposition was implemented as a docs-only ORCH dispatch-time staleness gate (Type E, no production code). Step 2 (CODE-DESIGNER) produced the design artefact src/design/iss0710-gh797-dispatch-staleness-gate.md; Step 3 (BACKEND-DEV) implemented it: new ORCH construction rule (\u00a75 rule 7) + new pre-dispatch gate \u00a78f 'Dispatch-Time Staleness Check' in docs/agents/ORCHESTRATOR.md, mirrored to the canonical .claude/agents/orchestrator.md and both GitHub-harness adapters (.github/instructions/orchestrator.instructions.md, .github/agents/orchestrator.agent.md) per AGENT_SYSTEM.md \u00a79 (A007). The gate runs before any fn:git-setup dispatch: git fetch origin, then reads each target requirement's status at origin/main HEAD via `git show origin/main:docs/requirements.yaml` (never the working tree, never local main); if any target is already at the ADHOC's declared desired end state, the run short-circuits with a BLOCKER before step-00 creates a branch or stash; read failure is fail-closed; judged by exit code only (\u00a78a/\u00a78e); logged to handoffs/orchestrator.log with action DISPATCH_STALE. Step 5 (TEST-RUNNER) independent verification PASS (tests/reports/report-20260816-WF03-GH797-20260816.yaml): lint_handoffs.py exit 0 (0 BLOCKER/MAJOR), lint_agent_docs.py exit 0 no new A007 drift (baseline improved similarity), \u00a78f + rule 7 + DISPATCH_STALE verbatim in all four surfaces, lint_design_artefact.py OK, no prod-code/migrations changed. Step 7 (DOC-UPDATER) updated CHANGELOG.md under [Unreleased] 2026-08-16 and marked ISS-0710 RESOLVED. GitHub issue #797 left OPEN for Step Final (release.py --close-github-issue). No requirement statuses changed (PRM-02/03/04/05 remain RELEASED).",
+  "prevention": {
+    "actions": [
+      "Dispatch-time staleness check before any ADHOC step-00: whenever an ADHOC's desired end state is a status change in a tracked YAML/data file (e.g. marking requirement IDs RELEASED), ORCH must run the \u00a78f gate BEFORE dispatching step-00, short-circuiting with a BLOCKER if any target is already at the desired end state at origin/main HEAD.",
+      "Always `git fetch origin` before reading target status: read only the fetched origin/main ref (git show origin/main:<file>), never the working tree and never the local main branch; reqctl.py show <id> is valid only when the working tree is verified to be at origin/main HEAD.",
+      "Judge the gate by exit code only (\u00a78a/\u00a78e) and log every DISPATCH_STALE decision (CLEARED/BLOCKER) to handoffs/orchestrator.log; never phrase an ADHOC task as 'make X stop appearing' and never arrange for a failed read to pass (anti-patterns 2026-05-30 label-renaming incident)."
+    ]
+  }
+}

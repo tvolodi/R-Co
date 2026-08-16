@@ -1,0 +1,44 @@
+{
+  "report_id": "WF03-GH793-20260816-step-3-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF03-GH793-20260816",
+  "step": "3",
+  "created_at": "2026-08-16T05:56:46Z",
+  "summary": "Implemented the three PRM-06/07 integration-test fixes for ISS-0708 / GH-793 in tests/integration/prm-06-07-promotion-assertion.test.zig, per the validated Type E design (src/design/iss0708-gh793-prm0607-test-fixes.md). Cluster A (TC-PRM-06-03, sqlstate 23502): added a requested_by parameter to insertPromotionReviewsRow and included requested_by ($4::uuid), def_type ('assertion_rerun'), serialised_plan ('prm06-test-serialised-plan') in the INSERT; the only existing call site now generates a fresh random UUID via randomUuidStr. Cluster C (TC-PRM-07-01): qualified the manual recordTeardownFailure UPDATE target from unqualified promotion_assertion_runs to public.promotion_assertion_runs so it matches the qualified INSERT (unqualified resolved to tenant_default -> 0 rows). Cluster B (TC-PRM-07-03): seed a parent promotion_reviews row via the fixed helper (fresh requested_by UUID) before the assertion-run INSERT, defensively satisfying the conditional promotion_assertion_runs_review_fk from migration 1156 when present. No production code and no migrations were modified (git status confirms the only source change is the target test file). Verification: zig build exits 0 with no 'error set' stderr output; BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 exits 0; direct execution of the compiled test binary reports 'All 9 tests passed.' (exit 0), including the three fixed tests TC-PRM-06-03, TC-PRM-07-01, TC-PRM-07-03. Result: PASS; ready to route to TEST-RUNNER (Step 5).",
+  "files_created": [
+    "docs/issue-reports/WF03-GH793-20260816-step-3-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/prm-06-07-promotion-assertion.test.zig",
+    "handoffs/WF03-GH793-20260816/step-03-backend-dev.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "compile check exit 0; no 'error set' stderr output (mandatory error-set validation)"
+    },
+    {
+      "name": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07",
+      "status": "pass",
+      "detail": "build step exit 0 (clean_test_db + run step)"
+    },
+    {
+      "name": "prm-06-07-promotion-assertion.test.zig compiled test binary (direct run)",
+      "status": "pass",
+      "detail": "All 9 tests passed (exit 0): TC-PRM-06-01 OK, TC-PRM-06-02 OK, TC-PRM-06-03 OK (Cluster A fix), TC-PRM-06-04 OK, TC-PRM-07-01 OK (Cluster C fix), TC-PRM-07-02 OK, TC-PRM-06-03 AC3 OK, TC-PRM-07-03 OK (Cluster B fix), TC-PRM-07-04 OK"
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0 after handoff completion (run post-write)"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (Step 5) to independently verify BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 exits 0 (9/9)",
+    "Step Final (fn:git-merge) will add downstream artifacts to the feature branch in its own commit"
+  ],
+  "blockers": []
+}

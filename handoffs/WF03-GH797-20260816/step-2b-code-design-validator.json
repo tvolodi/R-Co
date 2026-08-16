@@ -1,0 +1,120 @@
+{
+  "handoff_id": "wf03-gh797-20260816-2b-code-design-validator",
+  "run_id": "WF03-GH797-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH797-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T04:55:08Z",
+  "started_at": "2026-08-16T04:55:22Z",
+  "completed_at": "2026-08-16T04:57:09Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2b -- design validation (hard gate)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/797",
+    "iss_id": "ISS-0710",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh797-20260816-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0710-gh797-dispatch-staleness-gate.md",
+      "docs/issues/ISS-0710.json",
+      "docs/agents/ORCHESTRATOR.md",
+      "docs/agents/AGENT_SYSTEM.md"
+    ],
+    "design_artefact": "src/design/iss0710-gh797-dispatch-staleness-gate.md",
+    "branch_name": "feature/WF03-GH797-20260816",
+    "hard_gate": true
+  },
+  "task": {
+    "description": "Step 2b — Design Validation (HARD GATE). Validate the design artefact at src/design/iss0710-gh797-dispatch-staleness-gate.md (Type E — docs/process change, no production code) against the WF-02 Step 1b checks applied to a fix design. Step 3 (implementation) MUST NOT start until this returns PASS. Checks: (a) design addresses the diagnosed root_cause from ISS-0710 (ORCH dispatched an ADHOC against an outdated repo view and reached step-00 before discovering the target PRM-02/03/04/05 were already RELEASED — no dispatch-time staleness gate existed); (b) the six mandated design elements are present and precise: §5 rule 7 (dispatch-time end-state precondition), new §8f (Dispatch-Time Staleness Check — BEFORE an ADHOC run's Step 00, §8a/§8e shape), check mechanics (git fetch origin + read target status at origin/main), short-circuit behavior (no step-00/branch/stash; result.status BLOCKED + BLOCKER issue entry + DISPATCH_STALE log line), defense-in-depth (in-run pre-flight retained), and adapter mirroring (.claude/agents/orchestrator.md + .github/instructions/orchestrator.instructions.md + .github/agents/orchestrator.agent.md per AGENT_SYSTEM.md §9/A007); (c) no implementation code in the design (Type E prose only); (d) lint_design_artefact.py exit 0; (e) verification plan documented for Step 3 (how BACKEND-DEV verifies the docs change).",
+    "expected_outputs": [
+      "Validation report (PASS or FAIL) for src/design/iss0710-gh797-dispatch-staleness-gate.md"
+    ],
+    "acceptance_criteria": [
+      "Design addresses root_cause from ISS-0710",
+      "All six design elements present and precise (rule 7, §8f, mechanics, short-circuit, defense-in-depth, adapters)",
+      "No implementation code in design (Type E prose only)",
+      "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+      "Verification plan documented for Step 3",
+      "Step 3 must NOT start until PASS"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 2b design validation (HARD GATE) for GH-797/ISS-0710: PASS. Type E process/docs artefact src/design/iss0710-gh797-dispatch-staleness-gate.md validated against all six mandated elements and all acceptance criteria. Root-cause alignment confirmed (design names ADHOC-prm-reqctl-status-20260816 + dispatch-time staleness; SS2 facts verified live via reqctl.py show PRM-02/05 -> RELEASED @ 23:28:26Z/23:28:29Z, note Released via WF02-prm02-05-20260816). All six design elements present and precise: SS5 rule 7 exact wording, new SS8f exact wording mirroring SS8a/SS8e shape, check mechanics (git fetch origin + git show origin/main + parse), short-circuit (no step-00/branch/stash; result.status BLOCKED + BLOCKER issue entry + exact DISPATCH_STALE log line), defense-in-depth (in-run pre-flight retained), adapter mirroring (3 surfaces per AGENT_SYSTEM SS9/A007). tools/lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0). No implementation code in design (Type E prose only; bash snippets are the gate spec). Verification plan for Step 3 documented (SS14). Step 3 (BACKEND-DEV) may now start.",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH797-20260816-step-2b-code-design-validator-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "fn:register-inner-report.md still specifies inner reports as .json, but core-directives.md (authoritative output-format rule) requires .yaml. Pre-existing drift, re-flagged MINOR (same as Step 1/Step 2); inner report written as .yaml per core-directives.md. Fix the function doc at the source."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Informational (not a design defect): design places new SS8f immediately after SS8e. ORCHESTRATOR.md section order is non-numeric (SS8e precedes SS8a/SS8b in document order); placement is valid, Step 3 should insert per SS11 verbatim and confirm SS8a/SS8e shape references resolve."
+      }
+    ],
+    "checks": [
+      {
+        "id": "CHK-01-root-cause",
+        "name": "Design addresses root_cause from ISS-0710",
+        "result": "PASS",
+        "evidence": "Design SS1 names incident ADHOC-prm-reqctl-status-20260816 and root cause (dispatch-time staleness; no check between ORCH authorization and step-00 mutation); matches ISS-0710.json root_cause field. SS2 facts verified live: reqctl.py show PRM-02/05 -> RELEASED @ 23:28:26Z/23:28:29Z, note Released via WF02-prm02-05-20260816."
+      },
+      {
+        "id": "CHK-02-six-elements",
+        "name": "All six design elements present and precise (rule 7, SS8f, mechanics, short-circuit, defense-in-depth, adapters)",
+        "result": "PASS",
+        "evidence": "SS12 exact rule-7 wording; SS11 exact SS8f wording mirroring SS8a/SS8e (timing, command, exit-code verdict, log lines both branches, judge by exit code only, fail-closed, defense-in-depth); SS4.3 check mechanics (git fetch origin + git show origin/main:docs/requirements.yaml + parse; reqctl.py only when tree at origin/main); SS5 short-circuit (no step-00/branch/stash, BLOCKED + BLOCKER issue entry, SS4.5 exact DISPATCH_STALE log line); SS6 defense-in-depth with explicit non-removal rule; SS13 adapter mirroring to .claude/agents/orchestrator.md + .github/instructions/orchestrator.instructions.md + .github/agents/orchestrator.agent.md, baseline 0.40/0.42 verified against AGENT_SYSTEM.md SS9."
+      },
+      {
+        "id": "CHK-03-no-implementation-code",
+        "name": "No implementation code in design (Type E prose only)",
+        "result": "PASS",
+        "evidence": "No function bodies, SQL DDL, JSX/TSX, or Zig. SS4.3 bash commands are the gate procedural spec (mechanism being designed); SS11/SS12 are exact doc wording to insert; SS7 mermaid data-flow diagram. Type E prose only."
+      },
+      {
+        "id": "CHK-04-lint",
+        "name": "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+        "result": "PASS",
+        "evidence": "python tools/lint_design_artefact.py src/design/iss0710-gh797-dispatch-staleness-gate.md -> OK, 1 file(s) checked, no issues. Exit 0."
+      },
+      {
+        "id": "CHK-05-verification-plan",
+        "name": "Verification plan documented for Step 3",
+        "result": "PASS",
+        "evidence": "Design SS14: (a) SS8f + rule 7 verbatim in ORCHESTRATOR.md; (b) mirror surfaces match; (c) tools/lint_agent_docs.py no new A007 drift; (d) tools/lint_handoffs.py exit 0. No codegen applies (Type E) correctly stated."
+      },
+      {
+        "id": "CHK-06-completeness",
+        "name": "Completeness: purpose / interface / error taxonomy / deps / data-flow",
+        "result": "PASS",
+        "evidence": "SS1 one-paragraph module purpose; SS4 public interface (procedural contract + input table); SS9 error taxonomy (7 cases, fail-closed); SS10 dependencies + MUST NOT depend on; SS7 mermaid data-flow diagram."
+      },
+      {
+        "id": "CHK-07-correctness-classification",
+        "name": "Correctness and lego classification (Type E; no DB schema; open questions flagged)",
+        "result": "PASS",
+        "evidence": "SS3 Type E classification per lego-catalog selection rules (not C/A/B/D; novel cross-cutting process gate). No DB schema decisions. Ambiguous points flagged in SS15 (3 open questions). SS2 factual claims verified live."
+      },
+      {
+        "id": "CHK-08-security",
+        "name": "Security: validation rules on input-handling and access-control on data access",
+        "result": "PASS",
+        "evidence": "Gate handles no free-form user input; SS9 specifies fail-closed handling for every read/parse failure (never CLEARED). Data-access authority restricted to fetched origin/main ref only (SS4.3 + SS10 Must-not-depend: not local main, not working tree)."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3) to implement the SS8f Dispatch-Time Staleness Check + SS5 rule 7 in docs/agents/ORCHESTRATOR.md and mirror to .claude/agents/orchestrator.md + .github/instructions/orchestrator.instructions.md + .github/agents/orchestrator.agent.md per the design; verify per design SS14."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

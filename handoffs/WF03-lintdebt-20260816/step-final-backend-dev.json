@@ -1,0 +1,71 @@
+{
+  "handoff_id": "wf03-lintdebt-20260816-final-backend-dev",
+  "run_id": "WF03-lintdebt-20260816",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-lintdebt-20260816/step-final-backend-dev.json",
+  "created_at": "2026-08-16T01:16:08Z",
+  "started_at": "2026-08-16T01:16:22Z",
+  "completed_at": "2026-08-16T01:29:12Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-lintdebt-20260816-00-backend-dev",
+      "wf03-lintdebt-20260816-005-issue-fixer",
+      "wf03-lintdebt-20260816-01-issue-fixer",
+      "wf03-lintdebt-20260816-03-backend-dev",
+      "wf03-lintdebt-20260816-05-test-runner",
+      "wf03-lintdebt-20260816-07-doc-updater"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "docs/issues/ISS-0709.json"
+    ],
+    "branch_name": "feature/WF03-lintdebt-20260816"
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for WF-03 run WF03-lintdebt-20260816 (lint_handoffs baseline debt resolved, GH #796 closed). On branch feature/WF03-lintdebt-20260816: commit any remaining uncommitted workflow artefacts (handoffs/, docs/issue-reports/, docs/issues/, tools/lint_handoffs.baseline.json, tests/reports/, CHANGELOG.md), rebase onto the latest origin/main, open a PR, get it squash-merged, delete the feature branch on origin, and return to a clean main with the working tree clean. Record branch_name, commit_sha_list, remote_branch, pr_url (or pr_create_error), and push_status: ok in your result. NOTE: this run has no TaskManager claim to release (the lint-debt work was user-directed, task/current.json is {}). Confirm the local repo is on main with a clean working tree.",
+    "acceptance_criteria": [
+      "PR opened and squash-merged to main (PR URL recorded)",
+      "feature/WF03-lintdebt-20260816 deleted on origin",
+      "Local repo on main with clean working tree",
+      "result.git_evidence: branch_name, commit_sha_list, remote_branch, pr_url, push_status ok"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step Final fn:git-merge PASS - PR #798 (https://github.com/tvolodi/R-Co/pull/798) opened and squash-merged into main (6f806042) from branch feature/WF03-lintdebt-20260816. Rebased 5 commits onto latest origin/main (d3000504): resolved 5 append-only orchestrator.log conflicts as chronological unions (0 lines lost from origin/main, 0 conflict markers, 13 branch lines added; 1758 lines verified). zig build exit 0; zig build test exit 0. Force-with-lease push ok (remote branch was stale at d5da6b73). Remote branch feature/WF03-lintdebt-20260816 deleted; local on main with clean working tree. Post-merge bookkeeping: step-final handoff COMPLETED, registry updated, orchestrator.log appended. Global lint gate verified: python tools/lint_handoffs.py exit 0 (2920 handoffs - 0 BLOCKER, 0 MAJOR, 1 MINOR, 332 ACKNOWLEDGED).",
+    "artifacts_out": [
+      "branch: feature/WF03-lintdebt-20260816 (squash-merged into main as 6f806042, branch deleted on origin and locally)",
+      "PR: https://github.com/tvolodi/R-Co/pull/798"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-lintdebt-20260816",
+      "commit_sha_list": [
+        "2e000d4f854587f3cdce4ec36247ddee7376e486",
+        "3e89933bb45351d922249e7f5a7cfaacc0a3cab3",
+        "808d9d794a6672efdcf67b79a486ef7c75413185",
+        "ff89430eadfeeb8d779a94bdc76b4e6df1a277ef",
+        "056874928291a725931ec09ecf171e3a5557d29f",
+        "6f8060429a36709ec42f54c7b52998a4a59dd694"
+      ],
+      "remote_branch": "origin/feature/WF03-lintdebt-20260816 (deleted post-merge)",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/798",
+      "push_status": "ok"
+    },
+    "next_action": "ORCH writes DONE log entry and concludes WF03-lintdebt-20260816 once Step Final returns PASS"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

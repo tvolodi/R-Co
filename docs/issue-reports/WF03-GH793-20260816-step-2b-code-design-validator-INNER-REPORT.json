@@ -1,0 +1,37 @@
+{
+  "report_id": "WF03-GH793-20260816-step-2b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-GH793-20260816",
+  "step": "2b",
+  "created_at": "2026-08-16T05:50:01Z",
+  "summary": "Validated the Type E (test-code-only) fix design at src/design/iss0708-gh793-prm0607-test-fixes.md for ISS-0708 / GH-793 against all seven acceptance criteria. All checks PASS. The design addresses all three root causes from ISS-0708: Cluster A (insertPromotionReviewsRow omits requested_by/def_type/serialised_plan NOT NULL columns from migration 096 -> 23502), Cluster B (TC-PRM-07-03 never seeds parent promotion_reviews row so conditional FK promotion_assertion_runs_review_fk from migration 1156 -> 23503 where present), Cluster C (TC-PRM-07-01 manual teardown UPDATE is schema-unqualified so it targets tenant_default while the fixture row is in public -> 0 rows -> status stays 'passed'). Every patch is confined to tests/integration/prm-06-07-promotion-assertion.test.zig; no production code or migrations are designed. Verified statically against the codebase: migration 096 declares the three NOT NULL columns; migration 1156 adds the FK conditionally via to_regclass; production recordTeardownFailure (assertion_rerun.zig:607) uses WHERE id=$1 exactly as the design states; schemaNameForTenant (pool.zig:154) maps the zero UUID to tenant_default; handleGetPromotion (promotion_read.zig:49) reads promotion_assertion_runs unqualified; build.zig:3130 is the combined test-integration-prm06-07 target; the split files named in ISS-0708.json do not exist. tools/lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0; 7 MINOR E030 schema-qualification notices inherent to the subject). Verification plan documented (:5453 test DB, test-integration-prm06-07, 9/9). Fix scope = 1 file (<= 5). No implementation or test execution performed — that is Step 3 / Step 5. Result: PASS; Step 3 may start.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH793-20260816-step-2b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH793-20260816/step-2b-code-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/iss0708-gh793-prm0607-test-fixes.md",
+      "status": "pass",
+      "detail": "exit 0; BLOCKER=0 MAJOR=0 MINOR=7 (E030 schema-qualified 'public.promotion_assertion_runs' — inherent to the fix subject, not a defect)"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "ISS-0708.json fix_file/scope/affected_areas still name non-existent split files prm-06-promotion-assertion.test.zig / prm-07-assertion-rerun.test.zig and stale migration numbers 1144/1145; the design correctly identifies the combined file and migrations 096/1156 as authoritative. Documentation drift in the issue record, not a design defect — recommend updating ISS-0708.json."
+    },
+    {
+      "severity": "MINOR",
+      "description": "7x lint E030 schema-qualified 'public.promotion_assertion_runs' in the design text — inherent to the subject (qualifying the UPDATE to public is the point of Cluster C); BLOCKER=0 MAJOR=0 so not a fail."
+    }
+  ],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 3) to implement the three cluster patches per the design's Before/After shapes (single file)",
+    "Step 5 TEST-RUNNER verifies BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm06-07 exits 0 (9/9)"
+  ],
+  "blockers": []
+}

@@ -1,0 +1,74 @@
+{
+  "handoff_id": "wf03-gh802-20260816-05-test-runner",
+  "run_id": "WF03-GH802-20260816",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH802-20260816/step-05-test-runner.json",
+  "created_at": "2026-08-16T06:55:50Z",
+  "started_at": "2026-08-16T06:56:06Z",
+  "completed_at": "2026-08-16T06:58:17Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 5 -- independent verification",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
+    "iss_id": "ISS-0711",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh802-20260816-00-backend-dev",
+      "wf03-gh802-20260816-005-issue-fixer",
+      "wf03-gh802-20260816-01-issue-fixer",
+      "wf03-gh802-20260816-02-code-designer",
+      "wf03-gh802-20260816-2b-code-design-validator",
+      "wf03-gh802-20260816-03-backend-dev"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH802-20260816/step-03-backend-dev.json",
+      "src/design/iss0711-gh802-prm08-fixture-fix.md",
+      "tests/integration/prm-08-rollback-sandbox.test.zig"
+    ],
+    "branch_name": "feature/WF03-GH802-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 5 for run WF03-GH802-20260816: independently verify the prm-08 fixture fix (ISS-0711 / GH-802) on branch feature/WF03-GH802-20260816. The fix (Step 3) added requested_by param + 3 NOT NULL columns to insertPromotionReviewsRow in tests/integration/prm-08-rollback-sandbox.test.zig. Verify: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (direct, NOT the stale-5433 wrapper) \u2014 the sqlstate 23502 in TC-PRM-08-03 must be GONE (3 pass / 1 fail residual is EXPECTED: the remaining TC-PRM-08-03 failure is the 42883 production bug = GH-803 and the seed mismatch = GH-804, both OUT OF SCOPE for this run); (b) python tools/lint_handoffs.py exits 0; (c) no production code or migration files modified by this run (git diff --name-only against the Step-00 base 7b0cbc5); (d) zig build test-env-verify exit 0. Produce a structured verification report in tests/reports/ as .yaml, explicitly documenting the residual TC-PRM-08-03 failure and its attribution to GH-803/GH-804. Return PASS only if (a)-(d) hold with the residual properly attributed.",
+    "acceptance_criteria": [
+      "test-integration-prm08 run: sqlstate 23502 eliminated from TC-PRM-08-03",
+      "Residual TC-PRM-08-03 failure documented and attributed to GH-803 (42883 production) / GH-804 (seed mismatch) \u2014 out of scope for this run",
+      "python tools/lint_handoffs.py exits 0",
+      "No production code or migration files modified by this run",
+      "zig build test-env-verify exit 0",
+      "Verification report written to tests/reports/ as .yaml"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Independent verification (WF-03 Step 5) of the prm-08 fixture fix for ISS-0711/GH-802. All acceptance criteria PASS: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (direct, not stale-5433 wrapper) -> 3 pass / 1 fail; sqlstate 23502 ELIMINATED from TC-PRM-08-03. Residual TC-PRM-08-03 failure (sqlstate 42883 on production supersede UPDATE text=uuid, swallowed by catch null -> row stays 'approved') attributed to GH-803 (ISS-0712, production rollback.zig) + GH-804 (ISS-0713, seed-logic mismatch) - OUT OF SCOPE, documented in report. (b) lint_handoffs exit 0 (0 BLOCKER/0 MAJOR/1 pre-existing MINOR/332 ACK). (c) No production code or migrations modified (git diff 7b0cbc5..HEAD: only the target test file, handoffs, docs, src/design doc). (d) zig build test-env-verify exit 0 (HEALTHY, 10 checks). Verification report: tests/reports/report-20260816-WF03-GH802-20260816.yaml.",
+    "artifacts_out": [
+      "tests/reports/report-20260816-WF03-GH802-20260816.yaml",
+      "docs/issue-reports/WF03-GH802-20260816-step-05-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Residual TC-PRM-08-03 failure (OUT OF SCOPE for this run): sqlstate 42883 (text = uuid) in production supersede UPDATE, swallowed by catch null -> superseded_review_id null -> 'approved' - ISS-0712/GH-803 (production src/definition/rollback.zig), own run."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Residual TC-PRM-08-03 failure (OUT OF SCOPE for this run): superseded assertion finds 'approved' because the seeded review row (random tenant UUID + zero def_id) cannot match the supersede WHERE (tenant_id=DEFAULT_TENANT_ID AND def_id=active V2 id) - ISS-0713/GH-804 (fixture seed-logic), own run."
+      },
+      {
+        "severity": "MINOR",
+        "description": "fn:register-inner-report.md specifies inner reports as .json but core-directives.md requires .yaml (authoritative). Pre-existing drift, re-flagged; inner report written per the function spec (.json)."
+      }
+    ],
+    "next_action": "Route to ORCH for WF-03 closure of GH-802/ISS-0711; GH-803 and GH-804 remain residual and route to their own runs."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

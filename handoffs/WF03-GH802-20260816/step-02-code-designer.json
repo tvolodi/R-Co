@@ -1,0 +1,67 @@
+{
+  "handoff_id": "wf03-gh802-20260816-02-code-designer",
+  "run_id": "WF03-GH802-20260816",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH802-20260816/step-02-code-designer.json",
+  "created_at": "2026-08-16T06:35:31Z",
+  "started_at": "2026-08-16T06:35:47Z",
+  "completed_at": "2026-08-16T06:37:53Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2 -- fix design",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
+    "iss_id": "ISS-0711",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh802-20260816-00-backend-dev",
+      "wf03-gh802-20260816-005-issue-fixer",
+      "wf03-gh802-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0711.json",
+      "docs/issue-reports/WF03-GH802-20260816-step-1-issue-fixer-INNER-REPORT.json",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "src/design/iss0708-gh793-prm0607-test-fixes.md"
+    ],
+    "branch_name": "feature/WF03-GH802-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 2: produce the design artefact for ISS-0711 / GH-802 \u2014 fixing the prm-08 integration-test fixture defect (test-code only, NO production code, NO migrations). The fix spec from Step 1 is precise and mirrors the already-validated GH-793 Cluster A patch: single file tests/integration/prm-08-rollback-sandbox.test.zig \u2014 add a requested_by parameter to insertPromotionReviewsRow (lines ~233-258) and include requested_by, def_type, serialised_plan in the INSERT; the single call site (~line 466, inside TC-PRM-08-03) passes a freshly generated UUID. SCOPE: this run fixes ONLY the GH-802 fixture defect. It must NOT modify production code (src/definition/rollback.zig cast bug is ISS-0712/GH-803, separate run) and must NOT change the test's seed tenant/def_id logic (that is ISS-0713/GH-804, separate run). Design artefact to src/design/iss0711-gh802-prm08-fixture-fix.md covering: the patch shape (before/after), the explicit out-of-scope statement (GH-803/GH-804), why no production code changes, and the verification plan (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 \u2014 expect the 23502 failure gone; residual TC-PRM-08-03 failures attributed to GH-803 42883 and GH-804 seed mismatch are OUT OF SCOPE for this run's verdict).",
+    "acceptance_criteria": [
+      "src/design/iss0711-gh802-prm08-fixture-fix.md created and passes tools/lint_design_artefact.py (BLOCKER=0 MAJOR=0) if the linter applies (check first)",
+      "Design covers the exact fixture patch (requested_by param + 3 columns) in the single target file",
+      "Out-of-scope statement explicit (no production rollback.zig change = GH-803; no seed-logic change = GH-804)",
+      "No implementation code written (design only; implementation is Step 3)",
+      "Verification plan documented (test-integration-prm08, :5453 test DB, residual attribution)"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for prm-08 fixture fix (ISS-0711/GH-802) \u2014 Type E prose artefact src/design/iss0711-gh802-prm08-fixture-fix.md; mirror of the validated GH-793 Cluster A patch (add requested_by param + requested_by/def_type/serialised_plan NOT NULL columns to insertPromotionReviewsRow, tests/integration/prm-08-rollback-sandbox.test.zig lines 233-258; single call site line 466 in TC-PRM-08-03 passes a fresh randomUuidStr). Out-of-scope explicit: GH-803 (production src/definition/rollback.zig) and GH-804 (seed tenant/def_id logic). Verification plan: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (23502 expected gone; residual TC-PRM-08-03 attributed to GH-803 42883 / GH-804 seed mismatch). tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0 MINOR=0). No implementation code written (Step 3 implements).",
+    "artifacts_out": [
+      "src/design/iss0711-gh802-prm08-fixture-fix.md",
+      "docs/issue-reports/WF03-GH802-20260816-step-2-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ISS-0712/GH-803 (production rollback.zig supersede 42883) and ISS-0713/GH-804 (fixture seed tenant/def_id mismatch) remain open and block the full TC-PRM-08-03 'superseded' assertion after this fix; out of scope for GH-802, ORCH to sequence."
+      },
+      {
+        "severity": "MINOR",
+        "description": ".vscode/run-zig-test-integration.ps1 + zig-test-integration-cmd task hardcode stale port 5433; Step 3 must use BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test explicitly."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

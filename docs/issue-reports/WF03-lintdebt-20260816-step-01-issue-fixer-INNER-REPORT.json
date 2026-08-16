@@ -1,0 +1,119 @@
+{
+  "report_id": "WF03-lintdebt-20260816-step-01-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-lintdebt-20260816",
+  "step": "01",
+  "created_at": "2026-08-16T00:25:54Z",
+  "summary": "WF-03 Step 1 (diagnosis-as-design) for the 42 unacknowledged lint_handoffs findings (ISS-0709 / GH #796). CONFIRMED and REFINED the Step 0.5 root-cause diagnosis against the 15 affected handoff files, computed the exact matching_key for every one of the 41 baseline-bound findings (H003 x5, H013 x5, H007 x30, H009 x1), and produced a precise fix spec for Step 3 (BACKEND-DEV): append the 41 entries to tools/lint_handoffs.baseline.json (reusing H003/H013/H009 reason keys, adding one new reason key for the agent_id/agent_name H007 schema-variant), preserving all 291 existing entries (no regeneration), plus run tools/repair_handoff_bookkeeping.py --category h010 for the H010 MINOR. No fix was implemented (Step 3 only).",
+  "files_created": [
+    "docs/issue-reports/WF03-lintdebt-20260816-step-01-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [],
+  "tests_run": [
+    {
+      "name": "python tools/lint_handoffs.py (global gate, live)",
+      "status": "pass",
+      "detail": "exit 1 as expected: 10 BLOCKER (H003 x5, H013 x5), 31 MAJOR (H007 x30, H009 x1), 1 MINOR (H010), 291 ACKNOWLEDGED. Reproduces ISS-0709's 42 unacknowledged findings exactly. Confirms these are NEW debt not covered by the 2026-08-08/08-10 baseline."
+    },
+    {
+      "name": "scratch/diag_41_keys.py (imports tools/lint_handoffs.py and reproduces main()'s scan)",
+      "status": "pass",
+      "detail": "Computed matching_key_for() for every unacknowledged finding (41 baseline-bound + H010) and the registry-absent breakdown: 71 absent of 2916, of which 67 are backfillable (have all H010_REQUIRED_FIELDS) and 4 are NOT backfillable (3 missing from_agent/to_agent due to the agent_id/agent_name schema; 1 missing created_at)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "Root cause confirmed: 15 handoff files written by three out-of-band runs (ADHOC-prm-env-20260814, WF02-prm-batch2-20260814, WF02-plc-batch-a-20260815) on 2026-08-14/15 use a non-canonical schema keyed on agent_id/agent_name instead of from_agent/to_agent (H007 x30), carry completed_at values from local-time-labelled-Z clocks (H003 x5, H013 x5, all exactly 5.0h offset), left step-02a IN_PROGRESS while 7 later steps COMPLETED (H009 x1), and 71 handoffs are absent from handoffs/registry.json (H010 MINOR)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "ADHOC-prm-env-20260814/step-00-backend-dev.json contains a duplicate top-level 'completed_at' key (first 'completed_at': null, then 'completed_at': '2026-08-14T14:39:42Z'); json.loads keeps the last value, which is what produces its H003/H013 pair. The null first value is the anomaly that a future schema fix should clean, but per this run's disposition the finding is acknowledged-in-baseline, not corrected."
+    },
+    {
+      "severity": "MINOR",
+      "description": "After the H010 repair script backfills the 67 backfillable handoffs, 4 will remain registry-absent and non-backfillable: ADHOC-prm-env-20260814/step-00-backend-dev.json, WF02-plc-batch-a-20260815/step-04-issue-fixer.json, WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json (all 3 missing from_agent/to_agent — the agent_id/agent_name schema), and WF02-iss201-event-return-20260611/step-final-backend-dev.json (missing created_at; NOT one of this run's 42 findings — a separate pre-existing debt). Residual H010 stays MINOR and does NOT red the gate (exit code is 1 only when BLOCKER or MAJOR remain)."
+    }
+  ],
+  "next_steps": [
+    "ORCH routes to BACKEND-DEV (Step 3) to implement the fix per the fix_spec_for_step3 below. Step 2 (CODE-DESIGNER) produces the design artefact from this diagnosis before Step 3."
+  ],
+  "blockers": [],
+  "root_cause": {
+    "confirmed": true,
+    "refinement": "Step 0.5's diagnosis (ISS-0709) is CONFIRMED against the actual files. Refinement added: (1) the H003/H013 pair on ADHOC-prm-env-20260814/step-00-backend-dev.json is caused by a DUPLICATE 'completed_at' key (null then value) whose last value wins under json.loads; (2) the H013 offset is uniformly 5.0h across all 5 files, consistent with a single 2026-08-14 session whose operator used (Get-Date).ToString(...) without .ToUniversalTime() (UTC+5); (3) exactly 4 of the 71 registry-absent handoffs are non-backfillable by the repair script, 3 of which are this run's agent_id-schema files; (4) the H007 x30 findings all share one root cause — the out-of-band runs wrote handoffs using agent_id/agent_name (the subagent-invocation vocabulary) instead of from_agent/to_agent (the handoff-schema vocabulary) — a distinct schema-variant reason not covered by the existing H007-gh387-step07 / H007-gh389-step2b baseline reasons.",
+    "prior_art_note": "Per ISS-0709.investigation_notes: H013 correction was REJECTED in ISS-0627/GH-596 and folded into the acknowledgment mechanism; H003/H009 are permanent-record categories (no field recovers the true value); H010 was repaired in WF03-GH594-20260808 by registry backfill. This run follows that prior art: acknowledge-in-baseline for the 41 (incl. H007, which prior runs corrected where the file is a real handoff but which this run's fix spec chooses to acknowledge per the task instruction), and registry backfill for H010."
+  },
+  "fix_spec_for_step3": {
+    "scope": "Step 3 (BACKEND-DEV) implements ONLY the two operations below. Do NOT correct the underlying handoff files, do NOT regenerate the baseline via tools/generate_lint_handoffs_baseline.py, do NOT fabricate timestamps/status values.",
+    "part_a_baseline_append": {
+      "file": "tools/lint_handoffs.baseline.json",
+      "method": "Append 41 entries to the existing top-level 'issues' array by hand (Python script, json load with encoding='utf-8', dump with ensure_ascii=False, indent=2). NEVER run tools/generate_lint_handoffs_baseline.py --apply: it only emits the H003/H004/H005/H009 subset and would silently drop the 53 H013 + 9 H007 entries already present (same trap recorded in the 2026-08-10 GH-666 append note).",
+      "preserve_all_existing": "All 291 existing entries (148 H003, 36 H004, 6 H005, 39 H009, 9 H007, 53 H013) MUST remain byte-unchanged. Only the additions below are made.",
+      "header_updates": "Update top-level 'generated_at' to the append timestamp (python tools/utcnow.py output at Step 3 time) and append a dated note to 'regeneration_note' recording the 42-finding acknowledgment append (WF03-lintdebt-20260816 / GH #796 / ISS-0709), mirroring the GH-666 append precedent. Do not overwrite existing regeneration_note text.",
+      "new_reason_key": {
+        "key": "H007-prm-agent-id-schema",
+        "text": "ISS-0709 §H007 (WF03-lintdebt-20260816 / GH #796): out-of-band runs ADHOC-prm-env-20260814, WF02-prm-batch2-20260814, WF02-plc-batch-a-20260815 (2026-08-14/15) wrote handoff files using the non-canonical schema keys agent_id/agent_name instead of the required from_agent/to_agent. The files are legitimate routed handoffs whose true from_agent/to_agent values are recoverable (agent_id maps directly to from_agent/to_agent of the same step), but correcting 15 historical files would require rewriting audit-trail records; this run's disposition (per WF-03 task instruction) is permanent acknowledgment of the 30 H007 findings as historical record, not correction. Accepted as permanent historical record."
+      },
+      "reason_refs_per_code": {
+        "H003": "reuse existing reasons['H003']",
+        "H013": "reuse existing reasons['H013']",
+        "H009": "reuse existing reasons['H009']",
+        "H007": "new reasons['H007-prm-agent-id-schema'] (above)"
+      },
+      "acknowledged_at": "python tools/utcnow.py output at Step 3 append time",
+      "acknowledged_by": "WF03-lintdebt-20260816 / BACKEND-DEV (Step 3), per src/design/iss0627-lint-handoffs-acknowledgment.md schema (iss0626/iss0627 convention)"
+    },
+    "part_b_h010_repair": {
+      "file": "handoffs/registry.json",
+      "method": "Run: python tools/repair_handoff_bookkeeping.py --category h010 --dry-run --now $(python tools/utcnow.py)  (review), then --apply --now $(python tools/utcnow.py). The script is purely additive (never removes/mutates existing registry entries) and self-verifying; it requires --now when applying.",
+      "expected_outcome": "Backfills the 67 backfillable registry-absent handoffs. 4 remain absent and non-backfillable (see issues_found): the 3 agent_id-schema files of this run + WF02-iss201-event-return-20260611/step-final-backend-dev.json (missing created_at, separate pre-existing debt).",
+      "residual_h010": "After repair, lint_handoffs reports H010 as MINOR with the residual count (4 of 2916, 0.1%). MINOR findings do NOT red the gate (main() returns 1 only when BLOCKER or MAJOR remain), so exit code becomes 0. Do NOT append an H010 entry to the baseline for the residual: the H010 message embeds the live count/percentage, so a baseline key would go stale on every registry change. The residual-4 state is acceptable, non-gating, and documented; a follow-up (schema normalization of the 3 agent_id files to permit registry backfill + created_at resolution for the iss201 file) is tracked in this report's issues_found."
+    },
+    "verification": {
+      "command": "python tools/lint_handoffs.py",
+      "expected": "summary line: 0 BLOCKER, 0 MAJOR, 1 MINOR (H010 residual), 332 ACKNOWLEDGED (291 existing + 41 appended), exit 0. All 41 appended findings print under [ACKNOWLEDGED] with the resolved reason text. The 291 pre-existing entries must still print as [ACKNOWLEDGED] (unchanged)."
+    },
+    "exact_matching_keys": {
+      "note": "The 41 matching_key strings below were computed by reproducing tools/lint_handoffs.py's scan + matching_key_for() against the live corpus (matching_key = severity|code|path|message, plus |later_completed:<sorted paths> for H009). They are byte-exact at the time of this diagnosis; Step 3 MUST re-run python tools/lint_handoffs.py after appending and confirm every one of these 41 now appears under [ACKNOWLEDGED] (which mechanically re-validates the keys).",
+      "H003_count": 5,
+      "H003_entries": [
+        "BLOCKER|H003|handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json|completed_at (2026-08-14T14:39:42Z) is earlier than started_at (2026-08-14T19:37:32Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+        "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json|completed_at (2026-08-14T14:42:36Z) is earlier than started_at (2026-08-14T19:40:29Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+        "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json|completed_at (2026-08-14T15:11:44Z) is earlier than started_at (2026-08-14T20:09:14Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+        "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json|completed_at (2026-08-14T15:13:39Z) is earlier than started_at (2026-08-14T20:12:34Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations.",
+        "BLOCKER|H003|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json|completed_at (2026-08-14T15:02:01Z) is earlier than started_at (2026-08-14T19:59:45Z). Timestamps must come from the shell clock, never from session context. This corrupts retrospective variance calculations."
+      ],
+      "H013_count": 5,
+      "H013_message_suffix": "|completed_at is 5.0h before started_at — very close to a whole-hour offset (5h). This is local time labelled 'Z', not a fabricated value: `(Get-Date).ToString(...)` without `.ToUniversalTime()`, or `datetime.now()` instead of the UTC form, produces exactly this. Use `python3 tools/utcnow.py`.",
+      "H013_files": [
+        "BLOCKER|H013|handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json",
+        "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json",
+        "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json",
+        "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json",
+        "BLOCKER|H013|handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json"
+      ],
+      "H007_count": 30,
+      "H007_files": [
+        "handoffs/ADHOC-prm-env-20260814/step-00-backend-dev.json",
+        "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework1.json",
+        "handoffs/WF02-plc-batch-a-20260815/step-03-test-designer-rework2.json",
+        "handoffs/WF02-plc-batch-a-20260815/step-04-issue-fixer.json",
+        "handoffs/WF02-plc-batch-a-20260815/step-04-test-runner-rework4.json",
+        "handoffs/WF02-prm-batch2-20260814/step-00-backend-dev.json",
+        "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework1.json",
+        "handoffs/WF02-prm-batch2-20260814/step-01-code-designer-rework2.json",
+        "handoffs/WF02-prm-batch2-20260814/step-01-code-designer.json",
+        "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework1.json",
+        "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator-rework2.json",
+        "handoffs/WF02-prm-batch2-20260814/step-01b-code-design-validator.json",
+        "handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json",
+        "handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json",
+        "handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json"
+      ],
+      "H007_message_shape": "Two entries per file: MAJOR|H007|<file>|Missing required schema key: 'from_agent' and MAJOR|H007|<file>|Missing required schema key: 'to_agent'",
+      "H009_count": 1,
+      "H009_entry": "MAJOR|H009|handoffs/WF02-prm-batch2-20260814/step-02a-backend-dev.json|status is IN_PROGRESS but 7 later step(s) in run WF02-prm-batch2-20260814 are COMPLETED — the pipeline advanced past a step it never closed.|later_completed:handoffs/WF02-prm-batch2-20260814/step-02b-frontend-dev.json,handoffs/WF02-prm-batch2-20260814/step-03-test-designer.json,handoffs/WF02-prm-batch2-20260814/step-03b-test-design-validator.json,handoffs/WF02-prm-batch2-20260814/step-04-test-runner.json,handoffs/WF02-prm-batch2-20260814/step-05-release-validator.json,handoffs/WF02-prm-batch2-20260814/step-06-doc-updater.json,handoffs/WF02-prm-batch2-20260814/step-final-backend-dev.json"
+    }
+  }
+}
