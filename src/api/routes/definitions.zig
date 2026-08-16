@@ -16,6 +16,11 @@ const definition_store = @import("../../definition/store.zig");
 const export_import = @import("../../definition/export_import.zig");
 const graph_mod = @import("graph");
 const pagination = @import("../pagination.zig");
+// VLD-04 (WF02-batch-7-20260816): the semantic gate. `validation` is exposed
+// by build.zig as a named module (the pure VLD-01/02/03 pipeline wire
+// serialisers); `validation_gate` wraps it into the gating orchestration.
+const validation = @import("validation");
+const validation_gate = @import("validation_gate");
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -351,6 +356,7 @@ pub fn handleCreate(
 /// Not found:          HTTP 404.
 /// Status ≠ DRAFT:     HTTP 409 + current_status field.
 /// Validation failure: HTTP 422 + violations array.
+/// Semantic findings (VLD-04 AC1): HTTP 422 + VLD-03 Problem Details body.
 /// Pool exhausted:     HTTP 503.
 /// Server error:       HTTP 500.
 pub fn handlePut(
@@ -397,6 +403,40 @@ pub fn handlePut(
         else => return errorResult(allocator, 500, "internal_error"),
     };
     defer freeDefinition(allocator, def);
+
+    // VLD-04 AC1: run the semantic gate on the newly-persisted draft. The
+    // graph just changed, so check_stored_first=false forces re-verification
+    // (a stored verdict from a previous save would be stale). Any finding ->
+    // HTTP 422; the version's verdict columns are left semantically_valid =
+    // false by persistVerdict, so the authoring request fails (AC1).
+    const gate = validation_gate.runSemanticGate(
+        allocator,
+        store.pool,
+        id_str,
+        5_000,
+        false,
+    ) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+
+    switch (gate) {
+        // Clean pass: the version is persisted and marked semantically_valid;
+        // persistVerdict already appended DEFINITION_VALIDATED (AC5).
+        .valid => |verdict| validation_gate.freeValid(allocator, verdict),
+        .invalid => |inv| {
+            const failure = validation_gate.failureFromInvalid(inv);
+            const body_str = validation.serialiseValidationFailure(allocator, failure) catch {
+                validation_gate.freeInvalid(allocator, inv);
+                return errorResult(allocator, 500, "serialization failed");
+            };
+            validation_gate.freeInvalid(allocator, inv);
+            return .{ .status_code = 422, .body = body_str };
+        },
+        // VLD-04 AC4 — compilation exceeded the 5 s budget.
+        .timeout => return errorResult(allocator, 422, "validation_timeout"),
+    }
 
     const resp_body = serializeDefinition(allocator, def) catch
         return errorResult(allocator, 500, "serialization failed");

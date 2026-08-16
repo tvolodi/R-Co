@@ -391,6 +391,35 @@ pub fn freeInvalid(allocator: std.mem.Allocator, inv: anytype) void {
     }
 }
 
+/// Free a caller-owned `.valid` GateResult returned by runSemanticGate.
+///
+/// On the valid path the gate allocates two verdict slices with the
+/// caller-supplied allocator (`compiler_version` dupe + `validated_at`
+/// dbNowIso string) that the caller MUST free — via this helper or by hand —
+/// or the handlers leak under std.testing.allocator. `.timeout` carries no
+/// caller-owned allocations today (`compiled_sites` is a static empty slice).
+pub fn freeValid(allocator: std.mem.Allocator, verdict: SemanticVerdict) void {
+    if (verdict.compiler_version) |c| allocator.free(c);
+    if (verdict.validated_at) |va| allocator.free(va);
+}
+
+/// Build a *borrowed* VLD-03 wire aggregate from a caller-owned `.invalid`
+/// GateResult payload, for `validation.serialiseValidationFailure` (the
+/// handler's HTTP 422 body builder). The returned ValidationFailure borrows
+/// the invalid payload's findings / pd06_diagnostics / verdict strings — it
+/// MUST NOT be `deinit`ed; the caller keeps ownership and releases the source
+/// via `freeInvalid` after serialising. `@constCast` is safe here: the wire
+/// serialiser only reads these slices, and `freeInvalid` is what owns/frees
+/// their storage.
+pub fn failureFromInvalid(inv: anytype) validation.ValidationFailure {
+    return .{
+        .findings = @constCast(inv.findings),
+        .pd06_diagnostics = if (inv.pd06_diagnostics) |d| @constCast(d) else null,
+        .validated_at = inv.verdict.validated_at orelse "",
+        .compiler_version = inv.verdict.compiler_version orelse "",
+    };
+}
+
 // ---------------------------------------------------------------------------
 // Tests — verdict semantics (no DB)
 // ---------------------------------------------------------------------------

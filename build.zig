@@ -357,6 +357,27 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // WF02-batch-7-20260816 (VLD-04): validation_gate_mod — src/validation/
+    // gate.zig, the semantic-validation gate wrapping the pure VLD-01/02/03
+    // pipeline. Declared here (with the validation family, before the root
+    // module's vendor_imports) so the three gating route handlers —
+    // src/api/routes/definitions.zig (handlePut), src/api/routes/validation.zig
+    // (handleValidate), src/api/routes/promotions.zig (handleCreatePromotionPlan)
+    // — can import it as `@import("validation_gate")` without a relative path
+    // that escapes the root module. Depends on pool_root_mod (the verdict
+    // storage reads/writes), graph_mod (DefinitionGraph parse) and validation_mod
+    // (COMPILER_VERSION + validateDefinition).
+    const validation_gate_mod = b.createModule(.{
+        .root_source_file = b.path("src/validation/gate.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "graph", .module = graph_mod },
+            .{ .name = "validation", .module = validation_mod },
+        },
+    });
+
     const transition_mod = b.createModule(.{
         .root_source_file = b.path("src/engine/transition.zig"),
         .target = target,
@@ -528,6 +549,13 @@ pub fn build(b: *std.Build) void {
         // is its own module root, so a relative @import from src/api/routes/
         // into src/validation/ would escape the root module's path.
         .{ .name = "validation", .module = validation_mod },
+        // WF02-batch-7-20260816 (VLD-04): validation_gate as a named module so
+        // the three gating route handlers (definitions.zig handlePut, validation.zig
+        // handleValidate, promotions.zig handleCreatePromotionPlan) can import it
+        // via `@import("validation_gate")` — same single-owner rationale as the
+        // `validation` entry above (gate.zig is its own module root and lives under
+        // the root module's source tree).
+        .{ .name = "validation_gate", .module = validation_gate_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -823,6 +851,14 @@ pub fn build(b: *std.Build) void {
             .{ .name = "graph", .module = graph_mod },
             .{ .name = "sub_process_interface", .module = sub_process_interface_mod },
             .{ .name = "validation", .module = validation_mod },
+            // WF02-batch-7-20260816 (VLD-04): src/api/routes/validation.zig
+            // (reachable via bpm.validation_routes) now also does
+            // `@import("validation_gate")`; definitions.zig (handlePut),
+            // promotions.zig (handleCreatePromotionPlan) and
+            // promotion_review.zig (handleSubmitPromotion) — all reachable via
+            // bpm — do the same. Supplied here so integration binaries that
+            // import bpm_src_mod standalone compile these handlers.
+            .{ .name = "validation_gate", .module = validation_gate_mod },
         },
     });
 
@@ -3021,18 +3057,9 @@ pub fn build(b: *std.Build) void {
     test_ordering_sweeper_step.dependOn(&run_ordering_sweeper_tests.step);
     test_step.dependOn(&run_ordering_sweeper_tests.step);
 
-    // VLD-04: src/validation/gate.zig — the validation gate wrapping the pure
-    // VLD-01/02/03 pipeline (verdict storage + events + compiler-version rule).
-    const validation_gate_mod = b.createModule(.{
-        .root_source_file = b.path("src/validation/gate.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "pool", .module = pool_root_mod },
-            .{ .name = "graph", .module = graph_mod },
-            .{ .name = "validation", .module = validation_mod },
-        },
-    });
+    // VLD-04 gate module unit tests. The module itself is declared above with
+    // the validation family so the root module / route handlers can import it
+    // as `@import("validation_gate")`.
     const validation_gate_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/validation/gate.zig"),

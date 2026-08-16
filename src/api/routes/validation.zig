@@ -38,6 +38,9 @@ const graph_mod = @import("graph");
 // src/api/routes/ into src/validation/ since validation/test_root.zig is
 // its own module root.
 const validation = @import("validation");
+// VLD-04 (WF02-batch-7-20260816): the semantic gate wrapping the pure
+// pipeline. Exposed by build.zig as the `validation_gate` named module.
+const validation_gate = @import("validation_gate");
 const api_tenant_context = @import("tenant_context");
 
 // ---------------------------------------------------------------------------
@@ -54,7 +57,7 @@ pub const HandlerResult = struct {
 // handleValidate — POST /api/v1/definitions/:id/validate
 // ---------------------------------------------------------------------------
 
-/// Run VLD-01/02/03 semantic validation on the stored definition.
+/// Run VLD-04's semantic gate on the stored definition.
 ///
 /// `tenant_id` is the 36-char UUID resolved by API-08 auth middleware for the
 /// current request. The handler sets the ambient tenant context for the DB
@@ -64,6 +67,7 @@ pub const HandlerResult = struct {
 ///
 /// Success: HTTP 200 + JSON `{"status":"semantically_valid", ...}`.
 /// Findings present: HTTP 422 + JSON Problem Details body.
+/// Budget expired: HTTP 422 + `validation timeout`.
 /// Definition not found: HTTP 404 + JSON error body.
 /// Invalid id: HTTP 422 + JSON error body.
 /// Pool exhausted: HTTP 503.
@@ -74,7 +78,9 @@ pub fn handleValidate(
     tenant_id: [36]u8,
     id_str: []const u8,
 ) HandlerResult {
-    const id = parseUuid(id_str) catch {
+    // Validate the id format up front (422 on malformed) without touching the
+    // store; the gate performs the actual tenant-scoped read.
+    _ = parseUuid(id_str) catch {
         return errorResult(allocator, 422, "invalid id format");
     };
 
@@ -87,38 +93,49 @@ pub fn handleValidate(
     api_tenant_context.set(tenant_id[0..]);
     defer api_tenant_context.clear();
 
-    const def = store.getById(allocator, id) catch |err| switch (err) {
-        definition_store.DefinitionError.DefinitionNotFound => return errorResult(allocator, 404, "not found"),
-        definition_store.DefinitionError.PoolExhausted => return errorResult(allocator, 503, "service unavailable"),
+    // VLD-04: run the semantic gate — it fetches the stored graph, runs the
+    // VLD-01/02/03 pipeline under the 5 s budget, records the verdict on the
+    // definition version (semantically_valid + COMPILER_VERSION) and appends
+    // DEFINITION_VALIDATED / DEFINITION_VALIDATION_FAILED. check_stored_first
+    // reuses a current + valid stored verdict without recompiling (AC3).
+    const gate = validation_gate.runSemanticGate(
+        allocator,
+        store.pool,
+        id_str,
+        5_000,
+        true,
+    ) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not found"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service unavailable"),
         else => return errorResult(allocator, 500, "internal server error"),
     };
-    defer def.deinit(allocator);
 
-    // Build the env input from the in-memory definition. Today the variable
-    // schema isn't carried on Definition (it's a separate DB table);
-    // VLD-04 will pre-fetch and pass in via the request body. We pass an
-    // empty list here so the env builder's VLD-01 AC1 path doesn't fire.
-    const input = validation.EnvInput{
-        .graph = def.graph,
-    };
-
-    var failure = validation.validateDefinition(allocator, input) catch
-        return errorResult(allocator, 500, "internal server error");
-    defer failure.deinit(allocator);
-
-    // Empty findings + null pd06_diagnostics -> 200 OK.
-    if (failure.findings.len == 0 and failure.pd06_diagnostics == null) {
-        const body = validation.serialiseSuccess(
-            allocator,
-            failure.validated_at,
-            failure.compiler_version,
-        ) catch return errorResult(allocator, 500, "serialization failed");
-        return .{ .status_code = 200, .body = body };
+    switch (gate) {
+        .valid => |verdict| {
+            const body = validation.serialiseSuccess(
+                allocator,
+                verdict.validated_at orelse "",
+                verdict.compiler_version orelse "",
+            ) catch {
+                validation_gate.freeValid(allocator, verdict);
+                return errorResult(allocator, 500, "serialization failed");
+            };
+            validation_gate.freeValid(allocator, verdict);
+            return .{ .status_code = 200, .body = body };
+        },
+        .invalid => |inv| {
+            const failure = validation_gate.failureFromInvalid(inv);
+            const body = validation.serialiseValidationFailure(allocator, failure) catch {
+                validation_gate.freeInvalid(allocator, inv);
+                return errorResult(allocator, 500, "serialization failed");
+            };
+            validation_gate.freeInvalid(allocator, inv);
+            return .{ .status_code = 422, .body = body };
+        },
+        // VLD-04 AC4 — compilation exceeded the 5 s budget; caller maps to
+        // HTTP 422 ValidationTimeout.
+        .timeout => return errorResult(allocator, 422, "validation timeout"),
     }
-
-    const body = validation.serialiseValidationFailure(allocator, failure) catch
-        return errorResult(allocator, 500, "serialization failed");
-    return .{ .status_code = 422, .body = body };
 }
 
 // ---------------------------------------------------------------------------
