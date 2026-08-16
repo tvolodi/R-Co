@@ -1822,3 +1822,5 @@
 2026-08-16T07:22:34Z | complete | WF03-GH804-20260816 | wf03-gh8 | CODE-DESIGNER | Step 2 design PASS; artefact src/design/iss0713-gh804-prm08-seed-fix.md; lint_design_artefact exit 0; next: CODE-DESIGN-VALIDATOR (Step 2b)
 2026-08-16T07:24:28Z | ROUTE | WF-03 | wf03-gh804-20260816-2b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
 2026-08-16T07:28:31Z | ROUTE | WF-03 | wf03-gh804-20260816-03-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T07:33:26Z | ROUTE | WF-03 | wf03-gh804-20260816-05-test-runner | ORCH -> TEST-RUNNER | PENDING
+2026-08-16T07:37:15Z | complete | WF03-GH804-20260816 | wf03-gh8 | TEST-RUNNER | Step 5 verification PASS: seed fix correct (no 23502; tenant=DEFAULT_TENANT_ID, def_id=def_id_v2); residual TC-PRM-08-03 42883 attributed to GH-803 (out of scope); lint_handoffs exit 0; no prod/migrations modified; test-env-verify exit 0; report tests/reports/report-20260816-WF03-GH804-20260816.yaml

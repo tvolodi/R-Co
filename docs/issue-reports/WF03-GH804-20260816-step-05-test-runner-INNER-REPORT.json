@@ -1,0 +1,58 @@
+{
+  "report_id": "WF03-GH804-20260816-step-5-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF03-GH804-20260816",
+  "step": "5",
+  "created_at": "2026-08-16T07:36:24Z",
+  "summary": "Independent verification (WF-03 Step 5) of the TC-PRM-08-03 fixture seed fix for ISS-0713/GH-804 on branch feature/WF03-GH804-20260816. All four verification checks PASS: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (run DIRECTLY, NOT the stale-5433 wrapper) -> 3 pass / 1 fail (4 total). The fixture seed is now CORRECT: the promotion_reviews INSERT succeeds (params=4, no sqlstate 23502 seed error), row seeded with tenant_id = DEFAULT_TENANT_ID and def_id = def_id_v2 (verified in source diff + run), and the test reaches the TC-PRM-08-03 assertion. The sole residual failure is sqlstate 42883 on the PRODUCTION supersede UPDATE in src/definition/rollback.zig Step 5 (def_id = $3::uuid vs TEXT column promotion_reviews.def_id), swallowed by catch null so the row stays 'approved' — this is the GH-803 / ISS-0712 production cast bug, OUT OF SCOPE for GH-804, documented and attributed in the report (not fixed). (b) python tools/lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACKNOWLEDGED; re-verified after completion). (c) No production code or migration files modified by this run: git diff --name-only cda90cea..HEAD shows only tests/integration/prm-08-rollback-sandbox.test.zig (test code), handoffs/, docs/issue-reports/, docs/issues/, and src/design/iss0713-gh804-prm08-seed-fix.md; no src/ production files, no migrations/. (d) zig build test-env-verify exits 0 (verify_test_env: HEALTHY, 10 checks passed). Backend service pre-check passed (test DB :5453 SELECT 1 ok, keycloak :8081 ok). Verification report written to tests/reports/report-20260816-WF03-GH804-20260816.yaml.",
+  "files_created": [
+    "tests/reports/report-20260816-WF03-GH804-20260816.yaml",
+    "docs/issue-reports/WF03-GH804-20260816-step-05-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH804-20260816/step-05-test-runner.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-env-verify",
+      "status": "pass",
+      "detail": "exit 0; verify_test_env: HEALTHY — 10 checks passed"
+    },
+    {
+      "name": "zig build test-integration-prm08 (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test, direct)",
+      "status": "pass",
+      "detail": "3 pass / 1 fail (4 total). Fixture seed CORRECT: promotion_reviews INSERT succeeds (params=4), no sqlstate 23502 seed error; row seeded with tenant_id=DEFAULT_TENANT_ID and def_id=def_id_v2; test reaches the TC-PRM-08-03 assertion."
+    },
+    {
+      "name": "TC-PRM-08-01 / TC-PRM-08-02 / TC-PRM-08-04",
+      "status": "pass",
+      "detail": "3/4 tests pass"
+    },
+    {
+      "name": "TC-PRM-08-03 (residual, OUT OF SCOPE)",
+      "status": "fail",
+      "detail": "expected 'superseded', found 'approved' (line 505); sqlstate 42883 on production supersede UPDATE (def_id = $3::uuid vs TEXT promotion_reviews.def_id), swallowed by catch null — attributed to GH-803 / ISS-0712 (production rollback.zig), out of scope for GH-804."
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0; 2955 handoffs checked — 0 BLOCKER, 0 MAJOR, 1 MINOR (pre-existing H010), 332 ACKNOWLEDGED; re-verified after handoff completion"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "GH-803 / ISS-0712 residual (OUT OF SCOPE for GH-804): production src/definition/rollback.zig Step 5 supersede UPDATE uses def_id = $3::uuid against TEXT column promotion_reviews.def_id -> sqlstate 42883 (swallowed by catch null), so superseded_review_id stays null and the seeded row remains 'approved'. Full 4/4 green requires the GH-803 production cast fix in a separate run."
+    },
+    {
+      "severity": "MINOR",
+      "description": "fn:register-inner-report.md specifies inner reports as .json but core-directives.md Output File Format Rules lists .yaml. Pre-existing drift; followed the function contract and this run's prior-step precedent (.json)."
+    }
+  ],
+  "next_steps": [
+    "Route to ORCH for WF-03 closure of GH-804 / ISS-0713 (seed fix verified PASS). GH-803 / ISS-0712 (production rollback.zig 42883 cast fix) remains as its own separate WF-03 run to achieve full 4/4 green on test-integration-prm08."
+  ],
+  "blockers": []
+}
