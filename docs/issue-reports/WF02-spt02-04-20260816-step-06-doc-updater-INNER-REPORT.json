@@ -1,0 +1,58 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-06-doc-updater",
+  "agent_id": "DOC-UPDATER",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "06",
+  "created_at": "2026-08-16T21:51:03Z",
+  "summary": "WF-02 Step 6 for SPT-02/03/04 (Schema-Per-Tenant Migration) on feature/WF02-spt02-04-20260816: set SPT-02/03/04 status to RELEASED in docs/requirements.yaml (python tools/reqctl.py set-status ... RELEASED --note \"RELEASED by WF02-spt02-04-20260816\") and re-rendered docs/status/requirement_status.yaml (463 entries). Closed GitHub #812 (gh issue close 812 --comment, exit 0, verified \"Closed issue tvolodi/R-Co#812\") and marked docs/issues/ISS-0715.json + issue_index.json RESOLVED (resolved_at 2026-08-16T21:49:37Z, resolved_by DOC-UPDATER; fix commit 3ec8832e). Updated CHANGELOG.md [Unreleased] with a feat(spt) entry covering migrations 061/062/063, migration-062 view-dependency fix (commit 79112125), migration 1163, pool.zig search_path-only routing, SPT-03 Class-B tenant_id removal, regression TC-SPT-02-07, and GH-812/ISS-0715 closure. No estimation.json for this run (no retrospective). Did NOT run git-merge (Step Final is a separate BACKEND-DEV dispatch). lint_handoffs.py exit 0. result.status = PASS.",
+  "files_created": [
+    "handoffs/WF02-spt02-04-20260816/registry.json"
+  ],
+  "files_modified": [
+    "docs/requirements.yaml",
+    "docs/status/requirement_status.yaml",
+    "docs/issues/ISS-0715.json",
+    "docs/issues/issue_index.json",
+    "CHANGELOG.md",
+    "handoffs/WF02-spt02-04-20260816/step-06-doc-updater.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "python tools/reqctl.py set-status SPT-02/03/04 RELEASED",
+      "status": "pass",
+      "detail": "SPT-02 -> RELEASED 2026-08-16T21:49:21Z; SPT-03 -> RELEASED 2026-08-16T21:49:22Z; SPT-04 -> RELEASED 2026-08-16T21:49:23Z; released_at stamped from clock"
+    },
+    {
+      "name": "python tools/reqctl.py render-status",
+      "status": "pass",
+      "detail": "regenerated docs/status/requirement_status.yaml (463 entries); SPT-02/03/04 show RELEASED + released_at + note"
+    },
+    {
+      "name": "gh issue close 812 --comment",
+      "status": "pass",
+      "detail": "exit 0; output \"Closed issue tvolodi/R-Co#812\" (stderr note is PowerShell native-command trap; real exit 0)"
+    },
+    {
+      "name": "ISS-0715.json + issue_index.json RESOLVED",
+      "status": "pass",
+      "detail": "status RESOLVED, resolved_at 2026-08-16T21:49:37Z, resolved_by DOC-UPDATER; issue_index ISS-0715 status RESOLVED"
+    },
+    {
+      "name": "python tools/lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0 (no BLOCKER)"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Step Final (git-merge, PR, branch deletion, project board update) is intentionally NOT executed in this dispatch per task instruction — it is a separate BACKEND-DEV Step Final dispatch."
+    }
+  ],
+  "next_steps": [
+    "BACKEND-DEV Step Final: squash-merge feature/WF02-spt02-04-20260816 to main, delete branch, return to clean main, update project board for GH-812 (already closed) if applicable"
+  ],
+  "blockers": []
+}

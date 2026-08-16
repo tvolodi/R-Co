@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-16T08:21:17Z'
+generated_at: '2026-08-16T21:49:23Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -8704,7 +8704,7 @@ requirements:
     title: Data migration — copy rows into tenant schemas and remove RLS
     stage: Schema-Per-Tenant Migration
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       > The platform MUST migrate all existing tenant data from the `public` schema into per-tenant schemas. For every distinct `tenant_id` present in the system, the platform MUST call `bpm_provision_tenant_schema()` to create the schema if it does not already exist, copy all rows belonging to that tenant from every table in `public` into the corresponding table in the tenant schema, and then drop the `tenant_id` columns, the `bpm_effective_tenant_id()` function, all RLS policies, and all tenant-scoped composite indexes from the `public` schema tables. The migration MUST be atomic per tenant (all tables for one tenant in a single transaction).
 
@@ -8724,14 +8724,16 @@ requirements:
     alt_sources: []
     implemented_in: []
     test_spec: null
-    last_updated: '2026-06-05'
+    last_updated: '2026-08-16T21:49:21Z'
     type: requirement
+    note: RELEASED by WF02-spt02-04-20260816
+    released_at: '2026-08-16T21:49:21Z'
   SPT-03:
     id: SPT-03
     title: Remove legacy bpm.tenant_id session variable and tenant_id predicates
     stage: Schema-Per-Tenant Migration
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       > After SPT-02 is applied and all data lives in tenant schemas, the platform MUST remove all backward-compatibility shims that reference the old row-based tenancy model. Specifically: (1) `applyRequestTenantContext()` in `src/db/pool.zig` MUST stop calling `set_config('bpm.tenant_id', ...)` and MUST stop calling `SET bpm.tenant_id`; it MUST only set `search_path TO <schema_name>,public`. (2) All `WHERE tenant_id = $N` predicates, all `tenant_id` bind parameters, and all `tenant_id` INSERT column references MUST be removed from every Zig source file. (3) The `bpm_effective_tenant_id()` SQL function MUST be dropped (covered by migration 062, but Zig call sites referencing it must also be removed). (4) The `tenant_id` column definition in every affected Zig struct or constant MUST be removed.
 
@@ -8750,14 +8752,16 @@ requirements:
     alt_sources: []
     implemented_in: []
     test_spec: null
-    last_updated: '2026-06-05'
+    last_updated: '2026-08-16T21:49:22Z'
     type: requirement
+    note: RELEASED by WF02-spt02-04-20260816
+    released_at: '2026-08-16T21:49:22Z'
   SPT-04:
     id: SPT-04
     title: Test suite update and ADP-12 regression
     stage: Schema-Per-Tenant Migration
     priority: MUST
-    status: PENDING
+    status: RELEASED
     body: |-
       > The integration test suite MUST be updated to reflect schema-per-tenant isolation: all tests that previously inserted rows with an explicit `tenant_id` value MUST be updated to use per-test provisioned schemas via `provisionTenantSchema()` (or the test helper wrapper), and the `tenant_id` column references MUST be removed from all test fixtures and assertions. After the suite update, the full ADP-12 regression suite MUST pass against the `tenant_default` schema.
 
@@ -8786,8 +8790,10 @@ requirements:
     alt_sources: []
     implemented_in: []
     test_spec: null
-    last_updated: '2026-06-05'
+    last_updated: '2026-08-16T21:49:23Z'
     type: requirement
+    note: RELEASED by WF02-spt02-04-20260816
+    released_at: '2026-08-16T21:49:23Z'
   SVC-01:
     id: SVC-01
     title: Service catalog entries carry a scope and owner tenant

@@ -1,7 +1,7 @@
 {
   "id": "ISS-0715",
   "title": "Fresh tenant-schema provisioning fails: migration 020 bpm_audit_resource_info conflicts with public's TEXT-typed copy (cannot change return type)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "schema-provisioning",
   "run_id": "WF02-spt02-04-20260816",
@@ -13,7 +13,7 @@
     "tests/integration/spt02_03_04_schema_tenant_migration_test.zig"
   ],
   "created_at": "2026-08-16T18:23:18Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-16T21:49:37Z",
   "notes": "Discovered by TEST-DESIGNER (WF-02 Step 3, run WF02-spt02-04-20260816) while verifying the SPT-02/03/04 integration suite. Every test that provisions a FRESH per-test tenant schema via provisionTenantSchema()/provisionTestTenantSchema() fails inside runForSchema when applying the per-tenant migration chain. Blocks 6 of 16 SPT-02/03/04 test blocks (TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04) and the already-released SPT-01 provisioning tests.",
   "root_cause": "VERIFIED by BACKEND-DEV in this run (reproducer scratch/repro_iss0715.py + live-bootstrap evidence): the IMMEDIATE fresh-provisioning blocker is migration 094_entity_subsystem.sql, not 020. 094 is all_schemas (it must seed per-tenant event_type_registry) but its entity tables are GLOBAL_REGISTRY (public canonical, ISS-0185). GBL-123 removed tenant_id from public.entity_definitions / entity_record_latest / entity_type_instances, so the per-tenant re-run of 094's public-qualified CREATE INDEX ... ON public.entity_definitions (tenant_id, ...) / entity_record_latest (tenant_id, ...) aborts with sqlstate 42703 (column tenant_id does not exist) at ComputeIndexAttrs. Proof: a fresh per-tenant schema (tenant_be3050fd... left by the failing run) has its schema_migrations ledger stop at 093 — i.e. 094 is the first failing file — and 020 IS in that ledger (applies cleanly). Empirically (probe against bpm_test), an unqualified CREATE OR REPLACE FUNCTION with a changed OUT type does NOT resolve a same-signature function in public via search_path on a fresh schema; it creates a new copy in the first search_path schema. SEPARATELY, migration 020 has a LATENT re-provision defect: its unqualified CREATE OR REPLACE FUNCTION bpm_audit_resource_info (OUT resource_id UUID) fails with 'cannot change return type of existing function' IF the current schema already carries a TEXT-typed copy (e.g. a re-run of 020 after 1139 converted the tenant copy to TEXT, as in a ledger-reconcile/re-provision path).",
   "candidate_resolution": "BACKEND-DEV: (1) make migration 020 schema-aware when (re)creating bpm_audit_resource_info — DROP the function in the CURRENT schema before CREATE (EXECUTE format('DROP FUNCTION IF EXISTS %I.bpm_audit_resource_info(text,jsonb,jsonb)', current_schema()) inside a DO block), mirroring the 1139/GBL-120 DROP-then-CREATE pattern, so a per-tenant run creates the UUID-typed copy in the tenant schema without touching/replacing public's TEXT copy; and (2) fix migration 094 so the tenant_id-dependent public indexes on the entity tables are only created when the column exists (they are created in the public pass and become no-ops per-tenant). Both applied in this run; public TEXT copy preserved (verified).",
@@ -28,5 +28,7 @@
     "Per-schema migrations that CREATE OR REPLACE a shared-named function must schema-qualify the DROP (or use the DROP-then-CREATE pattern in the target schema) so an unqualified CREATE OR REPLACE never resolves a same-signature function in public and fails on an OUT-type change.",
     "When a GBL-*/ISS-* migration changes a shared function's signature in public, the corresponding per-schema (numeric) migration that FIRST creates the function must be kept type-compatible with the public copy.",
     "The SPT-01 provisioning suite is the canary for fresh tenant provisioning — run it whenever a migration touching shared functions lands."
-  ]
+  ],
+  "resolved_by": "DOC-UPDATER (WF02-spt02-04-20260816 step-06)",
+  "resolution": "Fixed in-run by BACKEND-DEV commit 3ec8832e: migration 020_obs03_audit_entries.sql made schema-aware (DROP-then-CREATE bpm_audit_resource_info in the current schema so a per-tenant run creates the UUID-typed copy without touching/replacing public TEXT copy) and migration 094_entity_subsystem.sql gained an entity-index guard so the tenant_id-dependent public indexes on entity tables are only created when the column exists. Verified by TEST-RUNNER (test-integration-spt 17/17, spt01 3/3, zig build 0, migrate 0) and RELEASE-VALIDATOR independent re-run. GitHub #812 closed by DOC-UPDATER Step 6."
 }

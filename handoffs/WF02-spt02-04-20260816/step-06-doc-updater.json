@@ -1,0 +1,71 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-06-doc-updater",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-spt02-04-20260816/step-06-doc-updater.json",
+  "created_at": "2026-08-16T21:47:34Z",
+  "started_at": "2026-08-16T21:47:53Z",
+  "completed_at": "2026-08-16T21:51:06Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-05-release-validator-rerun",
+      "WF02-spt02-04-20260816-04-test-runner-rerun2"
+    ],
+    "artifacts_in": [
+      "docs/status/release-decision-WF02-spt02-04-20260816.yaml",
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+      "docs/requirements.yaml",
+      "docs/issues/ISS-0715.json",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-05-release-validator-rerun-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "RELEASE-VALIDATOR APPROVED SPT-02/03/04 (decision: APPROVED, approved_requirements [SPT-02, SPT-03, SPT-04], blocking_issues []). Set requirement status to RELEASED. IMPORTANT tool-drift note from CODE-DESIGN-VALIDATOR/Step 3b: reqctl.py's VALID_STATUSES omits DESIGN-REVIEWED/TEST-DESIGN-REVIEWED, but RELEASED IS a valid status — use python tools/reqctl.py set-status SPT-02/03/04 RELEASED ... (verify it works; if the tool rejects RELEASED too, apply via direct YAML edit per reqctl conventions). Also close GH-812 + ISS-0715 (fixed in-run by commit 3ec8832e). Update CHANGELOG [Unreleased] with the SPT-02/03/04 release + migration 062 view-dependency fix (79112125) + TC-SPT-02-07. Do NOT run git-merge — that is Step Final (BACKEND-DEV)."
+  },
+  "task": {
+    "description": "Execute WF-02 Step 6 (DOC-UPDATER) for the SPT-02/03/04 release on feature/WF02-spt02-04-20260816. (1) Set requirement status of SPT-02, SPT-03, SPT-04 to RELEASED (python tools/reqctl.py set-status ... --note \"RELEASED by WF02-spt02-04-20260816\" if the tool accepts it, else direct YAML edit per reqctl conventions); re-render docs/status/requirement_status.yaml. (2) Close GitHub issue #812 and mark docs/issues/ISS-0715.json status RESOLVED (fixed in-run by commit 3ec8832e). (3) Update CHANGELOG.md [Unreleased] with the SPT-02/03/04 Schema-Per-Tenant Migration release, including migrations 061/062/063, the migration-062 view-dependency fix (commit 79112125), migration 1163, pool.zig search_path-only routing, and regression test TC-SPT-02-07. (4) Run python tools/lint_handoffs.py and report its exit code. Do NOT git-merge (Step Final is separate).",
+    "acceptance_criteria": [
+      "SPT-02/03/04 status set to RELEASED in docs/requirements.yaml + requirement_status.yaml re-rendered",
+      "GH #812 closed + ISS-0715.json marked RESOLVED",
+      "CHANGELOG.md [Unreleased] updated",
+      "lint_handoffs.py exit code reported",
+      "result.status == PASS"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-02 Step 6 complete: SPT-02/03/04 set to RELEASED in docs/requirements.yaml and docs/status/requirement_status.yaml re-rendered (463 entries); GitHub #812 closed and ISS-0715.json + issue_index.json marked RESOLVED (fix commit 3ec8832e); CHANGELOG.md [Unreleased] updated with the SPT-02/03/04 Schema-Per-Tenant Migration release (migrations 061/062/063, migration-062 view-dependency fix 79112125, migration 1163, pool.zig search_path-only routing, SPT-03 Class-B tenant_id removal, TC-SPT-02-07); lint_handoffs.py exit 0. git-merge NOT run (Step Final is a separate BACKEND-DEV dispatch).",
+    "artifacts_out": [
+      "docs/status/requirement_status.yaml",
+      "CHANGELOG.md",
+      "docs/issues/ISS-0715.json",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-06-doc-updater-INNER-REPORT.json",
+      "handoffs/registry.json",
+      "handoffs/WF02-spt02-04-20260816/registry.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Step Final (git-merge, PR, branch deletion, project board update) intentionally left to the separate BACKEND-DEV Step Final dispatch per task instruction."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step Final): squash-merge feature/WF02-spt02-04-20260816 to main, delete branch, return to clean main."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
