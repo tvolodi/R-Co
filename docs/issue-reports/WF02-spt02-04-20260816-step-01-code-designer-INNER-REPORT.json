@@ -1,0 +1,62 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "01",
+  "created_at": "2026-08-16T16:49:40Z",
+  "summary": "Produced the Type E design artefact src/design/spt-02-03-04-schema-per-tenant-migration.md covering SPT-02 (migrations 061/062/063: per-tenant data copy with savepoint atomicity + data_migrated_at marker, RLS/tenant_id/function/composite-index removal, belt-and-suspenders policy re-drop), SPT-03 (collapse pool.zig applyRequestStorageRouting to schema-only routing, remove set_config('bpm.tenant_id'), triage all 972 src/ tenant_id references into remove/keep classes), and SPT-04 (provisionTestTenantSchema/dropTestTenantSchema test helpers, ~118-file suite rework, ADP-12 regression vs tenant_default). All 16 acceptance criteria (6 SPT-02 + 5 SPT-03 + 5 SPT-04) are traced in the design's §15 matrix. lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0 MINOR=5). Verified current state first: no migrations 061/062/063 exist; 972 tenant_id refs in 66 src/ files; legacy set_config('bpm.tenant_id') path remains in pool.zig line 298; 2369 tenant_id matches in 118 tests/integration files; GBL-123/ISS-502/ISS-504 verified NOT to satisfy the SPT-02/03/04 ACs. Result status PARTIAL: SPT-03 AC1's literal grep is unsatisfiable (Class G registry queries and owner_tenant_id lines necessarily contain 'WHERE tenant_id = $'/'tenant_id = $' substrings) and requires REQ-ANALYST re-scope confirmation before BACKEND-DEV implements.",
+  "files_created": [
+    "src/design/spt-02-03-04-schema-per-tenant-migration.md"
+  ],
+  "files_modified": [],
+  "tests_run": [
+    {
+      "name": "lint_design_artefact.py src/design/spt-02-03-04-schema-per-tenant-migration.md",
+      "status": "pass",
+      "detail": "EXIT=0; BLOCKER=0 MAJOR=0 MINOR=5 (E030 schema-qualified names in prose only — non-gating per design-validator convention)"
+    },
+    {
+      "name": "current-state verification greps",
+      "status": "pass",
+      "detail": "no migrations 061/062/063 confirmed; src tenant_id=972 refs/66 files; tests/integration tenant_id=2369 matches/118 files; pool.zig set_config('bpm.tenant_id') at line 298; bpm_effective_tenant_id 11x in src/"
+    },
+    {
+      "name": "lego-catalog classification",
+      "status": "pass",
+      "detail": "SPT-02/03/04 all classified Type E (data backfill DML+DDL, cross-cutting removal, cross-cutting test rework); no Type A-D parameter files emitted"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "OQ-1 (SPT-03 AC1): literal grep target is unsatisfiable — Class G registry queries (tenant_schemas, tenant_hostnames, tenant_realm_binding) and owner_tenant_id lines necessarily contain 'WHERE tenant_id = $'/'tenant_id = $' substrings. Design proposes scoped interpretation (no bpm.tenant_id/set_config.*tenant; no tenant_id on Class B business tables; Class G allow-list documented). Requires REQ-ANALYST/CODE-DESIGN-VALIDATOR sign-off before BACKEND-DEV."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-2 (SPT-02 table list): requirement lists process_instances/tenant_hostnames/sessions but process_instances does not exist, sessions has no tenant_id, tenant_hostnames is a public routing table that keeps tenant_id. Design resolves via Class B information_schema reconciliation."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-3 (062 vs GBL-123): GBL-123 already performs most 062 DDL under ISS-503 guard; design keeps both idempotent, 062 adds data-migration pre-flight + explicit composite-index drops."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-4 (storage_mode after SPT-03): routing stops branching on storage_mode; column kept for provisioning.zig/tenant_migration.zig; iss107/tnt_schema_isolation routing tests updated by SPT-04; whether to delete resolveAndCacheStorageMode needs confirmation."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OQ-5 (migration scope headers): 061-063 use -- scope: public with dynamic %I-interpolated DDL (migration 069 precedent); confirm the public-scope misclassification guard accepts them without a runner change."
+    },
+    {
+      "severity": "MINOR",
+      "description": "lint_design_artefact.py E030 x5: schema-qualified names (information_schema.tables, public.tenant_schemas, etc.) in design prose only — non-gating MINOR per bpm-design-validator-e030-prose-vs-ddl convention."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 1b) to lint the Type E artefact and verify AC traceability",
+    "REQ-ANALYST to confirm SPT-03 AC1 re-scope (OQ-1) — MAJOR open question",
+    "REQ-ANALYST/ORCH to confirm OQ-2..OQ-5 before BACKEND-DEV implementation",
+    "BACKEND-DEV to implement migrations 061/062/063, pool.zig routing collapse, and tenant_id triage per design"
+  ],
+  "blockers": []
+}

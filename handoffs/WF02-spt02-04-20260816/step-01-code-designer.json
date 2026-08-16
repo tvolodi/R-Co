@@ -1,0 +1,84 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-01-code-designer",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-spt02-04-20260816/step-01-code-designer.json",
+  "created_at": "2026-08-16T16:42:54Z",
+  "started_at": "2026-08-16T16:43:11Z",
+  "completed_at": "2026-08-16T16:49:40Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/requirements.yaml",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md",
+      "src/db/pool.zig",
+      "src/db/provisioning.zig",
+      "migrations/060_schema_per_tenant_bootstrap.sql",
+      "migrations/069_retroactive_tenant_schema_provision.sql",
+      "src/design/spt-01-schema-per-tenant-provisioning.md",
+      "src/design/iss502_spt_cutover.md"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Step 00 git-setup PASS (base d1ca9a59). ORCH verified the acceptance criteria are genuinely unimplemented: (1) SPT-02 — no migrations 061/062/063 exist; (2) SPT-03 — 972 residual tenant_id references in src/, and src/db/pool.zig still carries a legacy path that calls set_config('bpm.tenant_id', ...); (3) SPT-04 — 2197 tenant_id references in tests/integration/. ISS-501..504 (storage_mode, cutover tx, migration tracking) covered adjacent infra only — do NOT assume they satisfy these ACs; verify against the actual codebase. Design must cover every acceptance criterion of SPT-02, SPT-03, SPT-04 and be implementation-code-free per CODE-DESIGN-VALIDATOR rules."
+  },
+  "task": {
+    "description": "Produce design artefact(s) for requirements SPT-02, SPT-03, SPT-04 (Schema-Per-Tenant Migration stage) per your canonical CODE-DESIGNER instructions and the requirement bodies + acceptance criteria in docs/requirements.yaml (SPT-02 at ~line 8702, SPT-03 ~8729, SPT-04 ~8755). Write design artefacts to src/design/. Cover every acceptance criterion of each requirement; classify each requirement against templates/lego-catalog.md where applicable; include interface/type/data-flow details sufficient for BACKEND-DEV and FRONTEND-DEV to implement without ambiguity. Read the actual codebase state (pool.zig, provisioning.zig, migrations 060/069/070/086/087, src/design/spt-01-*.md, iss502_spt_cutover.md, and the residual tenant_id call sites) so the design reflects reality, not stale assumptions. NO implementation code — designs/interfaces only. Do NOT change requirement status; CODE-DESIGN-VALIDATOR will set DESIGN-REVIEWED on PASS.",
+    "acceptance_criteria": [
+      "Design artefact written to src/design/ covering SPT-02, SPT-03, SPT-04",
+      "Every acceptance criterion of SPT-02/03/04 traced to a design element",
+      "No implementation code in the design artefact (code-free per CODE-DESIGN-VALIDATOR)",
+      "Design accounts for the verified current state: no migrations 061/062/063, 972 src/ tenant_id refs, legacy set_config('bpm.tenant_id') path in pool.zig, 2197 tests/integration/ tenant_id refs",
+      "lint_design_artefact.py exits clean on the new artefact"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Type E design src/design/spt-02-03-04-schema-per-tenant-migration.md for SPT-02/03/04 (Schema-Per-Tenant Migration stage): migrations 061/062/063 spec, pool.zig routing collapse + tenant_id triage, test-suite rework + ADP-12. All 16 ACs traced (6+5+5); lint_design_artefact.py EXIT=0 (BLOCKER=0 MAJOR=0 MINOR=5 E030 prose). PARTIAL because SPT-03 AC1 literal grep is unsatisfiable (Class G registry queries + owner_tenant_id substrings) and needs REQ-ANALYST re-scope (OQ-1).",
+    "artifacts_out": [
+      "src/design/spt-02-03-04-schema-per-tenant-migration.md"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "OQ-1 (SPT-03 AC1): literal grep unsatisfiable — Class G registry queries (tenant_schemas, tenant_hostnames, tenant_realm_binding) and owner_tenant_id lines necessarily contain WHERE tenant_id=\\$/tenant_id=\\$ substrings; design proposes scoped interpretation with Class G allow-list; requires REQ-ANALYST/CODE-DESIGN-VALIDATOR sign-off"
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-2 (SPT-02 table list): process_instances does not exist, sessions has no tenant_id, tenant_hostnames keeps tenant_id; resolved via Class B information_schema reconciliation"
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-3 (062 vs GBL-123): both idempotent; 062 adds data-migration pre-flight + explicit composite-index drops"
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-4 (storage_mode): routing stops branching on it; column kept for provisioning/tenant_migration; delete resolveAndCacheStorageMode needs confirmation"
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-5 (scope headers): 061-063 public-scope with %I-interpolated DDL; confirm misclassification guard accepts (migration 069 precedent)"
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b); REQ-ANALYST to confirm SPT-03 AC1 re-scope (OQ-1)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
