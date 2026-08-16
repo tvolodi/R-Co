@@ -72,9 +72,9 @@ fn inferType(
             return .bool;
         },
         .cmp_expr => |bin| {
-            _ = try inferType(allocator, env, bin.left, diagnostics, site);
-            _ = try inferType(allocator, env, bin.right, diagnostics, site);
-            return .bool;
+            const l = try inferType(allocator, env, bin.left, diagnostics, site);
+            const r = try inferType(allocator, env, bin.right, diagnostics, site);
+            return checkCmpCompat(allocator, diagnostics, site, l, r, cmpOpSymbol(bin.op));
         },
         .unary_neg => {
             const t = try inferType(allocator, env, node.unary_neg.operand, diagnostics, site);
@@ -136,6 +136,41 @@ fn checkArithmeticCompat(
 ) std.mem.Allocator.Error!TypeTag {
     if (l == .number and r == .number) return .number;
     // Anything else is incompatible.
+    try emitOperandTypeError(allocator, diagnostics, site, op, l, r);
+    return .dyn;
+}
+
+/// Symbol for a comparison operator (used in the OperandTypeError message).
+fn cmpOpSymbol(op: expr_mod.CmpOp) []const u8 {
+    return switch (op) {
+        .eq => "==",
+        .neq => "!=",
+        .lt => "<",
+        .lte => "<=",
+        .gt => ">",
+        .gte => ">=",
+    };
+}
+
+/// Comparison operators (==, !=, <, <=, >, >=) require both operands to be
+/// the same concrete type. A `.dyn` operand (unknown variable, or genuinely
+/// dynamic value) defers to the UnknownVariable finding already emitted for
+/// it (VLD-02 AC2) — no OperandTypeError is stacked on top (VLD-02 AC3 is
+/// about concrete, incompatible operand types; this keeps e.g. `amont > 0`
+/// at exactly one UnknownVariable finding). On incompatible concrete
+/// operands, emit an OperandTypeError and return `.dyn` so checkSite skips
+/// the redundant TypeMismatch (the spec pins this case as "1 OperandTypeError,
+/// NOT TypeMismatch").
+fn checkCmpCompat(
+    allocator: std.mem.Allocator,
+    diagnostics: *std.ArrayList(Finding),
+    site: Site,
+    l: TypeTag,
+    r: TypeTag,
+    op: []const u8,
+) std.mem.Allocator.Error!TypeTag {
+    if (l == .dyn or r == .dyn) return .bool;
+    if (l == r) return .bool;
     try emitOperandTypeError(allocator, diagnostics, site, op, l, r);
     return .dyn;
 }
@@ -461,4 +496,60 @@ test "checkSite: '+' over number and string -> OperandTypeError" {
         if (f.error_kind == .OperandTypeError) saw_operand = true;
     }
     try std.testing.expect(saw_operand);
+}
+
+// ---------------------------------------------------------------------------
+// ISS-0709 B1 — .cmp_expr operand-type compatibility (VLD-02 AC3)
+// ---------------------------------------------------------------------------
+
+test "checkSite: 's > 0' (string > number) -> OperandTypeError, no TypeMismatch" {
+    const alloc = std.testing.allocator;
+    var entries: std.ArrayList(env_mod.Entry) = .empty;
+    try env_mod.addEntry(&entries, alloc, "s", .string, null, .variable_schema, null);
+    const env = TypedEnv{ .entries = try entries.toOwnedSlice(alloc) };
+    defer env.deinit(alloc);
+
+    var sites_buf: std.ArrayList(Site) = .empty;
+    try sites_buf.append(alloc, try SiteStub.s(alloc, "s > 0", .bool, false));
+    const owned_sites = try sites_buf.toOwnedSlice(alloc);
+    defer site_mod.freeSites(alloc, owned_sites);
+
+    const findings = try checkSite(alloc, env, owned_sites[0]);
+    defer finding_mod.freeFindings(alloc, findings);
+
+    try std.testing.expect(findings.len >= 1);
+    var saw_operand = false;
+    var saw_type_mismatch = false;
+    for (findings) |f| {
+        if (f.error_kind == .OperandTypeError) saw_operand = true;
+        if (f.error_kind == .TypeMismatch) saw_type_mismatch = true;
+    }
+    // Spec: "1 OperandTypeError (NOT TypeMismatch)".
+    try std.testing.expect(saw_operand);
+    try std.testing.expect(!saw_type_mismatch);
+}
+
+test "checkSite: 'amont > 0' unknown variable -> UnknownVariable only, no OperandTypeError" {
+    const alloc = std.testing.allocator;
+    var entries: std.ArrayList(env_mod.Entry) = .empty;
+    try env_mod.addEntry(&entries, alloc, "amount", .number, null, .variable_schema, null);
+    const env = TypedEnv{ .entries = try entries.toOwnedSlice(alloc) };
+    defer env.deinit(alloc);
+
+    var sites_buf: std.ArrayList(Site) = .empty;
+    try sites_buf.append(alloc, try SiteStub.s(alloc, "amont > 0", .bool, false));
+    const owned_sites = try sites_buf.toOwnedSlice(alloc);
+    defer site_mod.freeSites(alloc, owned_sites);
+
+    const findings = try checkSite(alloc, env, owned_sites[0]);
+    defer finding_mod.freeFindings(alloc, findings);
+
+    var saw_unknown = false;
+    var saw_operand = false;
+    for (findings) |f| {
+        if (f.error_kind == .UnknownVariable) saw_unknown = true;
+        if (f.error_kind == .OperandTypeError) saw_operand = true;
+    }
+    try std.testing.expect(saw_unknown);
+    try std.testing.expect(!saw_operand);
 }
