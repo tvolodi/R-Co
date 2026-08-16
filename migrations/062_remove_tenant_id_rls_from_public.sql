@@ -23,6 +23,12 @@
 -- any remaining tenant_id-backed index/constraint that survived drift, and the
 -- end-state is re-asserted (NOTICE, not exception) so a re-run on a fully
 -- migrated database exits 0 unchanged (SPT-02 AC5).
+--
+-- Dependent-view handling: public views that reference a dropped tenant_id
+-- column (v_active_configs from migration 052, plus any view stacked on it)
+-- are dropped BEFORE the DROP COLUMN and recreated AFTER with their original
+-- definition semantics minus the removed tenant_id projection (see the two
+-- dedicated DO blocks below).
 
 -- ---------------------------------------------------------------------------
 -- Pre-flight gate: 061 must have fully completed.
@@ -42,6 +48,113 @@ BEGIN
             'columns / RLS policies / bpm_effective_tenant_id() can be dropped from public.',
             v_unmigrated;
     END IF;
+END;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Dependent-view drop (SPT-02 release blocker fix): drop every public view
+-- that depends on a Class-B tenant_id column BEFORE the DROP COLUMN, and
+-- recreate it AFTER the main DDL below. On a fresh database migration 052
+-- (order 52) created v_active_configs over public.artifact_activations
+-- (SELECT aa.tenant_id ...), so DROP COLUMN tenant_id fails with
+-- 'cannot drop column tenant_id of table artifact_activations because other
+-- objects depend on it — view v_active_configs depends on column tenant_id'
+-- unless the view is dropped first. The recreation (below) preserves the
+-- original definition semantics minus the removed tenant_id projection column:
+-- public business tables no longer carry it, while the tenant-schema copies of
+-- the view created by 052 (all_schemas) keep tenant_id and are untouched.
+--
+-- Discovery is a fixpoint: direct column-level dependents first, then any view
+-- that depends (relation-level) on an already-collected view, so a view stacked
+-- on v_active_configs is also dropped. If any view OTHER than v_active_configs
+-- is found, the migration aborts (RAISE EXCEPTION -> transactional rollback)
+-- rather than silently dropping a view with no known recreation.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    v_class_g text[] := ARRAY[
+        'tenant_schemas',
+        'tenant_hostnames',
+        'tenant_realm_binding',
+        'onboarding_registry',
+        'platform_migrations_control_table',
+        'rate_limit_buckets',
+        'secrets',
+        'repository_artifacts',
+        'tenant_artifact_activations',
+        'promotion_assertion_runs',
+        'pack_update_resolutions',
+        'solution_pack_installs',
+        'tnt05_orphans',
+        'tnt05_progress'
+    ];
+    v_view_schema text;
+    v_view_name text;
+    v_unexpected text := '';
+    v_dropped integer := 0;
+BEGIN
+    CREATE TEMP TABLE IF NOT EXISTS _spt_class_b (tbl text PRIMARY KEY) ON COMMIT DROP;
+    TRUNCATE pg_temp._spt_class_b;
+    INSERT INTO pg_temp._spt_class_b
+        SELECT c.table_name::text
+          FROM information_schema.columns c
+          JOIN pg_class t
+            ON t.relname = c.table_name
+           AND t.relnamespace = 'public'::regnamespace
+         WHERE c.table_schema = 'public'
+           AND c.column_name  = 'tenant_id'
+           AND c.table_name <> ALL (v_class_g)
+           AND t.relkind = 'r'
+        ON CONFLICT DO NOTHING;
+
+    FOR v_view_schema, v_view_name IN
+        WITH RECURSIVE view_deps(oid) AS (
+            SELECT DISTINCT vv.oid
+              FROM pg_class vv
+              JOIN pg_rewrite rw ON rw.ev_class = vv.oid
+              JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass
+                              AND d.objid = rw.oid
+                              AND d.refclassid = 'pg_class'::regclass
+              JOIN pg_attribute a ON a.attrelid = d.refobjid
+                                 AND a.attnum = d.refobjsubid
+              JOIN pg_class t ON t.oid = a.attrelid
+              JOIN pg_temp._spt_class_b cb ON cb.tbl = t.relname
+             WHERE vv.relkind = 'v'
+               AND vv.relnamespace = 'public'::regnamespace
+               AND t.relnamespace = 'public'::regnamespace
+               AND a.attname = 'tenant_id'
+            UNION
+            SELECT DISTINCT vv.oid
+              FROM pg_class vv
+              JOIN pg_rewrite rw ON rw.ev_class = vv.oid
+              JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass
+                              AND d.objid = rw.oid
+                              AND d.refclassid = 'pg_class'::regclass
+              JOIN view_deps vd ON vd.oid = d.refobjid
+             WHERE vv.relkind = 'v'
+               AND vv.relnamespace = 'public'::regnamespace
+        )
+        SELECT n.nspname, c.relname
+          FROM view_deps vd
+          JOIN pg_class c ON c.oid = vd.oid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+    LOOP
+        IF v_view_name <> 'v_active_configs' THEN
+            v_unexpected := v_unexpected || v_view_schema || '.' || v_view_name || ' ';
+        END IF;
+        EXECUTE format('DROP VIEW IF EXISTS %I.%I', v_view_schema, v_view_name);
+        v_dropped := v_dropped + 1;
+    END LOOP;
+
+    IF v_unexpected <> '' THEN
+        RAISE EXCEPTION
+            'SPT-02 062: unexpected dependent view(s) on the dropped tenant_id columns: %. '
+            'Only v_active_configs has a known recreation; refusing to proceed rather than '
+            'silently drop a view with no recreation.',
+            v_unexpected;
+    END IF;
+
+    RAISE NOTICE 'SPT-02 062: dropped % dependent public view(s) before DROP COLUMN tenant_id.', v_dropped;
 END;
 $$;
 
@@ -82,14 +195,19 @@ BEGIN
     -- database it includes the legacy business tables (dropped from public
     -- only later by GBL-112/GBL-123); on a database already past those files
     -- it covers the remaining tenant-scoped business tables only.
-    CREATE TEMP TABLE _spt_class_b (tbl text PRIMARY KEY) ON COMMIT DROP;
+    -- (IF NOT EXISTS: the dependent-view DO block above already created and
+    -- populated this temp table; this is the idempotent re-assertion.)
+    CREATE TEMP TABLE IF NOT EXISTS _spt_class_b (tbl text PRIMARY KEY) ON COMMIT DROP;
     INSERT INTO pg_temp._spt_class_b
         SELECT c.table_name::text
           FROM information_schema.columns c
+          JOIN pg_class t
+            ON t.relname = c.table_name
+           AND t.relnamespace = 'public'::regnamespace
          WHERE c.table_schema = 'public'
            AND c.column_name  = 'tenant_id'
            AND c.table_name <> ALL (v_class_g)
-           AND to_regclass('public.' || c.table_name::text) IS NOT NULL
+           AND t.relkind = 'r'
         ON CONFLICT DO NOTHING;
 
     FOR v_tbl IN SELECT tbl FROM pg_temp._spt_class_b ORDER BY tbl LOOP
@@ -138,6 +256,33 @@ BEGIN
             RAISE NOTICE 'SPT-02 062: could not drop index %I.%I: %', 'public', v_idx, SQLERRM;
         END;
     END LOOP;
+END;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Recreate the dependent view(s) with their original definition semantics:
+-- the version-chain traversal (artifact_activations -> artifact_versions ->
+-- repository_artifacts) is unchanged; only the tenant_id projection column is
+-- removed because public.artifact_activations no longer carries it after the
+-- DROP COLUMN above (SPT-02 — tenant isolation is now the tenant schema, not
+-- the column). The tenant-schema copies of v_active_configs created by 052
+-- (all_schemas) are untouched and keep tenant_id. Idempotent: DROP VIEW IF
+-- EXISTS + CREATE VIEW re-runs cleanly (SPT-02 AC5).
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+    EXECUTE format('DROP VIEW IF EXISTS %I.v_active_configs', 'public');
+    EXECUTE format(
+        'CREATE VIEW %I.v_active_configs AS '
+        || 'SELECT aa.artifact_kind, aa.artifact_name, aa.active_version_id, '
+        || 'encode(ra.content_hash, ''hex'') AS content_hash_hex, aa.activated_at '
+        || 'FROM %I.artifact_activations aa '
+        || 'JOIN %I.artifact_versions av ON aa.active_version_id = av.version_id '
+        || 'JOIN %I.repository_artifacts ra ON av.content_hash = ra.content_hash '
+        || 'WHERE aa.artifact_kind = ''config''',
+        'public', 'public', 'public', 'public'
+    );
+    RAISE NOTICE 'SPT-02 062: recreated public.v_active_configs without the tenant_id projection (version-chain semantics preserved).';
 END;
 $$;
 
