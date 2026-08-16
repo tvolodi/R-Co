@@ -1,0 +1,152 @@
+{
+  "handoff_id": "wf03-gh803-20260816-2b-code-design-validator",
+  "run_id": "WF03-GH803-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH803-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T08:06:34Z",
+  "started_at": "2026-08-16T08:06:53Z",
+  "completed_at": "2026-08-16T08:09:15Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2b -- design validation (hard gate)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
+    "iss_id": "ISS-0712",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh803-20260816-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0712-gh803-rollback-supersede-fix.md",
+      "docs/issues/ISS-0712.json",
+      "src/definition/rollback.zig",
+      "migrations/096_promotion_reviews.sql"
+    ],
+    "design_artefact": "src/design/iss0712-gh803-rollback-supersede-fix.md",
+    "branch_name": "feature/WF03-GH803-20260816",
+    "hard_gate": true
+  },
+  "task": {
+    "description": "Step 2b \u2014 Design Validation (HARD GATE). Validate the design artefact at src/design/iss0712-gh803-rollback-supersede-fix.md (Type E \u2014 PRODUCTION code fix, no migrations) against the WF-02 Step 1b checks applied to a fix design. Step 3 (implementation) MUST NOT start until this returns PASS. Checks: (a) design addresses the diagnosed root_cause from ISS-0712 (def_id = $3::uuid vs TEXT column -> sqlstate 42883, swallowed by bare catch null); (b) the two patch shapes are precise: Change A line ~290 drop ::uuid on $3 (text = text); Change B line ~295 replace bare catch null with a SQLSTATE-42P01-distinguishing catch mapping other errors to RollbackError (ExhaustedPool -> PoolExhausted, else -> TransactionFailed); (c) blast radius documented (sole production caller handleRollback maps RollbackError; no migration needed); (d) no implementation code in the design beyond the patch shape; (e) tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0); (f) verification plan documented (zig build; test-integration-prm08 expected 4/4 green, no 42883 in stderr); (g) fix scope <= 5 files.",
+    "expected_outputs": [
+      "Validation report (PASS or FAIL) for src/design/iss0712-gh803-rollback-supersede-fix.md"
+    ],
+    "acceptance_criteria": [
+      "Design addresses root_cause from ISS-0712",
+      "Both patch shapes precise and confined to src/definition/rollback.zig (no migrations)",
+      "Blast radius documented (callers, no migration needed)",
+      "No implementation code in design (patch shape only)",
+      "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+      "Verification plan documented (zig build; test-integration-prm08 4/4 green expected)",
+      "Fix scope <= 5 files",
+      "Step 3 MUST NOT start until PASS"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss0712-gh803-rollback-supersede-fix.md (Type E, PRODUCTION code fix for ISS-0712/GH-803) validated \u2014 all acceptance criteria and WF-02 Step 1b checks met. Change A (line 290, drop ::uuid on $3 -> text=text vs TEXT def_id) and Change B (line 295, SQLSTATE-42P01-distinguishing catch mirroring PAR-01: ExhaustedPool->PoolExhausted else->TransactionFailed) verified line-exact against source, migration 096, and canonical pattern. tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0). Blast radius (sole caller handleRollback), no-migration rationale, verification plan (zig build; test-integration-prm08 4/4 green; no sqlstate=42883) documented. Fix scope 1 file (<= 5). Step 3 MAY start.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Design references 'handleRollback in src/api/routes/definition_rollback.zig (line 76)' \u2014 line 76 is the rollbackDefinitionVersion call site; pub fn handleRollback is defined at line 41. Cited error-mapping range (lines 84-89) and blast-radius table are exact; cosmetic only, no impact on Step 3."
+      }
+    ],
+    "checks": [
+      {
+        "id": "lint-design-artefact",
+        "name": "tools/lint_design_artefact.py exits 0 (BLOCKER=0 MAJOR=0)",
+        "result": "PASS",
+        "evidence": "python tools/lint_design_artefact.py src/design/iss0712-gh803-rollback-supersede-fix.md -> exit 0, 'OK - 1 file(s) checked, no issues' (BLOCKER=0 MAJOR=0 MINOR=0)."
+      },
+      {
+        "id": "root-cause-coverage",
+        "name": "Design addresses ISS-0712 root_cause (def_id = $3::uuid vs TEXT -> 42883, swallowed by bare catch null)",
+        "result": "PASS",
+        "evidence": "Change A drops ::uuid on $3 (line 290 verified in source: 'WHERE tenant_id = $2::uuid AND def_id = $3::uuid' -> 'def_id = $3', text=text vs promotion_reviews.def_id TEXT per migration 096 'def_id text NOT NULL'). Change B replaces bare catch null (line 295 verified: ') catch null; // table may not exist (PRM-04 is a later batch)') with a SQLSTATE-42P01-distinguishing catch. Both address the exact root_cause and fix_diff in docs/issues/ISS-0712.json."
+      },
+      {
+        "id": "patch-shape-a",
+        "name": "Change A precise: drop ::uuid on $3 (line 290), text = text; $1::uuid and $2::uuid retained",
+        "result": "PASS",
+        "evidence": "Verified actual rollback.zig:290 and params [event_id, tenant_id, current_active_id]. $1=event_id (text) bound against uuid column superseded_by -> $1::uuid correct; $2=tenant_id (text) bound against uuid column tenant_id -> $2::uuid correct; $3=current_active_id (id::text from Step 2) bound against TEXT column def_id -> cast dropped. Matches ISS-0712 fix_diff and step-1 fix_spec."
+      },
+      {
+        "id": "patch-shape-b",
+        "name": "Change B precise: SQLSTATE-42P01-distinguishing catch; ExhaustedPool->PoolExhausted, else->TransactionFailed",
+        "result": "PASS",
+        "evidence": "Verified actual rollback.zig:295. Design's catch mirrors canonical PAR-01 pattern at src/event_store/store.zig ~795-807 (copy conn.lastSqlState() [pool.zig:563, returns ?[]const u8] into [5]u8 before eql, 42P01 -> break :blk null, else return switch err ExhaustedPool->PoolExhausted / else->TransactionFailed). Zig-type-correct: catch block evaluates to ?[]?[]u8 (null coerces to optional row type); return switch exits function with RollbackError!RollbackResult. Copy-before-overwrite invariant documented (no intervening query between failed queryRow and lastSqlState read)."
+      },
+      {
+        "id": "blast-radius",
+        "name": "Blast radius documented (sole caller handleRollback; no migration needed)",
+        "result": "PASS",
+        "evidence": "Design documents sole production caller handleRollback (definition_rollback.zig); error-mapping table verified against actual source definition_rollback.zig:84-89 (403/422/404/503/500 covers every RollbackError; handler needs no edit). No-migration rationale: schema (096) is already correct (def_id text NOT NULL); defect is the query cast only."
+      },
+      {
+        "id": "no-implementation-code",
+        "name": "No implementation code in design (patch shape only)",
+        "result": "PASS",
+        "evidence": "Type E artefact contains only the two patch before/after shapes (Change A SQL predicate line, Change B catch block) plus unchanged-signature documentation. No full function bodies, no SQL DDL, no JSX."
+      },
+      {
+        "id": "schema-decisions",
+        "name": "No database schema decisions made (Type E boundary)",
+        "result": "PASS",
+        "evidence": "Design explicitly states no migration/schema change; migrations/096_promotion_reviews.sql is read-only context. No DDL authored."
+      },
+      {
+        "id": "open-questions",
+        "name": "Ambiguities flagged as open questions, not guessed at",
+        "result": "PASS",
+        "evidence": "Design Open questions section lists 3 items: (1) rollback.zig doc claims single serialisable transaction but no conn.begin()/COMMIT present (pre-existing, out of scope); (2) multiple 'applied' rows per def_id possible (pre-existing, unchanged); (3) prevention: run lint_sql_param_types.py / lint_sql_table_refs.py over rollback.zig (recommended to ORCH)."
+      },
+      {
+        "id": "classification",
+        "name": "Classification correct per lego-catalog (Type E)",
+        "result": "PASS",
+        "evidence": "Not Type A (no HTTP route), B (no list page), C (no migration), D (no React Flow node). Novel cross-cutting production fix with observable error-handling semantic change -> Type E per selection rules."
+      },
+      {
+        "id": "completeness",
+        "name": "Completeness: purpose, signatures, error taxonomy, dependencies, data-flow diagram",
+        "result": "PASS",
+        "evidence": "Module purpose (one paragraph); public interface (unchanged signature + RollbackResult + RollbackError set with input/output types); error taxonomy section (42883/42P01/22P02/23503/ExhaustedPool/lastSqlState-null table with before/after); dependencies incl. MUST NOT depend (migration change, test files, .ps1 wrapper with stale 5433 port); ASCII data-flow diagram present."
+      },
+      {
+        "id": "security",
+        "name": "Security: input validation rules + access-control checks for data access",
+        "result": "PASS",
+        "evidence": "Fix introduces no new user-input surface; supersede UPDATE remains fully parameterized (no string interpolation). Data access confined to per-tenant search_path (tenant context) and the existing Step 1 PLATFORM_ADMIN permission gate, preserved and referenced in the design's data-flow diagram."
+      },
+      {
+        "id": "verification-plan",
+        "name": "Verification plan documented (zig build; test-integration-prm08 4/4 green; no 42883)",
+        "result": "PASS",
+        "evidence": "Plan: zig build exit 0 (runtime SQL + catch shape, must not break compile); BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 -> 4/4 green (TC-PRM-08-01/02/03/04) once GH-802 fixture + GH-804 seed merged and this fix applied; negative check: no sqlstate=42883 in [pool] stderr. Explicit :5453 URL, run directly (not via .ps1 wrapper). test target verified at build.zig:3147."
+      },
+      {
+        "id": "scope-files",
+        "name": "Fix scope <= 5 files",
+        "result": "PASS",
+        "evidence": "Design confines scope to exactly 1 file: src/definition/rollback.zig Step 5 (lines 286-298, edits at 290 and 295). No migrations, no test files, no build.zig change."
+      },
+      {
+        "id": "gate",
+        "name": "Step 3 MUST NOT start until PASS",
+        "result": "PASS",
+        "evidence": "This validation returns PASS with no BLOCKER/MAJOR findings; Step 3 (BACKEND-DEV) may start. Only finding is a MINOR cosmetic line-reference imprecision (handleRollback definition at line 41 vs call site at line 76) with no impact on implementation."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3) to implement the validated two-part fix in src/definition/rollback.zig"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
