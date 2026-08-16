@@ -101,16 +101,21 @@ fn insertPromotionReviewsRow(
     tenant_id: []const u8,
     review_id: []const u8,
     status: []const u8,
+    requested_by: []const u8,
 ) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
     try conn.exec(
-        \\INSERT INTO promotion_reviews (id, tenant_id, status, def_id, plan_digest, created_at)
-        \\VALUES ($1::uuid, $2::uuid, $3, '00000000-0000-0000-0000-000000000000'::uuid,
-        \\        'prm06-test-plan-digest', NOW())
+        \\INSERT INTO promotion_reviews
+        \\    (id, tenant_id, status, def_id, plan_digest, created_at,
+        \\     requested_by, def_type, serialised_plan)
+        \\VALUES ($1::uuid, $2::uuid, $3,
+        \\        '00000000-0000-0000-0000-000000000000'::uuid,
+        \\        'prm06-test-plan-digest', NOW(),
+        \\        $4::uuid, 'assertion_rerun', 'prm06-test-serialised-plan')
         \\ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status
     ,
-        &[_][]const u8{ review_id, tenant_id, status },
+        &[_][]const u8{ review_id, tenant_id, status, requested_by },
     );
 }
 
@@ -477,9 +482,11 @@ test "TC-PRM-06-03: applyPromotionAssertionRerun returns SandboxUnavailable when
 
     // Promotion reviews table is not in scope of this batch (PRM-04 batch
     // owns it). Pre-seed it only if it exists.
+    const requested_by = try randomUuidStr(alloc);
+    defer alloc.free(requested_by);
     const has_pr = try promotionReviewsTableExists(&pool);
     if (has_pr) {
-        try insertPromotionReviewsRow(&pool, tenant_id, review_id, "approved");
+        try insertPromotionReviewsRow(&pool, tenant_id, review_id, "approved", requested_by);
         // Cleanup: leave the row in 'approved' state — the test verifies it
         // was NOT changed to anything else.
     }
@@ -691,7 +698,7 @@ test "TC-PRM-07-01: a successful assertion run whose sandbox release fails recor
         defer pool.release(conn);
         const upd_row = try conn.queryRow(
             alloc,
-            \\UPDATE promotion_assertion_runs SET
+            \\UPDATE public.promotion_assertion_runs SET
             \\    status = CASE
             \\        WHEN status = 'failed' THEN 'failed'
             \\        ELSE 'teardown_failed'
@@ -907,6 +914,12 @@ test "TC-PRM-07-03: handleGetPromotion returns 200 with teardown_error and sandb
     defer dropTenantFixtures(&pool, tenant_id, review_id);
 
     try insertTestTenant(&pool, tenant_id, tenant_id);
+
+    // Seed the parent review row first (defensive: satisfies the conditional
+    // promotion_assertion_runs_review_fk from migration 1156 when present).
+    const requested_by = try randomUuidStr(alloc);
+    defer alloc.free(requested_by);
+    try insertPromotionReviewsRow(&pool, tenant_id, review_id, "approved", requested_by);
 
     // Insert a teardown_failed run row with sandbox_id and teardown_error set.
     {

@@ -1,0 +1,44 @@
+{
+  "report_id": "WF03-GH793-20260816-step-1-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH793-20260816",
+  "step": "1",
+  "created_at": "2026-08-16T05:40:15Z",
+  "summary": "WF-03 Step 1 (diagnosis-as-design) for ISS-0708 / GH-793. Read the ACTUAL test file tests/integration/prm-06-07-promotion-assertion.test.zig (the issue's cited two-file split prm-06-promotion-assertion.test.zig / prm-07-assertion-rerun.test.zig does not exist; the combined file holds all three tests), the production code under test (src/definition/assertion_rerun.zig, src/api/routes/promotion_read.zig, src/db/pool.zig), the real migrations (096_promotion_reviews.sql, 1156_prm06_promotion_assertion_runs.sql), and the ACTUAL test DB schema, then ran the real target `zig build test-integration-prm06-07` with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test: result 7 pass / 2 fail. Cluster A CONFIRMED: TC-PRM-06-03 (AC5) fails sqlstate=23502 because insertPromotionReviewsRow omits NOT NULL requested_by (also def_type, serialised_plan) from migration 096 (issue's 'migration 1144' citation is wrong). Cluster C CONFIRMED and ROOT CAUSE REFINED: TC-PRM-07-01 expected 'teardown_failed' but found 'passed' \u2014 not a 'simulation flag flow' bug, but a schema-qualification mismatch: the test INSERT and final SELECT use public.promotion_assertion_runs while the manual recordTeardownFailure UPDATE is unqualified, resolving (zero-UUID tenant context -> tenant_default search_path, per pool.zig schemaNameForTenant) to tenant_default.promotion_assertion_runs \u2014 a DIFFERENT table \u2014 so the UPDATE matches 0 rows. Cluster B NOT REPRODUCIBLE in this workspace: schema inspection shows NO promotion_assertion_runs_review_fk on either copy (only tenant_id FK); TC-PRM-07-03 PASSES here. The 23503 evidence was environment-specific (original port-5434 DB had the FK, added conditionally by migration 1156); the defensive parent-seed fix remains correct and robust. Exact fix spec (file/helper + patch per cluster + verification command) written for Step 3. NO fix implemented. Test DB for this workspace is UP; API/IDP not required (all 9 tests are DB-only).",
+  "files_created": [
+    "scratch/diag_prm_schema.py",
+    "scratch/diag_prm_schema2.py",
+    "docs/issue-reports/WF03-GH793-20260816-step-1-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-prm06-07 (9 tests)",
+      "status": "fail",
+      "detail": "7 pass / 2 fail. FAIL: TC-PRM-06-03 (AC5) sqlstate=23502 on insertPromotionReviewsRow (missing NOT NULL requested_by/def_type/serialised_plan); TC-PRM-07-01 expected teardown_failed found passed (unqualified UPDATE hits tenant_default copy, 0 rows). PASS (noted): TC-PRM-07-03 (no review FK in this DB). Env: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "ISS-0708 body cites wrong schema history: 'migration 1144 added requested_by NOT NULL' (1144 = platform migrations control table; requested_by NOT NULL is in 096_promotion_reviews.sql) and 'FK ... -> promotion_reviews(plan_id, review_id)' (actual FK in 1156 is review_id -> promotion_reviews(id), added conditionally). Also cites a two-file split that does not exist on the branch."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Duplicate test label: two tests are named 'TC-PRM-06-03' (the AC5 SandboxUnavailable test and the AC3 stripNonDeterministicFields test). The AC5 test should be labelled TC-PRM-06-05. Naming bug only; not a failure driver."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Same insertPromotionReviewsRow defect exists in tests/integration/prm-08-rollback-sandbox.test.zig (lines 233-258): omits requested_by/def_type/serialised_plan -> latent sqlstate 23502. Out of scope for ISS-0708 (PRM-06/07 scope); recommend separate tracking."
+    },
+    {
+      "severity": "MINOR",
+      "description": ".vscode/run-zig-test-integration.ps1 and the zig-test-integration-cmd workspace task hardcode BPM_TEST_DB_URL port 5433 (sibling workspace band). This workspace uses 5453. Step 3 must export BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test explicitly and must NOT rely on those tasks."
+    }
+  ],
+  "next_steps": [
+    "Route to ISSUE-FIXER Step 3 (WF-03 GH-793) to implement the three test-setup patches per the Step 1 fix spec (fix insertPromotionReviewsRow; qualify TC-PRM-07-01 UPDATE to public.; seed parent promotion_reviews row in TC-PRM-07-03 + optionally TC-PRM-07-01/04), then verify with `zig build test-integration-prm06-07` (BPM_TEST_DB_URL=...:5453).",
+    "Optionally file/register a follow-up for the prm-08 insertPromotionReviewsRow duplicate defect."
+  ],
+  "blockers": []
+}

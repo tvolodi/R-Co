@@ -1,0 +1,73 @@
+{
+  "handoff_id": "wf03-gh793-20260816-01-issue-fixer",
+  "run_id": "WF03-GH793-20260816",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH793-20260816/step-01-issue-fixer.json",
+  "created_at": "2026-08-16T05:29:03Z",
+  "started_at": "2026-08-16T05:29:19Z",
+  "completed_at": "2026-08-16T05:40:15Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 1 -- root-cause diagnosis",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/793",
+    "iss_id": "ISS-0708",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh793-20260816-00-backend-dev",
+      "wf03-gh793-20260816-005-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0708.json",
+      "tests/integration/prm-06-07-promotion-assertion.test.zig",
+      "handoffs/WF03-GH793-20260816/step-005-issue-fixer.json"
+    ],
+    "branch_name": "feature/WF03-GH793-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 1 for run WF03-GH793-20260816: root-cause diagnosis (diagnosis-as-design) for the three failing PRM-06/07 integration tests (ISS-0708 / GH-793). CONFIRM/REFINE the diagnosis from the issue body by reading the ACTUAL test file tests/integration/prm-06-07-promotion-assertion.test.zig (note: the issue cites filenames prm-06-promotion-assertion.test.zig / prm-07-assertion-rerun.test.zig, but the real combined file on origin/main is prm-06-07-promotion-assertion.test.zig \u2014 confirm the three tests TC-PRM-06-03, TC-PRM-07-01, TC-PRM-07-03 live there or in sibling helpers): Cluster A \u2014 TC-PRM-06-03 [23502] requested_by NOT NULL (insertPromotionReviewsRow fixture predates migration 1144); Cluster B \u2014 TC-PRM-07-03 [23503] FK promotion_assertion_runs -> promotion_reviews(plan_id, review_id) (no parent row seeded); Cluster C \u2014 TC-PRM-07-01 expected teardown_failed vs actual passed (sandbox teardown simulation flag flow). DEFINE the fix spec for Step 3 precisely: the exact test-helper routine(s), the exact patch (parameter/sentinel UUID for requested_by; INSERT parent promotion_reviews row before assertion-run insert; align the teardown-failure simulation with the codebase's actual behaviour), and the verification command (zig build test-integration-prm-06 / test-integration-prm-07, or the equivalent task). Confirm whether the test DB/services for THIS workspace (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test, BPM_API_URL http://localhost:8090, BPM_IDP_BASE_URL http://localhost:8091) are expected to be up. Do NOT implement the fix yourself.",
+    "acceptance_criteria": [
+      "Root cause confirmed/refined against the ACTUAL test file(s) on the branch",
+      "Exact file(s)/helper routine(s) to patch identified with the exact patch approach per cluster",
+      "Verification command(s) specified",
+      "No fix implemented (Step 3 only)",
+      "Work on branch feature/WF03-GH793-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 1 diagnosis for GH-793/ISS-0708 confirmed/refined against the ACTUAL combined test file (tests/integration/prm-06-07-promotion-assertion.test.zig) and the ACTUAL test DB. Ran `zig build test-integration-prm06-07` (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test): 7 pass / 2 fail. A) TC-PRM-06-03 [23502] CONFIRMED: insertPromotionReviewsRow omits NOT NULL requested_by (also def_type, serialised_plan; real schema in migration 096, not 1144). C) TC-PRM-07-01 teardown_failed-vs-passed CONFIRMED, root cause REFINED to schema-qualification mismatch: unqualified UPDATE resolves to tenant_default copy while INSERT/SELECT use public.promotion_assertion_runs -> 0 rows updated. B) TC-PRM-07-03 FK 23503 NOT reproducible in this workspace (no review FK on either copy; test PASSES here) \u2014 issue's evidence was env-specific; defensive parent-seed fix still specified. Exact fix spec + verification command documented for Step 3 (test-setup patches only). No fix implemented. Test DB (5453) confirmed UP; API/IDP not required.",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-GH793-20260816-step-01-issue-fixer-INNER-REPORT.json",
+      "tests/integration/prm-06-07-promotion-assertion.test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ISS-0708 body cites wrong migration numbers/files (1144/1145, two-file split) vs actual 096/1156 + combined file."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Duplicate test label 'TC-PRM-06-03' (AC5 test should be TC-PRM-06-05)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Same insertPromotionReviewsRow NOT-NULL defect latent in prm-08-rollback-sandbox.test.zig (out of ISS-0708 scope; track separately)."
+      },
+      {
+        "severity": "MINOR",
+        "description": ".vscode/run-zig-test-integration.ps1 + zig-test-integration-cmd task hardcode port 5433 (stale); Step 3 must use 5453 URL explicitly."
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER Step 3 (WF-03 GH-793) to implement the three PRM-06/07 test-setup patches per the Step 1 fix spec, then verify with zig build test-integration-prm06-07"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
