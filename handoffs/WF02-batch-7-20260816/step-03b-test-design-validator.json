@@ -1,0 +1,84 @@
+{
+  "handoff_id": "ddcf3706-da02-47d2-9914-e3d999d75833",
+  "run_id": "WF02-batch-7-20260816",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-batch-7-20260816/step-03b-test-design-validator.json",
+  "created_at": "2026-08-16T19:06:00Z",
+  "started_at": "2026-08-16T19:06:21Z",
+  "completed_at": "2026-08-16T19:09:24Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "DDL-04",
+      "OBP-04",
+      "ORD-03",
+      "VLD-04"
+    ],
+    "related_handoff_ids": [
+      "7f50bdd7-aa4b-48ad-a032-a9ab726bbc7c"
+    ],
+    "artifacts_in": [
+      "tests/specs/DDL-04.md",
+      "tests/specs/OBP-04.md",
+      "tests/specs/ORD-03.md",
+      "tests/specs/VLD-04.md",
+      "tests/integration/ddl04_backfill_loop_test.zig",
+      "tests/integration/obp04_gate_test.zig",
+      "tests/integration/ord03_ordering_test.zig",
+      "tests/integration/vld04_gate_test.zig",
+      "docs/requirements.yaml"
+    ],
+    "branch_name": "feature/WF02-batch-7-20260816"
+  },
+  "task": {
+    "description": "HARD GATE: validate the TEST-DESIGNER output for WF-02 batch 7 (DDL-04, OBP-04, ORD-03, VLD-04) before TEST-RUNNER executes. Verify: every MUST requirement has a runnable integration test; no test coverage is deferred (no SkipZigTest on MUST tests without a documented counterpart); fixtures are isolated (per-test tenant isolation per ENV-02); tests are self-sufficient; the test suites are wired into build.zig so TEST-RUNNER can execute them. Note: TEST-DESIGNER reported 3 BLOCKER implementation defects found fail-first (ORD-03 sweeper predicate off-by-one missing +1; DDL-04 runBackfill breaks on first 0-row iteration before stall check; VLD-04 runSemanticGate finding path corrupts heap memory/segfaults). These are IMPLEMENTATION defects, not test-design defects - validate the test design on its own merits (coverage completeness, isolation, wiring). ORCH will route a BACKEND-DEV rework for the 3 BLOCKERs after this gate. Return PASS only if the test design itself is sound.",
+    "acceptance_criteria": [
+      "Every MUST requirement (DDL-04, OBP-04, ORD-03, VLD-04) has a runnable integration test",
+      "No MUST test is deferred via SkipZigTest without a documented counterpart",
+      "Fixtures are isolated per ENV-02",
+      "Tests are self-sufficient and wired into build.zig",
+      "The 3 BLOCKER implementation defects are correctly classified as implementation (not test-design) issues for ORCH to route to BACKEND-DEV rework"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for DDL-04/OBP-04/ORD-03/VLD-04 validated - every MUST (DDL-04) and every SHOULD requirement has a runnable integration test (counts reconcile exactly: DDL-04 6 loop + 3 unit + 5 schema, OBP-04 6 gate + 4 unit + 6 schema, ORD-03 9, VLD-04 7 gate + 1 unit + 5 schema); no SkipZigTest or deferred coverage; fixtures isolated (per-test UUIDs on module suites, rollback-on-deinit TestHarness on schema suites); tests self-sufficient (hard failure on missing BPM_TEST_DB_URL, no silent skip) and wired into build.zig (named modules + narrow test-integration-* steps + test_integration_others_step). The 3 BLOCKER implementation defects TEST-DESIGNER reported are correctly classified as implementation defects surfaced by fail-first tests, not test-design defects - routed to BACKEND-DEV rework.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-batch-7-20260816-step-03b-test-design-validator-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "ORD-03: sweepStalledCorrelations predicate is p.lowest_seq > c.applied_seq (missing + 1) - a slow-but-present correlation is wrongly dead-lettered. TC-ORD-03-AC5-non-stalled-not-swept fails. IMPLEMENTATION defect surfaced by fail-first test; route to BACKEND-DEV. Fix: p.lowest_seq > c.applied_seq + 1."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "DDL-04 AC5: runBackfill breaks on the first 0-row iteration before the stall check, so the 10-iteration stall policy is unreachable. TC-DDL-04-AC5-stall-escalation fails. IMPLEMENTATION defect surfaced by fail-first test; route to BACKEND-DEV."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "VLD-04: runSemanticGate finding path corrupts heap memory - persistVerdict writes garbage compiler_version on findings (clean pass correct; verified) and AC3-stale/AC4-timeout segfault. IMPLEMENTATION defect; route to BACKEND-DEV/ISSUE-FIXER root-cause in the validateDefinition finding path."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Schema-contract suites (ddl04_plat_migration_state_test.zig, obp04_plat_outbox_gate_test.zig, vld04_definition_semantic_verdict_test.zig) use static fixture IDs rather than per-test UUIDs; isolated safely via TestHarness rollback-on-deinit, so no leakage risk - style deviation only."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Pipeline checks (6)-(10) N/A: batch is backend-only with no sequential-UI-action surface; no web/tests/e2e/pipelines file references DDL-04/OBP-04/ORD-03/VLD-04."
+      }
+    ],
+    "next_action": "Route 3 BLOCKER implementation defects (ORD-03 sweeper +1, DDL-04 AC5 stall, VLD-04 finding-path heap corruption) to BACKEND-DEV rework, then route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

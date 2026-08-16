@@ -1991,3 +1991,4 @@
 2026-08-16T18:09:39Z | handoff_completed | WF02-batch-7-20260816 | f7fc9672 | BACKEND-DEV | step-2a-backend-dev COMPLETED (PASS); commit 7b2d8584 pushed; migrations 1163-1166 applied; event types seeded
 2026-08-16T18:11:35Z | ROUTE | WF-02 | 65c4029b | ORCH -> SECURITY-REVIEWER | PENDING | Step 2c security hard gate (DDL-04, OBP-04, ORD-03, VLD-04)
 2026-08-16T18:16:37Z | ROUTE | WF-02 | 7f50bdd7 | ORCH -> TEST-DESIGNER | PENDING | Step 03 test design (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T19:06:00Z | ROUTE | WF-02 | ddcf3706 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | Step 03b HARD GATE test-design validation (DDL-04, OBP-04, ORD-03, VLD-04)
