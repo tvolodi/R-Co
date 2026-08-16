@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-16T21:53:12Z",
+  "last_updated": "2026-08-16T21:57:40Z",
   "entries": [
     {
       "handoff_id": "WF02-prm-batch2-20260814-03-test-designer",
@@ -33512,14 +33512,15 @@
       "step": "final",
       "created_at": "2026-08-16T21:53:12Z",
       "started_at": "2026-08-16T21:53:31Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "workflow_ref": "WF02-spt02-04-20260816",
       "requirements": [
         "SPT-02",
         "SPT-03",
         "SPT-04"
       ],
-      "stage": "Schema-Per-Tenant Migration"
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T21:57:40Z"
     }
   ],
   "version": "1"
