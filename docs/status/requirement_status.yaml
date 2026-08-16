@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-16T08:21:22Z'
+last_updated: '2026-08-16T21:49:28Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -3645,23 +3645,29 @@ requirements:
     test_run: tests/reports/report-20260605-WF02-spt-01.yaml
     released_at: '2026-06-05'
   SPT-02:
-    status: PENDING
+    status: RELEASED
     stage: Schema-Per-Tenant Migration
     priority: MUST
     title: Data migration — copy rows into tenant schemas and remove RLS
     implemented_in: []
+    released_at: '2026-08-16T21:49:21Z'
+    note: RELEASED by WF02-spt02-04-20260816
   SPT-03:
-    status: PENDING
+    status: RELEASED
     stage: Schema-Per-Tenant Migration
     priority: MUST
     title: Remove legacy bpm.tenant_id session variable and tenant_id predicates
     implemented_in: []
+    released_at: '2026-08-16T21:49:22Z'
+    note: RELEASED by WF02-spt02-04-20260816
   SPT-04:
-    status: PENDING
+    status: RELEASED
     stage: Schema-Per-Tenant Migration
     priority: MUST
     title: Test suite update and ADP-12 regression
     implemented_in: []
+    released_at: '2026-08-16T21:49:23Z'
+    note: RELEASED by WF02-spt02-04-20260816
   SVC-01:
     status: RELEASED
     stage: 13

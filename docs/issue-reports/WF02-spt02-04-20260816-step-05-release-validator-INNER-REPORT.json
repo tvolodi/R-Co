@@ -1,0 +1,48 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-05-release-validator",
+  "agent_id": "RELEASE-VALIDATOR",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "05",
+  "created_at": "2026-08-16T20:12:07Z",
+  "summary": "RELEASE-VALIDATOR made the WF-02 Step 5 release decision for SPT-02/03/04 (Schema-Per-Tenant Migration) on feature/WF02-spt02-04-20260816: BLOCKED. All 16 MUST ACs pass as tested on bpm_test (test-integration-spt 16/16, spt01 3/3, event-store 29/29, unit 0 failed, 23 regression suites green, migrate 1163 clean) — verified independently against tests/specs/SPT-02/03/04.md and the 16 test blocks in spt02_03_04_schema_tenant_migration_test.zig. HOWEVER, the NFR/bench gate (zig build bench) FAILED: its migrate precondition aborts at migration 062 against BPM_DB_URL (bpm_dev:5442) with 'cannot drop column tenant_id of table artifact_activations because other objects depend on it / DETAIL: view v_active_configs depends on column tenant_id of table artifact_activations'. This is a branch-attributable, fresh-DB-reproducible defect: 052 creates v_active_configs depending on artifact_activations.tenant_id; 062 (order 62) runs ~1000 units before GBL-123 (order 1123) which removes the column, so 062 aborts on ANY fresh database. bpm_test masked it because GBL-123 was applied on 2026-08-11 before 061/062/063 existed. No NFR_RESULT metrics were emitted. ISS-0715/GH-812 fix (commit 3ec8832e) verified resolved in-run (bookkeeping gap: GH-812 OPEN + ISS-0715.json status OPEN + a JSON syntax error fixed here). Release decision written to docs/status/release-decision-WF02-spt02-04-20260816.yaml (BLOCKED).",
+  "files_created": [
+    "docs/status/release-decision-WF02-spt02-04-20260816.yaml",
+    "scratch/bench_full_rv.log"
+  ],
+  "files_modified": [
+    "handoffs/WF02-spt02-04-20260816/step-05-release-validator.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log",
+    "docs/issues/ISS-0715.json"
+  ],
+  "tests_run": [
+    { "name": "AC verification — 16 MUST ACs vs test report + test blocks", "status": "pass", "detail": "test-integration-spt 16/16 (6 SPT-02 + 5 SPT-03 + 5 SPT-04 ACs, one test block each, none skipped); spt01 3/3; event-store 29/29; unit 1145/1209 (0 failed, 64 pre-existing skips); 23 regression suites EXIT 0; migrate 1163 EXIT 0." },
+    { "name": "Live end-state re-check on bpm_test (5434)", "status": "pass", "detail": "post-062 end state verified directly: 13 public tables with tenant_id (all Class-G registry), 0 RLS policies, 0 bpm_effective_tenant_id(); 061/062/063 recorded in public/tenant_default/per-tenant ledgers." },
+    { "name": "zig build bench (NFR precheck + full)", "status": "fail", "detail": "exit 1; migrate precondition aborts at 062 on bpm_dev: cannot drop column tenant_id of table artifact_activations because other objects depend on it (view v_active_configs). Reproduced verbatim via docker exec r-co-db-1 psql in a rolled-back transaction. 0 NFR_RESULT lines emitted." },
+    { "name": "Fresh-DB reproducibility analysis", "status": "pass", "detail": "confirmed via src/db/migrations.zig migrationOrder (GBL offset +1000 => GBL-123 order 1123 > 062 order 62), migrations/052 (creates v_active_configs SELECT aa.tenant_id FROM artifact_activations), and bpm_test ledger (GBL-123 applied 2026-08-11 BEFORE 061/062/063 on 2026-08-16 => masking)." },
+    { "name": "Open-issue check (ISS-0715 / GH-812)", "status": "pass", "detail": "fix commit 3ec8832e present on branch (touches migrations/020 + 094); fix_verified field + Step 4 green confirm resolution. GitHub #812 still OPEN + ISS-0715.json status OPEN = MINOR bookkeeping gap for DOC-UPDATER closure, not a code blocker." }
+  ],
+  "issues_found": [
+    {
+      "severity": "BLOCKER",
+      "description": "Migration 062_remove_tenant_id_rls_from_public.sql fails on the canonical fresh-DB path (and on bpm_dev): DROP COLUMN tenant_id on public.artifact_activations aborts because view v_active_configs (created by migration 052, which runs before 062) depends on that column. 062's residual-index sweep handles indexes/constraints but not dependent views. The Step 4 gate and the SPT suite never exercised this path because bpm_test applied GBL-123 on 2026-08-11, before 061/062/063 existed, leaving artifact_activations without tenant_id at 062 time. Also blocks the NFR/bench gate (no NFR_RESULT metrics emitted). Fix: BACKEND-DEV to drop/recreate the dependent view(s) around DROP COLUMN in 062; TEST-DESIGNER to add a test reproducing the view-dependency state."
+    },
+    {
+      "severity": "MINOR",
+      "description": "ISS-0715/GH-812: fix (commit 3ec8832e) verified in-run and gates green, but GitHub issue #812 remains OPEN and docs/issues/ISS-0715.json status is still OPEN. Route closure to DOC-UPDATER / a closure ADHOC (fn:update-issue RESOLVED + gh issue close 812). Also fixed a JSON syntax error in ISS-0715.json (missing comma after fix_verified) that made the file unparseable."
+    },
+    {
+      "severity": "MINOR",
+      "description": "bpm_dev (BPM_DB_URL:5442) is in a half-migrated state: 061 recorded (data_migrated_at set for tenant_default at 2026-08-16 20:07:57Z), 062 pending/failing. Bench-env repair must reconcile this after the 062 fix (apply GBL-123 out-of-order like bpm_test, or resume migrate after 062 fixed). The 062 defect is branch-attributable, NOT a dev-DB-only quirk."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route BACKEND-DEV to fix migration 062 (dependent-view handling: DROP VIEW IF EXISTS v_active_configs before DROP COLUMN, recreate after) on the same branch; add a regression test (TC-SPT-02-07 view-dependency) via TEST-DESIGNER; re-run the Step 4 gate (test-integration-spt + spt01 + event-store + unit + regression) and the NFR bench (zig build bench must reach NFR_RESULT emission and exit 0); then re-dispatch RELEASE-VALIDATOR.",
+    "Reconcile bpm_dev ledger/markers after the 062 fix so the bench migrate precondition passes (or apply GBL-123 out-of-order as bpm_test did).",
+    "DOC-UPDATER / closure ADHOC: close GH-812 (gh issue close 812) and mark docs/issues/ISS-0715.json RESOLVED via fn:update-issue.",
+    "SPT-02/03/04 stay PENDING — do NOT set RELEASED this cycle."
+  ],
+  "blockers": [
+    "Migration 062 fresh-DB failure (view dependency) — blocks NFR/bench gate and the canonical migration path; release BLOCKED."
+  ]
+}

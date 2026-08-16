@@ -1,0 +1,62 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-05-test-designer",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "05-test-designer",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-spt02-04-20260816/step-05-test-designer.json",
+  "created_at": "2026-08-16T20:39:09Z",
+  "started_at": "2026-08-16T20:39:27Z",
+  "completed_at": "2026-08-16T20:44:51Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-05-unblock-backend-dev",
+      "WF02-spt02-04-20260816-05-release-validator"
+    ],
+    "artifacts_in": [
+      "migrations/062_remove_tenant_id_rls_from_public.sql",
+      "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+      "tests/specs/SPT-02.md",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-05-backend-dev-INNER-REPORT.json",
+      "docs/status/release-decision-WF02-spt02-04-20260816.yaml"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "RELEASE-VALIDATOR BLOCKED the release on a bench/migrate failure: migration 062 dropped tenant_id from artifact_activations but view v_active_configs (from migration 052) depended on it. BACKEND-DEV fixed 062 (commit 79112125): dependent views dropped before DROP COLUMN (fail-loud if any view other than v_active_configs is found) and v_active_configs recreated after with its original definition minus the removed tenant_id projection. Bench now passes (NFR_RESULT overall_passed=true). RELEASE-VALIDATOR recommended a view-dependency regression test (suggested TC-SPT-02-07) so this class of defect is covered. Add it to the SPT-02 suite."
+  },
+  "task": {
+    "description": "Add a view-dependency regression test to the SPT-02 suite (tests/integration/spt02_03_04_schema_tenant_migration_test.zig) covering the defect RELEASE-VALIDATOR caught: migration 062 must be able to drop Class-B tenant_id columns even when a public view (v_active_configs from migration 052) depends on them — the view is dropped before DROP COLUMN and recreated after (minus the removed tenant_id projection). Suggested TC-SPT-02-07: provision a fresh tenant schema / fresh DB path, apply 052 then 061/062/063, and assert (1) migration applies cleanly (no 'cannot drop column ... because other objects depend on it'), (2) public.v_active_configs exists after with its post-062 definition, (3) tenant_default.v_active_configs keeps tenant_id. Update tests/specs/SPT-02.md traceability accordingly. Do NOT change production code — migration 062 is already fixed. Verify the new test passes (zig build test-integration-spt, all 17 now).",
+    "acceptance_criteria": [
+      "View-dependency regression test added to the SPT-02 suite (TC-SPT-02-07 or equivalent)",
+      "Test asserts clean migration 062 application with dependent view, v_active_configs recreated, tenant_default copy keeps tenant_id",
+      "tests/specs/SPT-02.md traceability updated",
+      "test-integration-spt passes (16 existing + 1 new = 17)",
+      "No production code changed"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added TC-SPT-02-07 view-dependency regression test to the SPT-02 suite (tests/integration/spt02_03_04_schema_tenant_migration_test.zig): reproduces public.v_active_configs (migration 052) depending on public.artifact_activations.tenant_id, executes migration 062 raw SQL cleanly (no dependent-object error), asserts public.v_active_configs is recreated without the tenant_id projection and tenant_default.v_active_configs keeps tenant_id. Updated tests/specs/SPT-02.md traceability. test-integration-spt 17/17 PASS (was 16/16). No production code changed.",
+    "artifacts_out": [
+      "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+      "tests/specs/SPT-02.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 5 review) to validate the TC-SPT-02-07 regression coverage, then re-run the Step 4 gate and re-dispatch RELEASE-VALIDATOR for a fresh release decision."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

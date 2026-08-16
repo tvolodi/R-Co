@@ -1,0 +1,81 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-04-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "04",
+  "created_at": "2026-08-16T19:12:28Z",
+  "summary": "TEST-RUNNER (WF-02 Step 4) executed the SPT-02/03/04 test run on feature/WF02-spt02-04-20260816. Primary suites green: test-integration-spt 16/16 (no skips on MUST), test-integration-spt01-iss68 3/3, unit suite 1145/1209 passed / 0 failed / 64 skipped. 21 of 22 regression suites exercising tenant/schema isolation PASS (pin*, prm* incl. prm06-07 and prm09 which were red on the GH-785 verification run and are now green, sol*, svc 35/35, vld* 19/19, idn* 15/15). ONE NEW branch-introduced regression: test-integration-event-store fails to COMPILE — commit 27ec5d6c (SPT-03) removed tenant_id from event_store.store.ReadOpts, and tests/integration/event_store_integration_test.zig lines 1543/1655 still initialize it (.tenant_id = bpm.store.DEFAULT_TENANT_ID). Verified the base branch (HEAD~5) still had the field, so this is not pre-existing. Acceptance criterion 'regression suites pass with no new failures' is unmet -> result.status FAIL; fix route (remove the two ReadOpts.tenant_id initializers) recorded for BACKEND-DEV so ORCH can redispatch. Report written to tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml.",
+  "files_created": [
+    "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+    "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-INNER-REPORT.json",
+    "scratch/tr_spt_run.log",
+    "scratch/tr_spt_run2.log",
+    "scratch/tr_spt01_run.log",
+    "scratch/tr_unit_run.log",
+    "scratch/tr_es.log",
+    "scratch/tr2_*.log",
+    "scratch/tr3_*.log",
+    "scratch/tr4_*.log"
+  ],
+  "files_modified": [
+    "handoffs/WF02-spt02-04-20260816/step-04-test-runner.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    { "name": "zig build test-integration-spt", "status": "pass", "detail": "16/16 tests passed, EXIT 0 (no skips on MUST-covering blocks)." },
+    { "name": "zig build test-integration-spt01-iss68", "status": "pass", "detail": "3/3 tests passed (SPT-01 ISS-0068 provisioning), EXIT 0." },
+    { "name": "zig build test", "status": "pass", "detail": "1145/1209 passed, 64 skipped, 0 failed, EXIT 0 (no new unit failures)." },
+    { "name": "zig build test-integration-event-store", "status": "fail", "detail": "EXIT 1 — compile error: no field named 'tenant_id' in struct 'event_store.store.ReadOpts' (lines 1543, 1655). 0 tests runnable." },
+    { "name": "zig build test-integration-pin01", "status": "pass", "detail": "9/9 passed." },
+    { "name": "zig build test-integration-pin02", "status": "pass", "detail": "5/5 passed." },
+    { "name": "zig build test-integration-pin03", "status": "pass", "detail": "5/5 passed." },
+    { "name": "zig build test-integration-pin04", "status": "pass", "detail": "5/5 passed." },
+    { "name": "zig build test-integration-pin05", "status": "pass", "detail": "4/4 passed." },
+    { "name": "zig build test-integration-prm01", "status": "pass", "detail": "5/5 passed." },
+    { "name": "zig build test-integration-prm02", "status": "pass", "detail": "8/8 passed." },
+    { "name": "zig build test-integration-prm03", "status": "pass", "detail": "11/11 passed." },
+    { "name": "zig build test-integration-prm04", "status": "pass", "detail": "7/7 passed." },
+    { "name": "zig build test-integration-prm04-review-sm", "status": "pass", "detail": "13/13 passed." },
+    { "name": "zig build test-integration-prm05-review-gate", "status": "pass", "detail": "13/13 passed." },
+    { "name": "zig build test-integration-prm06-07", "status": "pass", "detail": "9/9 passed (previously 3/9 failing on GH-785 verification run — now green)." },
+    { "name": "zig build test-integration-prm08", "status": "pass", "detail": "4/4 passed." },
+    { "name": "zig build test-integration-prm09", "status": "pass", "detail": "4/4 passed (previously 4/4 failing on GH-785 verification run — now green)." },
+    { "name": "zig build test-integration-sol01", "status": "pass", "detail": "4/4 passed." },
+    { "name": "zig build test-integration-sol02", "status": "pass", "detail": "5/5 passed." },
+    { "name": "zig build test-integration-sol03", "status": "pass", "detail": "3/3 passed." },
+    { "name": "zig build test-integration-svc", "status": "pass", "detail": "35/35 passed." },
+    { "name": "zig build test-integration-vld-unit", "status": "pass", "detail": "14/14 passed." },
+    { "name": "zig build test-integration-vld-http", "status": "pass", "detail": "5/5 passed." },
+    { "name": "zig build test-integration-idn02", "status": "pass", "detail": "7/7 passed." },
+    { "name": "zig build test-integration-idn03", "status": "pass", "detail": "1/1 passed." },
+    { "name": "zig build test-integration-idn05", "status": "pass", "detail": "7/7 passed." },
+    { "name": "Pre-checks: docker-compose ps + keycloak health + db_test SELECT 1 + zig build test-env-verify", "status": "pass", "detail": "db_test healthy on :5434, keycloak :8081 OK, DB reachable, test-env-verify EXIT 0 (10/10 HEALTHY)." }
+  ],
+  "issues_found": [
+    {
+      "severity": "BLOCKER",
+      "description": "test-integration-event-store fails to COMPILE: tests/integration/event_store_integration_test.zig lines 1543 and 1655 set `.tenant_id = bpm.store.DEFAULT_TENANT_ID` in ReadOpts, but SPT-03 commit 27ec5d6c removed tenant_id from event_store.store.ReadOpts/GlobalReadOpts/PlatformAppendParams. Base branch (HEAD~5) still had the field -> NEW regression introduced by this run's implementation. Fix route to BACKEND-DEV: remove the two ReadOpts.tenant_id initializers, re-run test-integration-event-store."
+    },
+    {
+      "severity": "MAJOR",
+      "description": "tests/integration/adp06_pipeline_run_correlation_test.zig lines 217/318 use `.tenant_id = bpm.store.DEFAULT_TENANT_ID` in readGlobal (GlobalReadOpts) — same latent compile break from SPT-03. The file is NOT wired into build.zig (no addTest reference), so it is not currently a gate; fix opportunistically in the BACKEND-DEV rework or wire it in the follow-up SPT batch."
+    },
+    {
+      "severity": "MINOR",
+      "description": "The 64 skipped unit tests are pre-existing skips in the unit suite (not MUST-covering integration skips); no new failures. Recorded for completeness."
+    },
+    {
+      "severity": "MINOR",
+      "description": "The SPT-04 AC1 broad legacy-suite rework (~118 legacy-model tests/integration/ files) remains a documented follow-up SPT batch per SECURITY-REVIEWER Step 2c / design OQ-1; the event-store compile break above is the concrete proof that some legacy files do NOT stay green at runtime and must be included in that batch."
+    }
+  ],
+  "next_steps": [
+    "ORCH: redispatch BACKEND-DEV (ADHOC) to fix the event-store ReadOpts compile break (remove `.tenant_id` at test lines 1543/1655), then redispatch TEST-RUNNER to re-run test-integration-event-store + the regression families until all green.",
+    "DOC-UPDATER (Step Final): record SPT-02/03/04 status; note the event-store follow-up in changelog if the fix lands in this run.",
+    "Follow-up SPT batch: rework the remaining legacy-model test files (incl. unwired adp06) to per-test provisioned schemas / removed struct fields."
+  ],
+  "blockers": [
+    "test-integration-event-store compile error (BLOCKER) — blocks result.status PASS for this run; fix routed to BACKEND-DEV."
+  ]
+}

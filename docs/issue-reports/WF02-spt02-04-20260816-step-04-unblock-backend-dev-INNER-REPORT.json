@@ -1,0 +1,75 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-04-unblock-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "04-unblock",
+  "created_at": "2026-08-16T19:26:20Z",
+  "summary": "BACKEND-DEV (WF-02 Step 4 UNBLOCK) fixed the branch-introduced event-store test regression that failed Step 4 (TEST-RUNNER FAIL). (1) Dropped the ReadOpts.tenant_id initializers that SPT-03 commit 27ec5d6c orphaned: event_store_integration_test.zig:1543 and :1655 (.tenant_id = bpm.store.DEFAULT_TENANT_ID) as directed, PLUS :1679 (alt_events ReadOpts .tenant_id = alt_tenant) which the TEST-RUNNER report did not flag but which is the same removed-field compile break and would have kept the file non-compiling; comment updated to search_path-based tenant resolution. (2) Fixed the same class of break in adp06_pipeline_run_correlation_test.zig:217 (GlobalReadOpts) and :318 (HistoryReadOpts) so the branch ships no broken test file. (3) While running the suite, discovered and fixed a SECOND branch-introduced runtime regression from the same SPT-03 commit: removing tenant_id from the events_ephemeral INSERT column list was fine for events (migration 027 gave events.tenant_id a DEFAULT) but events_ephemeral.tenant_id is NOT NULL with NO default (migration 1149), so every delete-class append routed to events_ephemeral inserted tenant_id NULL (sqlstate 23502) and TC-ADP-11-02 failed at runtime — latent because the file never compiled on the branch. Fix: new migration 1163_events_ephemeral_tenant_id_default.sql gives events_ephemeral.tenant_id the same DEFAULT as events (parent + every existing partition via pg_inherits, %I-interpolated), design-consistent with §8.2 R3 (storage boundary carries no tenant_id; the column default is the deterministic fallback). Verification: zig build test-integration-event-store 29/29 PASS exit 0 (Build Summary 6/6 steps succeeded); zig build test-integration-spt 16/16 PASS exit 0; zig build exit 0 (4/4 steps succeeded, no error-set output); lint_migration_schema 0 violations (151 files); lint_sql_table_refs OK. lint_handoffs exit code reported separately in the handoff result.",
+  "files_created": [
+    "migrations/1163_events_ephemeral_tenant_id_default.sql",
+    "docs/issue-reports/WF02-spt02-04-20260816-step-04-unblock-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/event_store_integration_test.zig",
+    "tests/integration/adp06_pipeline_run_correlation_test.zig",
+    "handoffs/WF02-spt02-04-20260816/step-04-unblock-backend-dev.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-event-store (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test)",
+      "status": "pass",
+      "detail": "EXIT=0. Direct binary run: 29/29 PASS — 'All 29 tests passed.' (previously compile-failed). Build Summary: 6/6 steps succeeded; 29/29 tests passed. TC-ADP-11-02 (the events_ephemeral runtime break) now OK; the '[pool] query failed; sqlstate=23514' stderr line is the intentional partition-missing log from TC-PAR01-04-01 (asserts PartitionMissingForWrite), not a failure."
+    },
+    {
+      "name": "zig build test-integration-spt (BPM_TEST_DB_URL=...:5434/bpm_test)",
+      "status": "pass",
+      "detail": "EXIT=0. Build Summary: 6/6 steps succeeded; 16/16 tests passed."
+    },
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "EXIT=0. zig build --summary all: Build Summary 4/4 steps succeeded. No 'error set' diagnostics in full output (the one PowerShell -match hit was a NativeCommandError ErrorRecord rendering false-positive; clean rebuild output has no match)."
+    },
+    {
+      "name": "error-set validation (zig build 2>&1 | grep 'error set')",
+      "status": "pass",
+      "detail": "No output — no uncovered error sets."
+    },
+    {
+      "name": "python tools/lint_migration_schema.py",
+      "status": "pass",
+      "detail": "EXIT=0 — 151 file(s) scanned (incl. new 1163), 0 violations (only pre-existing M002 MINOR permitted-platform-table notes in other files)."
+    },
+    {
+      "name": "python tools/lint_sql_table_refs.py",
+      "status": "pass",
+      "detail": "EXIT=0 — scanned 458 Zig file(s); no legacy table-name references found."
+    },
+    {
+      "name": "Migration 1163 applied check (db_test :5434)",
+      "status": "pass",
+      "detail": "public.schema_migrations ledger records 1163_events_ephemeral_tenant_id_default.sql for public + tenant_default; tenant_default.events_ephemeral.tenant_id column_default now '00000000-0000-0000-0000-000000000000'::uuid (was NULL default)."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "TEST-RUNNER's BLOCKER (ReadOpts.tenant_id compile error) was only the visible symptom. Running the suite exposed a SECOND branch-introduced regression from the same SPT-03 commit: removing tenant_id from the events_ephemeral INSERT column list while events_ephemeral.tenant_id remained NOT NULL with NO column default (migration 1149; events got its default from migration 027) made every delete-class append insert NULL (sqlstate 23502), breaking TC-ADP-11-02 at runtime. Latent because the file never compiled on the branch. Fixed by migration 1163 (same default as events on parent + all existing partitions)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "adp06_pipeline_run_correlation_test.zig is NOT wired into build.zig (TEST-RUNNER noted this) — it never was a gate. Its removed-field break is now fixed (no broken test file ships on the branch), but it still does not run in CI; wiring it is a candidate for the follow-up SPT batch (now that it compiles)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "The 'failed command:' text under `zig build test-integration-*` when the run emits stderr (e.g. TC-PAR01-04-01's intentional 23514 log) is the known cached-run / PowerShell native-stderr artifact (same observation as step-03 unblock) — the run step and overall build both exit 0; the authoritative result is the direct-binary run and the --summary all 'Build Summary: N/N steps succeeded'."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4 re-run): the event-store compile break is cleared (29/29) and TC-ADP-11-02's runtime break is fixed via migration 1163 — the Step 4 BLOCKER is resolved; re-run the regression families to confirm all green before PASS.",
+    "At the run's Step Final, record migration 1163 and the test-file fixes in the changelog; DOC-UPDATER to note the events_ephemeral column-default completion of SPT-03.",
+    "Follow-up SPT batch: wire adp06_pipeline_run_correlation_test.zig into build.zig now that it compiles, and consider a lint-level guard for 'remove an INSERT column from a partitioned table whose column has no DEFAULT' (recurrence prevention for the events_ephemeral class)."
+  ],
+  "blockers": []
+}

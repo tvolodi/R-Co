@@ -1,0 +1,92 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-01b-code-design-validator",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-spt02-04-20260816/step-01b-code-design-validator.json",
+  "created_at": "2026-08-16T16:51:09Z",
+  "started_at": "2026-08-16T16:51:25Z",
+  "completed_at": "2026-08-16T16:57:56Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-00-backend-dev",
+      "WF02-spt02-04-20260816-01-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/spt-02-03-04-schema-per-tenant-migration.md",
+      "docs/requirements.yaml",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Step 1 CODE-DESIGNER returned PARTIAL: design complete (16/16 ACs traced, lint_design_artefact exit 0), but OQ-1 (MAJOR) is a spec-level defect — SPT-03 AC1's literal grep is unsatisfiable because Class G registry tables (tenant_schemas, tenant_hostnames, tenant_realm_binding) and owner_tenant_id lines necessarily contain tenant_id substrings. The design documents a scoped interpretation (no bpm.tenant_id / set_config.*tenant; no tenant_id on Class B business tables; Class G allow-list). OQ-2..OQ-5 minor questions also listed (SPT-02 table list drift, 062-vs-GBL-123 overlap, storage_mode fate, scope-header acceptance). Your hard gate must specifically adjudicate whether the design's scoped interpretation of SPT-03 AC1 (and the other OQs) is acceptable for implementation to proceed, or whether rework/requirement re-scope is required."
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER artefact src/design/spt-02-03-04-schema-per-tenant-migration.md (WF-02 Step 1b hard gate) for requirements SPT-02, SPT-03, SPT-04. Verify: (1) every acceptance criterion of each requirement is covered by a design element; (2) the design is implementation-code-free; (3) the design is complete enough for BACKEND-DEV/FRONTEND-DEV to implement without ambiguity; (4) specifically adjudicate OQ-1 — whether the design's scoped interpretation of SPT-03 AC1 (grep scoped to no bpm.tenant_id / set_config.*tenant, no tenant_id on Class B business tables, Class G registry allow-list) is an acceptable resolution of the unsatisfiable literal AC, or whether the requirement must be re-scoped (route to REQ-ANALYST via WF-01) first. Also rule on OQ-2..OQ-5. Set requirement status to DESIGN-REVIEWED on PASS (via reqctl or by recording in your result for DOC-UPDATER).",
+    "acceptance_criteria": [
+      "All 16 ACs of SPT-02/03/04 covered by the design (trace matrix)",
+      "Design contains no implementation code",
+      "Explicit verdict recorded on OQ-1 (scoped interpretation of SPT-03 AC1) — acceptable as-is, or rework, or requirement re-scope required",
+      "Verdicts recorded on OQ-2..OQ-5",
+      "lint_design_artefact.py and lint_handoffs.py exit statuses reported",
+      "result.status == PASS only if implementation may proceed"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/spt-02-03-04-schema-per-tenant-migration.md validated — all 16 acceptance criteria (SPT-02 6, SPT-03 5, SPT-04 5) covered; lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0 MINOR=5); design implementation-code-free and complete for BACKEND-DEV; codebase-state facts F1-F10 re-verified. OQ-1 adjudicated ACCEPTED-AS-IS (scoped interpretation of SPT-03 AC1 is faithful and implementable; literal grep unsatisfiable — Class G registry queries + owner_tenant_id substrings; formal requirement re-scope queued for REQ-ANALYST as non-blocking follow-up). OQ-2..OQ-5 all ACCEPTED (see issues). Requirement status update: intended commands for SPT-02/03/04 -> DESIGN-REVIEWED are `python tools/reqctl.py set-status SPT-02 DESIGN-REVIEWED` (likewise SPT-03, SPT-04) — NOTE reqctl currently rejects DESIGN-REVIEWED (VALID_STATUSES gap, verified exit 1); DOC-UPDATER must apply by direct edit of docs/requirements.yaml and docs/status/requirement_status.yaml or after tool fix.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "OQ-1 RESOLVED-ACCEPTED (adjudicated MAJOR->MINOR): SPT-03 AC1's literal grep `grep -r \"bpm\\.tenant_id|set_config.*tenant|WHERE tenant_id|tenant_id = \\$\" src/` is unsatisfiable as written — verified: Class G registry queries against tenant_schemas/tenant_hostnames/tenant_realm_binding in pool.zig, provisioning.zig, tenant_lifecycle.zig, tenant_migration.zig legitimately contain `WHERE tenant_id = $N`, and owner_tenant_id (62) / production_tenant_id (49) bind lines in src/ contain the `tenant_id = $` substring. The design's scoped interpretation (§8.2 R1-R4 + §8.3 allow-list: no bpm.tenant_id/set_config.*tenant; no tenant_id on Class B business tables; Class G allow-list retained) is faithful to the AC's intent, complete, and unambiguous -> ACCEPTED-AS-IS. Formal SPT-03 AC1 requirement-text re-scope queued for REQ-ANALYST (WF-01) as a non-blocking follow-up; BACKEND-DEV may implement against the accepted interpretation."
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-2 ACCEPTED: SPT-02 'Tables affected' list is stale vs live schema — verified process_instances does NOT exist (005 creates instance_projections+tokens+tasks), sessions has NO tenant_id (008), tenant_hostnames is a public routing table that KEEPS tenant_id (050). Class B information_schema reconciliation (§4) is the authoritative copy list. Requirement text should be updated by REQ-ANALYST in the same follow-up."
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-3 ACCEPTED: 062 and GBL-123 coexist idempotently — GBL-123 (ISS-503-guarded) stays for the test_iss503_rls_removal.zig raw-file test; 062 adds the data-migration pre-flight (data_migrated_at) and explicit composite-index drops. No consolidation required."
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-4 ACCEPTED: storage_mode column stays for provisioning.zig (writes SCHEMA, verified) and tenant_migration.zig (reads it, verified); only the pool.zig routing call site is removed. Whether to delete resolveAndCacheStorageMode is deferred to SPT-04 test rework (iss107_tenant_storage_mode_test / tnt_schema_isolation_test re-assert schema-only routing) — the design's conservative answer is correct."
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-5 ACCEPTED with implementation constraint: no runner change needed — verified the misclassification guard (src/db/migrations.zig declaresUnqualifiedTableWork) skips %I lines and comments and accepts schema-qualified refs; lint_migration_schema.py BLOCKERs public.<business_table> only in NON-GBL files and does not match `public.%I` (069 precedent). CONSTRAINT: 062/063 per-table DDL must be emitted via EXECUTE format(... %I ...) with `public.%I` in the format string — static `public.<table>` would fail lint_migration_schema.py M001 (BLOCKER), bare `<table>` would fail the runner's MigrationScopeMismatch guard. Design §6.3/§10.1 should state this explicitly for BACKEND-DEV."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Count discrepancy (measurement/state variance, non-gating): design states src tenant_id = 972 refs/66 files, tests/integration = 2369/118. Independent re-measurement on the current tree: src \\btenant_id\\b = 967/85 (substring 1401/92); tests/integration \\btenant_id\\b = 1637/91 (substring 2157/102). Magnitudes agree and both far exceed the requirement's 37-file estimate; no design conclusion depends on the exact count. BACKEND-DEV must re-run `grep -rn tenant_id src/` at implementation (design already mandates this)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "SPT-04 §9.2 high-impact list omits svc04_admin_api_test.zig, which calls set_config('bpm.tenant_id', $1, false) directly at 4 sites (lines 471/496/607/626) for RLS-based inserts into tenant-scoped tables. Covered by the general 'every' instruction, but should be named for completeness."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Requirement-status machinery drift: tools/reqctl.py VALID_STATUSES omits DESIGNED/DESIGN-REVIEWED/TEST-DESIGNED/TEST-DESIGN-REVIEWED, so `reqctl set-status SPT-02 DESIGN-REVIEWED` exits 1 (verified, no mutation) even though AGENT_SYSTEM.md defines DESIGN-REVIEWED as the CODE-DESIGN-VALIDATOR PASS status. DOC-UPDATER must apply SPT-02/03/04 -> DESIGN-REVIEWED by direct edit of docs/requirements.yaml + docs/status/requirement_status.yaml, or after the tool is fixed. Exact intended commands recorded in result.next_action/result.summary."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and/or FRONTEND-DEV (Step 2b); queue REQ-ANALYST (WF-01) re-scope of SPT-03 AC1 + SPT-02 table list; DOC-UPDATER applies SPT-02/03/04 -> DESIGN-REVIEWED."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

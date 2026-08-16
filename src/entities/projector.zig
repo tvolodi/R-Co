@@ -111,7 +111,6 @@ pub fn rebuildProjection(
     allocator: std.mem.Allocator,
     pool: *Pool,
     entity_type: []const u8,
-    tenant_id: []const u8,
 ) ProjectorError!void {
     const conn = pool.acquire() catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return ProjectorError.PoolExhausted,
@@ -124,12 +123,10 @@ pub fn rebuildProjection(
         \\SELECT e.payload::text
         \\FROM events e
         \\JOIN event_type_registry etr ON e.event_type_id = etr.id
-         \\WHERE e.tenant_id = (SELECT id FROM tenants WHERE external_id = $1 OR id = $1::uuid)
-        \\  AND etr.name IN ('ENTITY_RECORD_CREATED', 'ENTITY_RECORD_UPDATED', 'ENTITY_RECORD_DELETED')
-        \\  AND e.payload->>'entity_type' = $2
+        \\WHERE etr.name IN ('ENTITY_RECORD_CREATED', 'ENTITY_RECORD_UPDATED', 'ENTITY_RECORD_DELETED')
+        \\  AND e.payload->>'entity_type' = $1
         \\ORDER BY e.created_at ASC
     , &.{
-        .{ .text = tenant_id },
         .{ .text = entity_type },
     }) catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return ProjectorError.PoolExhausted,
@@ -198,15 +195,14 @@ pub fn rebuildProjection(
 
         // Upsert into entity_record_latest
         conn.execute(
-            \\INSERT INTO entity_record_latest (entity_type, entity_def_version, record_id, tenant_id, field_values, is_deleted, updated_at)
-            \\VALUES ($1, $2, $3, $4, $5::jsonb, $6, NOW())
-            \\ON CONFLICT (entity_type, record_id, tenant_id)
-            \\DO UPDATE SET field_values = $5::jsonb, is_deleted = $6, entity_def_version = $2, updated_at = NOW()
+            \\INSERT INTO entity_record_latest (entity_type, entity_def_version, record_id, field_values, is_deleted, updated_at)
+            \\VALUES ($1, $2, $3, $4::jsonb, $5, NOW())
+            \\ON CONFLICT (entity_type, record_id)
+            \\DO UPDATE SET field_values = $4::jsonb, is_deleted = $5, entity_def_version = $2, updated_at = NOW()
         , &.{
             .{ .text = snapshot.entity_type },
             .{ .integer = @as(i64, @intCast(snapshot.entity_def_version)) },
             .{ .text = record_id },
-            .{ .text = tenant_id },
             .{ .text = snapshot.field_values },
             .{ .boolean = snapshot.is_deleted },
         }) catch continue;

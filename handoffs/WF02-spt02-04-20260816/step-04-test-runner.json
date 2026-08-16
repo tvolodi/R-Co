@@ -1,0 +1,77 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-04-test-runner",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-spt02-04-20260816/step-04-test-runner.json",
+  "created_at": "2026-08-16T19:00:45Z",
+  "started_at": "2026-08-16T19:01:09Z",
+  "completed_at": "2026-08-16T19:13:28Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-00-backend-dev",
+      "WF02-spt02-04-20260816-01-code-designer",
+      "WF02-spt02-04-20260816-01b-code-design-validator",
+      "WF02-spt02-04-20260816-02a-backend-dev",
+      "WF02-spt02-04-20260816-02c-security-reviewer",
+      "WF02-spt02-04-20260816-03-test-designer",
+      "WF02-spt02-04-20260816-03-unblock-backend-dev",
+      "WF02-spt02-04-20260816-03b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "tests/specs/SPT-02.md",
+      "tests/specs/SPT-03.md",
+      "tests/specs/SPT-04.md",
+      "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-03b-test-design-validator-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "All gates PASS: design (16/16 ACs), security (INV-1..8), test-design (16/16, no SkipZigTest, isolated). Blocker ISS-0715/GH-812 fixed in-run (commit 3ec8832e). BENCH_ENV_CHECK exit 0 (HEALTHY 10/10) — pre-check cleared. Target suites: test-integration-spt (16/16), test-integration-spt01-iss68 (SPT-01 provisioning 3/3), plus regression on existing suites (unit, and integration suites touching tenant/schema paths — event-store, pin, prm, sol, svc, vld, idn as available)."
+  },
+  "task": {
+    "description": "Execute the WF-02 Step 4 test run for SPT-02/03/04 on feature/WF02-spt02-04-20260816 (bench env verified HEALTHY). Run: zig build test-integration-spt (16/16 expected), zig build test-integration-spt01-iss68 (SPT-01 provisioning, 3/3 expected), zig build test (unit suite), plus regression suites that exercise tenant/schema isolation (event-store, pin*, prm*, sol*, svc*, vld*, idn*) as available in build.zig. Capture BPM_TEST_DB_URL from .env (postgres://bpm:bpm@localhost:5434/bpm_test). Write the structured test report to tests/reports/ (report-<date>-WF02-spt02-04-20260816.*). On any failure, apply the Test Execution Rule: determine root cause and route to BACKEND-DEV for the fix (report in result; ORCH will redispatch).",
+    "acceptance_criteria": [
+      "test-integration-spt runs and all 16 tests PASS (no skips on MUST)",
+      "test-integration-spt01-iss68 passes (SPT-01 provisioning)",
+      "zig build test (unit) passes with no new failures",
+      "Regression suites pass with no new failures",
+      "Structured report written to tests/reports/",
+      "result.status == PASS only if all suites green"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "TEST-RUNNER WF-02 Step 4 for SPT-02/03/04: test-integration-spt 16/16 PASS (no skips on MUST), test-integration-spt01-iss68 3/3 PASS, unit 1145/1209 (0 failed, 64 pre-existing skips). 21/22 tenant/schema-isolation regression suites PASS; NEW compile regression in test-integration-event-store: commit 27ec5d6c (SPT-03) removed tenant_id from event_store.store.ReadOpts, but tests/integration/event_store_integration_test.zig:1543/1655 still set it. Root cause determined; fix route to BACKEND-DEV recorded (remove the two ReadOpts.tenant_id initializers).",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "test-integration-event-store fails to compile: no field named 'tenant_id' in struct 'event_store.store.ReadOpts' at tests/integration/event_store_integration_test.zig:1543 and :1655. SPT-03 commit 27ec5d6c removed tenant_id from ReadOpts/GlobalReadOpts/PlatformAppendParams; base (HEAD~5) still had the field, so this is a NEW branch-introduced regression. Fix route: drop the two `.tenant_id = bpm.store.DEFAULT_TENANT_ID` initializers from the ReadOpts constructions (tenant resolved via search_path now), then re-run zig build test-integration-event-store."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "tests/integration/adp06_pipeline_run_correlation_test.zig:217/318 use `.tenant_id = bpm.store.DEFAULT_TENANT_ID` in readGlobal (GlobalReadOpts) — same latent SPT-03 compile break. File is NOT wired into build.zig (no addTest reference), so not a gate today; fix opportunistically in the BACKEND-DEV rework."
+      }
+    ],
+    "next_action": "Route BACKEND-DEV (ADHOC) to fix the test-integration-event-store ReadOpts compile break, then ORCH redispatch TEST-RUNNER to re-run test-integration-event-store + regression families until all green."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

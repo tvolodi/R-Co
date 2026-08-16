@@ -1,0 +1,80 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-03-test-designer",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-spt02-04-20260816/step-03-test-designer.json",
+  "created_at": "2026-08-16T17:56:59Z",
+  "started_at": "2026-08-16T17:57:18Z",
+  "completed_at": "2026-08-16T18:24:50Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-00-backend-dev",
+      "WF02-spt02-04-20260816-01-code-designer",
+      "WF02-spt02-04-20260816-01b-code-design-validator",
+      "WF02-spt02-04-20260816-02a-backend-dev",
+      "WF02-spt02-04-20260816-02c-security-reviewer"
+    ],
+    "artifacts_in": [
+      "src/design/spt-02-03-04-schema-per-tenant-migration.md",
+      "docs/requirements.yaml",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-02c-security-reviewer-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Design gate PASS (16/16 ACs), Step 2a BACKEND-DEV PASS (migrations 061/062/063 + pool.zig collapse + Class B tenant_id removal, commit 27ec5d6c), Step 2c SECURITY-REVIEWER PASS (INV-1..8 clear; Class G allow-list confirmed 13 tables; residual Class B refs safe — unqualified queries resolve to tenant schema where tenant_id column remains). Your scope is primarily SPT-04: rework tests/integration/ (remove tenant_id references from fixtures/assertions, use per-test provisioned schemas via provisionTenantSchema() helper), write test specs + test code covering all 16 ACs (esp. SPT-02 migration 061/062/063 behaviors: per-tenant copy, idempotency, atomicity; SPT-03 no bpm.tenant_id), and the ADP-12 regression against tenant_default. Tests must be self-sufficient and fixtures isolated per TEST-DESIGN-VALIDATOR rules. Note: SPT-03 AC1's literal grep is unsatisfiable — the design's scoped interpretation governs (see design §8.2 / validator OQ-1 ruling)."
+  },
+  "task": {
+    "description": "Produce test specs and test code for SPT-02, SPT-03, SPT-04 per src/design/spt-02-03-04-schema-per-tenant-migration.md (validated PASS) and docs/requirements.yaml. Write test specs to tests/specs/ (SPT-02.md, SPT-03.md, SPT-04.md if not present) and test source under tests/integration/. Every MUST acceptance criterion (16 total) must have a runnable integration test; no SkipZigTest on MUST tests without a counterpart. Specifically: (1) SPT-02 — integration tests for migration 061 (per-tenant data copy, count parity, data_migrated_at marker), 062 (tenant_id column/RLS/policy/index removal, bpm_effective_tenant_id dropped), 063 (idempotent DROP POLICY re-check), plus re-run idempotency; (2) SPT-03 — tests that pool routing is search_path-only with no bpm.tenant_id session variable, tenant isolation between concurrent tenants, and no tenant_id on Class B tables (per the scoped AC); (3) SPT-04 — rework existing tests/integration/ fixtures that insert rows with explicit tenant_id to use provisionTenantSchema()/helper, remove tenant_id from assertions, add schema cleanup (no leakage), and run the ADP-12 regression against tenant_default. Tests must be self-sufficient and fixtures isolated.",
+    "acceptance_criteria": [
+      "Test specs written for SPT-02/03/04 to tests/specs/",
+      "Every MUST AC (16/16) has a runnable integration test",
+      "tests/integration/ tenant_id references reworked to per-test provisioned schemas (no residual fixture tenant_id)",
+      "ADP-12 regression covered against tenant_default schema",
+      "Test schemas/rows cleaned up after each test (no leakage)",
+      "No SkipZigTest on MUST tests without a counterpart",
+      "lint exits reported"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Test specs (SPT-02/03/04) and test code written: 16/16 MUST ACs covered by runnable integration tests in tests/integration/spt02_03_04_schema_tenant_migration_test.zig; SPT-04 helpers provisionTestTenantSchema/dropTestTenantSchema added to helpers.zig; build.zig wired (test-integration-spt + barrier). Verified 10/16 PASS on live bpm_test; the 6 remaining tests are correct but BLOCKED by pre-existing production defect ISS-0715/GitHub #812 (migration 020 bpm_audit_resource_info OUT-type conflict breaks fresh tenant provisioning, also breaking released SPT-01 tests). lint_test_isolation exit 0; lint_handoffs exit 0. Migration 020 is BACKEND-DEV scope; not modified here.",
+    "artifacts_out": [
+      "tests/specs/SPT-02.md",
+      "tests/specs/SPT-03.md",
+      "tests/specs/SPT-04.md",
+      "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+      "tests/integration/helpers.zig",
+      "build.zig",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "ISS-0715 / GitHub #812: fresh tenant-schema provisioning fails — migration 020_obs03_audit_entries.sql unqualified CREATE OR REPLACE FUNCTION bpm_audit_resource_info (OUT resource_id UUID) conflicts with public TEXT-typed copy (GBL-120/121); PostgreSQL rejects OUT-type change. Blocks TC-SPT-02-02, TC-SPT-03-02/03/04/05, TC-SPT-04-04 + released SPT-01 provisioning tests. Pre-existing; fix (BACKEND-DEV ADHOC): schema-aware DROP-then-CREATE in 020."
+      },
+      {
+        "severity": "MINOR",
+        "description": "SPT-04 AC1 broad rework of the ~118 legacy-model tests/integration/ files (adp02/adp03/env*/par06/pin01/prm01/svc04) not completed here — they still run against the retained tenant_default tenant_id machinery; this suite establishes the schema-isolated pattern. Follow-up SPT batch per design 9.2 / SECURITY-REVIEWER notes."
+      }
+    ],
+    "next_action": "ORCH: create ADHOC for BACKEND-DEV to fix ISS-0715/GH-812 (migration 020); route this handoff to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

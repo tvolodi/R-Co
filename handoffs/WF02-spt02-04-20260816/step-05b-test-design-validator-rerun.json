@@ -1,0 +1,71 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-05b-test-design-validator-rerun",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "05b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-spt02-04-20260816/step-05b-test-design-validator-rerun.json",
+  "created_at": "2026-08-16T20:56:14Z",
+  "started_at": "2026-08-16T20:56:32Z",
+  "completed_at": "2026-08-16T20:58:31Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-03b-test-design-validator",
+      "WF02-spt02-04-20260816-05-test-designer"
+    ],
+    "artifacts_in": [
+      "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+      "tests/specs/SPT-02.md",
+      "tests/specs/SPT-03.md",
+      "tests/specs/SPT-04.md",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-05-test-designer-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Re-gate of the test design after TEST-DESIGNER added TC-SPT-02-07 (view-dependency regression test for the release-blocking migration-062 defect). Suite now 17 tests (was 16); TEST-DESIGNER verified 17/17 PASS and lint clean. Your prior Step 3b PASS covered the original 16; re-confirm the updated suite still meets the hard-gate criteria before TEST-RUNNER re-runs and RELEASE-VALIDATOR re-decides."
+  },
+  "task": {
+    "description": "Re-validate the updated test design (WF-02 hard gate) after TEST-DESIGNER added TC-SPT-02-07 to tests/integration/spt02_03_04_schema_tenant_migration_test.zig (view-dependency regression test for migration 062). Confirm: (1) every MUST AC still has a runnable integration test (17 tests now — 16 ACs + 1 regression); (2) no SkipZigTest on MUST tests without a counterpart; (3) fixtures isolated, self-sufficient, no leakage (TC-SPT-02-07 runs inside a rolled-back transaction); (4) TC-SPT-02-07 correctly targets the view-dependency defect; (5) tests/specs/SPT-02.md traceability updated. Report lint exits. PASS only if TEST-RUNNER may re-run and RELEASE-VALIDATOR may re-decide.",
+    "acceptance_criteria": [
+      "Updated suite validated (17 tests, all MUST ACs covered + TC-SPT-02-07 regression)",
+      "No SkipZigTest on MUST without counterpart",
+      "Fixtures isolated / self-sufficient (TC-SPT-02-07 ROLLBACK-verified)",
+      "Spec traceability updated",
+      "lint exits reported",
+      "result.status == PASS only if gate may proceed"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for SPT-02/03/04 re-validated after TC-SPT-02-07 addition — 17 runnable integration tests (16 ACs + 1 regression) cover every MUST AC; no SkipZigTest without counterpart; fixtures isolated (per-test UUIDs, defer drop cleanup, MissingTestDatabaseUrl on absent env) and self-sufficient; TC-SPT-02-07 correctly targets the migration-062 view-dependency defect (052-definition reproduction, pre-asserted failure path, ROLLBACK-verified no leakage); tests/specs/SPT-02.md traceability updated. Lint exits: lint_test_isolation 0/0, lint_handoffs 0.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-spt02-04-20260816-step-05b-test-design-validator-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "tests/specs/SPT-04.md TC-SPT-04-02 Given prose still says 16 test blocks (TC-SPT-02-01..06); stale — suite is now 17 incl. TC-SPT-02-07. Case table correct; non-gating doc drift."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Carried from step-03b: TC-SPT-04-04 dropTestTenantSchema is explicit (not defer) — harden to defer in follow-up. Pre-existing, non-gating."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4) for the re-run gate; then RELEASE-VALIDATOR re-decision"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

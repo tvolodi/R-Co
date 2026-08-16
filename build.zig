@@ -3559,6 +3559,37 @@ pub fn build(b: *std.Build) void {
     test_integration_vld_http_step.dependOn(&run_vld_http_integration_tests.step);
     test_integration_others_step.dependOn(&run_vld_http_integration_tests.step);
 
+    // WF02-spt02-04-20260816 (SPT-02/03/04): schema-per-tenant migration
+    // integration suite. Tests the 061/062/063 migration end state and the
+    // schema-only routing / per-test provisioned-schema model. Several tests
+    // (TC-SPT-02-04/05/06) execute the migration SQL text directly against
+    // `public` via simpleQuery() inside explicit transactions — the same
+    // 1:1-migration pattern as test_iss503_rls_removal.zig — so this binary
+    // is chained BEHIND the test-integration-others barrier for the umbrella
+    // run (dedicated after-others Run artifact, mirroring ISS-0106) and
+    // exposed as a standalone narrow step for isolated iteration.
+    const spt_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/spt02_03_04_schema_tenant_migration_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_spt_integration_tests = addIntegrationRun(b, spt_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_spt_step = b.step("test-integration-spt", "Run SPT-02/03/04 schema-per-tenant migration integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_spt_step.dependOn(&clean_test_db.step);
+    test_integration_spt_step.dependOn(&run_spt_integration_tests.step);
+
+    // ISS-0106 pattern: SPT binary runs only after every other
+    // test-integration sibling has finished (its public-schema DDL
+    // transactions must never run concurrently with a sibling), then is
+    // re-attached to the umbrella step via its own Run artifact so
+    // `zig build test-integration` still runs and reports it.
+    const run_spt_integration_tests_after_others = addIntegrationRun(b, spt_integration_tests, migrations_dir, clean_test_db);
+    run_spt_integration_tests_after_others.step.dependOn(test_integration_others_step);
+    test_integration_step.dependOn(&run_spt_integration_tests_after_others.step);
+
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);
     test_integration_obs04_step.dependOn(&run_obs04_integration_tests.step);

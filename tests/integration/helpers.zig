@@ -837,6 +837,68 @@ pub fn cleanupTestTenant(conn: *pg.Conn, tenant_id: []const u8) void {
     ) catch {};
 }
 
+// ---------------------------------------------------------------------------
+// SPT-04 (schema-per-tenant migration, run WF02-spt02-04-20260816) — per-test
+// tenant schema provision/drop helpers (design §9.1).
+//
+// Every integration test that needs tenant isolation provisions its OWN
+// throwaway schema via provisionTestTenantSchema() and registers
+// `defer dropTestTenantSchema(...)` so the schema and its registry rows are
+// removed whether the test passes or fails (SPT-04 AC4 — no schema leakage).
+// This replaces the legacy pattern of inserting rows with an explicit
+// `tenant_id` column value / `set_config('bpm.tenant_id', ...)` (SPT-04 AC1).
+// ---------------------------------------------------------------------------
+
+/// SPT-04 (design §9.1): provision a per-test tenant schema through the real
+/// `bpm.provisioning.provisionTenantSchema()` orchestrator (idempotent —
+/// SPT-01), then bind the ambient tenant context so subsequent pool.acquire()
+/// calls route to the new schema via `search_path` (SPT-03 schema-only
+/// routing). Returns once the schema's tables exist.
+///
+/// The caller MUST pair every successful call with an unconditional
+/// `defer dropTestTenantSchema(conn, allocator, tenant_id_str)` so cleanup
+/// runs on the failure path too.
+pub fn provisionTestTenantSchema(
+    allocator: std.mem.Allocator,
+    pool: *bpm.pool.Pool,
+    tenant_id_str: []const u8,
+    migrations_dir: []const u8,
+) !void {
+    try bpm.provisioning.provisionTenantSchema(allocator, pool, tenant_id_str, migrations_dir);
+    bpm.api_tenant_context.set(tenant_id_str);
+}
+
+/// SPT-04 (design §9.1): drop a per-test tenant schema and clean up every
+/// registry row the provisioning left behind. Primary path is
+/// `public.bpm_drop_tenant_schema($1)` (migration 069); a belt-and-suspenders
+/// `DROP SCHEMA ... CASCADE` covers the case where the function row is absent
+/// (partially-provisioned database) or the call failed. Best-effort: never
+/// returns an error so it is safe to call unconditionally from `defer`.
+pub fn dropTestTenantSchema(conn: anytype, allocator: std.mem.Allocator, tenant_id_str: []const u8) void {
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = bpm.pool.schemaNameForTenant(tenant_id_str, &schema_buf);
+
+    conn.exec("SELECT public.bpm_drop_tenant_schema($1::uuid)", &.{tenant_id_str}) catch |err| {
+        std.debug.print("dropTestTenantSchema: bpm_drop_tenant_schema({s}) failed: {}\n", .{ tenant_id_str, err });
+    };
+
+    // Belt-and-suspenders: drop the schema directly and remove the registry
+    // rows regardless of whether the function path above succeeded.
+    const drop_schema_sql = std.fmt.allocPrint(allocator, "DROP SCHEMA IF EXISTS {s} CASCADE", .{schema_name}) catch return;
+    defer allocator.free(drop_schema_sql);
+    conn.exec(drop_schema_sql, &.{}) catch |err| {
+        std.debug.print("dropTestTenantSchema: DROP SCHEMA {s} failed: {}\n", .{ schema_name, err });
+    };
+    conn.exec("DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{tenant_id_str}) catch {};
+    conn.exec("DELETE FROM public.schema_migrations WHERE schema_name = $1", &.{schema_name}) catch {};
+    // provisionTenantSchema() Step 6a inserts a public.tenant row with
+    // tenant_type='production' and slug 'tenant-<uuid>' (see
+    // src/db/provisioning.zig). It is a per-test fixture UUID, so deleting by
+    // id is safe regardless of tenant_type — leaving it would leak a
+    // production-typed tenant row into the shared bpm_test database.
+    conn.exec("DELETE FROM public.tenant WHERE id = $1::uuid", &.{tenant_id_str}) catch {};
+}
+
 /// ISS-0125 / GitHub #391: delete definition snapshots for one definition.
 /// SQL errors are deliberately propagated so a caller cannot continue to
 /// parent cleanup after an incomplete child cleanup.

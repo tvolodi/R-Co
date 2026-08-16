@@ -250,24 +250,22 @@ pub fn resolveAndCacheStorageMode(
     tenant_context_mod.setStorageMode(.LEGACY_RLS);
 }
 
-/// ISS-501: Storage-mode-aware connection routing.
-/// Replaces TNT-03's applyRequestTenantContext().
-/// Called unconditionally by Pool.acquire() after selecting the connection.
+/// SPT-03: Schema-only connection routing (search_path only).
+/// Replaces ISS-501's storage-mode-aware routing. Called unconditionally by
+/// Pool.acquire() after selecting the connection.
 ///
-/// Branches on the resolved tenant's storage_mode:
+/// After migration 062 no public business table has a tenant_id column and no
+/// RLS policy reads the legacy tenant session variable, so the legacy
+/// LEGACY_RLS branch (the tenant set_config call) is dead and is
+/// removed here. Routing is now:
 ///
 ///   tenant_id empty/absent (no resolved tenant):
 ///     SET search_path TO public
 ///     (no set_config calls)
 ///
-///   storage_mode = LEGACY_RLS:
-///     SET search_path TO public
-///     SELECT set_config('bpm.tenant_id', $1, false)     ← RLS active
-///     SELECT set_config('bpm.pipeline_run_id', $1, false)
-///
-///   storage_mode = SCHEMA:
+///   any resolved tenant (SCHEMA mode is the only mode):
 ///     SET search_path TO tenant_{slug},public
-///     SELECT set_config('bpm.pipeline_run_id', $1, false)  ← no tenant_id for RLS
+///     SELECT set_config('bpm.pipeline_run_id', $1, false)  (observability only)
 ///
 /// The search_path SET is issued FIRST so any subsequent unqualified query
 /// immediately resolves to the correct schema.
@@ -281,40 +279,22 @@ fn applyRequestStorageRouting(conn: *Conn) PoolError!void {
         return;
     }
 
-    // ISS-501: Resolve storage_mode once per request.
-    // On first connection acquisition: query tenant for storage_mode,
-    // cache it in tenant_context.  On subsequent acquisitions: use cached value.
-    if (!tenant_context_mod.hasStorageMode()) {
-        try resolveAndCacheStorageMode(conn, tenant_id);
-    }
+    // Schema-per-tenant path only: tenant schema first, no RLS, no
+    // tenant session variable (SPT-03 collapses storage-mode routing).
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = schemaNameForTenant(tenant_id, &schema_buf);
+    var path_buf: [128]u8 = undefined;
+    const search_path = std.fmt.bufPrint(
+        &path_buf,
+        "SET search_path TO {s},public",
+        .{schema_name},
+    ) catch return PoolError.QueryFailed;
+    try conn.exec(search_path, &.{});
 
-    const mode = tenant_context_mod.getStorageMode();
-
-    switch (mode) {
-        .LEGACY_RLS => {
-            // Legacy path: public schema + RLS predicate via set_config.
-            try conn.exec("SET search_path TO public", &.{});
-            const pipeline_run_id = currentRequestPipelineRunId();
-            try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_id});
-            try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
-        },
-        .SCHEMA => {
-            // Schema-per-tenant path: tenant schema first, no RLS.
-            var schema_buf: [80]u8 = undefined;
-            const schema_name = schemaNameForTenant(tenant_id, &schema_buf);
-            var path_buf: [128]u8 = undefined;
-            const search_path = std.fmt.bufPrint(
-                &path_buf,
-                "SET search_path TO {s},public",
-                .{schema_name},
-            ) catch return PoolError.QueryFailed;
-            try conn.exec(search_path, &.{});
-
-            const pipeline_run_id = currentRequestPipelineRunId();
-            try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
-            // No set_config('bpm.tenant_id', ...) — RLS is inactive in tenant schemas.
-        },
-    }
+    // bpm.pipeline_run_id is observability/telemetry only, unrelated to
+    // tenancy — kept unchanged.
+    const pipeline_run_id = currentRequestPipelineRunId();
+    try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
 }
 
 /// TNT-06: Redirect a connection to a tenant-specific remote host if

@@ -1,0 +1,66 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-04-test-runner-rerun",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "04-rerun",
+  "created_at": "2026-08-16T20:04:14Z",
+  "summary": "TEST-RUNNER re-ran the WF-02 Step 4 gate for SPT-02/03/04 on feature/WF02-spt02-04-20260816 after the BACKEND-DEV unblock (commit 741a40cf + migration 1163). ALL SUITES GREEN: test-integration-spt 16/16, test-integration-spt01-iss68 3/3, test-integration-event-store 29/29 (the previously compile-failing suite — now compiles and passes after the ReadOpts.tenant_id initializers were dropped), unit suite 1145/1209 passed / 0 failed / 64 skipped (identical to pre-unblock baseline, no new failures), all 23 tenant/schema regression suites (pin*, prm*, sol*, svc 35/35, vld* 19/19, idn* 15/15) EXIT 0, and zig build migrate EXIT 0 with migration 1163_events_ephemeral_tenant_id_default.sql applied cleanly (recorded in the public, tenant_default, and per-tenant schema ledgers). fn:validate-completeness all_met=true; result.status = PASS. Report superseded at tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml.",
+  "files_created": [
+    "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-rerun-INNER-REPORT.json",
+    "scratch/zig_test_unit_rerun.log",
+    "scratch/regression_suites_rerun.log"
+  ],
+  "files_modified": [
+    "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+    "handoffs/WF02-spt02-04-20260816/step-04-test-runner-rerun.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    { "name": "zig build test-integration-spt", "status": "pass", "detail": "16/16 tests passed, EXIT 0 (SPT-02/03/04 schema-per-tenant migration suite)." },
+    { "name": "zig build test-integration-spt01-iss68", "status": "pass", "detail": "3/3 tests passed (SPT-01 ISS-0068 provisioning), EXIT 0." },
+    { "name": "zig build test-integration-event-store", "status": "pass", "detail": "29/29 tests passed, EXIT 0. Previously FAIL (compile regression on ReadOpts.tenant_id at :1543/:1655); BACKEND-DEV fix 741a40cf dropped the initializers and added migration 1163 (events_ephemeral tenant_id default). Suite now compiles and is fully green." },
+    { "name": "zig build test", "status": "pass", "detail": "Build Summary 107/107 steps succeeded; 1145/1209 passed, 64 skipped, 0 failed, EXIT 0 (no new unit failures — identical to pre-unblock baseline)." },
+    { "name": "zig build test-integration-pin01", "status": "pass", "detail": "9/9 passed, EXIT 0." },
+    { "name": "zig build test-integration-pin02", "status": "pass", "detail": "5/5 passed, EXIT 0." },
+    { "name": "zig build test-integration-pin03", "status": "pass", "detail": "5/5 passed, EXIT 0." },
+    { "name": "zig build test-integration-pin04", "status": "pass", "detail": "5/5 passed, EXIT 0." },
+    { "name": "zig build test-integration-pin05", "status": "pass", "detail": "4/4 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm01", "status": "pass", "detail": "5/5 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm02", "status": "pass", "detail": "8/8 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm03", "status": "pass", "detail": "11/11 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm04", "status": "pass", "detail": "7/7 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm04-review-sm", "status": "pass", "detail": "13/13 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm05-review-gate", "status": "pass", "detail": "13/13 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm06-07", "status": "pass", "detail": "9/9 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm08", "status": "pass", "detail": "4/4 passed, EXIT 0." },
+    { "name": "zig build test-integration-prm09", "status": "pass", "detail": "4/4 passed, EXIT 0." },
+    { "name": "zig build test-integration-sol01", "status": "pass", "detail": "4/4 passed, EXIT 0." },
+    { "name": "zig build test-integration-sol02", "status": "pass", "detail": "5/5 passed, EXIT 0." },
+    { "name": "zig build test-integration-sol03", "status": "pass", "detail": "3/3 passed, EXIT 0." },
+    { "name": "zig build test-integration-svc", "status": "pass", "detail": "35/35 passed, EXIT 0." },
+    { "name": "zig build test-integration-vld-unit", "status": "pass", "detail": "14/14 passed, EXIT 0." },
+    { "name": "zig build test-integration-vld-http", "status": "pass", "detail": "5/5 passed, EXIT 0." },
+    { "name": "zig build test-integration-idn02", "status": "pass", "detail": "7/7 passed, EXIT 0." },
+    { "name": "zig build test-integration-idn03", "status": "pass", "detail": "1/1 passed, EXIT 0." },
+    { "name": "zig build test-integration-idn05", "status": "pass", "detail": "7/7 passed, EXIT 0." },
+    { "name": "zig build migrate", "status": "pass", "detail": "EXIT 0, 'No new migrations to apply'. Migration 1163_events_ephemeral_tenant_id_default.sql recorded in public.schema_migrations for schema public, tenant_default, and tenant_0b2d90bd5e9643818c69bebfecd8e3ff." },
+    { "name": "Pre-checks: backend services + test-env-verify", "status": "pass", "detail": "db_test healthy on :5434, keycloak :8081 OK, DB reachable, zig build test-env-verify EXIT 0 (10/10 HEALTHY)." }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "The 64 skipped unit tests are pre-existing skips in the unit suite (not MUST-covering integration skips); no new failures. Recorded for completeness."
+    },
+    {
+      "severity": "MINOR",
+      "description": "tests/integration/adp06_pipeline_run_correlation_test.zig (lines 217/318) carried the same latent ReadOpts.tenant_id compile break as event-store; BACKEND-DEV 741a40cf also dropped those initializers (per orchestrator notes). The file is still NOT wired into build.zig — no gate impact, but wiring it into a future SPT batch would give it real coverage."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route to RELEASE-VALIDATOR (WF-02 Step 5) — all Step 4 gate suites are green.",
+    "DOC-UPDATER (Step Final): record SPT-02/03/04 PASS status; note event-store + adp06 ReadOpts rework landed via 741a40cf and migration 1163.",
+    "Follow-up SPT batch: wire adp06_pipeline_run_correlation_test.zig into build.zig and continue the broad legacy-suite rework per SECURITY-REVIEWER Step 2c / design OQ-1."
+  ],
+  "blockers": []
+}

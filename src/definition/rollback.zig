@@ -249,7 +249,7 @@ pub fn rollbackDefinitionVersion(
             \\INSERT INTO events
             \\    (event_id, instance_id, event_type, payload, actor_id,
             \\     idempotency_key, metadata, sequence_number, global_seq,
-            \\     tenant_id, created_at)
+            \\     created_at)
             \\VALUES
             \\    (gen_random_uuid(),
             \\     '00000000-0000-0000-0000-000000000000'::uuid,
@@ -259,10 +259,10 @@ pub fn rollbackDefinitionVersion(
             \\     $3,
             \\     '{}'::jsonb,
             \\     0, nextval('events_global_seq'),
-            \\     $4::uuid, NOW())
+            \\     NOW())
             \\RETURNING event_id::text
         ,
-            &[_][]const u8{ payload, actor_id, idem_key, tenant_id },
+            &[_][]const u8{ payload, actor_id, idem_key },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => RollbackError.PoolExhausted,
             else => RollbackError.TransactionFailed,
@@ -287,11 +287,11 @@ pub fn rollbackDefinitionVersion(
     const supersede_row = conn.queryRow(
         allocator,
         \\UPDATE promotion_reviews SET status = 'superseded', superseded_by = $1::uuid
-        \\WHERE tenant_id = $2::uuid AND def_id = $3
+        \\WHERE def_id = $2
         \\  AND status IN ('applied', 'approved')
         \\RETURNING id::text
     ,
-        &[_][]const u8{ event_id, tenant_id, current_active_id },
+        &[_][]const u8{ event_id, current_active_id },
     ) catch |err| blk: {
         // lastSqlState() returns a slice INTO the connection's mutable buffer;
         // copy before anything can overwrite it (canonical pattern: PAR-01 in

@@ -1,0 +1,41 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-05-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "05-unblock",
+  "created_at": "2026-08-16T20:37:15Z",
+  "summary": "BACKEND-DEV fixed the WF-02 Step 5 release blocker (migration 062 view-dependency) for SPT-02/03/04 on feature/WF02-spt02-04-20260816. Migration 062_remove_tenant_id_rls_from_public.sql now DROPs every public view that depends on a Class-B tenant_id column (v_active_configs from 052, plus any view stacked on it) BEFORE the DROP COLUMN, and RECREATES them AFTER with their original definition semantics minus the removed tenant_id projection. The discovery is a fixpoint (direct column-level dependents then relation-level dependents) and aborts (RAISE EXCEPTION, transactional rollback) if any view OTHER than v_active_configs is found, rather than silently dropping a view with no known recreation. Also hardened the Class-B discovery in both DO blocks to base tables only (relkind='r') so a view can never pollute the _spt_class_b set. Verified end-to-end: zig build exit 0 (no error-set); zig build migrate exit 0 on bpm_test AND bpm_dev (bpm_dev applied 062/063/1163 cleanly over the exact failing state — public.v_active_configs depending on public.artifact_activations.tenant_id); zig build bench exit 0 against bpm_dev (BPM_DB_URL:5442) emitting all 5 NFR_RESULT lines passed=true (p99_read 1.144ms, p99_write 4.146ms, throughput 13236 eps, replay 51ms, snapshot 6ms) with NFR_BENCH_SUMMARY overall_passed=true; test-integration-spt still 16/16 PASS; lint_migration_schema 0 violations (151 files); lint_handoffs exit 0. Post-state on bpm_dev verified: public.artifact_activations has no tenant_id, public.v_active_configs recreated without the tenant_id projection, tenant_default.v_active_configs untouched (keeps tenant_id). No regression test added — TEST-DESIGNER (Step 5 follow-up) will add view-dependency coverage per the release-decision route.",
+  "files_created": [],
+  "files_modified": [
+    "migrations/062_remove_tenant_id_rls_from_public.sql",
+    "handoffs/WF02-spt02-04-20260816/step-05-unblock-backend-dev.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    { "name": "zig build (compile + error-set check)", "status": "pass", "detail": "exit 0; no 'error set' output in stderr." },
+    { "name": "Migration 062 dry-run on bpm_dev (fresh-DB path, rolled-back transaction)", "status": "pass", "detail": "before applying the fix the exact failing state reproduced (view v_active_configs depends on artifact_activations.tenant_id). After the fix: 'dropped 1 dependent public view(s) before DROP COLUMN tenant_id', DROP COLUMN succeeded, view recreated without tenant_id, RESIDUAL_TID=0, exit 0, ROLLBACK left state unchanged." },
+    { "name": "zig build migrate on bpm_test (5434)", "status": "pass", "detail": "exit 0, 7/7 steps; 062/063 already recorded (fast path); post-SPT-suite re-run still exit 0 (idempotent)." },
+    { "name": "zig build migrate on bpm_dev (5442)", "status": "pass", "detail": "exit 0, 7/7 steps; applied 062/063/1163 cleanly over the exact failing state. Post-state verified: public.artifact_activations tenant_id gone, public.v_active_configs recreated (pg_get_viewdef shows version-chain semantics, no tenant_id projection), tenant_default.v_active_configs keeps tenant_id." },
+    { "name": "zig build bench on bpm_dev (BPM_DB_URL:5442)", "status": "pass", "detail": "exit 0; BENCHMARK_SETUP_INFO db_url_source=BPM_DB_URL; 5 NFR_RESULT lines all passed=true (NFR-01 p99_read_ms=1.144, p99_write_ms=4.146; NFR-02 append_throughput_eps=13236.199; NFR-04 replay_10000_ms=51.041, replay_snapshot_100000_ms=6.051); NFR_BENCH_SUMMARY overall_passed=true." },
+    { "name": "zig build test-integration-spt on bpm_test", "status": "pass", "detail": "16/16 tests passed, exit 0 (Build Summary 6/6 steps; includes TC-SPT-02-05 raw 062 idempotency re-run which now also recreates public.v_active_configs)." },
+    { "name": "lint_migration_schema.py", "status": "pass", "detail": "0 violations across 151 files; exit 0." },
+    { "name": "lint_handoffs.py", "status": "pass", "detail": "exit 0 (3023 handoffs checked, 0 BLOCKER, 0 MAJOR, 1 MINOR pre-existing, 332 ACKNOWLEDGED) — re-run after completion also exit 0." }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "During implementation I discovered and fixed a secondary defect in the first draft of the 062 fix: the Class-B discovery query populated _spt_class_b from information_schema.columns, which also lists VIEW columns, so v_active_configs itself polluted the Class-B set and the DROP COLUMN loop emitted two confusing 'relation v_active_configs does not exist' NOTICEs. Fixed by joining pg_class and requiring relkind='r' (base tables only) in both discovery blocks. No residual impact; verified the NOTICEs are gone."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Pre-existing, out of scope for this fix (carried from RELEASE-VALIDATOR): GH-812 / ISS-0715 remains OPEN (fix verified in-run, commit 3ec8832e) — closure is DOC-UPDATER's job. bpm_dev half-migrated state has now been resolved by applying 062/063/1163 via migrate."
+    }
+  ],
+  "next_steps": [
+    "ORCH: re-run the Step 4 gate (test-integration-spt 16/16 + spt01 3/3 + event-store 29/29 + unit + 23 regression suites) and re-dispatch RELEASE-VALIDATOR for a fresh release decision (bench gate now green with NFR_RESULT emission).",
+    "TEST-DESIGNER (Step 5 follow-up): add view-dependency regression coverage (per release-decision route) — e.g. TC-SPT-02-07 that reproduces a public view depending on a Class-B tenant_id column and asserts 062 raw SQL succeeds.",
+    "DOC-UPDATER / closure ADHOC: close GH-812 (gh issue close 812) and mark docs/issues/ISS-0715.json RESOLVED via fn:update-issue.",
+    "SPT-02/03/04 stay PENDING until RELEASE-VALIDATOR approves — do NOT set RELEASED this cycle."
+  ],
+  "blockers": []
+}

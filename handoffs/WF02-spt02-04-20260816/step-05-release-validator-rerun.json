@@ -1,0 +1,74 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-05-release-validator-rerun",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "05-rerun",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-spt02-04-20260816/step-05-release-validator-rerun.json",
+  "created_at": "2026-08-16T21:27:21Z",
+  "started_at": "2026-08-16T21:27:48Z",
+  "completed_at": "2026-08-16T21:46:06Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-05-release-validator",
+      "WF02-spt02-04-20260816-05-unblock-backend-dev",
+      "WF02-spt02-04-20260816-05-test-designer",
+      "WF02-spt02-04-20260816-05b-test-design-validator-rerun",
+      "WF02-spt02-04-20260816-04-test-runner-rerun2"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+      "docs/status/release-decision-WF02-spt02-04-20260816.yaml",
+      "docs/requirements.yaml",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-rerun2-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Step 5 re-decision. Your prior decision BLOCKED the release on a bench/migrate failure (migration 062 could not drop tenant_id from artifact_activations because view v_active_configs depended on it). That blocker is resolved in-run: BACKEND-DEV fixed migration 062 (commit 79112125 — drop/recreate dependent views around DROP COLUMN); TEST-DESIGNER added regression TC-SPT-02-07 (suite now 17); TEST-DESIGN-VALIDATOR re-gated PASS; TEST-RUNNER Step 4 re-run 2 confirms test-integration-spt 17/17, spt01 3/3, event-store 29/29, unit 0 failed, regression 23/23, AND zig build bench exit 0 with NFR_BENCH_SUMMARY overall_passed=true (NFR-01 4.316/19.368ms, NFR-02 18617 eps, NFR-04 68.48/8.644ms), migrate clean on bpm_test+bpm_dev. Re-decide PASS (release) or FAIL."
+  },
+  "task": {
+    "description": "Re-make the WF-02 Step 5 release decision for SPT-02, SPT-03, SPT-04 after the bench/migrate blocker was resolved. Confirm: (1) all 16 MUST ACs still verified (plus regression TC-SPT-02-07); (2) the NFR bench now passes — zig build bench exit 0 with NFR_RESULT metrics overall_passed=true (independently re-run or verify against the updated report); (3) migration 062 view-dependency fix and 1163 apply cleanly on bpm_dev fresh-DB path; (4) no BLOCKER/MAJOR open issue blocks release (ISS-0715/GH-812 fixed in-run). Write the final release decision to docs/status/ (update or supersede release-decision-WF02-spt02-04-20260816.yaml) with decision PASS (release) naming approved_requirements [SPT-02, SPT-03, SPT-04], or FAIL with blocking criteria.",
+    "acceptance_criteria": [
+      "16 MUST ACs + regression verified against the updated report",
+      "NFR bench verified green (overall_passed=true)",
+      "Migration 062/1163 apply cleanly on the fresh-DB (bpm_dev) path",
+      "No BLOCKER/MAJOR open issue blocks release",
+      "Final release decision written to docs/status/",
+      "result.status == PASS or FAIL with named blocking criteria"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-02 Step 5 re-decision for SPT-02/03/04 (Schema-Per-Tenant Migration): RELEASE APPROVED. Independent re-verification (not face value): test-integration-spt 17/17 EXIT 0 (16 MUST ACs + TC-SPT-02-07 view-dependency regression), spt01 3/3, event-store 29/29, all 23 regression suites green; zig build bench EXIT 0 with NFR_BENCH_SUMMARY overall_passed=true (NFR-01 0.921/14.485ms, NFR-02 16881.658 eps, NFR-04 60.582/9.617ms); migration 062 (view-dependency fix, commit 79112125) and 1163 apply cleanly on the fresh-DB (bpm_dev) path and are recorded in both bpm_test and bpm_dev ledgers; post-062 end-state re-checked live (13 Class-G tenant_id tables, 0 RLS, 0 function, v_active_configs recreated without tenant_id projection). No BLOCKER/MAJOR open issue blocks release (ISS-0715/GH-812 fixed in-run; closure is DOC-UPDATER Step 6 bookkeeping). Final decision written to docs/status/release-decision-WF02-spt02-04-20260816.yaml (APPROVED).",
+    "artifacts_out": [
+      "docs/status/release-decision-WF02-spt02-04-20260816.yaml",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-05-release-validator-rerun-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ISS-0715/GH-812 code defect resolved in-run (commit 3ec8832e) and re-verified; GitHub #812 + docs/issues/ISS-0715.json still OPEN — DOC-UPDATER Step 6 closure, not a release blocker."
+      },
+      {
+        "severity": "MINOR",
+        "description": "core-directives mandates YAML for inner reports but fn:register-inner-report + run convention is .json; followed run convention, flagging doc-level discrepancy."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6/Step Final) to set SPT-02/03/04 status RELEASED, close GH-812, and run WF-02 Step Final git-merge on feature/WF02-spt02-04-20260816"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

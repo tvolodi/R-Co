@@ -1,0 +1,64 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-04-test-runner-rerun",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "04-rerun",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-spt02-04-20260816/step-04-test-runner-rerun.json",
+  "created_at": "2026-08-16T19:41:44Z",
+  "started_at": "2026-08-16T19:55:05Z",
+  "completed_at": "2026-08-16T20:04:14Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-04-test-runner",
+      "WF02-spt02-04-20260816-04-unblock-backend-dev"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+      "tests/integration/event_store_integration_test.zig",
+      "tests/integration/adp06_pipeline_run_correlation_test.zig",
+      "migrations/1163_events_ephemeral_tenant_id_default.sql",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-04-unblock-backend-dev-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "Step 4 re-run after BACKEND-DEV unblock (commit 741a40cf + migration 1163): event-store ReadOpts.tenant_id initializers dropped at :1543/:1655/:1679 and adp06 :217/:318; new migration 1163_events_ephemeral_tenant_id_default.sql gives events_ephemeral.tenant_id the same default as events (fixes TC-ADP-11-02 runtime break). BACKEND-DEV verified test-integration-event-store 29/29 and test-integration-spt 16/16. Re-run the full Step 4 gate to confirm all suites green before RELEASE-VALIDATOR."
+  },
+  "task": {
+    "description": "Re-run the WF-02 Step 4 gate for SPT-02/03/04 after the BACKEND-DEV unblock. Run: zig build test-integration-spt (16/16 expected), zig build test-integration-spt01-iss68 (3/3), zig build test-integration-event-store (29/29 expected), zig build test (unit), and the tenant/schema regression suites (pin*, prm*, sol*, svc*, vld*, idn*) to confirm the previously-failing suite is now green and no new failures appeared. Also run zig build migrate to confirm migration 1163 applies cleanly. Update the structured report in tests/reports/ (append or supersede report-2026-08-16-WF02-spt02-04-20260816.yaml). On any failure apply the Test Execution Rule (root-cause + route to BACKEND-DEV).",
+    "acceptance_criteria": [
+      "test-integration-spt 16/16 PASS",
+      "test-integration-spt01-iss68 3/3 PASS",
+      "test-integration-event-store 29/29 PASS (previously failing)",
+      "zig build test passes with no new failures",
+      "Regression suites pass with no new failures",
+      "zig build migrate applies migration 1163 cleanly",
+      "result.status == PASS only if all suites green"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Step 4 gate re-run all green after BACKEND-DEV unblock (741a40cf + migration 1163): test-integration-spt 16/16, spt01-iss68 3/3, event-store 29/29 (previously failing, now green), unit 1145/1209 (0 failed, 64 skipped, no new failures), all 23 regression suites pass, zig build migrate EXIT 0 with 1163 applied cleanly.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-rerun-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

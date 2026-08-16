@@ -1940,3 +1940,34 @@
 2026-08-16T15:50:08Z | DISPATCH_STALE | ADHOC-gh799-close-20260816 | --- | ORCH | CLEARED — ISS-0709 status OPEN at origin/main HEAD (not already RESOLVED)
 2026-08-16T15:50:08Z | ROUTE | ADHOC | adhoc-gh799-close-20260816-001 | ORCH → DOC-UPDATER | PENDING | GH #799/ISS-0709 closure bookkeeping (PR #808 already merged, fix verified)
 2026-08-16T16:06:13Z | COMPLETE | ADHOC-gh799-close-20260816 | adhoc-gh | DOC-UPDATER | GH #799 closed (PR #808, commit 91a48040); ISS-0709 RESOLVED; issue_index updated; bookkeeping pushed to clean main; lint_handoffs.py exit 0
+2026-08-16T16:24:59Z | ROUTE | WF-02 | WF02-spt02-04-20260816-00-backend-dev | ORCH → BACKEND-DEV | PENDING
+2026-08-16T16:42:54Z | ROUTE | WF-02 | WF02-spt02-04-20260816-01-code-designer | ORCH → CODE-DESIGNER | PENDING
+2026-08-16T16:51:09Z | ROUTE | WF-02 | WF02-spt02-04-20260816-01b-code-design-validator | ORCH → CODE-DESIGN-VALIDATOR | PENDING
+2026-08-16T16:57:56Z | COMPLETE | WF02-spt02-04-20260816 | WF02-spt | CODE-DESIGN-VALIDATOR | PASS — step-01b hard gate; 16/16 ACs covered; OQ-1..OQ-5 accepted; route BACKEND-DEV
+2026-08-16T16:59:24Z | ROUTE | WF-02 | WF02-spt02-04-20260816-02a-backend-dev | ORCH → BACKEND-DEV | PENDING
+2026-08-16T17:45:12Z | COMPLETED | WF02-spt02-04-20260816 | 02a-backend-dev | BACKEND-DEV | SPT-02/03 implemented; PASS; route to SECURITY-REVIEWER
+2026-08-16T17:46:49Z | ROUTE | WF-02 | WF02-spt02-04-20260816-02c-security-reviewer | ORCH → SECURITY-REVIEWER | PENDING
+2026-08-16T17:56:59Z | ROUTE | WF-02 | WF02-spt02-04-20260816-03-test-designer | ORCH → TEST-DESIGNER | PENDING
+2026-08-16T18:26:15Z | UNBLOCK | WF-02 | WF02-spt02-04-20260816-03-unblock-backend-dev | ORCH → BACKEND-DEV | PENDING | ISS-0715/GH-812 migration-020 blocker fix (in-run Unblock-Everything)
+2026-08-16T18:51:39Z | ROUTE | WF-02 | WF02-spt02-04-20260816-03b-test-design-validator | ORCH → TEST-DESIGN-VALIDATOR | PENDING
+2026-08-16T18:59:16Z | step-completed | WF02-spt02-04-20260816 | WF02-spt | TEST-DESIGN-VALIDATOR | PASS: SPT-02/03/04 test design validated 16/16, fixtures isolated, ISS-0715 fix confirmed, lint exits 0
+2026-08-16T19:00:45Z | BENCH_ENV_CHECK | WF02-spt02-04-20260816 | --- | ORCH | CLEARED — zig build test-env-verify exit 0 (HEALTHY 10/10) — dispatching TEST-RUNNER Step 4
+2026-08-16T19:00:45Z | ROUTE | WF-02 | WF02-spt02-04-20260816-04-test-runner | ORCH → TEST-RUNNER | PENDING
+2026-08-16T19:13:28Z | complete | WF02-spt02-04-20260816 | WF02-spt | TEST-RUNNER | status=FAILED result.status=FAIL: spt 16/16, spt01 3/3, unit 0 failed; event-store compile regression (ReadOpts.tenant_id) routed to BACKEND-DEV
+2026-08-16T19:14:39Z | UNBLOCK | WF-02 | WF02-spt02-04-20260816-04-unblock-backend-dev | ORCH → BACKEND-DEV | PENDING | event-store/adp06 ReadOpts.tenant_id regression fix (Step 4 unblock)
+2026-08-16T19:41:44Z | ROUTE | WF-02 | WF02-spt02-04-20260816-04-test-runner-rerun | ORCH → TEST-RUNNER | PENDING | Step 4 re-run after unblock
+2026-08-16T20:04:51Z | COMPLETE | WF02-spt02-04-20260816 | WF02-spt | TEST-RUNNER | Step 4 re-run PASS: spt 16/16, spt01 3/3, event-store 29/29, unit 1145/1209 (0 failed), 23 regression suites green, migrate 1163 clean. Route to RELEASE-VALIDATOR.
+2026-08-16T20:05:41Z | ROUTE | WF-02 | WF02-spt02-04-20260816-05-release-validator | ORCH → RELEASE-VALIDATOR | PENDING
+2026-08-16T20:12:07Z | COMPLETE | WF02-spt02-04-20260816 | WF02-spt | RELEASE-VALIDATOR | Step 05 release decision BLOCKED (SPT-02/03/04): migration 062 fresh-DB view-dependency defect blocks NFR/bench; 16/16 ACs green on bpm_test; result.status=FAIL; release decision docs/status/release-decision-WF02-spt02-04-20260816.yaml
+2026-08-16T20:14:48Z | UNBLOCK | WF-02 | WF02-spt02-04-20260816-05-unblock-backend-dev | ORCH → BACKEND-DEV | PENDING | migration-062 v_active_configs view-dependency fix (Step 5 release blocker)
+2026-08-16T20:37:15Z | COMPLETE | WF02-spt02-04-20260816 | WF02-spt05-unblock | BACKEND-DEV | Step 5 unblock COMPLETE PASS: migration 062 drops/recreates dependent view v_active_configs around DROP COLUMN tenant_id (SPT-02/03/04); zig build 0; migrate 0 bpm_test+bpm_dev (062/063/1163 applied on bpm_dev); bench 0 on bpm_dev 5xNFR_RESULT passed=true; test-integration-spt 16/16; lint_migration_schema 0; lint_handoffs 0. Route to TEST-DESIGNER then RELEASE-VALIDATOR re-dispatch.
+2026-08-16T20:39:09Z | ROUTE | WF-02 | WF02-spt02-04-20260816-05-test-designer | ORCH → TEST-DESIGNER | PENDING | view-dependency regression test (TC-SPT-02-07)
+2026-08-16T20:56:14Z | ROUTE | WF-02 | WF02-spt02-04-20260816-05b-test-design-validator-rerun | ORCH → TEST-DESIGN-VALIDATOR | PENDING | re-gate after TC-SPT-02-07
+2026-08-16T20:58:31Z | COMPLETE | WF02-spt02-04-20260816 | WF02-spt05b | TEST-DESIGN-VALIDATOR | Step 05b re-gate PASS: 17/17 tests validated (16 ACs + TC-SPT-02-07 migration-062 view-dependency regression); no SkipZigTest on MUST; fixtures isolated/self-sufficient; TC-SPT-02-07 ROLLBACK-verified; SPT-02.md traceability updated; lint_test_isolation 0/0, lint_handoffs 0. Route to TEST-RUNNER then RELEASE-VALIDATOR re-dispatch.
+2026-08-16T20:59:34Z | ROUTE | WF-02 | WF02-spt02-04-20260816-04-test-runner-rerun2 | ORCH → TEST-RUNNER | PENDING | Step 4 re-run 2 (17-test suite + bench)
+2026-08-16T21:25:31Z | COMPLETE | WF02-spt02-04-20260816 | WF02-spt04rerun2 | TEST-RUNNER | Step 04 re-run 2 PASS: spt 17/17, spt01 3/3, event-store 29/29, unit 1145/1209 (0 fail, 64 skip), 23 regression suites EXIT 0, bench EXIT 0 NFR overall_passed=true (bench-1786914992779), migrate EXIT 0 on bpm_test+bpm_dev (062+1163 in ledger). result.status=PASS. Route to RELEASE-VALIDATOR (WF-02 Step 5).
+2026-08-16T21:27:21Z | ROUTE | WF-02 | WF02-spt02-04-20260816-05-release-validator-rerun | ORCH → RELEASE-VALIDATOR | PENDING | Step 5 re-decision (blocker resolved)
+2026-08-16T21:46:06Z | COMPLETE | WF02-spt02-04-20260816 | step-05-release-validator-rerun | RELEASE-VALIDATOR -> ORCH | PASS | RELEASE APPROVED SPT-02/03/04. Indep re-verify: spt 17/17, spt01 3/3, event-store 29/29, bench EXIT 0 overall_passed=true, migrate 062+1163 clean bpm_dev+bpm_test. Decision: docs/status/release-decision-WF02-spt02-04-20260816.yaml (APPROVED). Next: DOC-UPDATER Step 6 (set RELEASED, close GH-812) + Step Final git-merge.
+2026-08-16T21:47:34Z | ROUTE | WF-02 | WF02-spt02-04-20260816-06-doc-updater | ORCH → DOC-UPDATER | PENDING | Step 6: SPT-02/03/04 RELEASED + close GH-812 + changelog
+2026-08-16T21:51:27Z | DOC-UPDATER COMPLETE | WF02-spt02-04-20260816 | step-06 | DOC-UPDATER | SPT-02/03/04 RELEASED; GH-812 closed; ISS-0715 RESOLVED; changelog updated; lint_handoffs 0; git-merge left to BACKEND-DEV Step Final
+2026-08-16T21:53:12Z | ROUTE | WF-02 | WF02-spt02-04-20260816-final-backend-dev | ORCH → BACKEND-DEV | PENDING | Step Final: git-merge feature branch to main

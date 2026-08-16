@@ -1,0 +1,55 @@
+report_id: WF02-spt02-04-20260816-step-02a-backend-dev
+agent_id: BACKEND-DEV
+run_id: WF02-spt02-04-20260816
+step: 02a
+created_at: 2026-08-16T17:45:12Z
+summary: >-
+  SPT-02 + SPT-03 implemented. Migrations 061/062/063 authored (data copy into tenant schemas with per-tenant atomicity and data_migrated_at marker; public tenant_id/RLS/bpm_effective_tenant_id/composite-index removal; belt-and-suspenders policy recheck). pool.zig collapsed to search_path-only routing. tenant_id predicates/INSERT/SELECT columns removed from Class B business tables per design R3 triage; Class G registry tables keep tenant_id. zig build=0, zig build test=0, zig build migrate=0 (applied cleanly to bpm_test; idempotent re-run), lint_migration_schema=0. No tests/integration/ changes.
+files_created:
+  - migrations/061_data_copy_into_tenant_schemas.sql
+  - migrations/062_remove_tenant_id_rls_from_public.sql
+  - migrations/063_rls_policy_idempotency_recheck.sql
+files_modified:
+  - src/db/pool.zig
+  - src/entities/definition.zig
+  - src/entities/commands.zig
+  - src/entities/projector.zig
+  - src/event_store/store.zig
+  - src/obs/audit.zig
+  - src/obs/timeline.zig
+  - src/engine/reconstruction.zig
+  - src/definition/pack_update.zig
+  - src/definition/rollback.zig
+  - src/identity/registry.zig
+  - src/api/routes/entities.zig
+  - src/api/routes/validation.zig
+  - src/engine/instance.zig
+  - src/engine/pin_resolver.zig
+  - src/simulation/tenant_store.zig
+tests_run:
+  - name: zig build
+    status: pass
+    detail: exit 0, no error-set output
+  - name: zig build test
+    status: pass
+    detail: exit 0 (unit suite green)
+  - name: zig build migrate
+    status: pass
+    detail: exit 0; 061/062/063 applied cleanly to bpm_test; idempotent re-run no-op
+  - name: lint_migration_schema.py
+    status: pass
+    detail: exit 0, 0 BLOCKERs (150 files)
+  - name: SPT-03 scoped grep
+    status: pass
+    detail: no bpm.tenant_id/set_config('bpm.tenant_id' in src/; Class B tenant_id removed per design R3 triage; Class G allow-list verified on live DB
+issues_found:
+  - severity: MINOR
+    description: solution_pack_installs + pack_update_resolutions kept Class G (deviation from design §4); INV-1 rationale — see handoff result.issues.
+  - severity: MINOR
+    description: Remaining Class B tenant_id refs in files outside design R3 triage (oidc/*, promotion_conflict, promotion_review, engine/instance) — follow-up SPT batch.
+  - severity: MINOR
+    description: Legacy executeSptCutover (admin/tenant_migration.zig) references public.{s}.tenant_id; obsolete after 062.
+next_steps:
+  - SECURITY-REVIEWER (Step 2c) to gate the diff against INV-1 (tenant predicate on shared tables).
+  - TEST-DESIGNER (Step 3) SPT-04 integration-suite rework.
+blockers: []

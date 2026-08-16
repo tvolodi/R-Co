@@ -1,0 +1,44 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-05-test-designer",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "05-test-designer",
+  "created_at": "2026-08-16T20:44:51Z",
+  "summary": "TEST-DESIGNER added the view-dependency regression coverage for the migration 062 release blocker (TC-SPT-02-07) to the SPT-02 suite. The test reproduces the exact fresh-DB dependent-view state RELEASE-VALIDATOR hit: inside a rolled-back transaction it re-adds tenant_id to public.artifact_activations and recreates public.v_active_configs with its migration-052 definition (which projects aa.tenant_id), then executes migration 062 raw SQL and asserts (1) it applies cleanly (no 'cannot drop column ... because other objects depend on it'), (2) public.v_active_configs exists afterwards with its post-062 definition (version-chain preserved, tenant_id projection removed) and public.artifact_activations no longer carries tenant_id, and (3) tenant_default.v_active_configs keeps its tenant_id column. tests/specs/SPT-02.md traceability updated (case table + detail section). test-integration-spt passes 17/17 (was 16/16). No production code changed — migration 062 (commit 79112125) was left untouched. The shared bpm_test database is returned to its real migrated state (ROLLBACK verified live).",
+  "files_created": [],
+  "files_modified": [
+    "tests/integration/spt02_03_04_schema_tenant_migration_test.zig",
+    "tests/specs/SPT-02.md",
+    "handoffs/WF02-spt02-04-20260816/step-05-test-designer.json",
+    "handoffs/registry.json",
+    "docs/issue-reports/WF02-spt02-04-20260816-step-05-test-designer-INNER-REPORT.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test-integration-spt (bpm_test, BPM_TEST_DB_URL)",
+      "status": "pass",
+      "detail": "17/17 tests passed, exit 0 (was 16/16 before adding TC-SPT-02-07). Build Summary 6/6 steps; clean_test_db + migrate ran first."
+    },
+    {
+      "name": "Approach sanity check (scratch/spt02_07_sanity.py, rolled-back transaction)",
+      "status": "pass",
+      "detail": "Reproduced the dependent-view state, applied 062 raw SQL cleanly, all post-asserts passed; ROLLBACK left shared DB unchanged."
+    },
+    {
+      "name": "tools/lint_test_isolation.py tests/integration",
+      "status": "pass",
+      "detail": "OK — 180 files checked, no isolation issues; 117 baseline-suppressed; exit 0."
+    },
+    {
+      "name": "Shared-DB post-test state check",
+      "status": "pass",
+      "detail": "public.artifact_activations tenant_id=0, public.v_active_configs exists, tenant_default.v_active_configs tenant_id=1 — no residual state from the test."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH: route the updated SPT-02 suite to TEST-DESIGN-VALIDATOR to validate the TC-SPT-02-07 regression coverage, then re-run the Step 4 gate (test-integration-spt 17/17 + spt01 3/3 + event-store 29/29 + unit + 23 regression suites) and re-dispatch RELEASE-VALIDATOR for a fresh release decision (bench gate now green per BACKEND-DEV inner report).",
+    "SPT-02/03/04 stay PENDING until RELEASE-VALIDATOR approves — do NOT set RELEASED this cycle."
+  ],
+  "blockers": []
+}

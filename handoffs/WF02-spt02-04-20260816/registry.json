@@ -1,0 +1,409 @@
+{
+  "schema_version": 1,
+  "run_id": "WF02-spt02-04-20260816",
+  "entries": [
+    {
+      "handoff_id": "WF02-spt02-04-20260816-00-backend-dev",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "BACKEND-DEV",
+      "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+      "step": "00",
+      "created_at": "2026-08-16T16:24:59Z",
+      "started_at": "2026-08-16T16:40:13Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-01-code-designer",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "CODE-DESIGNER",
+      "agent_name": "BPM Code Designer (CODE-DESIGNER)",
+      "step": "01",
+      "created_at": "2026-08-16T16:42:54Z",
+      "started_at": "2026-08-16T16:43:11Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T16:49:40Z"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-01b-code-design-validator",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "CODE-DESIGN-VALIDATOR",
+      "agent_name": "BPM Code Design Validator (CODE-DESIGN-VALIDATOR)",
+      "step": "01b",
+      "created_at": "2026-08-16T16:51:09Z",
+      "started_at": "2026-08-16T16:51:25Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-02a-backend-dev",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "BACKEND-DEV",
+      "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+      "step": "02a",
+      "created_at": "2026-08-16T16:59:24Z",
+      "started_at": "2026-08-16T16:59:40Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T17:45:12Z",
+      "result": {
+        "status": "PASS",
+        "summary": "Implemented SPT-02 (migrations 061/062/063) and SPT-03 (pool.zig schema-only routing + Class B tenant_id removals across src/ per design R3 triage). zig build=0, zig build test=0, zig build migrate=0 (061/062/063 applied cleanly to bpm_test), lint_migration_schema=0 (0 BLOCKERs), no tests/integration/ changes.",
+        "artifacts_out": [
+          "migrations/061_data_copy_into_tenant_schemas.sql",
+          "migrations/062_remove_tenant_id_rls_from_public.sql",
+          "migrations/063_rls_policy_idempotency_recheck.sql",
+          "src/db/pool.zig",
+          "src/entities/definition.zig",
+          "src/entities/commands.zig",
+          "src/entities/projector.zig",
+          "src/event_store/store.zig",
+          "src/obs/audit.zig",
+          "src/obs/timeline.zig",
+          "src/engine/reconstruction.zig",
+          "src/definition/pack_update.zig",
+          "src/definition/rollback.zig",
+          "src/identity/registry.zig",
+          "src/api/routes/entities.zig",
+          "src/api/routes/validation.zig",
+          "src/engine/instance.zig",
+          "src/engine/pin_resolver.zig",
+          "src/simulation/tenant_store.zig"
+        ],
+        "issues": [
+          {
+            "severity": "MINOR",
+            "description": "Deviated from design §4: solution_pack_installs and pack_update_resolutions kept as Class G (tenant_id retained in public). pack_update.zig queries public.solution_pack_installs WHERE tenant_id explicitly; removing that predicate on a shared public table would be an INV-1 cross-tenant leak. SECURITY-REVIEWER (Step 2c) to confirm."
+          },
+          {
+            "severity": "MINOR",
+            "description": "promotion_assertion_runs kept tenant_id (Class G) per design §8.2 R4 registry, which conflicts with §4 Class B copy list; R4 keep-list interpretation taken."
+          },
+          {
+            "severity": "MINOR",
+            "description": "Remaining Class B tenant_id references in files outside the design R3 triage: oidc/jit_provisioning.zig, oidc/migration_helper.zig, oidc/identity_stability.zig, definition/promotion_conflict.zig, definition/promotion_review.zig, engine/instance.zig. These are tenant-schema-resolved queries where the tenant_id column + unique indexes still exist in tenant schemas; candidates for a follow-up SPT batch."
+          },
+          {
+            "severity": "MINOR",
+            "description": "Legacy admin/tenant_migration.zig executeSptCutover still copies FROM public.{s} WHERE tenant_id=$1 — after 062 the public Class B tables have no tenant_id, so this legacy tool would fail if invoked; obsolete post-SPT-02 (design F7)."
+          }
+        ],
+        "next_action": "Route to SECURITY-REVIEWER (Step 2c)"
+      }
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-02c-security-reviewer",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "SECURITY-REVIEWER",
+      "agent_name": "BPM Security Reviewer (SECURITY-REVIEWER)",
+      "step": "02c",
+      "created_at": "2026-08-16T17:46:49Z",
+      "started_at": "2026-08-16T17:47:07Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-03-test-designer",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-DESIGNER",
+      "agent_name": "BPM Test Designer (TEST-DESIGNER)",
+      "step": "03",
+      "created_at": "2026-08-16T17:56:59Z",
+      "started_at": "2026-08-16T17:57:18Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T18:24:50Z",
+      "result_status": "PARTIAL"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-03-unblock-backend-dev",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "BACKEND-DEV",
+      "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+      "step": "03-unblock",
+      "created_at": "2026-08-16T18:26:15Z",
+      "started_at": "2026-08-16T18:26:33Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T18:50:10Z"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-03b-test-design-validator",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+      "step": "03b",
+      "created_at": "2026-08-16T18:51:39Z",
+      "started_at": "2026-08-16T18:51:56Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T18:59:16Z",
+      "result": {
+        "status": "PASS",
+        "summary": "Test design for SPT-02/SPT-03/SPT-04 validated (WF-02 Step 3b HARD GATE) — all 16 MUST ACs have runnable integration tests (spec count == implementation count), no SkipZigTest on MUST coverage, fixtures isolated (per-test UUIDs, defer dropTestTenantSchema, no leakage), tests self-sufficient (BPM_TEST_DB_URL required, no silent skip), SPT-03 AC1 matches the design's scoped interpretation (OQ-1), build.zig wiring uses the ISS-0106 barrier pattern, and the ISS-0715 blocker fix (commit 3ec8832e) removed the PARTIAL condition — test-integration-spt 16/16 PASS, test-integration-spt01-iss68 3/3 PASS. lint_test_isolation.py exit 0 (SPT files and full tests/integration); lint_handoffs.py exit 0 (0 BLOCKER / 0 MAJOR). TEST-RUNNER may proceed.",
+        "artifacts_out": [
+          "docs/issue-reports/WF02-spt02-04-20260816-step-03b-test-design-validator-INNER-REPORT.json"
+        ],
+        "issues": [
+          {
+            "severity": "MINOR",
+            "description": "TC-SPT-04-04 invokes dropTestTenantSchema explicitly rather than via defer; a failure before the drop would leak the fixture. Post-run DB state confirms no leak in practice; harden to defer in a follow-up. Does not block PASS."
+          },
+          {
+            "severity": "MINOR",
+            "description": "SPT-04 AC1 broad suite rework (~118 legacy-model tests/integration files) is a documented follow-up SPT batch per SECURITY-REVIEWER Step 2c + design OQ-1; this run's suite covers all 16 ACs under the scoped interpretation. Does not block PASS."
+          },
+          {
+            "severity": "MINOR",
+            "description": "reqctl legal statuses do not include TEST-DESIGN-REVIEWED (no prior note convention either). Requirement status NOT set here; exact reqctl commands for DOC-UPDATER recorded in next_action/summary."
+          }
+        ],
+        "next_action": "Route to TEST-RUNNER (Step 4/5). DOC-UPDATER at Step Final: set SPT-02/03/04 to a legal reqctl status with --note 'TEST-DESIGN-REVIEWED by WF02-spt02-04-20260816 step-03b', e.g. `python tools/reqctl.py set-status SPT-02 IMPLEMENTED --note \"TEST-DESIGN-REVIEWED by WF02-spt02-04-20260816 step-03b\"` (repeat for SPT-03, SPT-04); close GitHub #812 / ISS-0715 referencing commit 3ec8832e."
+      }
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-04-test-runner",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-RUNNER",
+      "agent_name": "BPM Test Runner (TEST-RUNNER)",
+      "step": "04",
+      "created_at": "2026-08-16T19:00:45Z",
+      "started_at": "2026-08-16T19:01:09Z",
+      "status": "FAILED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T19:13:28Z",
+      "result_status": "FAIL"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-04-unblock-backend-dev",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "BACKEND-DEV",
+      "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+      "step": "04-unblock",
+      "created_at": "2026-08-16T19:14:39Z",
+      "started_at": "2026-08-16T19:14:55Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T19:26:20Z"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-04-test-runner-rerun",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-RUNNER",
+      "agent_name": "BPM Test Runner (TEST-RUNNER)",
+      "step": "04-rerun",
+      "created_at": "2026-08-16T19:41:44Z",
+      "started_at": "2026-08-16T19:55:05Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T20:04:14Z",
+      "result": {
+        "status": "PASS",
+        "summary": "Step 4 gate re-run all green after BACKEND-DEV unblock (741a40cf + migration 1163): test-integration-spt 16/16, spt01-iss68 3/3, event-store 29/29 (previously failing, now green), unit 1145/1209 (0 failed, 64 skipped, no new failures), all 23 regression suites pass, zig build migrate EXIT 0 with 1163 applied cleanly.",
+        "artifacts_out": [
+          "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+          "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-rerun-INNER-REPORT.json"
+        ],
+        "issues": [],
+        "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+      }
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-05-release-validator",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "RELEASE-VALIDATOR",
+      "agent_name": "BPM Release Validator (RELEASE-VALIDATOR)",
+      "step": "05",
+      "created_at": "2026-08-16T20:05:41Z",
+      "started_at": "2026-08-16T20:06:01Z",
+      "status": "FAILED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T20:12:07Z",
+      "result": {
+        "status": "FAIL",
+        "artifacts_out": [
+          "docs/status/release-decision-WF02-spt02-04-20260816.yaml"
+        ]
+      }
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-05-unblock-backend-dev",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "BACKEND-DEV",
+      "agent_name": "BPM Backend Dev (BACKEND-DEV)",
+      "step": "05-unblock",
+      "created_at": "2026-08-16T20:14:48Z",
+      "started_at": "2026-08-16T20:15:07Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T20:37:15Z"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-05-test-designer",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-DESIGNER",
+      "agent_name": "BPM Test Designer (TEST-DESIGNER)",
+      "step": "05-test-designer",
+      "created_at": "2026-08-16T20:39:09Z",
+      "started_at": "2026-08-16T20:39:27Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-05b-test-design-validator-rerun",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-DESIGN-VALIDATOR",
+      "agent_name": "BPM Test Design Validator (TEST-DESIGN-VALIDATOR)",
+      "step": "05b",
+      "created_at": "2026-08-16T20:56:14Z",
+      "started_at": "2026-08-16T20:56:32Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-04-test-runner-rerun2",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "TEST-RUNNER",
+      "agent_name": "BPM Test Runner (TEST-RUNNER)",
+      "step": "04-rerun2",
+      "created_at": "2026-08-16T20:59:34Z",
+      "started_at": "2026-08-16T20:59:54Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-05-release-validator-rerun",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "RELEASE-VALIDATOR",
+      "agent_name": "BPM Release Validator (RELEASE-VALIDATOR)",
+      "step": "05-rerun",
+      "created_at": "2026-08-16T21:27:21Z",
+      "started_at": "2026-08-16T21:27:48Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T21:46:06Z",
+      "result_status": "PASS"
+    },
+    {
+      "handoff_id": "WF02-spt02-04-20260816-06-doc-updater",
+      "run_id": "WF02-spt02-04-20260816",
+      "agent_id": "DOC-UPDATER",
+      "agent_name": "BPM Doc Updater (DOC-UPDATER)",
+      "step": "06",
+      "created_at": "2026-08-16T21:47:34Z",
+      "started_at": "2026-08-16T21:47:53Z",
+      "status": "COMPLETED",
+      "workflow_ref": "WF02-spt02-04-20260816",
+      "requirements": [
+        "SPT-02",
+        "SPT-03",
+        "SPT-04"
+      ],
+      "stage": "Schema-Per-Tenant Migration",
+      "completed_at": "2026-08-16T21:51:06Z"
+    }
+  ]
+}

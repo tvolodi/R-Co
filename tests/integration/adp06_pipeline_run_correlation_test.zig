@@ -214,7 +214,6 @@ test "TC-ADP-06-02: trusted pipeline context propagates to event metadata and au
     try testing.expectEqualStrings(run_id, audit_row[0].?);
 
     const global = try store.readGlobal(alloc, .{
-        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
         .after_global_seq = null,
         .pipeline_run_id = run_id,
         .limit = 20,
@@ -315,7 +314,6 @@ test "TC-ADP-06-03: non-pipeline paths preserve null/absent compatibility and qu
     try testing.expect(audit_row[0] == null);
 
     const filtered_history = try store.readHistory(alloc, try parseUuid(instance_id), .{
-        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
         .event_type = null,
         .from = null,
         .to = null,

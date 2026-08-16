@@ -1,0 +1,50 @@
+{
+  "report_id": "WF02-spt02-04-20260816-step-05-release-validator-rerun",
+  "agent_id": "RELEASE-VALIDATOR",
+  "run_id": "WF02-spt02-04-20260816",
+  "step": "05-rerun",
+  "created_at": "2026-08-16T21:44:12Z",
+  "summary": "RELEASE-VALIDATOR re-decided WF-02 Step 5 for SPT-02/03/04 (Schema-Per-Tenant Migration) on feature/WF02-spt02-04-20260816: APPROVED (release). The single prior blocker — migration 062 view-dependency failure on the fresh-DB path, which also blocked the NFR bench — is resolved in-run by commit 79112125 (062 drops/recreates dependent public view v_active_configs around DROP COLUMN tenant_id) and is now covered by regression TC-SPT-02-07 (suite 17/17). Independent re-verification performed, not trusted at face value: (1) zig build test-integration-spt EXIT 0, Build Summary 17/17 tests passed (16 MUST ACs + TC-SPT-02-07); (2) test-integration-spt01-iss68 3/3 EXIT 0; (3) test-integration-event-store 29/29 EXIT 0; (4) zig build bench EXIT 0 with NFR_BENCH_SUMMARY overall_passed=true (run_id bench-1786916218749; NFR-01 p99_read=0.921ms, p99_write=14.485ms, NFR-02 16881.658 eps, NFR-04 replay_10000=60.582ms, replay_snapshot_100000=9.617ms — all passed=true; Build Summary 9/9 steps succeeded); (5) live post-062 end-state re-check on bpm_test: 13 public tenant_id columns all Class-G registry, 0 RLS policies, 0 bpm_effective_tenant_id(), public.v_active_configs recreated without the tenant_id projection; (6) migration ledger on both bpm_test (:5434) and bpm_dev (:5442) records 062_remove_tenant_id_rls_from_public.sql and 1163_events_ephemeral_tenant_id_default.sql; the bench migrate child on bpm_dev reported 'No new migrations to apply' (fresh-DB path clean). No BLOCKER/MAJOR open issue blocks release (ISS-0715/GH-812 fixed in-run by commit 3ec8832e and verified; closure of GitHub #812 + ISS-0715.json status is DOC-UPDATER Step 6 bookkeeping, NOT a release blocker). Final release decision written to docs/status/release-decision-WF02-spt02-04-20260816.yaml (decision APPROVED, approved_requirements [SPT-02, SPT-03, SPT-04]). result.status = PASS.",
+  "files_created": [
+    "docs/status/release-decision-WF02-spt02-04-20260816.yaml (superseded BLOCKED -> APPROVED)",
+    "docs/issue-reports/WF02-spt02-04-20260816-step-05-release-validator-rerun-INNER-REPORT.json",
+    "scratch/spt_verify_suite.log",
+    "scratch/spt_verify_summary.log",
+    "scratch/spt_verify_bench.log",
+    "scratch/spt_verify_spt01.log",
+    "scratch/spt_verify_evstore.log",
+    "scratch/release_decision_final.yaml"
+  ],
+  "files_modified": [
+    "handoffs/WF02-spt02-04-20260816/step-05-release-validator-rerun.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    { "name": "zig build test-integration-spt", "status": "pass", "detail": "EXIT 0, Build Summary '6/6 steps succeeded; 17/17 tests passed', 'run test 17 pass (17 total)'. 16 MUST ACs (TC-SPT-02-01..06, TC-SPT-03-01..05, TC-SPT-04-01..05) + regression TC-SPT-02-07 (view-dependency: 062 applies cleanly with public.v_active_configs depending on a Class-B tenant_id column; view dropped before DROP COLUMN and recreated after without the tenant_id projection; tenant_default copy keeps tenant_id)." },
+    { "name": "zig build test-integration-spt01-iss68", "status": "pass", "detail": "EXIT 0, 'run test 3 pass (3 total)' (SPT-01 ISS-0068 tenant provisioning)." },
+    { "name": "zig build test-integration-event-store", "status": "pass", "detail": "EXIT 0, 'run test 29 pass (29 total)' (previously compile-failing on ReadOpts.tenant_id; fixed by BACKEND-DEV 741a40cf)." },
+    { "name": "zig build bench", "status": "pass", "detail": "EXIT 0. NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1786916218749. NFR_RESULT lines all passed=true: NFR-01 p99_read=0.921ms (<=200), NFR-01 p99_write=14.485ms (<=500), NFR-02 append_throughput=16881.658 eps (>=1000), NFR-04 replay_10000=60.582ms (<=5000), NFR-04 replay_snapshot_100000=9.617ms (<=1000). Build Summary 9/9 steps succeeded. Bench migrate child (bpm_dev, BPM_DB_URL:5442) success — 'No new migrations to apply', 1163 skip recorded (already applied)." },
+    { "name": "Migration 062/1163 fresh-DB path (bpm_dev) + ledgers", "status": "pass", "detail": "zig build bench migrate child on bpm_dev EXIT 0, 'No new migrations to apply'. Live ledger query: 062_remove_tenant_id_rls_from_public.sql and 1163_events_ephemeral_tenant_id_default.sql recorded in public.schema_migrations on bpm_test (:5434) AND bpm_dev (:5442)." },
+    { "name": "Live post-062 end-state re-check on bpm_test (SPT-02 AC3)", "status": "pass", "detail": "information_schema/pg_policies/pg_proc/pg_class: 13 public tables with tenant_id (all Class-G registry allow-list: tenant_schemas, tenant_hostnames, tenant_realm_binding, onboarding_registry, rate_limit_buckets, secrets, repository_artifacts, tenant_artifact_activations, promotion_assertion_runs, pack_update_resolutions, solution_pack_installs, tnt05_orphans, tnt05_progress); 0 RLS policies on public; 0 bpm_effective_tenant_id(); public.v_active_configs exists (relkind v) with viewdef preserving version-chain (artifact_activations -> artifact_versions -> repository_artifacts, WHERE artifact_kind='config') minus the tenant_id projection." },
+    { "name": "Open-issue check (ISS-0715 / GH-812)", "status": "pass", "detail": "Fix commit 3ec8832e present on branch (migrations/020 schema-aware + 094 entity index guard); fix_verified in docs/issues/ISS-0715.json; Step 4 green. GitHub #812 still OPEN + ISS-0715.json status OPEN = MINOR bookkeeping gap for DOC-UPDATER Step 6 closure (fn:update-issue RESOLVED + gh issue close 812), NOT a release blocker. No other open BLOCKER/MAJOR issue references this stage (#262/#263/#264 are the SPT-02/03/04 requirement work-items, closed by DOC-UPDATER when RELEASED)." }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "ISS-0715/GH-812: code defect resolved in-run (commit 3ec8832e) and re-verified green, but GitHub issue #812 remains OPEN and docs/issues/ISS-0715.json status remains OPEN. Route closure to DOC-UPDATER Step 6 (fn:update-issue RESOLVED + gh issue close 812). Not a release blocker."
+    },
+    {
+      "severity": "MINOR",
+      "description": "core-directives Output File Format Rules mandate YAML for inner reports, but FUNCTIONS.md fn:register-inner-report specifies .json and the run's 14/16 existing inner reports (incl. step-04 rerun2) are .json. Followed local JSON convention for run consistency; flagging the doc-level YAML-vs-JSON discrepancy for correction at the source."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Pre-existing unrelated uncommitted src/*.zig cosmetic formatting changes (src/engine/instance.zig, src/entities/definition.zig, src/identity/registry.zig, src/definition/pack_update.zig, src/obs/timeline.zig) were present at handoff start; left untouched per HANDOFF_PROTOCOL workspace-hygiene rule."
+    }
+  ],
+  "next_steps": [
+    "ORCH: route to DOC-UPDATER (Step 6/Step Final) to set SPT-02/03/04 status RELEASED, close GitHub #812, record the migration-062 view-dependency fix (commit 79112125) and TC-SPT-02-07 in the changelog/retrospective, and run the WF-02 Step Final git-merge on feature/WF02-spt02-04-20260816."
+  ],
+  "blockers": []
+}

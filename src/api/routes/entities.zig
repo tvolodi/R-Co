@@ -23,9 +23,9 @@ pub fn handleListDefinitions(
     query_str: []const u8,
 ) HandlerResult {
     _ = query_str;
+    _ = user_id;
 
     const opts = entity_definition.ListDefinitionsOpts{
-        .tenant_id = user_id,
         .page_size = 50,
     };
 
@@ -90,7 +90,6 @@ pub fn handleCreateDefinition(
         .description = description,
         .definition_json = definition_json,
         .created_by = user_id,
-        .tenant_id = user_id,
     };
 
     var def = entity_definition.createDefinition(allocator, pool, params) catch |err| switch (err) {

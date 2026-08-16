@@ -79,12 +79,11 @@ pub fn handleValidate(
     };
 
     // Defence in depth: pin the ambient tenant context for the duration of the
-    // DB read. `process_definitions` has FORCE ROW LEVEL SECURITY with a
-    // `tenant_id = bpm_effective_tenant_id()` predicate, but the pool only
-    // issues `set_config('bpm.tenant_id', ...)` on connection acquisition —
-    // re-asserting here closes the gap if a future refactor caches/reuses
-    // connections across tenant boundaries, and it makes the handler
-    // self-documenting.
+    // DB read. `process_definitions` is a PER_TENANT table reached via the
+    // pool's SCHEMA-mode search_path routing (tenant_context.set() applied on
+    // connection checkout); re-asserting here makes the handler
+    // self-documenting and closes the gap if a future refactor caches/reuses
+    // connections across tenant boundaries.
     api_tenant_context.set(tenant_id[0..]);
     defer api_tenant_context.clear();
 

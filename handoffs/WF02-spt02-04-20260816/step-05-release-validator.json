@@ -1,0 +1,74 @@
+{
+  "handoff_id": "WF02-spt02-04-20260816-05-release-validator",
+  "run_id": "WF02-spt02-04-20260816",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-spt02-04-20260816/step-05-release-validator.json",
+  "created_at": "2026-08-16T20:05:41Z",
+  "started_at": "2026-08-16T20:06:01Z",
+  "completed_at": "2026-08-16T20:12:07Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration",
+    "requirement_ids": [
+      "SPT-02",
+      "SPT-03",
+      "SPT-04"
+    ],
+    "related_handoff_ids": [
+      "WF02-spt02-04-20260816-04-test-runner-rerun",
+      "WF02-spt02-04-20260816-04-unblock-backend-dev",
+      "WF02-spt02-04-20260816-03b-test-design-validator"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-08-16-WF02-spt02-04-20260816.yaml",
+      "docs/requirements.yaml",
+      "src/design/spt-02-03-04-schema-per-tenant-migration.md",
+      "docs/issue-reports/WF02-spt02-04-20260816-step-04-test-runner-rerun-INNER-REPORT.json"
+    ],
+    "branch_name": "feature/WF02-spt02-04-20260816",
+    "orchestrator_notes": "All gates PASS: design (16/16 ACs), security (INV-1..8), test-design (16/16), test run green (test-integration-spt 16/16, spt01 3/3, event-store 29/29, unit 0 failed, regression 23/23 suites, migration 1163 applied). Blocker ISS-0715/GH-812 fixed in-run. BENCH_ENV_CHECK exit 0. Requirement statuses: SPT-02/03/04 are PENDING — RELEASE-VALIDATOR's decision determines the RELEASED transition (DOC-UPDATER applies it in Step 6). Note the SPT-03 AC1 literal-grep deviation was adjudicated by CODE-DESIGN-VALIDATOR (OQ-1 scoped interpretation) and is reflected in the SPT-03 tests."
+  },
+  "task": {
+    "description": "Make the WF-02 Step 5 release decision for SPT-02, SPT-03, SPT-04 on feature/WF02-spt02-04-20260816. Verify the MUST acceptance criteria are met (per the test report and independent verification of at least the SPT suites), run NFR/bench checks as your instructions prescribe (zig build bench or the benchmark precheck), check no BLOCKER/MAJOR open issues on this run's surface, and write a release decision to docs/status/ (release-decision-WF02-spt02-04-20260816.*). The decision should be PASS (release) or FAIL (with blocking criteria named). Note the SPT-03 AC1 literal-grep deviation is a documented, adjudicated scoping (OQ-1) — do not treat it as a blocking issue by itself.",
+    "acceptance_criteria": [
+      "All 16 MUST ACs verified against the test report (independent verification of at least the SPT suites)",
+      "NFR/bench checks run and reported",
+      "No BLOCKER/MAJOR open issue blocks release",
+      "Release decision written to docs/status/",
+      "result.status == PASS or FAIL with named blocking criteria"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "WF-02 Step 5 release validation BLOCKED for SPT-02/03/04 (Schema-Per-Tenant Migration) on feature/WF02-spt02-04-20260816. All 16 MUST ACs pass as tested on bpm_test (test-integration-spt 16/16, spt01 3/3, event-store 29/29, unit 0 failed, 23 regression suites green, migrate 1163 clean) — independently verified against tests/specs/SPT-02/03/04.md and the 16 test blocks. However the NFR/bench gate FAILED: zig build bench aborts at migration 062 on bpm_dev (and on any fresh DB) because view v_active_configs (created by 052) depends on artifact_activations.tenant_id which 062 drops before GBL-123 (order 1123) removes it — branch-attributable, fresh-DB-reproducible defect; no NFR_RESULT metrics emitted. ISS-0715/GH-812 fix (3ec8832e) verified resolved in-run (GH-812 still OPEN = MINOR bookkeeping gap). Release decision written to docs/status/release-decision-WF02-spt02-04-20260816.yaml (BLOCKED).",
+    "artifacts_out": [
+      "docs/status/release-decision-WF02-spt02-04-20260816.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Migration 062_remove_tenant_id_rls_from_public.sql fails on the canonical fresh-DB path and on bpm_dev: DROP COLUMN tenant_id on public.artifact_activations aborts because view v_active_configs (migration 052, order 52 < 62) depends on that column; GBL-123 (order 1123) runs after 062, so every fresh DB hits it. 062 handles indexes/constraints but not dependent views. bpm_test masked it (GBL-123 applied 2026-08-11 before 061/062/063 existed). Also blocks the NFR/bench gate (0 NFR_RESULT lines). Fix: BACKEND-DEV (drop/recreate dependent views in 062) + TEST-DESIGNER (view-dependency regression test), then re-run Step 4 + bench."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0715/GH-812: fix (commit 3ec8832e) verified in-run, gates green, but GitHub issue #812 remains OPEN and docs/issues/ISS-0715.json status stays OPEN. Route closure to DOC-UPDATER / closure ADHOC. Fixed a JSON syntax error in ISS-0715.json (missing comma after fix_verified) that made it unparseable."
+      },
+      {
+        "severity": "MINOR",
+        "description": "bpm_dev (BPM_DB_URL:5442) is in a half-migrated state (061 recorded, data_migrated_at set for tenant_default; 062 pending/failing). Reconcile after the 062 fix (apply GBL-123 out-of-order like bpm_test, or resume migrate after 062 fixed). 062 defect is branch-attributable, not a dev-DB-only quirk."
+      }
+    ],
+    "next_action": "Route BACKEND-DEV to fix migration 062 (dependent-view handling) + TEST-DESIGNER to add view-dependency coverage; re-run Step 4 gate and the NFR bench (zig build bench must emit NFR_RESULT and exit 0); then re-dispatch RELEASE-VALIDATOR. SPT-02/03/04 stay PENDING — DOC-UPDATER must NOT set RELEASED this cycle."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
