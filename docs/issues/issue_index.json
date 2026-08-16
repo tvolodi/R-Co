@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-16T04:43:23Z",
+  "last_updated": "2026-08-16T05:11:50Z",
   "next_issue_id": 711,
   "issues": [
     {
@@ -2701,7 +2701,7 @@
       "id": "ISS-0710",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/797",
       "severity": "MAJOR",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "title": "process: duplicate stale-status fix for PRM-02/03/04/05 - ADHOC-prm-reqctl-status-20260816 abort BLOCKER (fixed independently by WF02-prm02-05-20260816 / PR #795)",
       "run_id": "WF03-GH797-20260816",
       "handoff_id": "WF03-GH797-20260816/step-005-issue-fixer",
@@ -2716,7 +2716,9 @@
       "created_at": "2026-08-16T04:40:49Z",
       "step_0.5_completed_at": "2026-08-16T04:43:23Z",
       "github_issue_confirmed": true,
-      "branch": "feature/WF03-GH797-20260816"
+      "branch": "feature/WF03-GH797-20260816",
+      "resolved_at": "2026-08-16T05:11:50Z",
+      "resolved_by": "DOC-UPDATER (WF03-GH797-20260816 step-07)"
     }
   ]
 }

@@ -4,7 +4,7 @@
   "github_issue": "https://github.com/tvolodi/R-Co/issues/797",
   "github_issue_confirmed": true,
   "title": "process: duplicate stale-status fix for PRM-02/03/04/05 \u2014 ADHOC-prm-reqctl-status-20260816 abort BLOCKER (fixed independently by WF02-prm02-05-20260816 / PR #795)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "workflow_id": "WF03-GH797-20260816",
   "run_id": "WF03-GH797-20260816",
@@ -50,6 +50,25 @@
       "status": "COMPLETED",
       "completed_at": "2026-08-16T04:43:23Z",
       "summary": "Registered ISS-0710 as the dedicated local record for GH-797 (collision-checked, no prior ISS referenced GH-797/prm-reqctl/reqctl-status-stale), appended to docs/issues/issue_index.json (next_issue_id 710 -> 711), corrected the GH-797 body 'Tracked as ISS-0709' reference to ISS-0710 on GitHub, and captured the process-gap recommendation in notes. Fix disposition deferred to Step 3."
+    },
+    {
+      "step": "step-07-doc-updater",
+      "agent": "DOC-UPDATER",
+      "run_id": "WF03-GH797-20260816",
+      "handoff_id": "wf03-gh797-20260816-07-doc-updater",
+      "status": "RESOLVED",
+      "completed_at": "2026-08-16T05:11:50Z",
+      "summary": "CHANGELOG.md updated under [Unreleased] 2026-08-16 with the ORCH dispatch-time staleness gate entry (GH-797/ISS-0710, type E docs-only). ISS-0710 marked RESOLVED with resolved_at/resolution/prevention; docs/issues/issue_index.json updated (ISS-0710 status RESOLVED with resolved_at). GitHub issue #797 intentionally NOT closed by this step \u2014 left open for Step Final (release.py --close-github-issue) per the loop-mode instruction. No requirement statuses touched (PRM-02/03/04/05 remain RELEASED, out of scope)."
     }
-  ]
+  ],
+  "resolved_at": "2026-08-16T05:11:50Z",
+  "resolved_by": "DOC-UPDATER (WF03-GH797-20260816 step-07)",
+  "resolution": "RESOLVED via run WF03-GH797-20260816 (branch feature/WF03-GH797-20260816). The process-gap disposition was implemented as a docs-only ORCH dispatch-time staleness gate (Type E, no production code). Step 2 (CODE-DESIGNER) produced the design artefact src/design/iss0710-gh797-dispatch-staleness-gate.md; Step 3 (BACKEND-DEV) implemented it: new ORCH construction rule (\u00a75 rule 7) + new pre-dispatch gate \u00a78f 'Dispatch-Time Staleness Check' in docs/agents/ORCHESTRATOR.md, mirrored to the canonical .claude/agents/orchestrator.md and both GitHub-harness adapters (.github/instructions/orchestrator.instructions.md, .github/agents/orchestrator.agent.md) per AGENT_SYSTEM.md \u00a79 (A007). The gate runs before any fn:git-setup dispatch: git fetch origin, then reads each target requirement's status at origin/main HEAD via `git show origin/main:docs/requirements.yaml` (never the working tree, never local main); if any target is already at the ADHOC's declared desired end state, the run short-circuits with a BLOCKER before step-00 creates a branch or stash; read failure is fail-closed; judged by exit code only (\u00a78a/\u00a78e); logged to handoffs/orchestrator.log with action DISPATCH_STALE. Step 5 (TEST-RUNNER) independent verification PASS (tests/reports/report-20260816-WF03-GH797-20260816.yaml): lint_handoffs.py exit 0 (0 BLOCKER/MAJOR), lint_agent_docs.py exit 0 no new A007 drift (baseline improved similarity), \u00a78f + rule 7 + DISPATCH_STALE verbatim in all four surfaces, lint_design_artefact.py OK, no prod-code/migrations changed. Step 7 (DOC-UPDATER) updated CHANGELOG.md under [Unreleased] 2026-08-16 and marked ISS-0710 RESOLVED. GitHub issue #797 left OPEN for Step Final (release.py --close-github-issue). No requirement statuses changed (PRM-02/03/04/05 remain RELEASED).",
+  "prevention": {
+    "actions": [
+      "Dispatch-time staleness check before any ADHOC step-00: whenever an ADHOC's desired end state is a status change in a tracked YAML/data file (e.g. marking requirement IDs RELEASED), ORCH must run the \u00a78f gate BEFORE dispatching step-00, short-circuiting with a BLOCKER if any target is already at the desired end state at origin/main HEAD.",
+      "Always `git fetch origin` before reading target status: read only the fetched origin/main ref (git show origin/main:<file>), never the working tree and never the local main branch; reqctl.py show <id> is valid only when the working tree is verified to be at origin/main HEAD.",
+      "Judge the gate by exit code only (\u00a78a/\u00a78e) and log every DISPATCH_STALE decision (CLEARED/BLOCKER) to handoffs/orchestrator.log; never phrase an ADHOC task as 'make X stop appearing' and never arrange for a failed read to pass (anti-patterns 2026-05-30 label-renaming incident)."
+    ]
+  }
 }
