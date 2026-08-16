@@ -1,0 +1,65 @@
+{
+  "handoff_id": "wf03-vld-impl-bugs-20260816-002b-r1",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b-r1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-vld-impl-bugs-20260816/step-2b-code-design-validator-rework.json",
+  "created_at": "2026-08-16T06:43:17Z",
+  "started_at": "2026-08-16T06:43:17Z",
+  "completed_at": "2026-08-16T06:48:01Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 2b REWORK 1 — Expanded fix design validation (HARD GATE)",
+    "requirement_ids": [
+      "VLD-01",
+      "VLD-02",
+      "VLD-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-vld-impl-bugs-20260816-002-r1",
+      "wf03-vld-impl-bugs-20260816-003"
+    ],
+    "artifacts_in": [
+      "src/design/vld-01-03-stage-16-validation-FIX.md (R1-R5 + R6-R10)",
+      "docs/issues/ISS-0709.json",
+      "handoffs/WF03-vld-impl-bugs-20260816/step-3-backend-dev.json (result.issues)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b REWORK 1: Re-validate the EXPANDED fix design (R1-R10) at src/design/vld-01-03-stage-16-validation-FIX.md. The R1-R5 section was already approved; the new R6-R10 scope expansion must be validated. Verify: (1) each of R6-R10 is correctly classified (impl/fixture/harness), (2) each fix is specific enough for the routed agent (BACKEND-DEV or TEST-DESIGNER) to implement without ambiguity, (3) no implementation code in the design, (4) routing is sound, (5) the R9 decision to keep graph.zig out of scope while fixing the VLD boundary is consistent. Hard gate — return PASS only if all checks pass.",
+    "acceptance_criteria": [
+      "R6 (scope.zig envForSite empty-env bailout -> break :blk false) is correct and actionable for BACKEND-DEV",
+      "R7 (vld_02_01 fixture defect -> relocate arithmetic cases to number-expecting site) is correct and actionable for TEST-DESIGNER",
+      "R8 (emitEmptyExpression preserves whitespace source) is correct and actionable for BACKEND-DEV",
+      "R9 (pd06 graph-level gate defers empty/whitespace edge conditions to VLD-02 AC5; graph.zig stays out of scope) is consistent and actionable",
+      "R10 (http 42P01 + leaks + five-fields assertion) is correct and actionable for TEST-DESIGNER",
+      "Design contains no implementation code",
+      "python tools/lint_handoffs.py exits 0 on this handoff"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "gate": "PASS",
+    "summary": "REWORK 1 HARD GATE: Re-validated the expanded fix design (R6-R10) at src/design/vld-01-03-stage-16-validation-FIX.md on feature/wf02-vld01-03-20260816 @ 1a17c91e (empirical basis 90207259). All 7 acceptance criteria MET. R6 (impl): scope.zig:176-177 both `orelse return TypedEnv{.entries=&.{}}` bailouts verified in the .service_result/.module_output branch of a labeled blk:; int_vld_01_04 declares producers svc_a/sub_b absent from happy_graph (asserts 0 findings at :379); skip-not-bailout via `break :blk false` is correct and actionable -> BACKEND-DEV. R7 (fixture): int_vld_02_01 operator_cases lists the 4 arithmetic ops as positive on a bool-expecting EXCLUSIVE_GATEWAY edge site -> legit TypeMismatch (expected 0, found 1 at :568); relocation to a number-expecting computed_from site is correct and actionable -> TEST-DESIGNER. R8 (impl): typecheck.zig:295 emitEmptyExpression dups \"\" but finding.zig:80 doc + VLD-03 AC2 require verbatim preservation; dupe site.source is correct; in-file empty-source test (:369) does not assert source so unaffected; actionable -> BACKEND-DEV. R9 (impl at VLD boundary): pd06.zig graph-level block (:96-104) appends validateEdgeConditions violations verbatim; graph.zig CHK-EC-03 (EDGE_MISSING_CONDITION on cond_len==0) / CHK-EC-06 (EDGE_INVALID_CEL; isValidCelSyntax rejects whitespace-only, graph.zig:1037) verified; site walker skips only null conditions (site.zig:118) so empty/whitespace sites DO reach EmptyExpression; filter S={condition!=null && isEmptyOrWhitespace} correctly preserves null->EDGE_MISSING_CONDITION and defers present-empty/whitespace to VLD-02 AC5; 3-finding contract verified against three_finding_input (e2 \"\"->EmptyExpression, e3 \"amount + name\"->OperandTypeError, e4 \"amont > 0\"->UnknownVariable); int_vld_02_04 genuine PD-06 unaffected; graph.zig stays out of scope consistently, no regression -> BACKEND-DEV. R10 (harness): 42P01 source cleanupDefinition (:111) DELETE FROM process_definitions under a cleared tenant context (validation.zig:89 defer clear); fix bpm.api_tenant_context.set(default) is idiomatic (76 uses/49 test files; http test imports bpm at :20); 95 leaks = all 5 def_store.create calls (:261/326/412/464/523) lack created.deinit (Definition.deinit graph.zig:127 exists); int_vld_03_02 five-fields assertion (:286 \"source\": absent) targets PD-06 short-circuit bad_syntax_graph -> wrong fixture; 3 distinct fixes all correct and actionable -> TEST-DESIGNER. Design lints clean (lint_design_artefact.py exit 0, no issues); the R6-R10 section adds zero fenced code blocks (no implementation code). 2 MINOR issues recorded (stale fn:validate-design in functions_to_call; design §1 'not changed' lines for scope.zig/finding.zig superseded by R6/R8 scope expansion - unambiguous, amend §1 for traceability).",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Handoff task.functions_to_call lists 'fn:validate-design' which does not exist in docs/agents/FUNCTIONS.md or docs/agents/functions/. Executed the mandatory chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff instead. Fix at source (ORCH handoff template)."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Design §1 'Out of scope by design' still states src/validation/scope.zig is not changed and src/validation/finding.zig is not changed, but the R6-R10 scope expansion explicitly changes scope.zig (R6) and finding.zig (doc only, R8). The R6-R10 exact-change specs and routing table are internally consistent and unambiguous (no implementation ambiguity), so this is not a gate failure; recommend CODE-DESIGNER amend §1's 'not changed' lines for traceability."
+      }
+    ],
+    "next_action": "Route R6/R8/R9 to BACKEND-DEV (src/validation/scope.zig, typecheck.zig, pd06.zig, finding.zig doc-only) and R7/R10 to TEST-DESIGNER (tests/integration/validation_vld_unit_test.zig, validation_vld_http_test.zig) for WF-03 Step 3 rework, then TEST-RUNNER re-verification (test-validation 38/38, test-integration-vld-unit 14/14, test-integration-vld-http 5/5 + 0 leaks + no 42P01, full zig build test 0 fail/0 crash)."
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

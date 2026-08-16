@@ -1779,3 +1779,4 @@
 2026-08-16T06:29:27Z | STEP_PARTIAL | WF03 | WF03-vld-impl-bugs-20260816-003 | BACKEND-DEV | FAIL | R1-R5 done + test-validation 38/38; 5 out-of-scope blockers remain (scope.zig env, vld_02_01 fixture, vld_02_05 whitespace, vld_03_01/04 graph gate, http 42P01). Routing to CODE-DESIGNER for scope expansion (R6+).
 2026-08-16T06:29:42Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002-r1 | ORCH -> CODE-DESIGNER | PENDING | STEP 2-r1: design scope expansion R6-R10
 2026-08-16T06:41:04Z | COMPLETE | WF03-vld-impl-bugs-20260816 | 002-r1 | CODE-DESIGNER | PASS | Step 2-r1: design scope expansion R6-R10 (ISS-0709/GH#799)
+2026-08-16T06:43:28Z | ROUTE | WF03 | WF03-vld-impl-bugs-20260816-002b-r1 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | STEP 2b-r1: HARD GATE validate expanded design R6-R10

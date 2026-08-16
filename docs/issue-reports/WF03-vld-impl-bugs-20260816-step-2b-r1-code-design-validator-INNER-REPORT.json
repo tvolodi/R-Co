@@ -1,0 +1,78 @@
+{
+  "report_id": "WF03-vld-impl-bugs-20260816-step-2b-r1-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-vld-impl-bugs-20260816",
+  "step": "2b-r1",
+  "created_at": "2026-08-16T06:48:01Z",
+  "summary": "REWORK 1 HARD GATE: re-validated the expanded fix design R6-R10 in src/design/vld-01-03-stage-16-validation-FIX.md on feature/wf02-vld01-03-20260816 @ 1a17c91e (empirical basis 90207259) against ISS-0709, BACKEND-DEV step-3 result.issues (the 5 blockers), and the actual source + integration tests. Verdict PASS — all 7 acceptance criteria MET. R6 classified (a) implementation defect and grounded: scope.zig:176-177 both `orelse return TypedEnv{.entries=&.{}}` bailouts sit in the .service_result/.module_output branch of a labeled blk:; int_vld_01_04 (:350) declares producers svc_a/sub_b absent from happy_graph and asserts 0 findings at :379; skip-not-bailout via `break :blk false` is correct and unambiguous -> BACKEND-DEV. R7 classified (b) fixture defect and grounded: int_vld_02_01 operator_cases (:524-537) lists the 4 arithmetic ops as positive on a bool-expecting EXCLUSIVE_GATEWAY edge site, so `a + b` legitimately TypeMismatches (expected 0, found 1 at :568); relocation to a number-expecting computed_from site (or comparison wrap) is actionable -> TEST-DESIGNER. R8 classified (a) implementation defect and grounded: typecheck.zig:295 emitEmptyExpression dups \"\" but finding.zig:80 doc and VLD-03 AC2 require verbatim preservation; dupe site.source is the correct fix; in-file empty-source test (:369) does not assert source, so no regression -> BACKEND-DEV. R9 classified (c)->(a) design-intent/impl at the VLD boundary and grounded end-to-end: pd06.zig graph-level block (:96-104) appends validateEdgeConditions violations verbatim; graph.zig CHK-EC-03 fires EDGE_MISSING_CONDITION on cond_len==0 (covers null+empty) and CHK-EC-06 fires EDGE_INVALID_CEL for whitespace-only (isValidCelSyntax rejects ws-only, graph.zig:1037); site walker skips only null conditions (site.zig:118) so present-empty/whitespace sites DO enumerate and reach EmptyExpression; filter S={condition!=null && isEmptyOrWhitespace} preserves null->EDGE_MISSING_CONDITION and defers present-empty/whitespace to VLD-02 AC5; 3-finding contract verified against three_finding_input (e2 \"\"->EmptyExpression, e3 \"amount + name\"->OperandTypeError, e4 \"amont > 0\"->UnknownVariable); int_vld_02_04 genuine PD-06 (\"amount >\") unaffected; graph.zig stays out of scope consistently, no regression -> BACKEND-DEV. R10 classified (b) harness/fixture and grounded as 3 distinct fixes: 42P01 from cleanupDefinition (:111) DELETE FROM process_definitions under a cleared tenant context (validation.zig:89 defer clear), fix bpm.api_tenant_context.set(default) idiomatic (76 uses across 49 test files; http test imports bpm at :20); 95 leaks = all 5 def_store.create calls (:261/326/412/464/523) lack created.deinit (Definition.deinit at graph.zig:127 exists); int_vld_03_02 five-fields assertion (:286 \"source\": absent) drives PD-06 short-circuit bad_syntax_graph -> wrong fixture -> TEST-DESIGNER. Design lints clean (lint_design_artefact.py exit 0, 'no issues'); the R6-R10 section adds zero fenced code blocks (no implementation code). 2 MINOR issues recorded (stale fn:validate-design in task.functions_to_call; design §1 'not changed' prose for scope.zig/finding.zig superseded by the R6/R8 scope expansion — unambiguous, amend §1 for traceability).",
+  "files_created": [
+    "docs/issue-reports/WF03-vld-impl-bugs-20260816-step-2b-r1-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-vld-impl-bugs-20260816/step-2b-code-design-validator-rework.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/vld-01-03-stage-16-validation-FIX.md",
+      "status": "pass",
+      "detail": "exit 0, 'OK — 1 file(s) checked, no issues' (no BLOCKER/MAJOR)"
+    },
+    {
+      "name": "no-implementation-code grep (fenced ```zig blocks + DDL/JSX/full bodies)",
+      "status": "pass",
+      "detail": "All 8 fenced blocks are in the R1-R5 section (lines 76-238, already approved); the R6-R10 section adds ZERO fenced code blocks — inline pseudocode snippets only (orelse break :blk false, dupe(u8, site.source), bpm.api_tenant_context.set(...)). No DDL, no JSX, no full function bodies."
+    },
+    {
+      "name": "R6 source grounding — scope.zig envForSite",
+      "status": "pass",
+      "detail": "scope.zig:174-181 .service_result/.module_output branch has both `orelse return TypedEnv{ .entries = &.{} }` at :176 (reachableFrom orelse) and :177 (indexOf orelse) inside a labeled blk:; int_vld_01_04 (:350-380) declares producers svc_a/sub_b absent from happy_graph; asserts fail_a.findings.len==0 at :379. skip-entry semantics via break :blk false is correct."
+    },
+    {
+      "name": "R7 source grounding — int_vld_02_01 fixture",
+      "status": "pass",
+      "detail": "operator_cases (:524-537) includes +,-,*,/ (4 arithmetic) + 8 bool-producing (==,!=,<,<=,>,>=,&&,||); each c.condition placed on e2 of an EXCLUSIVE_GATEWAY (expected_type .bool); loop asserts findings.len==0 at :568. Arithmetic on a bool guard legitimately TypeMismatches -> fixture defect, not impl."
+    },
+    {
+      "name": "R8 source grounding — emitEmptyExpression + finding.zig doc",
+      "status": "pass",
+      "detail": "typecheck.zig:278 emitEmptyExpression, :295 `const source_dup = try allocator.dupe(u8, \"\");`; finding.zig:80 doc says 'preserved verbatim per VLD-03 AC2' (implementation contradicts doc+spec); int_vld_02_05 asserts f.source==\"   \" at :724; in-file empty-source test (:369-387) asserts only len+error_kind, not source -> R8 safe."
+    },
+    {
+      "name": "R9 source grounding — pd06 graph-level gate + graph.zig out-of-scope",
+      "status": "pass",
+      "detail": "pd06.zig:96-104 appends validateEdgeConditions violations verbatim (code+dupe message, node_id null); graph.zig CHK-EC-03 EDGE_MISSING_CONDITION on cond_len==0 (:1177-1190) covers null+empty, CHK-EC-06 EDGE_INVALID_CEL on !isValidCelSyntax for cond.len>0 (:1191-1199), isValidCelSyntax rejects whitespace-only (graph.zig:1037); edge id is the first single-quoted token in both messages; site.zig:118 skips only null conditions (empty/whitespace sites enumerate with expected_type .bool -> EmptyExpression reachable); three_finding_input e2=\"\"/e3=\"amount + name\"/e4=\"amont > 0\" -> EmptyExpression/OperandTypeError/UnknownVariable (3 findings) verified; empty_input e2=\"   \" -> int_vld_02_05 EmptyExpression path; bad_syntax_input e2=\"amount >\" (not in S) stays PD-06."
+    },
+    {
+      "name": "R10 source grounding — http harness 3 fixes",
+      "status": "pass",
+      "detail": "(1) 42P01: cleanupDefinition :111-118 runs DELETE FROM process_definitions with no tenant context; validation.zig:88 set + :89 defer clear leaves context empty after handleValidateFn; fix bpm.api_tenant_context.set(default) is idiomatic (76 uses/49 test files) and http test imports bpm at :20, bpm.zig:74 exports api_tenant_context. (2) leaks: all 5 def_store.create calls (:261/326/412/464/523) lack created.deinit; Definition.deinit graph.zig:127 + DefinitionGraph.deinit :88 exist -> `defer created.deinit(alloc)` valid. (3) five-fields: int_vld_03_02 (:239) drives bad_syntax_graph (:265, PD-06 short-circuit -> empty findings) and asserts node_id/expression_path/source/error_kind/message; \"source\": absent at :286 matches the design's claim."
+    },
+    {
+      "name": "R1-R5 prior approval + classification/routing consistency",
+      "status": "pass",
+      "detail": "step-2b handoff wf03-vld-impl-bugs-20260816-002b status PASS/gate PASS (R1-R5). R6/R8/R9 -> BACKEND-DEV (src/validation/* only); R7/R10 -> TEST-DESIGNER (tests/integration/* only). Routing table in the R6-R10 section matches file ownership; no src/definition change, no routes/validation.zig change."
+    },
+    {
+      "name": "tools/lint_handoffs.py (no NEW issues on this handoff)",
+      "status": "pass",
+      "detail": "Baseline exit 1 is the repo's pre-existing norm (issues on OTHER runs). Verified no new issue attributable to wf03-vld-impl-bugs-20260816-002b-r1 / step-2b-code-design-validator-rework.json in the lint output."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Handoff task.functions_to_call lists 'fn:validate-design' which does not exist in docs/agents/FUNCTIONS.md or docs/agents/functions/. Executed the mandatory chain fn:validate-completeness -> fn:register-inner-report -> fn:complete-handoff instead. Fix at source (ORCH handoff template)."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Design §1 'Out of scope by design' still states `src/validation/scope.zig is not changed` and `src/validation/finding.zig ... not changed`, but the R6-R10 scope expansion explicitly changes scope.zig (R6) and finding.zig (doc only, R8). The R6-R10 exact-change specs and the routing table are internally consistent and unambiguous (no implementation ambiguity), so this is not a gate failure; recommend CODE-DESIGNER amend §1's 'not changed' lines for traceability."
+    }
+  ],
+  "next_steps": [
+    "ORCH routes R6/R8/R9 to BACKEND-DEV (src/validation/scope.zig, typecheck.zig, pd06.zig, finding.zig doc-only) and R7/R10 to TEST-DESIGNER (tests/integration/validation_vld_unit_test.zig, validation_vld_http_test.zig) — WF-03 Step 3 rework",
+    "TEST-RUNNER re-verifies after implementation: test-validation 38/38, test-integration-vld-unit 14/14, test-integration-vld-http 5/5 + 0 leaks + no 42P01, full zig build test 0 fail/0 crash",
+    "CODE-DESIGNER amends design §1 'not changed' lines superseded by R6/R8 (scope.zig, finding.zig doc) for traceability"
+  ],
+  "blockers": []
+}
