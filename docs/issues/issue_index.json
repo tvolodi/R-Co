@@ -1,12 +1,7 @@
 {
   "schema_version": "1.0",
-<<<<<<< ours
-  "last_updated": "2026-08-16T09:29:12Z",
-  "next_issue_id": 715,
-=======
   "last_updated": "2026-08-16T09:32:28Z",
-  "next_issue_id": 714,
->>>>>>> theirs
+  "next_issue_id": 715,
   "issues": [
     {
       "id": "ISS-0702",
