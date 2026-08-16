@@ -1,0 +1,62 @@
+{
+  "handoff_id": "wf03-gh804-20260816-02-code-designer",
+  "run_id": "WF03-GH804-20260816",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-GH804-20260816/step-02-code-designer.json",
+  "created_at": "2026-08-16T07:20:05Z",
+  "started_at": "2026-08-16T07:20:23Z",
+  "completed_at": "2026-08-16T07:22:34Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2 -- fix design",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/804",
+    "iss_id": "ISS-0713",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh804-20260816-00-backend-dev",
+      "wf03-gh804-20260816-005-issue-fixer",
+      "wf03-gh804-20260816-01-issue-fixer"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0713.json",
+      "docs/issue-reports/WF03-GH804-20260816-step-1-issue-fixer-INNER-REPORT.json",
+      "tests/integration/prm-08-rollback-sandbox.test.zig",
+      "src/design/iss0711-gh802-prm08-fixture-fix.md"
+    ],
+    "branch_name": "feature/WF03-GH804-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 2: produce the design artefact for ISS-0713 / GH-804 \u2014 fixing the TC-PRM-08-03 fixture seed mismatch (test-code only, NO production code, NO migrations). The fix spec from Step 1 is precise: single file tests/integration/prm-08-rollback-sandbox.test.zig \u2014 (helper line ~233) add a 5th parameter def_id: []const u8 to insertPromotionReviewsRow and replace the hardcoded zero-UUID def_id literal with $4::text, extending the params to {review_id, tenant_id, requested_by, def_id}; (call site ~line 472) call insertPromotionReviewsRow(&pool, DEFAULT_TENANT_ID, review_id, requested_by, def_id_v2) \u2014 tenant = DEFAULT_TENANT_ID and def_id = def_id_v2 (the ACTIVE V2 definition = production current_active_id). SCOPE: this run fixes ONLY the GH-804 fixture seed. It must NOT modify production src/definition/rollback.zig (that is GH-803/ISS-0712, separate run). Design artefact to src/design/iss0713-gh804-prm08-seed-fix.md covering: the patch shape (before/after), the explicit out-of-scope statement (GH-803 production), why no production code changes, and the verification plan (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 \u2014 note that full 4/4 green also requires the GH-803 production fix; this run verifies the seed fix is correct and the remaining failure, if any, is the GH-803 42883, out of scope).",
+    "acceptance_criteria": [
+      "src/design/iss0713-gh804-prm08-seed-fix.md created and passes tools/lint_design_artefact.py (BLOCKER=0 MAJOR=0) if the linter applies (check first)",
+      "Design covers the exact seed patch (def_id param + DEFAULT_TENANT_ID + def_id_v2 at the call site) in the single target file",
+      "Out-of-scope statement explicit (no production rollback.zig change = GH-803)",
+      "No implementation code written (design only; implementation is Step 3)",
+      "Verification plan documented (test-integration-prm08, :5453 test DB, GH-803 dependency noted)"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for ISS-0713/GH-804 PRM-08 fixture seed fix \u2014 Type E prose artefact src/design/iss0713-gh804-prm08-seed-fix.md (def_id param + DEFAULT_TENANT_ID + def_id_v2 at the single call site; test-code only, single file). lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0). GH-803 production rollback.zig explicitly out of scope.",
+    "artifacts_out": [
+      "src/design/iss0713-gh804-prm08-seed-fix.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Doc drift: core-directives.md lists inner reports as .yaml but fn:register-inner-report.md specifies .json; followed function definition + same-run precedent (.json)."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

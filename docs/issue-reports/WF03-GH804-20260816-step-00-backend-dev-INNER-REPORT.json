@@ -1,0 +1,22 @@
+{
+  "report_id": "WF03-GH804-20260816-step-00-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF03-GH804-20260816",
+  "step": "00",
+  "created_at": "2026-08-16T07:10:28Z",
+  "summary": "fn:git-setup executed per docs/agents/protocols/GIT_SETUP.md for WF-03 run WF03-GH804-20260816 (prm-08 TC-PRM-08-03 test-seed fix, GH-804 / ISS-0713: fixture promotion_reviews row must be seeded with tenant_id = DEFAULT_TENANT_ID and def_id = current-active V2 id so the rollback supersede can match). git checkout main (already current), git pull --ff-only origin main exit 0 (already up to date with origin/main). No pre-existing feature/WF03-GH804-20260816 branch found locally or remotely. Created and checked out feature/WF03-GH804-20260816 from main @ cda90cea; git branch --show-current confirms exact match. git push -u origin feature/WF03-GH804-20260816 exit 0 (new branch on origin, upstream tracking set). Confirmed local tip == origin/main (cda90ceadfc60fa3038d84f6c83e971cb703ad5b). Pre-existing uncommitted append-only handoffs/orchestrator.log and handoffs/registry.json changes (DONE/GIT/LOOP lines from prior runs) plus the untracked handoffs/WF03-GH804-20260816/ dir were carried onto the new branch in the working tree and NOT reverted. All acceptance criteria MET.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH804-20260816-step-00-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH804-20260816/step-00-backend-dev.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "ORCH routes to next step per active workflow (GH-804 / ISS-0713 prm-08 test-seed fix)"
+  ],
+  "blockers": []
+}

@@ -1,0 +1,58 @@
+{
+  "handoff_id": "wf03-gh804-20260816-00-backend-dev",
+  "run_id": "WF03-GH804-20260816",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH804-20260816/step-00-backend-dev.json",
+  "created_at": "2026-08-16T07:09:14Z",
+  "started_at": "2026-08-16T07:09:29Z",
+  "completed_at": "2026-08-16T07:10:28Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_SETUP.md",
+      "docs/agents/shared/HANDOFF_PROTOCOL.md",
+      "docs/agents/protocols/LOOP_PROTOCOL.md"
+    ],
+    "branch_name": "feature/WF03-GH804-20260816",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/804"
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md for WF-03 run WF03-GH804-20260816 (prm-08 TC-PRM-08-03 test-seed fix \u2014 GH-804/ISS-0713: fixture promotion_reviews row must be seeded with tenant_id = DEFAULT_TENANT_ID and def_id = current-active V2 id so the rollback supersede can match). NOTE: the working tree may carry uncommitted append-only audit-trail changes in handoffs/orchestrator.log and handoffs/registry.json (DONE/GIT/LOOP lines from the preceding runs). Leave them in the working tree and carry them onto the new branch; they are expected context, do NOT revert or discard them. Create feature branch feature/WF03-GH804-20260816 from a freshly pulled main, push it to origin as the coordination signal, and confirm the local repo is on that branch with tip == origin/main. Record branch_name, base_commit_sha, and push_status in your result.",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exited 0",
+      "git branch --show-current outputs feature/WF03-GH804-20260816",
+      "git push -u origin feature/WF03-GH804-20260816 exited 0",
+      "result.git_evidence.branch_name == feature/WF03-GH804-20260816, base_commit_sha set, push_status ok",
+      "Pre-existing uncommitted handoffs/ changes carried onto the branch (not reverted)"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup per docs/agents/protocols/GIT_SETUP.md: git pull --ff-only origin main exit 0 (already up to date); created branch feature/WF03-GH804-20260816 from main @ cda90ceadfc60fa3038d84f6c83e971cb703ad5b; git branch --show-current confirms exact match; git push -u origin feature/WF03-GH804-20260816 exit 0 (new branch on origin). Local tip == origin/main. Pre-existing uncommitted append-only handoffs/orchestrator.log + handoffs/registry.json changes carried onto branch (not reverted).",
+    "artifacts_out": [
+      "branch: feature/WF03-GH804-20260816"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to next step per active workflow",
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH804-20260816",
+      "base_commit_sha": "cda90ceadfc60fa3038d84f6c83e971cb703ad5b",
+      "push_status": "ok",
+      "tip_matches_origin_main": true
+    }
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

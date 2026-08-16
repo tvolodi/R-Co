@@ -1,0 +1,63 @@
+{
+  "handoff_id": "wf03-gh804-20260816-05-test-runner",
+  "run_id": "WF03-GH804-20260816",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH804-20260816/step-05-test-runner.json",
+  "created_at": "2026-08-16T07:33:26Z",
+  "started_at": "2026-08-16T07:33:44Z",
+  "completed_at": "2026-08-16T07:37:15Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 5 -- independent verification",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/804",
+    "iss_id": "ISS-0713",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh804-20260816-00-backend-dev",
+      "wf03-gh804-20260816-005-issue-fixer",
+      "wf03-gh804-20260816-01-issue-fixer",
+      "wf03-gh804-20260816-02-code-designer",
+      "wf03-gh804-20260816-2b-code-design-validator",
+      "wf03-gh804-20260816-03-backend-dev"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-GH804-20260816/step-03-backend-dev.json",
+      "src/design/iss0713-gh804-prm08-seed-fix.md",
+      "tests/integration/prm-08-rollback-sandbox.test.zig"
+    ],
+    "branch_name": "feature/WF03-GH804-20260816"
+  },
+  "task": {
+    "description": "WF-03 Step 5 for run WF03-GH804-20260816: independently verify the TC-PRM-08-03 seed fix (ISS-0713 / GH-804) on branch feature/WF03-GH804-20260816. The fix (Step 3) added a def_id param to insertPromotionReviewsRow and seeds the TC-PRM-08-03 fixture row with tenant_id = DEFAULT_TENANT_ID and def_id = def_id_v2 in tests/integration/prm-08-rollback-sandbox.test.zig. Verify: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (direct, NOT the stale-5433 wrapper) \u2014 the fixture seed must be correct (no 23502/seed error); the residual TC-PRM-08-03 failure is the GH-803 production 42883 cast bug, OUT OF SCOPE for this run and must be attributed in the report; (b) python tools/lint_handoffs.py exits 0; (c) no production code or migration files modified by this run (git diff --name-only against the Step-00 base cda90cea); (d) zig build test-env-verify exit 0. Produce a structured verification report in tests/reports/ as .yaml, explicitly documenting the residual 42883 attribution to GH-803. Return PASS only if (a)-(d) hold with the residual properly attributed.",
+    "acceptance_criteria": [
+      "test-integration-prm08 run: fixture seed correct (row seeded with tenant_id=DEFAULT_TENANT_ID, def_id=def_id_v2)",
+      "Residual TC-PRM-08-03 failure documented and attributed to GH-803 (42883 production) \u2014 out of scope for this run",
+      "python tools/lint_handoffs.py exits 0",
+      "No production code or migration files modified by this run",
+      "zig build test-env-verify exit 0",
+      "Verification report written to tests/reports/ as .yaml"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 5 independent verification (GH-804 / ISS-0713) COMPLETED \u2014 PASS. Checks: (a) BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (run DIRECTLY, NOT the stale-5433 wrapper) -> 3 pass / 1 fail (4 total). Fixture seed verified CORRECT: promotion_reviews INSERT succeeds (params=4, no sqlstate 23502 seed error); row seeded with tenant_id=DEFAULT_TENANT_ID and def_id=def_id_v2 (verified in source diff + run); test reaches the TC-PRM-08-03 assertion. Sole residual TC-PRM-08-03 failure = sqlstate 42883 on the PRODUCTION supersede UPDATE (src/definition/rollback.zig Step 5, def_id = $3::uuid vs TEXT promotion_reviews.def_id), swallowed by catch null so the row stays 'approved' \u2014 attributed to GH-803 / ISS-0712 (production cast bug), OUT OF SCOPE for this run, documented in tests/reports/report-20260816-WF03-GH804-20260816.yaml. (b) python tools/lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR H010, 332 ACK). (c) git diff --name-only cda90cea..HEAD: only the single target test file + handoff/docs/design artifacts \u2014 no src/ production code, no migrations/. (d) zig build test-env-verify exit 0 (HEALTHY, 10 checks). Pre-checks passed (db/db_test/keycloak healthy; test DB :5453 SELECT 1 ok).",
+    "artifacts_out": [
+      "tests/reports/report-20260816-WF03-GH804-20260816.yaml",
+      "docs/issue-reports/WF03-GH804-20260816-step-05-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [
+      "MAJOR (residual, OUT OF SCOPE for GH-804): GH-803 / ISS-0712 production rollback.zig Step 5 supersede UPDATE casts def_id = $3::uuid against TEXT column promotion_reviews.def_id -> sqlstate 42883 (swallowed by catch null), so superseded_review_id stays null and the seeded row remains 'approved'. Full 4/4 green on test-integration-prm08 requires the GH-803 production cast fix (separate run). This run's fixture seed is verified correct."
+    ],
+    "next_action": "Route to ORCH for WF-03 closure of GH-804 / ISS-0713 (seed fix verified PASS). GH-803 / ISS-0712 (production 42883 cast) remains its own WF-03 run."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

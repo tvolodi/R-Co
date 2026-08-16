@@ -1,0 +1,65 @@
+report_id: WF03-GH804-20260816-step-07-doc-updater
+agent_id: DOC-UPDATER
+run_id: WF03-GH804-20260816
+step: "07"
+created_at: 2026-08-16T07:39:53Z
+summary: >-
+  WF-03 Step 7 for ISS-0713 / GH-804 on branch feature/WF03-GH804-20260816. (1)
+  fn:update-changelog: prepended a fix(test) entry under [Unreleased] — 2026-08-16
+  documenting the PRM-08 TC-PRM-08-03 fixture seed fix (GH-804/ISS-0713, Type E
+  test-code-only) — insertPromotionReviewsRow gained a 5th param `def_id: []const u8`
+  (hardcoded zero-UUID literal replaced with $4::text) and the single call site
+  (TC-PRM-08-03, AC4) now seeds with tenant_id = DEFAULT_TENANT_ID and def_id =
+  def_id_v2, so the fixture row now matches the rollback supersede predicate; residual
+  TC-PRM-08-03 failure (sqlstate 42883 on the production supersede UPDATE) attributed
+  to GH-803/ISS-0712, a SEPARATE run, OUT OF SCOPE. (2) fn:update-issue:
+  docs/issues/ISS-0713.json set to status RESOLVED with resolved_at
+  2026-08-16T07:39:53Z, resolved_by DOC-UPDATER (WF03-GH804-20260816 step-07),
+  resolution (seed fix detail + Step-05 verification + residual forwarding) filled;
+  prevention retained (test fixtures that exercise a production predicate must seed
+  rows with the SAME tenant_id and def_id the production code matches on); a step-07
+  handoff_history entry added. (3) docs/issues/issue_index.json updated: ISS-0713
+  status RESOLVED with resolved_at and resolved_by; GH-803/ISS-0712 left OPEN;
+  top-level last_updated bumped; next_issue_id 714 unchanged. GitHub issue #804
+  intentionally NOT closed (loop-mode; Step Final release.py --close-github-issue
+  handles it). GH-803/ISS-0712 untouched. JSON parse validation OK for both issue
+  files; lint_handoffs.py runs clean.
+
+files_created:
+  - docs/issue-reports/WF03-GH804-20260816-step-07-doc-updater-INNER-REPORT.yaml
+
+files_modified:
+  - CHANGELOG.md
+  - docs/issues/ISS-0713.json
+  - docs/issues/issue_index.json
+  - handoffs/WF03-GH804-20260816/step-07-doc-updater.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: python -c "json.load(ISS-0713.json); json.load(issue_index.json)"
+    status: pass
+    detail: >-
+      both docs/issues JSON files parse cleanly (utf-8-sig tolerant); ISS-0713 RESOLVED
+      with resolved_at/resolved_by/resolution, issue_index ISS-0713 RESOLVED with
+      resolved_at/resolved_by, GH-803/ISS-0712 remain OPEN, next_issue_id 714 unchanged,
+      last_updated bumped to 2026-08-16T07:39:53Z.
+  - name: python tools/lint_handoffs.py
+    status: pass
+    detail: "handoff lint gate exit 0 (0 BLOCKER, 0 MAJOR; 1 pre-existing MINOR H010, 332 ACK)."
+
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md specifies inner reports as .json but core-directives.md
+      Output File Format Rules requires .yaml (authoritative). Pre-existing drift,
+      re-flagged (same as earlier steps in this run and the GH-802 step-07 run). Inner
+      report written per core-directives (.yaml), matching the GH-797/GH-802 step-07
+      DOC-UPDATER precedent.
+
+next_steps:
+  - Step Final: run release.py (--close-github-issue to close GH-804), squash-merge
+    feature/WF03-GH804-20260816 to main, delete the feature branch, and return the repo
+    to a clean main. GH-803/ISS-0712 remains OPEN for its own WF-03 cycle.
+
+blockers: []

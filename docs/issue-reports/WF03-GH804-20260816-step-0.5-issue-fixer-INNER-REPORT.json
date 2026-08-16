@@ -1,0 +1,50 @@
+{
+  "report_id": "WF03-GH804-20260816-step-0.5-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-GH804-20260816",
+  "step": "0.5",
+  "created_at": "2026-08-16T07:13:15Z",
+  "summary": "WF-03 Step 0.5 for GH-804/ISS-0713 (prm-08 TC-PRM-08-03 fixture seed mismatch: promotion_reviews row seeded under random tenant_id + zero def_id cannot match the rollback supersede WHERE tenant_id=DEFAULT/def_id=current_active, so the 'superseded' assertion fails after ISS-0711/GH-802 and ISS-0712/GH-803 fixes). Verified ISS-0713 is the correct, non-colliding local record for GitHub issue #804 (github_issue match; title/severity/status/labels consistent; GH-804 confirmed OPEN via gh issue view 804 with labels bug, claimed-by-r-co-2-loop; only index entry referencing /804 is ISS-0713). No new ISS and no new GitHub issue (GH-804 already exists/filed); no fix implemented (deferred to Step 3). Updated ISS-0713.json workflow_id/run_id/handoff_id to the active fix run WF03-GH804-20260816 and added handoff_history (2 entries: original filing WF03-GH802-20260816 step-1 2026-08-16T06:33:35Z + this run). issue_index.json confirmed consistent: ISS-0713 present once, next_issue_id 714 (correct), ISS-0713 entry run_id/handoff_id/branch mirrored, last_updated bumped. All 5 acceptance criteria MET.",
+  "files_created": [
+    "docs/issue-reports/WF03-GH804-20260816-step-0.5-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "docs/issues/ISS-0713.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-GH804-20260816/step-005-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "gh issue view 804 (state/labels)",
+      "status": "pass",
+      "detail": "state OPEN, labels [bug, claimed-by-r-co-2-loop], title matches ISS-0713"
+    },
+    {
+      "name": "fn:search-issues equivalent (index + GitHub collision check)",
+      "status": "pass",
+      "detail": "ISS-0713 present once; only record referencing GH-804 (/804); no new ISS needed; GH-804 already filed"
+    },
+    {
+      "name": "issue_index.json consistency",
+      "status": "pass",
+      "detail": "ISS-0713 present once; next_issue_id == 714; ISS-0713 entry run_id/handoff_id/branch mirrored to WF03-GH804-20260816"
+    },
+    {
+      "name": "JSON validity (ISS-0713.json / issue_index.json / handoff)",
+      "status": "pass",
+      "detail": "valid UTF-8 JSON; utf-8-sig read tolerated; write utf-8 no BOM; handoff_history has 2 entries"
+    },
+    {
+      "name": "git branch check",
+      "status": "pass",
+      "detail": "on feature/WF03-GH804-20260816"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 3) to implement the ISS-0713/GH-804 fix: seed the TC-PRM-08-03 promotion_reviews fixture row with tenant_id = DEFAULT_TENANT_ID and def_id = the current-active (V2) definition id (def_id_v2) so the production supersede predicate matches it — test-code-only change in tests/integration/prm-08-rollback-sandbox.test.zig (call site ~line 466; insertPromotionReviewsRow helper lines 233-258).",
+    "Verify with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 (port 5453, NOT the stale 5433 in .vscode/run-zig-test-integration.ps1); GH-803/ISS-0712 (production rollback.zig 42883) must also be addressed for the full 4/4 pass."
+  ],
+  "blockers": []
+}
