@@ -1789,3 +1789,4 @@
 2026-08-16T06:03:53Z | ROUTE | WF-03 | wf03-gh793-20260816-07-doc-updater | ORCH -> DOC-UPDATER | PENDING
 2026-08-16T06:07:43Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | DOC-UPDATER | PASS - Step 7 doc update: ISS-0708 RESOLVED (three test-setup patches, combined file tests/integration/prm-06-07-promotion-assertion.test.zig, migrations 096/1156 citations corrected), CHANGELOG [Unreleased] 2026-08-16 entry, issue_index RESOLVED; GH-793 left OPEN for Step Final release.py --close-github-issue
 2026-08-16T06:09:14Z | ROUTE | WF-03 | wf03-gh793-20260816-final-backend-dev | ORCH -> BACKEND-DEV | PENDING
+2026-08-16T06:11:33Z | COMPLETE | WF03-GH793-20260816 | wf03-gh7 | BACKEND-DEV | PASS - Step Final git-merge: PR #801 squash-merged (19be9a64), branch deleted, claim released (GH-793 closed)
