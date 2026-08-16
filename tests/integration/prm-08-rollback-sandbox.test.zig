@@ -234,17 +234,21 @@ fn insertPromotionReviewsRow(
     pool: *Pool,
     tenant_id: []const u8,
     review_id: []const u8,
+    requested_by: []const u8,          // NEW — feeds NOT NULL requested_by
 ) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
     try conn.exec(
-        \\INSERT INTO promotion_reviews (id, tenant_id, status, def_id, plan_digest, created_at)
+        \\INSERT INTO promotion_reviews
+        \\    (id, tenant_id, status, def_id, plan_digest, created_at,
+        \\     requested_by, def_type, serialised_plan)
         \\VALUES ($1::uuid, $2::uuid, 'approved',
         \\        '00000000-0000-0000-0000-000000000000'::uuid,
-        \\        'prm08-test-plan-digest', NOW())
+        \\        'prm08-test-plan-digest', NOW(),
+        \\        $3::uuid, 'rollback', 'prm08-test-serialised-plan')
         \\ON CONFLICT (id) DO UPDATE SET status = 'approved'
     ,
-        &[_][]const u8{ review_id, tenant_id },
+        &[_][]const u8{ review_id, tenant_id, requested_by },
     );
 }
 
@@ -460,10 +464,12 @@ test "TC-PRM-08-03: rollback succeeds and (conditional) supersedes matching prom
     try insertProcessDefinition(&pool, DEFAULT_TENANT_ID, def_id_v2, "prm08-pr-process", "2", "ACTIVE");
     try insertPlatformAdmin(&pool, admin_id);
 
+    const requested_by = try randomUuidStr(alloc);
+    defer alloc.free(requested_by);
     const has_pr = try promotionReviewsTableExists(&pool);
 
     if (has_pr) {
-        try insertPromotionReviewsRow(&pool, tenant_id, review_id);
+        try insertPromotionReviewsRow(&pool, tenant_id, review_id, requested_by);
     }
 
     defer dropTenantFixtures(&pool, tenant_id, def_id_v1, def_id_v2);

@@ -1,0 +1,55 @@
+{
+  "iss_id": "ISS-0713",
+  "id": "ISS-0713",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/804",
+  "github_issue_confirmed": true,
+  "title": "tests/integration prm-08 TC-PRM-08-03: fixture promotion_reviews row seeded under random tenant_id + zero def_id cannot match rollback supersede (tenant_id=DEFAULT, def_id=current_active) -> 'superseded' assertion fails after ISS-0711/GH-802 and ISS-0712 fixes",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "workflow_id": "WF03-GH802-20260816",
+  "run_id": "WF03-GH802-20260816",
+  "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+  "classification": "IMPL_BUG/test-fixture",
+  "incidental_of": {
+    "run_id": "WF03-GH802-20260816",
+    "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+    "finding_id": "step-1 diagnosis — static trace of TC-PRM-08-03 supersede path",
+    "trigger": "WF03-GH802 step-1 diagnosis (ISSUE-FIXER) traced the TC-PRM-08-03 supersede path against src/definition/rollback.zig Step 5 and found the seeded fixture row can never satisfy the supersede WHERE clause",
+    "context": "Test-fixture defect in tests/integration/prm-08-rollback-sandbox.test.zig TC-PRM-08-03 (AC4). Distinct from ISS-0711/GH-802 (NOT NULL 23502) and ISS-0712 (production 42883). Filed per No-Issue-Left-Local-Only. It is test-code-only, so it MAY be folded into GH-802 Step 3, but it must be fixed (or GH-802's AC relaxed) for 'zig build test-integration-prm08 passes' to be achievable."
+  },
+  "created_at": "2026-08-16T06:31:51Z",
+  "registered_at": "2026-08-16T06:31:51Z",
+  "registered_by": "ISSUE-FIXER (WF03-GH802-20260816 step-1 diagnosis)",
+  "labels": [
+    "bug",
+    "issue"
+  ],
+  "scope": "Test-fixture defect in tests/integration/prm-08-rollback-sandbox.test.zig TC-PRM-08-03 only. The seeded promotion_reviews row (via insertPromotionReviewsRow at line 466) uses the test's random tenant UUID as tenant_id and the helper's hardcoded zero UUID as def_id, but the production supersede (src/definition/rollback.zig Step 5, fixed per ISS-0712) matches WHERE tenant_id = DEFAULT_TENANT_ID (zero) AND def_id = current_active_id (the V2 definition id being rolled back from). The fixture row therefore can never be superseded, and TC-PRM-08-03's assertion expectEqualStrings('superseded', status) will read 'approved' and fail once the ISS-0711 NOT-NULL fix and the ISS-0712 production fix are in place. No production code and no migration is implicated.",
+  "affected_areas": [
+    "tests/integration/prm-08-rollback-sandbox.test.zig (TC-PRM-08-03 call site line 466; insertPromotionReviewsRow helper lines 233-258)"
+  ],
+  "description": "TC-PRM-08-03 ('rollback succeeds and (conditional) supersedes matching promotion_reviews row') is the PRM-08 AC4 test. It seeds a promotion_reviews row via insertPromotionReviewsRow(&pool, tenant_id, review_id) where tenant_id is the test's fresh random tenant UUID, and the helper INSERTs def_id = '00000000-0000-0000-0000-000000000000'::uuid (hardcoded zero UUID). The production supersede in src/definition/rollback.zig Step 5 runs WHERE tenant_id = $2::uuid AND def_id = $3::uuid AND status IN ('applied','approved') with $2 = the tenant passed to rollbackDefinitionVersion (DEFAULT_TENANT_ID, the zero UUID, because the test's process_definitions are seeded under the zero tenant) and $3 = current_active_id (the ACTIVE V2 definition's id, a fresh random UUID). The fixture row has tenant_id = random (not zero) and def_id = zero (not V2), so the supersede can never match it. After ISS-0711/GH-802 (fixture supplies NOT NULL columns) and ISS-0712 (production supersede no longer 42883) are fixed, the supersede still updates 0 rows, the seeded row stays 'approved', and getPromotionReviewSuperseded(review_id) returns 'approved' -> expectEqualStrings('superseded', ...) fails.",
+  "symptom": "Latent test-fixture defect: TC-PRM-08-03 cannot verify PRM-08 AC4. The 'matching' promotion_reviews row it seeds does not match the supersede predicate (wrong tenant_id and wrong def_id), so the test's central assertion (status == 'superseded') is impossible to satisfy. It is latent today because the test currently fails earlier on the ISS-0711 sqlstate 23502 (NOT NULL columns) before reaching the supersede path; it will surface as an assertion failure immediately after the ISS-0711 and ISS-0712 fixes are applied.",
+  "discovered_at": "2026-08-16T06:28:00Z",
+  "discovered_by": "ISSUE-FIXER (WF03-GH802-20260816 step-1 diagnosis, static trace)",
+  "root_cause": "Fixture/supersede predicate mismatch: the test seeds the promotion_reviews row under the wrong tenant and with the wrong def_id relative to what the production supersede query matches. The rollback runs against DEFAULT_TENANT_ID and supersedes by the current-active definition id (V2), but the fixture row is inserted with the random test tenant UUID and the helper's hardcoded zero def_id. The test's stated intent ('supersedes matching promotion_reviews row') requires the fixture row to be seeded with tenant_id = DEFAULT_TENANT_ID and def_id = def_id_v2 (the V2 definition id).",
+  "investigation_notes": "Confirmed 2026-08-16: (1) Read TC-PRM-08-03 (tests/integration/prm-08-rollback-sandbox.test.zig lines ~430-520): fixture call at line 466 is insertPromotionReviewsRow(&pool, tenant_id, review_id) with tenant_id a fresh randomUuidStr; process_definitions are seeded under DEFAULT_TENANT_ID; rollbackDefinitionVersion is called with DEFAULT_TENANT_ID, target_version 1. (2) Read insertPromotionReviewsRow (lines 233-258): INSERT INTO promotion_reviews (id, tenant_id, status, def_id, plan_digest, created_at) VALUES ($1::uuid, $2::uuid, 'approved', '00000000-0000-0000-0000-000000000000'::uuid, 'prm08-test-plan-digest', NOW()). (3) Read src/definition/rollback.zig Step 5 (lines 286-298): supersede WHERE tenant_id = $2::uuid AND def_id = $3::uuid AND status IN ('applied','approved') with $2 = DEFAULT_TENANT_ID and $3 = current_active_id (V2 def_id). (4) Traced the assertion: getPromotionReviewSuperseded(review_id) reads the seeded row's status; it can only be 'superseded' if the supersede UPDATE matched the row, which requires tenant_id = DEFAULT_TENANT_ID AND def_id = V2 def_id — neither holds for the current fixture. New issue; fn:search-issues + gh issue list --search 'prm-08 supersede fixture' show no existing coverage.",
+  "reproduction": "Apply the ISS-0711/GH-802 NOT-NULL fixture fix and the ISS-0712 production 42883 fix, then run BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08: TC-PRM-08-03 fails with 'expected superseded, found approved' (the seeded row is never superseded because the supersede WHERE cannot match it).",
+  "fix_file": "tests/integration/prm-08-rollback-sandbox.test.zig",
+  "fix_line": "466 (call site) / 233-258 (insertPromotionReviewsRow helper)",
+  "fix_diff": "Seed the fixture row so it matches the production supersede predicate: (a) pass DEFAULT_TENANT_ID as the tenant to insertPromotionReviewsRow at the call site (the definitions and the rollback run under the zero tenant), and (b) give the helper a def_id parameter and pass def_id_v2 (the currently-ACTIVE definition being rolled back from) so def_id = current_active_id is satisfied. Alternatively add a dedicated helper for the AC4 path that inserts tenant_id = DEFAULT_TENANT_ID and def_id = def_id_v2 directly. Test-code-only change.",
+  "acceptance_criteria": [
+    "TC-PRM-08-03 seeds its promotion_reviews row with tenant_id = DEFAULT_TENANT_ID and def_id = the current-active (V2) definition id",
+    "After ISS-0711/GH-802 + ISS-0712 fixes are applied, TC-PRM-08-03's assertion 'superseded' passes (the supersede UPDATE matches the seeded row)",
+    "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 exits 0 (4/4)",
+    "No production code or migration files changed"
+  ],
+  "notes": "Discovered during WF03-GH802-20260816 step-1 diagnosis. Test-code-only, so it is compatible with GH-802's 'no production code changed' boundary and MAY be folded into GH-802 Step 3 (recommended: otherwise GH-802's acceptance criterion 'zig build test-integration-prm08 passes' is unachievable). Whether it is folded into GH-802 or run as its own WF-03 cycle is ORCH's decision.",
+  "prevention": {
+    "actions": [
+      "When a test seeds a fixture row that a production query is expected to match, the fixture's key columns (tenant_id, foreign/def ids) must equal the values the production query predicates on — derive them from the same variables the test uses for the production call (here DEFAULT_TENANT_ID and def_id_v2) instead of hardcoded sentinels.",
+      "AC4-style 'matching row' tests should assert on a row the test KNOWS matches the predicate, and should include a negative control (a row that does not match) to prove the predicate selectivity.",
+      "When fixing a test fixture defect (ISS-0711), grep the surrounding test for assertions that depend on the seeded row being matched by production code, so related fixture mismatches (this issue) are found in the same diagnosis."
+    ]
+  }
+}

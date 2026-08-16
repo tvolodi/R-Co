@@ -1,0 +1,51 @@
+{
+  "report_id": "WF03-GH802-20260816-step-2b-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF03-GH802-20260816",
+  "step": "2b",
+  "created_at": "2026-08-16T06:41:09Z",
+  "summary": "Validated the Type E fix design src/design/iss0711-gh802-prm08-fixture-fix.md for ISS-0711/GH-802 against the WF-02 Step 1b checks applied to a fix design. All 11 checks PASS: (a) design addresses the diagnosed root cause (insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan -> sqlstate 23502 in TC-PRM-08-03) - verified the 3 columns appear nowhere in the test file while migration 096 defines them NOT NULL; (b) patch precise and confined to tests/integration/prm-08-rollback-sandbox.test.zig (helper 233-258 + single call site 466 passes fresh randomUuidStr); (c) out-of-scope explicit (GH-803 production rollback.zig, GH-804 seed logic); (d) patch-shape-only, no implementation code; (e) tools/lint_design_artefact.py exit 0 (no issues, BLOCKER=0 MAJOR=0); (f) verification plan documented (test-integration-prm08, :5453 grounded in docker-compose.override.yml, residual 42883/seed attributed to GH-803/GH-804); (g) scope 1 file <= 5. Mirror claim verified against tests/integration/prm-06-07-promotion-assertion.test.zig (helper 99-118, call site 489).",
+  "files_created": [
+    "docs/issue-reports/WF03-GH802-20260816-step-2b-code-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF03-GH802-20260816/step-2b-code-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "tools/lint_design_artefact.py src/design/iss0711-gh802-prm08-fixture-fix.md",
+      "status": "pass",
+      "detail": "exit 0 \u2014 'OK \u2014 1 file(s) checked, no issues.' (BLOCKER=0 MAJOR=0)"
+    },
+    {
+      "name": "grep evidence: requested_by|def_type|serialised_plan in prm-08 test file",
+      "status": "pass",
+      "detail": "0 occurrences \u2014 confirms the NOT NULL columns are absent from the fixture INSERT (the defect)."
+    },
+    {
+      "name": "grep evidence: insertPromotionReviewsRow call sites",
+      "status": "pass",
+      "detail": "exactly 1 call site at line 466 (TC-PRM-08-03), helper at line 233."
+    },
+    {
+      "name": "build.zig target check",
+      "status": "pass",
+      "detail": "test-integration-prm08 step exists at build.zig:3147."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Design references randomUuidStr 'at line ~50' but it actually starts at line 63 \u2014 cosmetic line-reference precision only, not a design defect; the helper does exist in the file."
+    },
+    {
+      "severity": "MINOR",
+      "description": "GH-803 (production rollback.zig 42883) and GH-804 (seed tenant/def_id mismatch) remain open and block the full TC-PRM-08-03 'superseded' assertion after this fixture fix; out of scope for GH-802 \u2014 ORCH to sequence (carried from CODE-DESIGNER)."
+    }
+  ],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 3) to implement the validated patch in tests/integration/prm-08-rollback-sandbox.test.zig."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,55 @@
+{
+  "handoff_id": "wf03-gh802-20260816-final-backend-dev",
+  "run_id": "WF03-GH802-20260816",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH802-20260816/step-final-backend-dev.json",
+  "created_at": "2026-08-16T07:04:19Z",
+  "started_at": "2026-08-16T07:04:34Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step Final -- git-merge + claim release",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
+    "iss_id": "ISS-0711",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh802-20260816-00-backend-dev",
+      "wf03-gh802-20260816-005-issue-fixer",
+      "wf03-gh802-20260816-01-issue-fixer",
+      "wf03-gh802-20260816-02-code-designer",
+      "wf03-gh802-20260816-2b-code-design-validator",
+      "wf03-gh802-20260816-03-backend-dev",
+      "wf03-gh802-20260816-05-test-runner",
+      "wf03-gh802-20260816-07-doc-updater"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "docs/agents/protocols/LOOP_PROTOCOL.md",
+      "docs/issues/ISS-0711.json",
+      "task/current.json"
+    ],
+    "branch_name": "feature/WF03-GH802-20260816"
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for WF-03 run WF03-GH802-20260816 (prm-08 fixture fix for ISS-0711 / GH-802). On branch feature/WF03-GH802-20260816: commit any remaining uncommitted workflow artefacts (handoffs/, docs/issue-reports/, docs/issues/, tests/integration/, src/design/, CHANGELOG.md), rebase onto the latest origin/main, open a PR, get it squash-merged, delete the feature branch on origin, and return to a clean main with the working tree clean. LOOP-MODE RELEASE (mandatory): this run has a TaskManager claim in task/current.json (item r-co:GH-802, claimed_by r-co-2-loop). As part of Step Final, run: python \"C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py\" task/current.json --status DONE --close-github-issue (workspace_id auto-resolved from .env as r-co-2-loop). Verify it exits 0, the GitHub issue #802 is closed, the claimed-by-r-co-2-loop label is cleared, and task/current.json is back to {}. Record branch_name, commit_sha_list, remote_branch, pr_url (or pr_create_error), and push_status: ok in your result, plus the release.py exit code. Confirm the local repo is on main with a clean working tree.",
+    "acceptance_criteria": [
+      "PR opened and squash-merged to main (PR URL recorded)",
+      "feature/WF03-GH802-20260816 deleted on origin",
+      "Local repo on main with clean working tree",
+      "result.git_evidence: branch_name, commit_sha_list, remote_branch, pr_url, push_status ok",
+      "release.py task/current.json --status DONE --close-github-issue exited 0; GH-802 closed; claimed-by-r-co-2-loop label cleared; task/current.json == {}"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-16T06:15:25Z",
-  "next_issue_id": 712,
+  "last_updated": "2026-08-16T07:01:32Z",
+  "next_issue_id": 714,
   "issues": [
     {
       "id": "ISS-0702",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/780",
       "severity": "BLOCKER",
       "status": "RESOLVED",
-      "title": "PRM-06..09 batch \u2014 implementation compile errors BLOCK test compilation (zig 0.16 incompatibilities)",
+      "title": "PRM-06..09 batch — implementation compile errors BLOCK test compilation (zig 0.16 incompatibilities)",
       "run_id": "WF02-prm-batch1-20260814",
       "workflow_id": "WF02-prm-batch1-20260814",
       "resolution_commit": "f5257ef26a04ec21c7b8e8e94e54aae4df9a0cb5",
@@ -33,7 +33,7 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/767",
       "severity": "MAJOR",
       "status": "RESOLVED",
-      "title": "env01_test TC-ENV-01-03: wrong tenant_type in production rows \u2014 test expects clean DB state (pre-existing, deterministic)",
+      "title": "env01_test TC-ENV-01-03: wrong tenant_type in production rows — test expects clean DB state (pre-existing, deterministic)",
       "run_id": "WF03-GH767-20260813",
       "handoff_id": "WF03-GH767-20260813/step-00.5-issue-fixer",
       "category": "integration-test-failure/tenant-type-mismatch",
@@ -137,7 +137,7 @@
     },
     {
       "id": "ISS-0085",
-      "title": "ISS-0085 (GOV-01) \u2014 Apply the UAT scenario schema v1.1 addendum to the agent docs",
+      "title": "ISS-0085 (GOV-01) — Apply the UAT scenario schema v1.1 addendum to the agent docs",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "run_id": "WF03-GH300-20260810",
@@ -654,7 +654,7 @@
     },
     {
       "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
       "status": "RESOLVED",
       "severity": "CRITICAL",
       "run_id": "WF03-def-store-regression-20260528",
@@ -1020,7 +1020,7 @@
     },
     {
       "id": "ISS-0068",
-      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() \u2014 tenant schemas missing for all tenants",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
       "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
@@ -1066,7 +1066,7 @@
     },
     {
       "id": "ISS-0071",
-      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input \u2014 swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "test harness error + backend state inconsistency",
@@ -1081,7 +1081,7 @@
     },
     {
       "id": "ISS-0072",
-      "title": "Tenant admin login fails after onboarding \u2014 GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
+      "title": "Tenant admin login fails after onboarding — GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "logic error / design gap",
@@ -1098,10 +1098,10 @@
     },
     {
       "id": "ISS-0073",
-      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm \u2014 signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
       "status": "OPEN",
       "severity": "BLOCKER",
-      "category": "logic error \u2014 singleton cache bypasses realm resolution at callback time",
+      "category": "logic error — singleton cache bypasses realm resolution at callback time",
       "run_id": "WF03-oidc-callback-realm-20260616",
       "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
       "affected_areas": [
@@ -1143,7 +1143,7 @@
     },
     {
       "id": "ISS-0076",
-      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table \u2014 creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
+      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table — creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
       "status": "OPEN",
       "severity": "MAJOR",
       "category": "migration scoping / search_path defect",
@@ -1518,7 +1518,7 @@
     },
     {
       "id": "ISS-0123",
-      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6\u00d7 alongside missing source_ref column",
+      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6× alongside missing source_ref column",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "schema-drift / audit-trigger-side-effect",
@@ -1719,7 +1719,7 @@
     },
     {
       "id": "ISS-0143",
-      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line \u2014 status==0 alone is not trustworthy",
+      "title": "CI 'zig build test' retry loop can report PASS despite a 'failed command:' line — status==0 alone is not trustworthy",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "ci-reliability / false-positive-gate",
@@ -1884,7 +1884,7 @@
     },
     {
       "id": "ISS-0175",
-      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig \u2014 a fresh clone cannot build test-lua (GH #503)",
+      "title": "Vendored LuaJIT build input luajit_relver.txt is git-ignored but required by build.zig — a fresh clone cannot build test-lua (GH #503)",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "build-infrastructure/untracked-required-build-input",
@@ -1948,7 +1948,7 @@
     },
     {
       "id": "ISS-0180",
-      "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL \u2014 C3 can report PASS against an unmigrated test database",
+      "title": "verify_test_env C3 migrates BPM_DB_URL while C4 verifies BPM_TEST_DB_URL — C3 can report PASS against an unmigrated test database",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "",
@@ -2148,7 +2148,7 @@
     },
     {
       "id": "ISS-0206",
-      "title": "src/definition/store.zig rowToDefinition leaks on allocation failure \u2014 4 sequential dupes, zero errdefer guards (GH #526)",
+      "title": "src/definition/store.zig rowToDefinition leaks on allocation failure — 4 sequential dupes, zero errdefer guards (GH #526)",
       "status": "OPEN",
       "severity": "MAJOR",
       "category": "memory-leak / allocator-dupe-without-errdefer",
@@ -2511,7 +2511,7 @@
     },
     {
       "id": "ISS-0697",
-      "title": "TC-RG-01/TC-RG-02 fail on main: T010 baseline has 117 BLOCKERs but GH-512 snapshot expects 116 \u2014 snapshot stale after WF02-batch-0 commit 0d9041b5",
+      "title": "TC-RG-01/TC-RG-02 fail on main: T010 baseline has 117 BLOCKERs but GH-512 snapshot expects 116 — snapshot stale after WF02-batch-0 commit 0d9041b5",
       "status": "RESOLVED",
       "severity": "MINOR",
       "run_id": "WF03-GH759-20260813",
@@ -2623,7 +2623,7 @@
       "github_issue": "https://github.com/tvolodi/R-Co/issues/792",
       "severity": "MAJOR",
       "status": "OPEN",
-      "title": "tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs \u2014 sqlstate 42703 (INC-001)",
+      "title": "tests/integration/prm-09-pack-update.test.zig uses unqualified solution_pack_installs — sqlstate 42703 (INC-001)",
       "run_id": "WF03-GH785-20260815",
       "workflow_id": "WF03-GH785-20260815",
       "created_at": "2026-08-15T21:11:11Z",
@@ -2646,7 +2646,7 @@
       "severity": "MAJOR",
       "status": "RESOLVED",
       "resolved_at": "2026-08-16T06:04:54Z",
-      "title": "tests/integration PRM-06/07: three test failures \u2014 NOT NULL / FK / sandbox-teardown (INC-002)",
+      "title": "tests/integration PRM-06/07: three test failures — NOT NULL / FK / sandbox-teardown (INC-002)",
       "run_id": "WF03-GH793-20260816",
       "workflow_id": "WF03-GH793-20260816",
       "created_at": "2026-08-15T21:11:11Z",
@@ -2725,10 +2725,10 @@
       "id": "ISS-0711",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
       "severity": "MAJOR",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "title": "tests/integration prm-08-rollback-sandbox.test.zig: insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan (latent sqlstate 23502; same class as ISS-0708/GH-793 Cluster A)",
-      "run_id": "ADHOC-prm08-fixture-defect-20260816",
-      "handoff_id": "adhoc-prm08-fixture-defect-20260816-005-issue-fixer",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-005-issue-fixer",
       "category": "integration-test-failure/not-null-fixture",
       "affected_areas": [
         "tests/integration/prm-08-rollback-sandbox.test.zig",
@@ -2736,7 +2736,45 @@
       ],
       "created_at": "2026-08-16T06:15:25Z",
       "step_0.5_completed_at": "2026-08-16T06:15:25Z",
-      "github_issue_confirmed": true
+      "github_issue_confirmed": true,
+      "branch": "feature/WF03-GH802-20260816",
+      "resolved_at": "2026-08-16T07:01:32Z",
+      "resolved_by": "DOC-UPDATER (WF03-GH802-20260816 step-07)"
+    },
+    {
+      "id": "ISS-0712",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/803",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "title": "src/definition/rollback.zig supersede UPDATE compares def_id = $3::uuid but promotion_reviews.def_id is TEXT -> sqlstate 42883 (operator does not exist); swallowed by catch null so superseded_review_id is always null (PRM-08 AC4 never works)",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+      "category": "integration-test-failure/rollback-supersede-42883",
+      "affected_areas": [
+        "src/definition/rollback.zig (Step 5 supersede UPDATE, lines 286-298)",
+        "migrations/096_promotion_reviews.sql (promotion_reviews.def_id is TEXT)"
+      ],
+      "created_at": "2026-08-16T06:31:51Z",
+      "step_1_diagnosis_completed_at": "2026-08-16T06:31:51Z",
+      "github_issue_confirmed": true,
+      "branch": "feature/WF03-GH802-20260816"
+    },
+    {
+      "id": "ISS-0713",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/804",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "title": "tests/integration prm-08 TC-PRM-08-03: fixture promotion_reviews row seeded under random tenant_id + zero def_id cannot match rollback supersede (tenant_id=DEFAULT, def_id=current_active) -> 'superseded' assertion fails after ISS-0711/GH-802 and ISS-0712 fixes",
+      "run_id": "WF03-GH802-20260816",
+      "handoff_id": "wf03-gh802-20260816-01-issue-fixer",
+      "category": "integration-test-failure/fixture-supersede-mismatch",
+      "affected_areas": [
+        "tests/integration/prm-08-rollback-sandbox.test.zig (TC-PRM-08-03 call site line 466; insertPromotionReviewsRow helper lines 233-258)"
+      ],
+      "created_at": "2026-08-16T06:31:51Z",
+      "step_1_diagnosis_completed_at": "2026-08-16T06:31:51Z",
+      "github_issue_confirmed": true,
+      "branch": "feature/WF03-GH802-20260816"
     }
   ]
 }

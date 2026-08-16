@@ -1,0 +1,137 @@
+{
+  "handoff_id": "wf03-gh802-20260816-2b-code-design-validator",
+  "run_id": "WF03-GH802-20260816",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH802-20260816/step-2b-code-design-validator.json",
+  "created_at": "2026-08-16T06:39:24Z",
+  "started_at": "2026-08-16T06:39:41Z",
+  "completed_at": "2026-08-16T06:41:09Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Step 2b -- design validation (hard gate)",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/802",
+    "iss_id": "ISS-0711",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh802-20260816-02-code-designer"
+    ],
+    "artifacts_in": [
+      "src/design/iss0711-gh802-prm08-fixture-fix.md",
+      "docs/issues/ISS-0711.json",
+      "tests/integration/prm-08-rollback-sandbox.test.zig"
+    ],
+    "design_artefact": "src/design/iss0711-gh802-prm08-fixture-fix.md",
+    "branch_name": "feature/WF03-GH802-20260816",
+    "hard_gate": true
+  },
+  "task": {
+    "description": "Step 2b \u2014 Design Validation (HARD GATE). Validate the design artefact at src/design/iss0711-gh802-prm08-fixture-fix.md (Type E \u2014 test-code-only fix, no production code) against the WF-02 Step 1b checks applied to a fix design. Step 3 (implementation) MUST NOT start until this returns PASS. Checks: (a) design addresses the diagnosed root_cause from ISS-0711 (insertPromotionReviewsRow omits NOT NULL requested_by/def_type/serialised_plan -> sqlstate 23502 in TC-PRM-08-03); (b) the patch is precise and confined to tests/integration/prm-08-rollback-sandbox.test.zig (requested_by param + 3 columns in the INSERT; call site at line ~466 passes fresh UUID); (c) explicit out-of-scope statement (no production rollback.zig change = GH-803; no seed-logic change = GH-804); (d) no implementation code in the design beyond the patch shape; (e) tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0); (f) verification plan documented (test-integration-prm08, :5453 test DB, residual 42883/seed failures attributed out-of-scope); (g) fix scope <= 5 files.",
+    "expected_outputs": [
+      "Validation report (PASS or FAIL) for src/design/iss0711-gh802-prm08-fixture-fix.md"
+    ],
+    "acceptance_criteria": [
+      "Design addresses root_cause from ISS-0711",
+      "Patch precise and confined to the single test file (no production code/migrations)",
+      "Out-of-scope statement explicit (GH-803 production, GH-804 seed)",
+      "No implementation code in design (patch shape only)",
+      "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+      "Verification plan documented (test-integration-prm08, :5453 test DB, residual attribution)",
+      "Fix scope <= 5 files",
+      "Step 3 MUST NOT start until PASS"
+    ],
+    "functions_to_call": [
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated Type E fix design src/design/iss0711-gh802-prm08-fixture-fix.md for ISS-0711/GH-802 against WF-02 Step 1b checks: (a) addresses the 23502 NOT NULL root cause (requested_by/def_type/serialised_plan), (b) patch precise & confined to the single test file with exactly one call site (line 466), (c) out-of-scope GH-803/GH-804 explicit, (d) patch-shape-only (no implementation code), (e) lint_design_artefact.py exit 0 (no issues), (f) verification plan documented (:5453, residual attribution), (g) scope 1 file <= 5. Classification Type E correct; completeness/correctness/security checks pass. All 11 per-check results PASS.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Design references randomUuidStr 'at line ~50' but it actually starts at line 63 \u2014 cosmetic line-reference precision only; the helper does exist in the file."
+      },
+      {
+        "severity": "MINOR",
+        "description": "GH-803 (production rollback.zig 42883) and GH-804 (seed tenant/def_id mismatch) remain open and block the full TC-PRM-08-03 'superseded' assertion after this fixture fix; out of scope for GH-802 \u2014 ORCH to sequence (carried from CODE-DESIGNER)."
+      }
+    ],
+    "checks": [
+      {
+        "id": "a-root-cause-addressed",
+        "name": "Design addresses root_cause from ISS-0711 (23502 NOT NULL)",
+        "result": "PASS",
+        "evidence": "Design 'Root cause' + 'Error taxonomy' name the exact defect: insertPromotionReviewsRow (tests/integration/prm-08-rollback-sandbox.test.zig:233) INSERT omits requested_by/def_type/serialised_plan -> sqlstate 23502 in TC-PRM-08-03. Verified: grep shows the 3 columns appear NOWHERE in the test file; migrations/096_promotion_reviews.sql defines requested_by uuid NOT NULL, def_type text NOT NULL, serialised_plan text NOT NULL; single call site at line 466."
+      },
+      {
+        "id": "b-patch-precise-confined",
+        "name": "Patch precise and confined to the single test file",
+        "result": "PASS",
+        "evidence": "Design scopes to ONE file (tests/integration/prm-08-rollback-sandbox.test.zig). Patch shape adds requested_by param + requested_by/def_type/serialised_plan columns to the INSERT; call site at 466 passes fresh randomUuidStr(alloc) (defined at line 63). grep confirms exactly one call site. No production file/migration/build change in the diff. Mirror claim verified against tests/integration/prm-06-07-promotion-assertion.test.zig (helper 99-118 with requested_by + 3 columns; call site 489)."
+      },
+      {
+        "id": "c-out-of-scope-explicit",
+        "name": "Out-of-scope statement explicit (GH-803 production, GH-804 seed)",
+        "result": "PASS",
+        "evidence": "'Scope and non-goals' explicitly states: no src/definition/rollback.zig change (ISS-0712/GH-803 production 42883) and no test seed tenant/def_id logic change (ISS-0713/GH-804); also no migrations/, no build.zig change, no other test file."
+      },
+      {
+        "id": "d-no-impl-code-beyond-patch-shape",
+        "name": "No implementation code beyond the patch shape",
+        "result": "PASS",
+        "evidence": "Artefact is a Type E prose design; the only code present is the Before/After patch shape (helper + call site) and the changed-signature block, explicitly framed as patch-shape-only. Header states 'No production code, no migrations'; implementation is deferred to Step 3. Consistent with WF-03 fix-design convention (mirror of the validated GH-793 Cluster A fix design)."
+      },
+      {
+        "id": "e-lint-exit-0",
+        "name": "tools/lint_design_artefact.py exit 0 (BLOCKER=0 MAJOR=0)",
+        "result": "PASS",
+        "evidence": "Ran `python tools/lint_design_artefact.py src/design/iss0711-gh802-prm08-fixture-fix.md` -> 'OK \u2014 1 file(s) checked, no issues.' with exit code 0 (LINT_EXIT=0)."
+      },
+      {
+        "id": "f-verification-plan-documented",
+        "name": "Verification plan documented (test-integration-prm08, :5453, residual attribution)",
+        "result": "PASS",
+        "evidence": "'Verification plan' section documents BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08; target verified at build.zig:3147; :5453 grounded in docker-compose.override.yml (db_test -> 5453:5432); expected 23502 gone; residual TC-PRM-08-03 failures explicitly attributed to GH-803 (42883) and GH-804 (seed mismatch) as out of scope; warns against .vscode/run-zig-test-integration.ps1 (stale 5433)."
+      },
+      {
+        "id": "g-scope-file-count",
+        "name": "Fix scope <= 5 files",
+        "result": "PASS",
+        "evidence": "Exactly 1 file in scope: tests/integration/prm-08-rollback-sandbox.test.zig. No production code, no migration, no build change."
+      },
+      {
+        "id": "h-classification-type-e",
+        "name": "Classification correct per lego-catalog selection rules (Type E)",
+        "result": "PASS",
+        "evidence": "Novel cross-cutting test-fixture fix; no Type A (no HTTP route), B (no list page), C (no migration/table change), D (no React Flow node) \u2014 selection rule 5 (Type E otherwise) applies. Design 'Classification' rationale is correct."
+      },
+      {
+        "id": "i-completeness",
+        "name": "Type E completeness (purpose, signatures, error taxonomy, dependencies, data-flow diagram)",
+        "result": "PASS",
+        "evidence": "Module purpose = one clear paragraph; Public interface lists the changed helper signature with input/output types; Error taxonomy names all conditions incl. out-of-scope 42883/seed; Dependencies lists callers + MUST-NOT-depend-on (GH-803, GH-804, migrations, stale 5433 harness); ASCII data-flow diagram present."
+      },
+      {
+        "id": "j-correctness-open-questions",
+        "name": "Ambiguity flagged as open questions; no schema decisions",
+        "result": "PASS",
+        "evidence": "3 open questions documented (sentinel values, ON CONFLICT clause, GH-803/804 sequencing); no database schema decisions made (references existing migration 096 only)."
+      },
+      {
+        "id": "k-security",
+        "name": "Security checks (input validation / access control) where applicable",
+        "result": "PASS",
+        "evidence": "No production user-input or data-access surface introduced (test-fixture-only patch; test DB, default tenant context). Sentinel values documented; no new error paths. N/A with no new surface \u2014 no validation/access-control requirement triggered."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3) to implement the validated patch; Step 3 MUST run zig build test-integration-prm08 with the explicit :5453 BPM_TEST_DB_URL."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

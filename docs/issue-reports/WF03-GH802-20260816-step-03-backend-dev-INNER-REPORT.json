@@ -1,0 +1,60 @@
+{
+  "report_id": "WF03-GH802-20260816-step-03-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF03-GH802-20260816",
+  "step": "03",
+  "created_at": "2026-08-16T06:54:05Z",
+  "summary": "WF-03 Step 3 for ISS-0711/GH-802: implemented the prm-08 fixture fix per the validated design src/design/iss0711-gh802-prm08-fixture-fix.md (Type E, test-code ONLY). Patched tests/integration/prm-08-rollback-sandbox.test.zig exactly per the design: insertPromotionReviewsRow (helper 233-258) gained a requested_by param and now INSERTs the three NOT NULL columns requested_by/def_type/serialised_plan (def_type='rollback', serialised_plan='prm08-test-serialised-plan' sentinels); the single call site (TC-PRM-08-03, previously line 466) now generates a fresh UUID via randomUuidStr(alloc) and passes it. No production code and no migrations touched (rollback.zig = GH-803, seed logic = GH-804 both untouched). Verified by running zig build (exit 0) and BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08 DIRECTLY (not the stale-5433 wrapper). Result: 3 pass, 1 fail (TC-PRM-08-03) — the sqlstate 23502 failure is GONE; the residual TC-PRM-08-03 failure is sqlstate 42883 in the production supersede UPDATE (def_id = $3::uuid vs TEXT column, GH-803) followed by the 'superseded' assertion finding 'approved' (GH-803 + GH-804 seed tenant/def_id mismatch) — both OUT OF SCOPE and documented, not fixed. Also surfaced and cleaned an environmental DB-pollution blocker: a prior run left prm08-pr-process v1/v2 rows in tenant_default.process_definitions (name/version UNIQUE uq_definition_version) that caused a transient 23505 on re-runs; cleaned from the test DB (DELETE via search_path incl. tenant_default so the audit trigger's unqualified audit_entries resolves) and documented in issues.", "files_created": [
+    "docs/issue-reports/WF03-GH802-20260816-step-03-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "tests/integration/prm-08-rollback-sandbox.test.zig",
+    "handoffs/WF03-GH802-20260816/step-03-backend-dev.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "exit 0 (compile check after test-file patch; no 'error set' output)."
+    },
+    {
+      "name": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08",
+      "status": "pass",
+      "detail": "3 pass, 1 fail (4 total). TC-PRM-08-01/02/04 pass. TC-PRM-08-03 fails with sqlstate 42883 (production supersede UPDATE, GH-803) and 'superseded' vs 'approved' assertion (GH-803 + GH-804 seed mismatch) — the sqlstate 23502 not-null fixture failure is ELIMINATED (GH-802 acceptance criterion met)."
+    },
+    {
+      "name": "grep evidence: insertPromotionReviewsRow call sites",
+      "status": "pass",
+      "detail": "exactly 1 call site (TC-PRM-08-03) — signature change rippled to exactly one site as the design states."
+    },
+    {
+      "name": "git diff scope check",
+      "status": "pass",
+      "detail": "diff confined to tests/integration/prm-08-rollback-sandbox.test.zig (plus pre-existing ORCH bookkeeping files); no src/ and no migrations/ change."
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "Residual TC-PRM-08-03 failure: sqlstate 42883 (operator does not exist: text = uuid) in the production supersede UPDATE promotion_reviews ... def_id = $3::uuid against the TEXT column, swallowed by catch null so superseded_review_id is always null — this is ISS-0712/GH-803 (production src/definition/rollback.zig), OUT OF SCOPE for GH-802, tracked in its own run."
+    },
+    {
+      "severity": "MAJOR",
+      "description": "Residual TC-PRM-08-03 failure: the 'superseded' assertion finds 'approved' because TC-PRM-08-03 seeds the promotion_reviews row under a random tenant UUID + zero def_id which can never match the supersede WHERE (tenant_id=DEFAULT_TENANT_ID AND def_id=<active V2 id>) — this is ISS-0713/GH-804 (fixture seed-logic), OUT OF SCOPE for GH-802, tracked in its own run."
+    },
+    {
+      "severity": "MINOR",
+      "description": "Environmental DB pollution: a prior run (pre-this-fix) left prm08-pr-process v1/v2 rows in tenant_default.process_definitions; because uq_definition_version UNIQUE(name, version) is not covered by the helper's ON CONFLICT (id), re-runs of test-integration-prm08 transiently fail with 23505 before reaching the rollback logic. dropTenantFixtures deletes by the current run's random def_ids only, so hardcoded-name leftovers persist across runs and the 'Cleaning test database' pre-step does not clear tenant_default.process_definitions for the default tenant. Cleaned the leftover rows from the test DB for this run's verification. Not caused by this patch; consider filing a test-isolation follow-up or having GH-804/clean step remove hardcoded-name rows."
+    },
+    {
+      "severity": "MINOR",
+      "description": "psql on PATH resolves to a Copilot debug shim (debugCommand/psql.cmd) that ignores args and always runs 'SELECT 1' against docker db_test; real DB queries had to go through 'docker compose exec db_test psql' with search_path incl. tenant_default."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-DESIGNER / next WF-03 step for GH-802 as ORCH directs; GH-802 acceptance criterion (23502 eliminated, no prod/migration change) is met.",
+    "GH-803 (production rollback.zig 42883) and GH-804 (seed tenant/def_id mismatch) remain the residual causes of the TC-PRM-08-03 assertion failure — sequence in their own runs to make the full test pass."
+  ],
+  "blockers": []
+}

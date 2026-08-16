@@ -1,0 +1,61 @@
+{
+  "handoff_id": "wf03-gh802-20260816-005-issue-fixer",
+  "run_id": "WF03-GH802-20260816",
+  "workflow_id": "WF-03",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH802-20260816/step-005-issue-fixer.json",
+  "created_at": "2026-08-16T06:20:59Z",
+  "started_at": "2026-08-16T06:21:15Z",
+  "completed_at": "2026-08-16T06:24:50Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "wf03-gh802-20260816-00-backend-dev"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/ISSUE_QUEUE.md",
+      "docs/issues/ISS-0711.json",
+      "docs/issues/issue_index.json"
+    ],
+    "branch_name": "feature/WF03-GH802-20260816",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/802"
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 for run WF03-GH802-20260816: registry lookup + confirm/update the ISS record + confirm GitHub filing. The claimed item is GitHub issue #802 (OPEN, labels: bug, claimed-by-r-co-2-loop): prm-08 fixture defect \u2014 insertPromotionReviewsRow in tests/integration/prm-08-rollback-sandbox.test.zig omits NOT NULL requested_by/def_type/serialised_plan (latent sqlstate 23502, same class as ISS-0708/GH-793). The local ISS record ALREADY exists and is correct: docs/issues/ISS-0711.json (created 2026-08-16 via ADHOC-prm08-fixture-defect-20260816, github_issue https://github.com/tvolodi/R-Co/issues/802, status OPEN, severity MAJOR). Verify ISS-0711 is the correct, non-colliding record; update it if workflow_id / handoff_history fields are absent or stale (record this run WF03-GH802-20260816 in handoff_history); confirm issue_index.json has ISS-0711 with next_issue_id consistent (should be 712). NO new ISS number needed and NO new GitHub issue to file (GH-802 already exists). Do NOT implement the fix (that is Step 3).",
+    "acceptance_criteria": [
+      "ISS-0711 verified as the correct record for GH-802 (no collision, content matches)",
+      "ISS-0711.json updated with this run's workflow_id/handoff_history if absent/stale (or confirmed current)",
+      "issue_index.json consistent (ISS-0711 present, next_issue_id 712)",
+      "No new GitHub issue filed (GH-802 already exists) and no fix implemented",
+      "Work on branch feature/WF03-GH802-20260816"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 0.5 for GH-802/ISS-0711: verified ISS-0711 is the correct, non-colliding local record for GitHub issue #802 (github_issue match; title/severity/status/labels consistent; GH-802 confirmed OPEN via gh issue view 802 with labels bug, claimed-by-r-co-2-loop). No new ISS and no new GitHub issue (GH-802 already exists and is filed); no fix implemented (deferred to Step 3). Updated ISS-0711.json workflow_id/run_id/handoff_id to the active fix run WF03-GH802-20260816 and recorded this run in handoff_history. issue_index.json confirmed consistent (ISS-0711 present once; next_issue_id 712; entry run_id/handoff_id/branch mirrored).",
+    "artifacts_out": [
+      "docs/issues/ISS-0711.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-GH802-20260816-step-0.5-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Pre-existing drift: docs/issues/issue_index.json mixes entry key shapes (newer entries use 'id', 27 older entries use 'issue_id' as the identifier key). Both are tolerated by readers that use .get('id'), but the schema is inconsistent. Not filed as a new ISS/GH issue per this run's scope (verify-only); flag for a future bookkeeping pass."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 3) to implement the ISS-0711/GH-802 fix: mirror GH-793 Cluster A patch (add requested_by param + requested_by/def_type/serialised_plan NOT NULL columns to insertPromotionReviewsRow; fresh UUID at call site) in tests/integration/prm-08-rollback-sandbox.test.zig; verify with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test zig build test-integration-prm08."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

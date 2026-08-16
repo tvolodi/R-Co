@@ -1,0 +1,59 @@
+report_id: WF03-GH802-20260816-step-07-doc-updater
+agent_id: DOC-UPDATER
+run_id: WF03-GH802-20260816
+step: "07"
+created_at: 2026-08-16T07:01:32Z
+summary: >-
+  WF-03 Step 7 for ISS-0711 / GH-802 on branch feature/WF03-GH802-20260816. (1)
+  fn:update-changelog: prepended a fix(test) entry under [Unreleased] — 2026-08-16
+  documenting the PRM-08 integration-test fixture fix (GH-802/ISS-0711, Type E
+  test-code-only) — insertPromotionReviewsRow now supplies NOT NULL
+  requested_by/def_type/serialised_plan; sqlstate 23502 eliminated from TC-PRM-08-03;
+  residual TC-PRM-08-03 failure attributed to GH-803/ISS-0712 (production 42883) and
+  GH-804/ISS-0713 (seed mismatch), both OUT OF SCOPE and tracked in their own WF-03
+  cycles. (2) fn:update-issue: docs/issues/ISS-0711.json set to status RESOLVED with
+  resolved_at 2026-08-16T07:01:32Z, resolved_by DOC-UPDATER (WF03-GH802-20260816
+  step-07), resolution (fixture patch detail + Step-05 verification + residual
+  forwarding) filled; prevention (fixture/schema sync rule) retained; a step-07
+  handoff_history entry added. (3) docs/issues/issue_index.json updated: ISS-0711
+  status RESOLVED with resolved_at and resolved_by; ISS-0712/ISS-0713 (GH-803/GH-804)
+  left OPEN; top-level last_updated bumped. GitHub issue #802 intentionally NOT closed
+  (loop-mode; Step Final release.py --close-github-issue handles it). GH-803/GH-804
+  untouched. JSON parse validation OK for both issue files; lint_handoffs.py runs clean.
+
+files_created:
+  - docs/issue-reports/WF03-GH802-20260816-step-07-doc-updater-INNER-REPORT.yaml
+
+files_modified:
+  - CHANGELOG.md
+  - docs/issues/ISS-0711.json
+  - docs/issues/issue_index.json
+  - handoffs/WF03-GH802-20260816/step-07-doc-updater.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run:
+  - name: python -c "json.load(ISS-0711.json); json.load(issue_index.json)"
+    status: pass
+    detail: >-
+      both docs/issues JSON files parse cleanly (utf-8-sig tolerant); ISS-0711 RESOLVED
+      with resolved_at/resolved_by, ISS-0712/ISS-0713 remain OPEN, next_issue_id 714
+      unchanged, last_updated bumped to 2026-08-16T07:01:32Z.
+  - name: python tools/lint_handoffs.py
+    status: pass
+    detail: "handoff lint gate exit 0 (see step-05 report for run-wide numbers; this step adds no new findings)."
+
+issues_found:
+  - severity: MINOR
+    description: >-
+      fn:register-inner-report.md specifies inner reports as .json but core-directives.md
+      Output File Format Rules requires .yaml (authoritative). Pre-existing drift,
+      re-flagged (same as earlier steps in this run). Inner report written per
+      core-directives (.yaml), matching the GH-797 step-07 DOC-UPDATER precedent.
+
+next_steps:
+  - Step Final: run release.py (--close-github-issue to close GH-802), squash-merge
+    feature/WF03-GH802-20260816 to main, delete the feature branch, and return the repo
+    to a clean main. GH-803/GH-804 remain OPEN for their own WF-03 cycles.
+
+blockers: []
