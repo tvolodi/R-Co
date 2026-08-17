@@ -236,7 +236,7 @@ test "TC-OBP-02-AC3-no-pool-connection: refused request calls no DB exec or quer
         }
     };
 
-    var spy = SpyConn{};
+    const spy = SpyConn{};
     var cache = depth_mod.DepthCache.init(std.testing.allocator, 5_000);
     defer cache.deinit();
     // Seed depth at cap using a stub conn (not the spy — writeFresh has a DB path).
@@ -244,7 +244,6 @@ test "TC-OBP-02-AC3-no-pool-connection: refused request calls no DB exec or quer
         pub fn exec(_: @This(), _: []const u8, _: *const [1][]const u8) !void {}
     };
     try depth_mod.writeFresh(&cache, StubConn{}, "tenant_spy", 50_000);
-    _ = spy; // spy not passed into writeFresh above; confirms cache is populated
 
     var queue = outbox_cap.RefusalEventQueue.init();
     var writer = TestResponseWriter.init(std.testing.allocator);

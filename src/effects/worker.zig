@@ -14,8 +14,9 @@
 //!   - The event log stays source of truth; outbox rows are projections.
 const std = @import("std");
 const db = @import("pool");
-const mod = @import("mod.zig");
-const queue = @import("queue.zig");
+const mod = @import("effects_mod");
+// Named import so queue.zig is not a raw file duplicate in bpm (OBP-03 fix).
+const queue = @import("effects_queue");
 const http_adapter = @import("adapters/http.zig");
 const email_adapter = @import("adapters/email.zig");
 const depth_mod = @import("outbox_depth");

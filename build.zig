@@ -253,6 +253,32 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // OBP-03 / ISS-OBP03-module-conflict: src/effects/mod.zig as a named
+    // module so it belongs to ONLY ONE module (Zig 0.16 single-owner rule).
+    // Many files in both bpm and effects_queue_mod import this; providing it
+    // as a named dep prevents it being a raw file in multiple modules.
+    const effects_mod_module = b.createModule(.{
+        .root_source_file = b.path("src/effects/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // OBP-03 / ISS-OBP03-module-conflict: src/effects/queue.zig as a named
+    // module. Defined EARLY (before bpm_src_mod) so that bpm_src_mod can
+    // reference it without a forward-declaration issue. bpm.zig and worker.zig
+    // import this as @import("effects_queue") (named), which prevents queue.zig
+    // from being a raw file in bpm’s file set — required by Zig 0.16’s
+    // single-owner rule when outbox_emit also depends on queue.zig as its root.
+    const effects_queue_mod = b.createModule(.{
+        .root_source_file = b.path("src/effects/queue.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "effects_mod", .module = effects_mod_module },
+        },
+    });
+
     const partition_attach_mod = b.createModule(.{
         .root_source_file = b.path("src/db/partition_attach.zig"),
         .target = target,
@@ -904,6 +930,12 @@ pub fn build(b: *std.Build) void {
             .{ .name = "outbox_gate", .module = outbox_gate_mod },
             // OBP-02: worker.zig imports outbox_cap as `@import("outbox_cap")`.
             .{ .name = "outbox_cap", .module = outbox_cap_mod },
+            // OBP-03 ISS-OBP03-module-conflict: bpm.zig and worker.zig now use
+            // @import("effects_queue") (named) instead of relative path so that
+            // queue.zig belongs to only the effects_queue module (single-owner rule).
+            .{ .name = "effects_queue", .module = effects_queue_mod },
+            // effects_mod: same single-owner fix for mod.zig.
+            .{ .name = "effects_mod", .module = effects_mod_module },
         },
     });
 
@@ -3116,14 +3148,7 @@ pub fn build(b: *std.Build) void {
     // OBP-03: src/outbox/emit.zig — typed outbox overflow emit wrapper.
     // Provides effects_queue and outbox_depth as named imports (cross-dir
     // imports pattern).
-    const effects_queue_mod_for_emit = b.createModule(.{
-        .root_source_file = b.path("src/effects/queue.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "pool", .module = pool_root_mod },
-        },
-    });
+    // (effects_queue_mod defined earlier in this file, before bpm_src_mod.)
     // OBP-03 integration tests need emit.zig as a named module. Declared
     // here (before the unit-test addTest below) so the integration target
     // below can reference it. The module is identical in shape to the
@@ -3135,7 +3160,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "effects_queue", .module = effects_queue_mod_for_emit },
+            .{ .name = "effects_queue", .module = effects_queue_mod },
+            // Resolve emit.zig's @import("depth.zig") as a named module dep so
+            // depth.zig is not also included as a raw file in outbox_emit's file
+            // set (Zig 0.16 single-owner rule: depth.zig is already the root of
+            // outbox_depth; it cannot belong to two modules simultaneously).
+            .{ .name = "depth.zig", .module = depth_cache_mod },
         },
     });
     const outbox_emit_tests = b.addTest(.{
@@ -3144,7 +3174,8 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "effects_queue", .module = effects_queue_mod_for_emit },
+                .{ .name = "effects_queue", .module = effects_queue_mod },
+                .{ .name = "depth.zig", .module = depth_cache_mod },
             },
         }),
     });

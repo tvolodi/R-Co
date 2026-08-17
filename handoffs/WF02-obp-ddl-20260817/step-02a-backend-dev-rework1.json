@@ -1,0 +1,33 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-02a-backend-dev-rework1",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "02a-rework1",
+  "created_at": "2026-08-17T10:24:39Z",
+  "started_at": "2026-08-17T10:24:39Z",
+  "status": "PENDING",
+  "workflow_ref": "WF-02",
+  "rework_count": 1,
+  "max_rework": 2,
+  "task": {
+    "description": "Fix 4 compile errors in integration test files on branch feature/WF02-obp-ddl-20260817.\n\n**Fix 1 — ISS-OBP01-queryrow-api** (tests/integration/obp01_depth_cache_test.zig lines 86, 152):\n`h.conn.queryRow()` does not exist in pg.Conn. Look at how other integration tests in tests/integration/ call single-row queries (pattern: `h.conn.query()` with `.first()` or equivalent). Fix both calls.\n\n**Fix 2 — ISS-OBP01-embedfile-path** (tests/integration/obp01_depth_cache_test.zig line 173):\n`@embedFile(\"../../.env.example\")` escapes the package root. Either:\n- Use a relative path that stays within the package (e.g. look at how tests/integration/ is rooted in build.zig and use the correct relative path), OR\n- Read .env.example at runtime with std.fs instead of compile-time embedding, OR\n- Check if .env.example is already tested elsewhere and skip the @embedFile check\n\n**Fix 3 — ISS-OBP02-var-mutability** (tests/integration/obp02_ingress_refusal_test.zig lines 239, 247):\n`var spy` should be `const spy`; `_ = spy` should be removed if spy is used later in the test.\n\n**Fix 4 — ISS-OBP03-module-conflict** (build.zig):\n`src/outbox/emit.zig` is registered as root of both `outbox_depth` and `outbox_emit` modules in the OBP-03 test build target. Fix: each module needs a distinct root file. Check what the correct root file should be for `outbox_depth` (likely `src/outbox/depth.zig`) and update the build.zig module definition.\n\nAfter fixing all 4:\n1. zig build check (must exit 0)\n2. zig build test-integration-obp01-depth -j1 (must exit 0)\n3. zig build test-integration-obp02 -j1 (must exit 0)\n4. zig build test-integration-obp03 -j1 (must exit 0)\n5. Commit and push.\n\nReport each fix applied and exit codes.",
+    "functions_to_call": ["fn:check-zig-build"]
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03"],
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "tests/integration/obp01_depth_cache_test.zig",
+      "tests/integration/obp02_ingress_refusal_test.zig",
+      "tests/integration/obp03_outbox_overflow_test.zig",
+      "build.zig"
+    ],
+    "compile_errors": {
+      "ISS-OBP01-queryrow-api": "obp01_depth_cache_test.zig:86,152 calls h.conn.queryRow() which doesn't exist",
+      "ISS-OBP01-embedfile-path": "obp01_depth_cache_test.zig:173 @embedFile escapes package root",
+      "ISS-OBP02-var-mutability": "obp02_ingress_refusal_test.zig:239,247 var spy should be const",
+      "ISS-OBP03-module-conflict": "build.zig registers src/outbox/emit.zig as root of both outbox_depth and outbox_emit modules"
+    }
+  }
+}

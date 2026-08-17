@@ -7,7 +7,7 @@
 //!
 //! TODO(EXP-501): implement concrete SMTP delivery when secrets module is ready.
 const std = @import("std");
-const mod = @import("../mod.zig");
+const mod = @import("effects_mod");
 
 pub const EffectSpec = mod.EffectSpec;
 pub const EmailEffectSpec = mod.EmailEffectSpec;

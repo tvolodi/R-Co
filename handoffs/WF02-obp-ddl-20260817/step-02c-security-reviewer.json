@@ -1,0 +1,48 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-02c-security-reviewer",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "step": "02c",
+  "created_at": "2026-08-17T09:17:51Z",
+  "started_at": "2026-08-17T09:17:51Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Review the implementation on branch feature/WF02-obp-ddl-20260817 against the numbered security invariants in docs/agents/instructions/security-invariants.md.\n\nFiles to review (new files added by BACKEND-DEV):\n- src/outbox/depth.zig (OBP-01: per-tenant DepthCache)\n- src/api/middleware/outbox_cap.zig (OBP-02: HTTP 429 middleware)\n- src/outbox/emit.zig (OBP-03: emit() overflow guard)\n- src/effects/worker.zig (OBP-01/02: drainer wiring)\n- src/effects/mod.zig (OBP-03: OutboxOverflow error type)\n- src/platform/ddl_generate.zig (DDL-03: phased DDL generator)\n- migrations/1167_obp01_plat_outbox_gate_depth_ts.sql (OBP-01/02: schema change)\n\nFocus areas:\n1. Tenant isolation: Does DepthCache properly key per-tenant? Could tenant A's depth reading affect tenant B's gate state or refusal counters?\n2. EXECUTION_INGRESS_REFUSED event: Is the async RefusalEventQueue properly isolated per tenant? Could it expose cross-tenant information?\n3. OBP-02 middleware: Does the 429 response body expose cross-tenant depth information (only the requesting tenant's depth should appear)?\n4. DDL-03 identifier allow-list: Is validateSpec() robust against SQL injection via column/table names? (per the design's resolved open question about identifier safety)\n5. OutboxOverflow: Is there any path where OutboxOverflow is absorbed by catch unreachable instead of being properly propagated?\n\nReturn PASS if no security invariants are violated.\nReturn FAIL with specific numbered invariant violations if issues are found.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "src/outbox/depth.zig",
+      "src/api/middleware/outbox_cap.zig",
+      "src/outbox/emit.zig",
+      "src/effects/worker.zig",
+      "src/effects/mod.zig",
+      "src/platform/ddl_generate.zig",
+      "migrations/1167_obp01_plat_outbox_gate_depth_ts.sql"
+    ]
+  },
+  "completed_at": "2026-08-17T09:21:22Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Reviewed 7 files against INV-1 through INV-8. No BLOCKER violations. INV-1 PASS: DepthCache keys strictly by tenant_schema (std.StringHashMap per-tenant entries); test TC-OBP-01-AC4 explicitly covers cross-tenant isolation; RefusalEventQueue is a shared MPSC ring buffer storing only operational metadata (depth/cap/timestamp), not business data — gate decisions come from per-tenant DepthCache, not the queue; migration 1167 modifies plat_outbox_gate (platform table, not a business table). INV-2 N/A: the only new response payload is the 429 body containing the requesting tenant's own depth integers only. INV-3 N/A: no Lua/Wasm host-API changes. INV-4 PASS: secret_ref fields in HttpEffectSpec/EmailEffectSpec are sec:// references; plaintext resolved locally, zeroed with std.crypto.secureZero, freed immediately; no plaintext in any struct or log. INV-5 N/A: no new lookup-by-ID endpoints. INV-6 PASS: this handoff is the required proof. INV-7 PASS: depth.zig DB update uses parameterized $1; outbox_cap.zig 429 body uses {d} integer-only formatters (no user string interpolated); emit.zig delegates all SQL to insertEffectInTx (parameterized); worker.zig all SQL uses $N placeholders; ddl_generate.zig table and column are validated by isSafeIdentifier() ([a-zA-Z_][a-zA-Z0-9_]* strict allowlist) before string formatting; backfill_expr and column_type are developer-authored YAML fields, not runtime tenant input, and DDL cannot use $N placeholders anyway. INV-8 PASS: grep for 'catch unreachable' across all 7 files returns zero hits; OutboxOverflow is in EffectQueueError and propagated as a typed error throughout.",
+    "artifacts_out": [
+      "handoffs/WF02-obp-ddl-20260817/step-02c-security-reviewer.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ddl_generate.zig module comment claims 'identifier safety (no whitespace, semicolons, or SQL meta-chars) is enforced by validateSpec before any string is formatted' but validateSpec only validates table and column via isSafeIdentifier; backfill_expr and column_type are checked only for emptiness. The claim is inaccurate. Not a runtime INV-7 violation because (a) backfill_expr/column_type are developer-authored YAML fields with no tenant runtime input path, and (b) DDL cannot use $N placeholders in PostgreSQL. The comment should be corrected to 'identifier safety is enforced for table and column identifiers; backfill_expr and column_type are operator-supplied and not runtime-tenant-controlled'."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Migration 1167 comment says 'Also seeds EXECUTION_INGRESS_REFUSED in event_type_registry for OBP-02's async audit event append' but no corresponding INSERT INTO event_type_registry statement is present in the SQL. Not a security invariant violation but a functional gap: the EXECUTION_INGRESS_REFUSED event type may be unregistered, causing OBP-02's async audit append to fail. Recommend a follow-up to add the INSERT or confirm the event type is seeded elsewhere."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER"
+  }
+}

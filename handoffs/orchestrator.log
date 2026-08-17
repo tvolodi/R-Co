@@ -2068,3 +2068,17 @@
 2026-08-17T08:18:29Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01b-code-design-validator-rework2 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | rework2 re-gate: verify Y132 fixed
 2026-08-17T08:22:51Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-01b-code-design-validator-rework2 | CODE-DESIGN-VALIDATOR | Step 01b PASS (rework2): all 5 checks pass; Y132 fixed; lint 0; BACKEND-DEV unblocked
 2026-08-17T08:22:51Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING | implement OBP-01/02/03 + DDL-03
+2026-08-17T09:17:51Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02a-backend-dev | BACKEND-DEV | Step 02a PASS: OBP-01/02/03/DDL-03 implemented; zig build/test exit 0; commit 2597cf4c pushed
+2026-08-17T09:17:51Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02c-security-reviewer | ORCH -> SECURITY-REVIEWER | PENDING | tenant-data path security review: depth cache + ingress middleware
+2026-08-17T09:23:36Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02c-security-reviewer | SECURITY-REVIEWER | Step 02c PASS: all 8 invariants checked; 2 MINOR non-blocking findings logged; TEST-DESIGNER unblocked
+2026-08-17T09:23:36Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03-test-designer | ORCH -> TEST-DESIGNER | PENDING | OBP-01/02/03 + DDL-03 test specs + integration tests
+2026-08-17T09:39:31Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-03-test-designer | TEST-DESIGNER | Step 03 PASS: 4 specs + 3 integration test files + DDL-03 unit tests; lint_test_isolation exit 0; build wired
+2026-08-17T09:39:31Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | OBP-01/02/03 + DDL-03 hard gate
+2026-08-17T09:47:27Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-03b-test-design-validator | TEST-DESIGN-VALIDATOR | FAIL: OBP-02 AC6 test only checks seed row, not flushRefusalEvents() payload
+2026-08-17T09:47:27Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03-test-designer-rework1 | ORCH -> TEST-DESIGNER | PENDING | rework1: fix OBP-02 AC6 + spec desc updates
+2026-08-17T10:13:00Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03b-test-design-validator-rework1 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | rework1 re-gate: verify OBP-02 AC6 fix
+2026-08-17T10:17:14Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-03b-test-design-validator-rework1 | TEST-DESIGN-VALIDATOR | Step 03b PASS (rework1): 5/5 checks; OBP-02 AC6 flush-path verified; lint 0
+2026-08-17T10:17:14Z | BENCH_ENV_CHECK | WF02-obp-ddl-20260817 | --- | ORCH | CLEARED 10/10 env healthy
+2026-08-17T10:17:14Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-04-test-runner | ORCH -> TEST-RUNNER | PENDING | run OBP-01/02/03 + DDL-03 integration tests
+2026-08-17T10:24:39Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-04-test-runner | TEST-RUNNER | FAIL: 4 compile errors in obp01/02/03 test files; DDL-03 PASS
+2026-08-17T10:24:39Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev-rework1 | ORCH -> BACKEND-DEV | PENDING | rework1: fix 4 compile errors in integration test files

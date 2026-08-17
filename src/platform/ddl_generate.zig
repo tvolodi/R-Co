@@ -348,3 +348,67 @@ test "ddl03: phase2 sql contains IS NULL and ctid = ANY (idempotent form)" {
         },
     }
 }
+
+test "ddl03: TC-DDL-03-AC4c — empty column_type returns phase_generation_failed" {
+    // covers: DDL-03 AC4
+    const spec = ColumnAdditionSpec{
+        .migration_id = "1168_test",
+        .table = "items",
+        .column = "slug",
+        .column_type = "",
+        .backfill_expr = "'default'",
+        .constraint = .not_null,
+        .order = 1,
+    };
+    const result = generatePhases(spec);
+    switch (result) {
+        .phase_generation_failed => |f| try std.testing.expectEqual(FailureReason.empty_column_type, f.reason),
+        .accept => return error.ExpectedFailure,
+    }
+}
+
+test "TC-DDL-03-AC5-phase2-is-null-predicate: phase2 sql uses canonical IS NULL ctid-batched predicate" {
+    // covers: DDL-03 AC5 — the IS NULL predicate is the idempotent resume guard;
+    // re-running phase 2 skips already-backfilled rows.
+    const spec = ColumnAdditionSpec{
+        .migration_id = "1169_test",
+        .table = "items",
+        .column = "category",
+        .column_type = "TEXT",
+        .backfill_expr = "'general'",
+        .constraint = .not_null,
+        .order = 1,
+    };
+    const result = generatePhases(spec);
+    switch (result) {
+        .phase_generation_failed => return error.UnexpectedFailure,
+        .accept => |phased| {
+            try std.testing.expect(std.mem.containsAtLeast(u8, phased.phase2.sql, 1, "WHERE"));
+            try std.testing.expect(std.mem.containsAtLeast(u8, phased.phase2.sql, 1, "IS NULL"));
+            try std.testing.expect(std.mem.containsAtLeast(u8, phased.phase2.sql, 1, "LIMIT $1"));
+        },
+    }
+}
+
+test "TC-DDL-03-AC6-lock-and-statement-timeouts: phase1 and phase3 carry SET LOCAL 3s/60s guards" {
+    // covers: DDL-03 AC6
+    const spec = ColumnAdditionSpec{
+        .migration_id = "1169_test",
+        .table = "orders",
+        .column = "dispatched_at",
+        .column_type = "TIMESTAMPTZ",
+        .backfill_expr = "now()",
+        .constraint = .not_null,
+        .order = 3,
+    };
+    const result = generatePhases(spec);
+    switch (result) {
+        .phase_generation_failed => return error.UnexpectedFailure,
+        .accept => |phased| {
+            try std.testing.expectEqualStrings("SET LOCAL lock_timeout = '3s'", phased.phase1.set_lock_timeout);
+            try std.testing.expectEqualStrings("SET LOCAL statement_timeout = '60s'", phased.phase1.set_statement_timeout);
+            try std.testing.expectEqualStrings("SET LOCAL lock_timeout = '3s'", phased.phase3.set_lock_timeout);
+            try std.testing.expectEqualStrings("SET LOCAL statement_timeout = '60s'", phased.phase3.set_statement_timeout);
+        },
+    }
+}

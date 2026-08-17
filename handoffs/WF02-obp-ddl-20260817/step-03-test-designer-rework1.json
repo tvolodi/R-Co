@@ -1,0 +1,49 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-03-test-designer-rework1",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "step": "03-rework1",
+  "created_at": "2026-08-17T09:47:27Z",
+  "started_at": "2026-08-17T09:47:27Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "rework_count": 1,
+  "max_rework": 2,
+  "task": {
+    "description": "Rework 1 \u2014 Fix the MAJOR gap in OBP-02 AC6 test coverage.\n\n**MAJOR gap to fix:**\nTC-OBP-02-AC6-ingress-refused-event in tests/integration/obp02_ingress_refusal_test.zig currently only checks that the EXECUTION_INGRESS_REFUSED row exists in event_type_registry (migration seed). This tests nothing about the runtime flush path.\n\nReplace the AC6 test body with a real integration test that:\n1. Sets up an at-cap depth state\n2. Makes a POST request that gets refused (HTTP 429)\n3. Calls gate.flushRefusalEvents() or waits for the async worker to flush\n4. Queries the outbox/events table and asserts the emitted event row carries: tenant_schema, depth=<at-cap value>, cap=<configured cap value>\n\nAlso fix the 2 MINOR spec descriptions:\n- tests/specs/OBP-02.md: update TC-OBP-02-AC5 name to match actual test name 'obp02: stale cache \u2014 returns 429 (fail-closed)'\n- tests/specs/OBP-01.md: update TC-OBP-01-AC2 description to reflect the lockless readCached() implementation (no conn parameter needed)\n\nAll other tests are already passing validation. Only change what's needed to fix these 3 issues.\n\nCommit on feature/WF02-obp-ddl-20260817.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": [
+      "OBP-02",
+      "OBP-01"
+    ],
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "tests/integration/obp02_ingress_refusal_test.zig",
+      "tests/specs/OBP-02.md",
+      "tests/specs/OBP-01.md"
+    ],
+    "validator_failures": {
+      "MAJOR": "OBP-02 AC6: test only checks event_type_registry seed, not actual flushRefusalEvents() call with payload verification",
+      "MINOR_1": "OBP-02 AC5 spec name mismatches test name",
+      "MINOR_2": "OBP-01 AC2 spec describes stub conn but readCached() takes no conn parameter"
+    }
+  },
+  "completed_at": "2026-08-17T10:11:40Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1 complete. Fixed MAJOR (AC6 test now calls flushRefusalEvents and asserts committed event row), two MINOR spec fixes, pre-existing compilation blockers, and broken template file.",
+    "artifacts_out": [
+      "tests/integration/obp02_ingress_refusal_test.zig",
+      "tests/integration/obp01_plat_outbox_gate_depth_ts_test.zig",
+      "tests/specs/OBP-02.md",
+      "tests/specs/OBP-01.md",
+      "src/effects/worker.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b re-validation)"
+  }
+}

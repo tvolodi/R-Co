@@ -1,0 +1,43 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-03b-test-design-validator-rework1",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "step": "03b-rework1",
+  "created_at": "2026-08-17T10:13:00Z",
+  "started_at": "2026-08-17T10:13:00Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Re-gate after TEST-DESIGNER rework1 \u2014 verify OBP-02 AC6 gap is now fixed.\n\nRe-run all 5 checks on the updated test files:\n1. MUST-priority AC coverage\n2. No deferred coverage (especially OBP-02 AC6 \u2014 the test must now call flushRefusalEvents() and assert emitted event payload)\n3. Fixture isolation\n4. Self-sufficiency\n5. Build wiring\n\nReturn PASS if all issues are resolved.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": [
+      "OBP-01",
+      "OBP-02",
+      "OBP-03",
+      "DDL-03"
+    ],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "tests/specs/OBP-01.md",
+      "tests/specs/OBP-02.md",
+      "tests/specs/OBP-03.md",
+      "tests/specs/DDL-03.md",
+      "tests/integration/obp01_depth_cache_test.zig",
+      "tests/integration/obp02_ingress_refusal_test.zig",
+      "tests/integration/obp03_outbox_overflow_test.zig",
+      "src/platform/ddl_generate.zig"
+    ]
+  },
+  "completed_at": "2026-08-17T10:15:39Z",
+  "result": {
+    "status": "PASS",
+    "summary": "All 5 checks pass for OBP-01/OBP-02/OBP-03/DDL-03 after rework1. MAJOR gap resolved: TC-OBP-02-AC6 now calls bpm.effects_worker.flushRefusalEvents() with a real RefusalEventQueue and asserts committed row carries event_type=EXECUTION_INGRESS_REFUSED with tenant_schema, depth=50000, cap=50000. Check 1 (coverage): all ACs have implemented tests. Check 2 (no deferred): no deferred label; AC6 exercises real flush path. Check 3 (fixture isolation): per-test UUID tenant names, TestHarness rollback, defer cleanup in AC6. Check 4 (self-sufficiency): requireTestDbUrl() fails loudly; AC6 starts own pool. Check 5 (build wiring): test-integration-obp01-depth / test-integration-obp02 / test-integration-obp03 / test-ddl-generate present with correct named-module imports; zig build check exits 0. MINOR fixes confirmed: OBP-02 AC5 test name aligned to obp02 stale cache returns 429 fail-closed; OBP-01 AC2 description updated for lockless readCached taking no conn parameter.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  }
+}
