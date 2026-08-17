@@ -139,6 +139,8 @@ See protocols: `docs/agents/protocols/GIT_SETUP.md` and `docs/agents/protocols/G
 | 6 | DOC-UPDATER | — | Rework |
 | Final | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not write DONE log |
 
+**Step-6 handoff `task.description` MUST include:** (1) `reqctl.py set-status <ID> RELEASED --github-issue <N>` for each released requirement; (2) `reqctl.py render-status`; (3) CHANGELOG entry; (4) for each RELEASED requirement close its GitHub tracking issue: `gh issue list --label requirement --state open --limit 300 --json number,title`, match by `"<REQ-ID> "` title prefix, then `gh issue comment <N> --body "Released via ..."` and `gh issue close <N> --reason completed`; (5) for each TESTED (not released) requirement comment the issue with the held-back reason. Omitting step 4 leaves tracking issues open forever — this happened across every batch before batch-7.
+
 ## Infrastructure Health Check — BEFORE dispatching TEST-RUNNER (Step 4)
 
 Before dispatching TEST-RUNNER, verify the test infrastructure is healthy. TEST-RUNNER will do this itself, but ORCH should pre-check to avoid unnecessary dispatches:

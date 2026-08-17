@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-17T03:52:10Z'
+generated_at: '2026-08-17T05:05:27Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11293,11 +11293,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-17T02:48:35Z'
+    last_updated: '2026-08-17T05:05:24Z'
     workflow: PW-05
     note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED per
       docs/agents/AGENT_SYSTEM.md; IN_PROGRESS used as closest legal status.
     released_at: '2026-08-17T02:48:35Z'
+    github_issue: 151
   DDL-05:
     id: DDL-05
     title: Reserved plat_ object namespace
@@ -11967,11 +11968,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-17T02:48:36Z'
+    last_updated: '2026-08-17T05:05:25Z'
     workflow: PW-08
     note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
       used as closest legal status.
     released_at: '2026-08-17T02:48:36Z'
+    github_issue: 215
   ORD-01:
     id: ORD-01
     title: Effect completion claim guard
@@ -12054,11 +12056,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-17T02:48:37Z'
+    last_updated: '2026-08-17T05:05:26Z'
     workflow: PW-07
     note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
       used as closest legal status.
     released_at: '2026-08-17T02:48:37Z'
+    github_issue: 220
   ORD-04:
     id: ORD-04
     title: Cross-correlation parallelism and lag metrics
@@ -13272,11 +13275,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-17T03:52:10Z'
+    last_updated: '2026-08-17T05:05:27Z'
     workflow: PW-02
     note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
       used as closest legal status.
     released_at: '2026-08-17T03:52:10Z'
+    github_issue: 271
   BRW-MOB-1:
     id: BRW-MOB-1
     title: Generic definition-interpreter mobile app

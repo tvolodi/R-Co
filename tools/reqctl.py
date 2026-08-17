@@ -295,6 +295,8 @@ def cmd_set_status(args):
         e["implemented_in"] = coerce_path_list(args.implemented_in)
     if args.status == "RELEASED":
         e.setdefault("released_at", now_utc())
+    if args.github_issue is not None:
+        e["github_issue"] = args.github_issue
     e["last_updated"] = now_utc()
     save(data)
     print(f"{args.id} -> {args.status} (last_updated={e['last_updated']})")
@@ -400,6 +402,8 @@ def main():
     sp.add_argument("status")
     sp.add_argument("--note")
     sp.add_argument("--implemented-in", nargs="*")
+    sp.add_argument("--github-issue", type=int, dest="github_issue", metavar="N",
+                    help="GitHub tracking issue number (e.g. 151); stored as github_issue in requirements.yaml")
     sp.set_defaults(func=cmd_set_status)
 
     sp = sub.add_parser("add")

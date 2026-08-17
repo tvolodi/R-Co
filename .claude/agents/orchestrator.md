@@ -385,6 +385,24 @@ refused, 503, Keycloak unavailable), ORCH MUST:
 | 6 | DOC-UPDATER | — |
 | Final | BACKEND-DEV / FRONTEND-DEV | Hard gate — git-merge (runs ONCE, after queue is empty) |
 
+**Step-6 DOC-UPDATER handoff `task.description` MUST include (no exceptions):**
+```
+1. Set each released requirement to RELEASED via reqctl.py set-status, including
+   --github-issue <N> to record the tracking issue number.
+2. Run reqctl.py render-status.
+3. Prepend CHANGELOG.md entry.
+4. For each requirement set to RELEASED: close its GitHub tracking issue —
+   gh issue list --label requirement --state open --limit 300 --json number,title
+   match by title prefix '<REQ-ID> ', then:
+   gh issue comment <N> --body "Released via <run_id> (PR #<N>, commit <sha>). <one-line summary>."
+   gh issue close <N> --reason completed
+   Then record: python tools/reqctl.py set-status <REQ-ID> RELEASED --github-issue <N>
+5. For each requirement left at TESTED (split-release): comment the issue explaining
+   the held-back status and the tracking ISS/GH number for the gap; do NOT close.
+```
+If this is omitted from the handoff description, DOC-UPDATER will skip step 4 in practice
+(post-mortem confirmed: zero batches before batch-7 closed their tracking issues).
+
 ## WF-03 pipeline (issue resolving) — one full run per issue
 
 | Step | Agent | Condition | Gate |
