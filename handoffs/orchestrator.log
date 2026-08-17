@@ -2026,3 +2026,31 @@
 2026-08-17T06:27:16Z | ROUTE | WF-03 | WF03-GH816-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | GH-816 changelog + ISS-0717 RESOLVED (RELEASE-VALIDATOR skipped: MINOR)
 2026-08-17T06:29:48Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-06-doc-updater | DOC-UPDATER | Step 06 PASS: changelog updated; ISS-0717 RESOLVED; lint_handoffs exit 0; commit 380f7dc3
 2026-08-17T06:29:48Z | ROUTE | WF-03 | WF03-GH816-20260817-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-816 Step Final git-merge + release.py
+2026-08-17T06:32:56Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-final-backend-dev | BACKEND-DEV | Step Final PASS: PR #818 squash-merged 093aa84f; branch deleted local+remote; release.py DONE; clean main
+2026-08-17T06:32:56Z | DONE | WF03-GH816-20260817 | --- | PIPELINE COMPLETE | GH-816/ISS-0717 RESOLVED — handlePatch gate wired; PR #818 merged 093aa84f
+2026-08-17T06:32:56Z | GIT | WF03-GH816-20260817 | feature/WF03-GH816-20260817 | 093aa84f | PR: https://github.com/tvolodi/R-Co/pull/818
+2026-08-17T06:33:59Z | LOOP_START | WF-03 | --- | ORCH | Claimed GH-814 (ISS-0716): DDL-04 backfill_batch_size hardcoded + status stays running
+2026-08-17T06:33:59Z | ROUTE | WF-03 | WF03-GH814-20260817-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-814 git-setup
+2026-08-17T06:34:43Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-00-backend-dev | BACKEND-DEV | Step 00 PASS: branch feature/WF03-GH814-20260817 from b1805d06, pushed
+2026-08-17T06:35:27Z | ROUTE | WF-03 | WF03-GH814-20260817-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | GH-814 ISS-0716 registry verify + root cause
+2026-08-17T06:37:39Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-00.5-issue-fixer | ISSUE-FIXER | Steps 0.5+1 PASS: ISS-0716 verified; root cause at backfill.zig:379(hardcoded 5000)+383(status running)+329(no terminal write)
+2026-08-17T06:37:39Z | ROUTE | WF-03 | WF03-GH814-20260817-02-code-designer | ORCH -> CODE-DESIGNER | PENDING | GH-814 fix design: backfill bookkeeping
+2026-08-17T06:40:53Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-02-code-designer | CODE-DESIGNER | Step 02 PASS: design at src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md; recordBatchProgress+recordTerminalStatus specified
+2026-08-17T06:40:53Z | ROUTE | WF-03 | WF03-GH814-20260817-02b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | GH-814 design validation hard gate
+2026-08-17T06:42:37Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-02b-code-design-validator | CODE-DESIGN-VALIDATOR | Step 02b PASS: all 5 checks; BACKEND-DEV unblocked
+2026-08-17T06:42:37Z | ROUTE | WF-03 | WF03-GH814-20260817-03-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-814 implement backfill bookkeeping fix
+2026-08-17T06:47:54Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-03-backend-dev | BACKEND-DEV | Step 03 PASS: recordBatchProgress+recordTerminalStatus; TC-DDL-04-AC6 updated; ddl04 6/6; commit 9387094c pushed
+2026-08-17T06:47:54Z | BENCH_ENV_CHECK | WF03-GH814-20260817 | --- | ORCH | CLEARED 10/10 env healthy
+2026-08-17T06:47:54Z | ROUTE | WF-03 | WF03-GH814-20260817-04-test-designer | ORCH -> TEST-DESIGNER | PENDING | GH-814 TC-DDL-04-AC6 spec update
+2026-08-17T06:50:25Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-04-test-designer | TEST-DESIGNER | Step 04 PASS: DDL-04.md TC-DDL-04-AC6 updated (backfill_batch_size+status assertions); implementation verified
+2026-08-17T06:50:25Z | ROUTE | WF-03 | WF03-GH814-20260817-04b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | GH-814 hard gate
+2026-08-17T06:54:40Z | FAIL | WF03-GH814-20260817 | WF03-GH814-20260817-04b-test-design-validator | TEST-DESIGN-VALIDATOR | Step 04b FAIL: Check 4 gap — TC-DDL-04-AC6 uses defaultConfig(), adaptive batch_size assertion indistinguishable from pre-fix; route BACKEND-DEV rework1
+2026-08-17T06:54:40Z | ROUTE | WF-03 | WF03-GH814-20260817-03-backend-dev-rework1 | ORCH -> BACKEND-DEV | PENDING | rework1: add halving-config backfill_batch_size adaptive assertion
+2026-08-17T07:00:20Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-03-backend-dev-rework1 | BACKEND-DEV | rework1 PASS: TC-DDL-04-AC6b added (halving config, asserts 1250); 7/7 ddl04 pass; commit 07a7deab
+2026-08-17T07:00:20Z | ROUTE | WF-03 | WF03-GH814-20260817-04b-test-design-validator-rework1 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | GH-814 re-gate rework1
+2026-08-17T07:02:43Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-04b-test-design-validator-rework1 | TEST-DESIGN-VALIDATOR | rework1 re-gate PASS: 5/5 checks; AC6b proves adaptive assertion
+2026-08-17T07:02:43Z | ROUTE | WF-03 | WF03-GH814-20260817-05-test-runner | ORCH -> TEST-RUNNER | PENDING | GH-814 run ddl04 tests
+2026-08-17T07:07:43Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-05-test-runner | TEST-RUNNER | Step 05 PASS: build 0; ddl04 7/7 (incl AC6b 1250 adaptive); unit 0 fail; report written
+2026-08-17T07:07:43Z | ROUTE | WF-03 | WF03-GH814-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | GH-814 changelog + ISS-0716 RESOLVED
+2026-08-17T07:10:30Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-06-doc-updater | DOC-UPDATER | Step 06 PASS: changelog+ISS-0716 RESOLVED; lint 0; commit 86f69f38
+2026-08-17T07:10:30Z | ROUTE | WF-03 | WF03-GH814-20260817-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-814 Step Final git-merge + release.py
