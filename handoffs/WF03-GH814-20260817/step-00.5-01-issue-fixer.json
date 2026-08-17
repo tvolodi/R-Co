@@ -1,0 +1,35 @@
+{
+  "handoff_id": "WF03-GH814-20260817-00.5-issue-fixer",
+  "run_id": "WF03-GH814-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "step": "00.5-01",
+  "created_at": "2026-08-17T06:35:27Z",
+  "started_at": "2026-08-17T06:35:27Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T06:36:54Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "task": {
+    "description": "Steps 0.5 + 1 combined — Registry lookup + root cause diagnosis for ISS-0716 / GH-814.\n\nStep 0.5: ISS-0716 already exists in docs/issues/ISS-0716.json (filed by RELEASE-VALIDATOR). Verify it is complete and accurate.\n\nStep 1 — Root cause diagnosis:\n1. Read src/platform/backfill.zig to find the two defective call sites:\n   a. The recordBatchProgress INSERT that hardcodes backfill_batch_size = 5000 instead of using the actual batch size.\n   b. The loop exit that leaves status = 'running' without writing 'applied' or 'failed'.\n2. Identify the exact lines in backfill.zig where the fix should go.\n3. Read tests/integration/ddl04_backfill_loop_test.zig to find TC-DDL-04-AC6 and understand what assertions need to change (currently asserts status='running', should assert 'applied' after fix).\n4. Update docs/issues/ISS-0716.json: populate root_cause field with exact file+line findings.\n5. Return PASS with root cause statement and recommended fix."
+  },
+  "context": {
+    "issue_id": "ISS-0716",
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/814",
+    "iss_file": "docs/issues/ISS-0716.json",
+    "artifacts_in": [
+      "docs/issues/ISS-0716.json",
+      "src/platform/backfill.zig",
+      "tests/integration/ddl04_backfill_loop_test.zig"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Category A (logic error). Two defects confirmed in src/platform/backfill.zig. Defect 1: line 379 — INSERT VALUES literal '5000' hardcodes backfill_batch_size; fix: pass actual batch_size as $9 parameter. Defect 2: line 383 — ON CONFLICT UPDATE always writes status='running'; line 329 — runBackfill returns BackfillResult without any terminal status persistence; fix: add recordTerminalStatus call after loop exit writing 'applied'/'failed'. Test impact: ddl04_backfill_loop_test.zig line 430–431 (TC-DDL-04-AC6) asserts status='running' with NOTE comment documenting divergence; must be updated to assert 'applied' after fix. ISS-0716.json root_cause populated.",
+    "artifacts_out": [
+      "docs/issues/ISS-0716.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 2): apply fix to src/platform/backfill.zig and tests/integration/ddl04_backfill_loop_test.zig per root_cause.recommended_fix"
+  }
+}

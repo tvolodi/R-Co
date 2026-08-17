@@ -1,0 +1,36 @@
+{
+  "handoff_id": "WF03-GH814-20260817-03-backend-dev",
+  "run_id": "WF03-GH814-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "03",
+  "created_at": "2026-08-17T06:42:37Z",
+  "started_at": "2026-08-17T06:42:37Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T06:46:56Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "task": {
+    "description": "Step 3 — Implement the fix for ISS-0716 / GH-814 per the validated design at src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md.\n\nBranch: feature/WF03-GH814-20260817\n\nImplementation steps:\n1. In src/platform/backfill.zig:\n   a. Add `batch_size: u32` as a new parameter to `recordBatchProgress`; bind it in the INSERT as $9 (replacing the 5000 literal); ON CONFLICT UPDATE should also persist `backfill_batch_size = EXCLUDED.backfill_batch_size`.\n   b. Add a `recordTerminalStatus` function (or inline call) that does `UPDATE plat_migration_state SET status=$4 WHERE migration_id=$1 AND tenant_schema=$2 AND phase=$3` — called after the while loop exits, passing 'applied' (success) or 'failed' (stall).\n   c. Update all call sites of recordBatchProgress to pass the current batch_size.\n2. Update tests/integration/ddl04_backfill_loop_test.zig TC-DDL-04-AC6:\n   a. Extend the SELECT query to include backfill_batch_size.\n   b. Replace the status='running' assertion with status='applied' (success path) / status='failed' (stall path).\n   c. Remove the NOTE comment documenting the divergence.\n3. Run zig build (exit 0).\n4. Run zig build test-integration-ddl04 (or equivalent) — all tests must pass.\n5. Commit: fix(GH-814): persist adaptive batch_size and terminal status in plat_migration_state\n6. Push to feature/WF03-GH814-20260817."
+  },
+  "context": {
+    "issue_id": "ISS-0716",
+    "branch": "feature/WF03-GH814-20260817",
+    "artifacts_in": [
+      "src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md",
+      "src/platform/backfill.zig",
+      "tests/integration/ddl04_backfill_loop_test.zig"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented GH-814 fix: added batch_size param to recordBatchProgress ($9 binding, replaces literal 5000, ON CONFLICT no longer resets status); added recordTerminalStatus function (UPDATE plat_migration_state SET status=$4, backfill_batch_size=$5); added terminal-status call in runBackfill after loop exit (applied/failed per stall flag); updated TC-DDL-04-AC6 to SELECT backfill_batch_size, assert status='applied', assert backfill_batch_size='5000', removed NOTE comment. zig build exit 0; 6/6 DDL-04 backfill loop integration tests passed.",
+    "artifacts_out": [
+      "src/platform/backfill.zig",
+      "tests/integration/ddl04_backfill_loop_test.zig"
+    ],
+    "commit_sha": "9387094c",
+    "branch": "feature/WF03-GH814-20260817",
+    "issues": []
+  }
+}

@@ -1,5 +1,12 @@
 {
-  "status": "OPEN",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-17T07:08:30Z",
+  "resolution": "Fixed in WF03-GH814-20260817: (1) backfill_batch_size parameter added to recordBatchProgress — adaptive value now persisted instead of hardcoded 5000; (2) recordTerminalStatus call added after loop exit to write applied/failed status; (3) TC-DDL-04-AC6b test added asserting terminal status and adaptive batch_size in plat_migration_state. Commits 9387094c and 07a7deab on branch feature/WF03-GH814-20260817.",
+  "files_changed": [
+    "src/platform/backfill.zig",
+    "tests/integration/ddl04_backfill_loop_test.zig",
+    "tests/specs/DDL-04.md"
+  ],
   "classification": "DEFECT",
   "workflow_id": "WF-02",
   "run_id": "WF02-batch-7-20260816",
@@ -32,6 +39,32 @@
     "Persisted plat_migration_state row reflects terminal status (applied/failed) and adaptive backfill_batch_size at loop end, OR the divergence is documented as an intentional design choice",
     "No DDL-04 AC regression (suites stay green)"
   ],
+  "root_cause": {
+    "defect_1_hardcoded_batch_size": {
+      "file": "src/platform/backfill.zig",
+      "line": 379,
+      "text": "  ($1, $2, $3, 'running', 1, 5000,",
+      "description": "INSERT VALUES literal 5000 used for backfill_batch_size column; the adaptive batch_size variable is never passed to recordBatchProgress, so the persisted row always shows the initial default regardless of adaptive halving."
+    },
+    "defect_2_missing_terminal_status_write": {
+      "file": "src/platform/backfill.zig",
+      "line_on_conflict_update": 383,
+      "text_on_conflict_update": "  status = 'running',",
+      "line_return": 329,
+      "description": "recordBatchProgress always sets status = 'running' in both INSERT and ON CONFLICT UPDATE (line 383). runBackfill returns BackfillResult (line 329) with status .applied or .failed but never calls any persistence function after the loop; plat_migration_state is left with status running permanently."
+    },
+    "test_documentation": {
+      "file": "tests/integration/ddl04_backfill_loop_test.zig",
+      "line": 383,
+      "test_name": "TC-DDL-04-AC6-loop-records-progress",
+      "note": "Test explicitly documents the divergence with a NOTE comment and asserts status='running'; must be updated to assert 'applied' after the fix."
+    },
+    "recommended_fix": [
+      "1. Add batch_size as $9 parameter to recordBatchProgress; replace literal 5000 on line 379 with $9 parameter; add backfill_batch_size = EXCLUDED.backfill_batch_size to the ON CONFLICT UPDATE SET clause (remove status = 'running' from UPDATE; keep initial INSERT status as 'running').",
+      "2. After the loop exits (before line 329 return), call a new persistence function (e.g. recordTerminalStatus) that executes UPDATE plat_migration_state SET status = $4, backfill_batch_size = $5, updated_at = now() WHERE migration_id = $1 AND tenant_schema = $2 AND phase = $3; pass 'applied' or 'failed' based on the stalled flag.",
+      "3. Update TC-DDL-04-AC6 in ddl04_backfill_loop_test.zig: remove NOTE comment, change expectEqualStrings('running', ...) to expectEqualStrings('applied', ...)."
+    ]
+  },
   "files_affected": [
     "src/platform/backfill.zig",
     "tests/integration/ddl04_backfill_loop_test.zig"

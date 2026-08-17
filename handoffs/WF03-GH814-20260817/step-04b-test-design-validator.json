@@ -1,0 +1,35 @@
+{
+  "handoff_id": "WF03-GH814-20260817-04b-test-design-validator",
+  "run_id": "WF03-GH814-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "step": "04b",
+  "created_at": "2026-08-17T06:50:25Z",
+  "started_at": "2026-08-17T06:50:25Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "task": {
+    "description": "Hard gate — validate TC-DDL-04-AC6 in tests/specs/DDL-04.md and tests/integration/ddl04_backfill_loop_test.zig.\n\nChecks:\n1. TC-DDL-04-AC6 is documented in DDL-04.md with correct Given/When/Then (status='applied', backfill_batch_size correct).\n2. Implementation in ddl04_backfill_loop_test.zig is runnable (no SkipZigTest).\n3. Fixture isolated: per-test data, defer cleanup.\n4. ISS-0716 both ACs covered: backfill_batch_size persists adaptive value; terminal status written.\n5. Test is self-sufficient.\n\nReturn PASS if all checks pass, FAIL with gaps otherwise."
+  },
+  "context": {
+    "issue_id": "ISS-0716",
+    "artifacts_in": [
+      "tests/specs/DDL-04.md",
+      "tests/integration/ddl04_backfill_loop_test.zig"
+    ]
+  },
+  "completed_at": "2026-08-17T06:53:25Z",
+  "result": {
+    "status": "FAIL",
+    "summary": "TC-DDL-04-AC6 fails Check 4: ISS-0716 AC1 (adaptive backfill_batch_size) is not covered. The test uses defaultConfig() so no halving fires and the adaptive batch size equals the initial default (5000). The assertion expectEqualStrings(\"5000\", row[5]) is indistinguishable from the pre-fix state (hardcoded literal 5000 in recordBatchProgress) — it would pass whether or not the hardcoded-5000 defect was actually fixed. Terminal status (status='applied') is correctly asserted (Check 4 AC2 PASS). Checks 1, 2, 3, 5 all PASS.",
+    "issues": [
+      {
+        "check": 4,
+        "severity": "MAJOR",
+        "description": "TC-DDL-04-AC6-loop-records-progress uses defaultConfig() (batch_timeout_ms not set → no halving). backfill_batch_size stays at 5000 throughout; the assertion expectEqualStrings(\"5000\", row[5]) passes whether the implementation passes the adaptive variable or hardcodes the literal 5000. To cover ISS-0716 AC1 (adaptive value persists), a variant of TC-DDL-04-AC6 must use a halving-enabled config (e.g. batch_timeout_ms=1, as in TC-DDL-04-AC4 with ≥2 batches) and assert that plat_migration_state.backfill_batch_size reflects the halved value (e.g. 2500 or 1250) rather than the initial 5000."
+      }
+    ],
+    "next_action": "Route back to TEST-DESIGNER for rework: add adaptive-halving variant to TC-DDL-04-AC6 (or extend TC-DDL-04-AC4 to also assert plat_migration_state.backfill_batch_size) so ISS-0716 AC1 is distinguishably verified."
+  }
+}

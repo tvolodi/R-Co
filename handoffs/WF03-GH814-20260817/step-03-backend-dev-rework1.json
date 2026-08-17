@@ -1,0 +1,36 @@
+{
+  "handoff_id": "WF03-GH814-20260817-03-backend-dev-rework1",
+  "run_id": "WF03-GH814-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "03-rework1",
+  "created_at": "2026-08-17T06:54:40Z",
+  "started_at": "2026-08-17T06:54:40Z",
+  "status": "PENDING",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "task": {
+    "description": "Rework 1 — Fix TC-DDL-04-AC6 to actually assert the adaptive backfill_batch_size (ISS-0716 AC1).\n\nProblem (from TEST-DESIGN-VALIDATOR): TC-DDL-04-AC6 uses defaultConfig() which never triggers halving. The assertion backfill_batch_size='5000' is indistinguishable from the pre-fix hardcoded state.\n\nFix: Add a second assertion block to TC-DDL-04-AC6 (or a separate TC-DDL-04-AC6b) that:\n1. Uses a halving-triggering config (batch_timeout_ms=1 as in TC-DDL-04-AC4) so the adaptive batch_size halves to 2500 or lower.\n2. After the run, queries plat_migration_state.backfill_batch_size from the DB.\n3. Asserts the persisted backfill_batch_size is 2500 (or the actual halved value, not 5000).\n\nAlso update tests/specs/DDL-04.md to document this additional assertion.\n\nRun zig build + ddl04 integration tests. Commit and push to feature/WF03-GH814-20260817."
+  },
+  "context": {
+    "issue_id": "ISS-0716",
+    "branch": "feature/WF03-GH814-20260817",
+    "artifacts_in": [
+      "tests/integration/ddl04_backfill_loop_test.zig",
+      "tests/specs/DDL-04.md",
+      "src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md"
+    ]
+  },
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T06:59:51Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Added TC-DDL-04-AC6b-persists-halved-batch-size: uses halving config (batch_timeout_ms=1, 6000 rows) and asserts plat_migration_state.backfill_batch_size=1250 (the final adaptive value, not the initial default 5000). Pre-fix code hardcoded 5000 in recordBatchProgress; the new assertion distinguishes pre-fix from post-fix. Updated tests/specs/DDL-04.md acceptance criteria table and added TC-DDL-04-AC6b test case spec. All 7 DDL-04 backfill integration tests pass (zig build exits 0).",
+    "artifacts_out": [
+      "tests/integration/ddl04_backfill_loop_test.zig",
+      "tests/specs/DDL-04.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR for re-validation of TC-DDL-04-AC6b"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "handoff_id": "WF03-GH814-20260817-04b-test-design-validator-rework1",
+  "run_id": "WF03-GH814-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "step": "04b-rework1",
+  "created_at": "2026-08-17T07:00:20Z",
+  "started_at": "2026-08-17T07:00:20Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T07:01:24Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "task": {
+    "description": "Re-gate (rework 1) — validate the updated TC-DDL-04-AC6 + TC-DDL-04-AC6b in tests/specs/DDL-04.md and ddl04_backfill_loop_test.zig.\n\nChecks (same 5 as before, plus new):\n1. TC-DDL-04-AC6 documented with correct assertions (status='applied', backfill_batch_size).\n2. TC-DDL-04-AC6b documented: uses halving config, asserts backfill_batch_size = halved value (not 5000).\n3. TC-DDL-04-AC6b implementation asserts a value distinguishable from the pre-fix literal (i.e. NOT 5000).\n4. Both tests runnable (no SkipZigTest), isolated, self-sufficient.\n5. ISS-0716 AC1 (adaptive batch_size persisted) now provably covered.\n\nReturn PASS or FAIL."
+  },
+  "context": {
+    "issue_id": "ISS-0716",
+    "artifacts_in": [
+      "tests/specs/DDL-04.md",
+      "tests/integration/ddl04_backfill_loop_test.zig"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "TC-DDL-04-AC6 and TC-DDL-04-AC6b validated — all 5 checks pass. (1) AC6 spec documents status='applied' and backfill_batch_size=5000; implementation asserts both via expectEqualStrings. (2) AC6b spec documents halving config (batch_timeout_ms=1) and asserts backfill_batch_size=1250, explicitly not 5000. (3) AC6b implementation asserts expectEqualStrings(\"1250\", row[0]) — unambiguously distinguishable from the pre-fix literal 5000. (4) Both tests have no SkipZigTest, use per-test UUIDs from setupFixtures, have defer cleanup, and hard-fail on missing BPM_TEST_DB_URL. (5) ISS-0716 AC1 (adaptive batch_size persisted) is provably covered: AC6b seeds 6000 rows, forces halving via 1 ms timeout, and asserts plat_migration_state.backfill_batch_size=1250.",
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  }
+}
