@@ -1,0 +1,73 @@
+{
+  "handoff_id": "d8b00b6d-7bed-4b93-8b99-772cd65d5431",
+  "run_id": "WF02-batch-7-20260816",
+  "workflow_id": "WF-02",
+  "step": "05-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-batch-7-20260816/step-05-release-validator-rework2.json",
+  "created_at": "2026-08-16T21:57:55Z",
+  "started_at": "2026-08-16T21:58:15Z",
+  "completed_at": "2026-08-16T22:20:20Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 16",
+    "requirement_ids": [
+      "VLD-04"
+    ],
+    "related_handoff_ids": [
+      "58683e55-6f80-4407-b69d-a0222aa6f61e",
+      "4dec6570-cfab-4895-bb00-722a070fdb26"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260816-WF02-batch-7-20260816-step-04-rework2.yaml",
+      "src/design/vld-04-validation-gate-authoring-promotion.md",
+      "docs/requirements.yaml",
+      "docs/issues/ISS-0715.json"
+    ],
+    "branch_name": "feature/WF02-batch-7-20260816"
+  },
+  "task": {
+    "description": "RE-VALIDATION (VLD-04 only) after REWORK ITERATION 2: BACKEND-DEV wired runSemanticGate into the draft-save handler, POST /api/v1/definitions/{id}/validate, and the promotion submit paths (commits da4761fc + 8cdde77e). TEST-RUNNER step 04-rework2 returned PASS confirming VLD-04 AC1/AC2 now SATISFIED: vld04-gate 7/7, vld-http 5/5, promotion prm01-prm05 all green (no regression). Re-verify VLD-04 against ALL acceptance criteria and issue the release verdict. If RELEASE-READY: update requirement status VLD-04 TESTED -> RELEASED via reqctl.py, update the release decision docs/status/release-stage16-WF02-batch-7-20260816.yaml to reflect VLD-04 RELEASED, and update/close ISS-0715 (and GH-813) as resolved. Note the two MINOR items TEST-RUNNER flagged (PATCH-vs-PUT live surface gap; 403-vs-422 precedence edge) - disposition them as non-blocking for release if they do not invalidate any AC.",
+    "acceptance_criteria": [
+      "VLD-04 re-verified against all 5 acceptance criteria using the step-04-rework2 evidence",
+      "Release verdict for VLD-04 issued (RELEASE-READY expected)",
+      "VLD-04 requirement status updated to RELEASED via reqctl.py",
+      "Release decision docs/status/release-stage16-WF02-batch-7-20260816.yaml updated",
+      "ISS-0715 resolved/closed (GitHub issue updated)",
+      "The two MINOR items dispositioned as non-blocking"
+    ],
+    "functions_to_call": [
+      "fn:run-nfr-benchmarks",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "VLD-04 RE-RELEASED (APPROVED) after REWORK-2 wired runSemanticGate into the draft-save, /validate and both promotion-submit handlers. TEST-RUNNER step-04-rework2 PASS (vld04-gate 7/7, vld-http 5/5, prm01-prm05 45/45, unit green); RELEASE-VALIDATOR independently re-ran vld04-gate 7/7, vld-http 5/5, prm02 8/8 and NFR bench overall_passed=true. AC1/AC2 now SATISFIED end-to-end. VLD-04 moved TESTED->RELEASED via reqctl.py; release decision docs/status/release-stage16-WF02-batch-7-20260816.yaml updated to APPROVED with VLD-04 in approved_requirements; ISS-0715/GH-813 resolved and closed. Two MINOR items dispositioned non-blocking (ISS-0717/GH-816 PATCH-vs-PUT gap filed as tracked follow-up; 403-vs-422 precedence edge recorded AWARE).",
+    "artifacts_out": [
+      "docs/status/release-stage16-WF02-batch-7-20260816.yaml",
+      "docs/status/requirement_status.yaml",
+      "docs/requirements.yaml",
+      "docs/issues/ISS-0715.json",
+      "docs/issues/ISS-0717.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF02-batch-7-20260816-step-05-rework2-release-validator-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "PATCH-vs-PUT live draft-save surface gap (main.zig PATCH->handlePatch ungated; gate wired into handlePut per design). Non-blocking; filed ISS-0717/GH-816 as tracked follow-up."
+      },
+      {
+        "severity": "MINOR",
+        "description": "403-vs-422 precedence edge on promotion submit (gate before computePromotionPlan). Non-blocking; no AC invalidated; recorded AWARE in release decision."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 6) - batch WF02-batch-7-20260816 fully approved; set requirements status RELEASED (DDL-04/OBP-04/ORD-03/VLD-04), update changelog, run Step Final branch management."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

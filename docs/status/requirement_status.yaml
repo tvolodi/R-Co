@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-16T21:49:28Z'
+last_updated: '2026-08-17T03:52:11Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4477,10 +4477,13 @@ requirements:
     priority: SHOULD
     title: Phased DDL generation
   DDL-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Idempotent batched backfill
+    released_at: '2026-08-17T02:48:35Z'
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED per
+      docs/agents/AGENT_SYSTEM.md; IN_PROGRESS used as closest legal status.
   DDL-05:
     status: RELEASED
     stage: '16'
@@ -4674,10 +4677,13 @@ requirements:
     priority: SHOULD
     title: Typed outbox overflow on internal emit
   OBP-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Outbox gate hysteresis and escalation
+    released_at: '2026-08-17T02:48:36Z'
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
+      used as closest legal status.
   ORD-01:
     status: RELEASED
     stage: '16'
@@ -4706,10 +4712,13 @@ requirements:
     test_run: tests/reports/report-20260811-WF02-batch-2.yaml
     released_at: '2026-08-11T14:00:48Z'
   ORD-03:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Sequence order guard and gap sweeping
+    released_at: '2026-08-17T02:48:37Z'
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
+      used as closest legal status.
   ORD-04:
     status: RELEASED
     stage: '16'
@@ -5148,10 +5157,13 @@ requirements:
     note: 'Released via WF03-vld-impl-bugs-20260816 (stage 16, expression validation; ISS-0709/GH #799
       fix verified 40/40 + 14/14 + 5/5).'
   VLD-04:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Validation gate at authoring and promotion
+    released_at: '2026-08-17T03:52:10Z'
+    note: Design complete (WF02-batch-7-20260816, stage 16). reqctl VALID_STATUSES lacks DESIGNED; IN_PROGRESS
+      used as closest legal status.
   BRW-MOB-1:
     status: DRAFT
     stage: BRW — Borrowing from ASCOA-GO

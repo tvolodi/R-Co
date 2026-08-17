@@ -1,0 +1,148 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: VLD-04 (Validation gate at authoring and promotion) — the verdict
+# columns the gate records on each definition version.
+# See src/design/vld-04-validation-gate-authoring-promotion.md for the full module
+# design this migration supports, and docs/processes/system/definition-semantic-validation.md
+# (PW-02) for the authoritative process (Outputs table: "Verdict | semantically_valid
+# recorded on the definition version with the compiler version").
+#
+# IMPLEMENTER NOTE (BACKEND-DEV, read before running codegen):
+# The two verdict event types this migration's supporting code appends —
+# DEFINITION_VALIDATED and DEFINITION_VALIDATION_FAILED — are NOT yet in
+# event_type_registry (migration 1152 seeds only the EXECUTION_* family; grep for
+# these names returns nothing). After codegen produces
+# migrations/1165_vld04_definition_semantic_verdict.sql, add a CUSTOM block to the
+# generated file (before the final COMMIT, following the 1152 pattern) that seeds
+# both event types with `ON CONFLICT (name, schema_version) DO NOTHING`,
+# retention_class = 'retain_forever' (protected family per PAR-03 AC1), so
+# src/validation/gate.zig::persistVerdict's append passes the ES-05 registry check.
+# See the Type E design's Open questions #1.
+
+schema_version: 1
+migration_number: 1165   # next free number under migrations/ (highest existing: 1164)
+name: vld04_definition_semantic_verdict
+requirement_ids: [VLD-04]
+purpose: |
+  Adds the semantic-validation verdict columns to process_definitions so the VLD-04
+  gate (src/validation/gate.zig) can record, per definition version, whether a clean
+  CEL compile produced semantically_valid = true, which compiler version produced the
+  verdict, when, and how many findings the last failed pass found. compiler_version is
+  nullable: a NULL means "never validated or the stored version is stale", which drives
+  VLD-04 AC3's re-verify-rather-than-trust rule. The columns are added with IF NOT
+  EXISTS so the migration is idempotent across the public and per-tenant schema passes
+  (process_definitions lives in every schema, per migration 004's PER_TENANT shadow
+  convention). This migration only adds the columns; the gating orchestration that reads
+  and writes them is Type E, per templates/lego-catalog.md's selection rules.
+
+tables:
+  - mode: alter
+    name: process_definitions
+    add_columns:
+      # AC1/AC5: false until a clean pass; a finding leaves it false.
+      - { name: semantically_valid,       type: boolean,     not_null: true, default: "false" }
+      # AC3: the CEL compiler version that produced the verdict; NULL = never
+      # validated or stale (must re-verify).
+      - { name: compiler_version,         type: text,        not_null: false }
+      # AC5: when the verdict was recorded.
+      - { name: validated_at,             type: "timestamptz", not_null: false }
+      # AC5: finding count carried by DEFINITION_VALIDATION_FAILED.
+      - { name: validation_finding_count, type: integer,     not_null: true, default: 0, check: "validation_finding_count >= 0" }
+
+fixtures:
+  - name: definition_name_value
+    kind: random_string
+  - name: seed_definition
+    kind: sql_setup
+    sql: |
+      INSERT INTO process_definitions (name, version, status, graph, created_by)
+      VALUES ($1, 'v1', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, '00000000-0000-0000-0000-000000000001');
+    params: [definition_name_value]
+
+test_cases:
+  - name: verdict_columns_exist_with_defaults
+    description: >
+      A freshly inserted definition version has semantically_valid = false,
+      compiler_version NULL, validated_at NULL, validation_finding_count = 0 — the
+      "never validated" starting state (AC1).
+    requirement_ref: VLD-04
+    arrange: ""
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          "SELECT semantically_valid, compiler_version, validated_at, validation_finding_count FROM process_definitions WHERE name = $1",
+          &.{fx.definition_name_value});
+    assertions: |
+      // CUSTOM: assert result.rows.len == 1, semantically_valid == "false",
+      // compiler_version IS NULL, validated_at IS NULL, validation_finding_count == "0".
+
+  - name: clean_pass_records_verdict_with_compiler_version
+    description: >
+      A clean validation pass persists semantically_valid = true with the compiler
+      version that produced it (VLD-04 AC5 / AC3's comparison source).
+    requirement_ref: VLD-04
+    arrange: ""
+    act: |
+      try h.conn.exec(
+          "UPDATE process_definitions SET semantically_valid = true, compiler_version = $2, validated_at = now(), validation_finding_count = 0 WHERE name = $1",
+          &.{ fx.definition_name_value, "vld-01-03-WF02-vld01-03-20260816" },
+      );
+    assertions: |
+      // CUSTOM: assert the row now reads semantically_valid = "true",
+      // compiler_version = the constant, validated_at NOT NULL, finding count 0.
+
+  - name: failed_pass_records_finding_count_and_stays_invalid
+    description: >
+      A validation failure persists semantically_valid = false with the finding count
+      (AC1/AC5) — the definition is NOT marked valid on any finding.
+    requirement_ref: VLD-04
+    arrange: |
+      try h.conn.exec(
+          "UPDATE process_definitions SET semantically_valid = true, compiler_version = 'old-version', validated_at = now(), validation_finding_count = 0 WHERE name = $1",
+          &.{fx.definition_name_value},
+      );
+    act: |
+      try h.conn.exec(
+          "UPDATE process_definitions SET semantically_valid = false, compiler_version = 'vld-01-03-WF02-vld01-03-20260816', validated_at = now(), validation_finding_count = 3 WHERE name = $1",
+          &.{fx.definition_name_value},
+      );
+    assertions: |
+      // CUSTOM: assert semantically_valid = "false", compiler_version = the current
+      // constant, validation_finding_count = "3" — the data DEFINITION_VALIDATION_FAILED
+      // carries (AC5).
+
+  - name: stale_compiler_version_is_distinguishable
+    description: >
+      A verdict produced by an earlier compiler version is distinguishable from the
+      current one by the stored compiler_version value, which is the AC3 re-verify
+      trigger (VLD-04 AC3).
+    requirement_ref: VLD-04
+    arrange: |
+      try h.conn.exec(
+          "UPDATE process_definitions SET semantically_valid = true, compiler_version = 'old-version', validated_at = now() WHERE name = $1",
+          &.{fx.definition_name_value},
+      );
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          "SELECT compiler_version FROM process_definitions WHERE name = $1",
+          &.{fx.definition_name_value});
+    assertions: |
+      // CUSTOM: assert compiler_version == "old-version" (NOT the current constant),
+      // so storedVerdictIsCurrent() compares it to COMPILER_VERSION and decides
+      // re-verification is required.
+
+  - name: finding_count_check_rejects_negative
+    description: validation_finding_count cannot go negative — CHECK constraint enforced.
+    requirement_ref: VLD-04
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "UPDATE process_definitions SET validation_finding_count = -1 WHERE name = $1",
+          &.{fx.definition_name_value},
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (SQLSTATE 23514) and that the
+      // row's validation_finding_count is unchanged.
+
+rollback_strategy: |
+  Forward-only. New nullable/defaulted columns only; no DROP migration. If retired, a
+  future migration drops the four columns after archiving any verdict data, per
+  docs/anti-patterns.md's append-only column policy.

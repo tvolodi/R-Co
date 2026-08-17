@@ -1,0 +1,40 @@
+{
+  "report_id": "WF02-batch-7-20260816-step-03b-test-design-validator-INNER-REPORT",
+  "agent_id": "TEST-DESIGN-VALIDATOR",
+  "run_id": "WF02-batch-7-20260816",
+  "step": "03b",
+  "created_at": "2026-08-16T19:09:24Z",
+  "summary": "TEST-DESIGN-VALIDATOR Step 3b for WF02-batch-7 (DDL-04/OBP-04/ORD-03/VLD-04): HARD GATE on the TEST-DESIGNER output. Read the 4 specs and every test artefact in artifacts_in, cross-checked requirement priorities/ACs against docs/requirements.yaml, reconciled spec case counts against implemented `test \"...\"` blocks, scanned for SkipZigTest/deferred/future labels, verified fixture isolation (per-test UUIDs on the 4 module-exercising suites; rollback-on-deinit TestHarness on the 3 schema suites), self-sufficiency (hard failure on missing BPM_TEST_DB_URL, never a silent skip; no HTTP-server or external-service dependency), security (no hardcoded credentials/URLs; parameterised SQL only), and build.zig wiring (named modules platform_backfill/outbox_gate/ordering_sweeper/validation_gate; narrow test-integration-* steps AND test_integration_others_step wiring). Verdict: PASS. Counts match exactly: DDL-04 6 loop + 3 unit + 5 schema; OBP-04 6 gate + 4 unit + 6 schema; ORD-03 9 integration; VLD-04 7 gate + 1 unit + 5 schema. No SkipZigTest on any MUST test (DDL-04 is the only MUST in this batch and is fully covered with hard env failure). The 3 BLOCKER implementation defects TEST-DESIGNER reported (ORD-03 sweeper predicate missing +1; DDL-04 AC5 stall policy unreachable; VLD-04 finding-path heap corruption) are correctly classified as IMPLEMENTATION defects surfaced by fail-first tests, NOT test-design defects — carried forward in result.issues for ORCH to route to BACKEND-DEV rework. One MINOR note: the 3 schema-contract suites (BACKEND-DEV codegen artefacts) use static fixture IDs rather than per-test UUIDs, but remain isolated because they run on TestHarness (rollback-on-deinit transaction), so no cross-test/cross-run leakage is possible.",
+  "files_created": [
+    "docs/issue-reports/WF02-batch-7-20260816-step-03b-test-design-validator-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-batch-7-20260816/step-03b-test-design-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    { "name": "spec-to-implementation case-count reconciliation", "status": "pass", "detail": "DDL-04: 6 loop + 3 unit + 5 schema implemented, spec counts match; OBP-04: 6 gate + 4 unit + 6 schema match; ORD-03: 9 integration match; VLD-04: 7 gate + 1 unit + 5 schema match. No gaps." },
+    { "name": "SkipZigTest / deferred-coverage scan", "status": "pass", "detail": "No `return error.SkipZigTest` on any batch test block (only prohibition comments). No spec case labelled deferred/future/phase 2/TODO — the only 'deferred' tokens are the ORD-03 ApplyOutcome.deferred result name." },
+    { "name": "fixture-isolation review", "status": "pass", "detail": "Module-exercising suites use per-test UUIDs (bpm.uuid.newUuidV4, UUID-derived tenant/table names) + defer cleanup. Schema suites use static IDs but are isolated via TestHarness rollback-on-deinit. No cross-test shared state." },
+    { "name": "self-sufficiency review", "status": "pass", "detail": "requireTestDbUrl/testDbUrl fail loudly (error.MissingTestDbUrl) when BPM_TEST_DB_URL is absent. No HTTP-server or external-service dependency in these DB-module suites." },
+    { "name": "security review", "status": "pass", "detail": "No credentials/secrets/real production URLs hardcoded (grep empty). All SQL parameterised; only UUID-derived identifiers interpolated." },
+    { "name": "build.zig wiring review", "status": "pass", "detail": "Named modules platform_backfill/outbox_gate/ordering_sweeper/validation_gate declared; all 7 suites wired to narrow test-integration-* steps and to test_integration_others_step (TEST-RUNNER reachable); unit suites on the aggregate test step." }
+  ],
+  "issues_found": [
+    { "severity": "BLOCKER", "description": "ORD-03: sweepStalledCorrelations predicate is `p.lowest_seq > c.applied_seq` (missing + 1) — a slow-but-present correlation (lowest PENDING seq = applied_seq+1) is wrongly dead-lettered. TC-ORD-03-AC5-non-stalled-not-swept fails. IMPLEMENTATION defect, correctly surfaced by fail-first test; route to BACKEND-DEV. Fix: `p.lowest_seq > c.applied_seq + 1`." },
+    { "severity": "BLOCKER", "description": "DDL-04 AC5: runBackfill executes `if (rows_updated == 0) break;` BEFORE the stall check, so the ten-consecutive-zero-progress stall policy is unreachable; a stuck backfill terminates with stalled=false/status=applied. TC-DDL-04-AC5-stall-escalation fails. IMPLEMENTATION defect, correctly surfaced by fail-first test; route to BACKEND-DEV." },
+    { "severity": "BLOCKER", "description": "VLD-04: runSemanticGate's finding-producing path corrupts heap memory — persistVerdict writes a garbage compiler_version on findings and TC-VLD-04-AC3-stale-verdict-reruns / TC-VLD-04-AC4-timeout segfault. IMPLEMENTATION defect (root cause in the validateDefinition finding path); route to BACKEND-DEV/ISSUE-FIXER." },
+    { "severity": "MINOR", "description": "The 3 schema-contract suites (ddl04_plat_migration_state_test.zig, obp04_plat_outbox_gate_test.zig, vld04_definition_semantic_verdict_test.zig — BACKEND-DEV codegen artefacts) use static fixture IDs (e.g. 'ddl04-mig-00000000-0000-0000-0000-000000000001') rather than per-test UUIDs. Isolation is nonetheless guaranteed because they run on TestHarness (rollback-on-deinit transaction), so this is a style/letter-of-rule deviation only, not a leakage risk. No action required unless the convention is tightened." },
+    { "severity": "MINOR", "description": "Pipeline checks (6)-(10) are N/A for this batch: DDL-04/OBP-04/ORD-03/VLD-04 are backend-only requirements with no sequential-UI-action surface — no web/tests/e2e/pipelines file references them, so no pl.step()/onCleanup()/PIPELINE-<slug>.md is required." }
+  ],
+  "next_steps": [
+    "ORCH: route the 3 BLOCKER implementation defects (ORD-03 sweeper +1, DDL-04 AC5 stall, VLD-04 finding-path heap corruption) to BACKEND-DEV rework, then re-dispatch TEST-RUNNER for this batch.",
+    "TEST-RUNNER: run test-integration-ord03 / test-integration-obp04-gate / test-integration-ddl04-backfill / test-integration-vld04-gate (and the 3 schema suites) with BPM_TEST_DB_URL set; expect the 3 documented fail-first tests to fail until BACKEND-DEV rework lands.",
+    "After BACKEND-DEV rework, re-run the previously-failing ACs to confirm TESTED."
+  ],
+  "blockers": [
+    "ORD-03 AC5 sweeper predicate missing +1 (implementation, test fails fail-first)",
+    "DDL-04 AC5 stall policy unreachable (implementation, test fails fail-first)",
+    "VLD-04 finding-path heap corruption in runSemanticGate (implementation, 3 tests fail/crash)"
+  ]
+}

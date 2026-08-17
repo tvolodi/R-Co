@@ -1,0 +1,180 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: DDL-04 (Idempotent batched backfill) — the per-(migration, tenant
+# schema, phase) backfill-progress control table the loop records into.
+# See src/design/ddl-04-idempotent-batched-backfill.md for the full module design
+# this migration supports, and docs/processes/system/platform-ddl-safety.md
+# (sys-platform-ddl-safety, PW-05) for the authoritative process this table serves
+# (process doc's Outputs table: "plat_migration_state | One row per (migration,
+# tenant schema, phase) with status and attempt count" and "Backfill progress: Rows
+# updated per batch and the count of remaining IS NULL rows per tenant").
+#
+# Naming: plat_ prefix per DDL-05's reserved platform namespace
+# (src/platform/ddl_namespace.zig) — this is a platform-owned control table living in
+# every tenant schema (unqualified name, default migration scope, matching the
+# effects_outbox / plat_effect_completion precedent: per-tenant data written by the
+# migration runner while it is inside that tenant's schema).
+#
+# This migration only creates the table shape; the backfill loop that reads and
+# writes it is Type E (src/platform/backfill.zig), per templates/lego-catalog.md's
+# selection rules.
+
+schema_version: 1
+migration_number: 1163   # next free number under migrations/ (highest existing: 1162)
+name: ddl04_plat_migration_state
+requirement_ids: [DDL-04]
+purpose: |
+  Creates plat_migration_state, one row per (migration_id, tenant_schema, phase)
+  recording the execution state and per-batch backfill progress of the three-phase
+  DDL generator (DDL-03's expand/backfill/constrain). The backfill loop of DDL-04
+  (src/platform/backfill.zig) writes rows_updated_total, rows_remaining,
+  last_batch_rows, last_batch_ms and stall_count on the SAME connection/transaction
+  as each batch commit, so progress is durable with the batch (DDL-04 AC6) and an
+  interrupted run can be resumed against the same `c IS NULL` predicate (DDL-04 AC1)
+  via the partial resume index. status transitions pending -> running -> applied |
+  failed; backfill_batch_size is the per-tenant live value the adaptive halving policy
+  (DDL-04 AC4, floor 500 / upper bound 50000) rewrites.
+
+tables:
+  - mode: create
+    name: plat_migration_state
+    columns:
+      - { name: id,                  type: uuid,          pk: true,         default: "gen_random_uuid()" }
+      - { name: migration_id,        type: text,          not_null: true }
+      - { name: tenant_schema,       type: text,          not_null: true }
+      - { name: phase,               type: text,          not_null: true,   check: "phase IN ('expand','backfill','constrain')" }
+      - { name: status,              type: text,          not_null: true,   default: "'pending'", check: "status IN ('pending','running','applied','failed')" }
+      - { name: attempt_count,       type: integer,       not_null: true,   default: 0, check: "attempt_count >= 0" }
+      # Per-tenant live batch size; the halving policy writes it down (floor 500)
+      # and the upper bound is the DDL-04 cap of 50000.
+      - { name: backfill_batch_size, type: integer,       not_null: true,   default: 5000, check: "backfill_batch_size BETWEEN 500 AND 50000" }
+      # DDL-04 AC6 — cumulative rows updated across all batches this run.
+      - { name: rows_updated_total,  type: bigint,        not_null: true,   default: 0, check: "rows_updated_total >= 0" }
+      # Remaining IS NULL rows at the last batch — the resume predicate's cardinality.
+      - { name: rows_remaining,      type: bigint,        not_null: true,   default: 0, check: "rows_remaining >= 0" }
+      - { name: last_batch_rows,     type: bigint,        not_null: true,   default: 0, check: "last_batch_rows >= 0" }
+      - { name: last_batch_ms,       type: bigint,        not_null: true,   default: 0, check: "last_batch_ms >= 0" }
+      # Consecutive zero-progress iterations feeding DDL-04 AC5's stall detection.
+      - { name: stall_count,         type: integer,       not_null: true,   default: 0, check: "stall_count >= 0" }
+      - { name: last_error,          type: text,          not_null: false }
+      - { name: started_at,          type: "timestamptz", not_null: false }
+      - { name: completed_at,        type: "timestamptz", not_null: false }
+      - { name: created_at,          type: "timestamptz", not_null: true,   default: "now()" }
+      - { name: updated_at,          type: "timestamptz", not_null: true,   default: "now()" }
+    constraints:
+      # One progress row per (migration, tenant schema, phase); the resume/loop
+      # code upserts on this key (DDL-04 AC1/AC6).
+      - { kind: unique, name: plat_migration_state_migration_tenant_phase_uq, columns: [migration_id, tenant_schema, phase] }
+    indexes:
+      # Resume query (DDL-04 AC1): find RUNNING/PENDING backfill rows for a
+      # migration_id without scanning applied rows — mirrors
+      # platform_migrations_resume_idx (MIG-01).
+      - name: idx_plat_migration_state_resume
+        columns: [migration_id, status]
+        where: "status IN ('pending','running')"
+      # Per-tenant progress scan for the fanout's per-schema accounting.
+      - name: idx_plat_migration_state_tenant_phase
+        columns: [tenant_schema, phase]
+
+fixtures:
+  - name: migration_id_value
+    kind: random_string
+  - name: tenant_schema_value
+    kind: random_string
+  - name: seed_running_backfill
+    kind: sql_setup
+    sql: |
+      INSERT INTO plat_migration_state
+        (migration_id, tenant_schema, phase, status, attempt_count,
+         backfill_batch_size, rows_updated_total, rows_remaining, last_batch_rows,
+         last_batch_ms, stall_count, started_at)
+      VALUES
+        ($1, $2, 'backfill', 'running', 1, 5000, 200000, 50000, 5000, 1200, 0, now());
+    params: [migration_id_value, tenant_schema_value]
+
+test_cases:
+  - name: unique_constraint_on_migration_tenant_phase
+    description: >
+      A second INSERT for the same (migration_id, tenant_schema, phase) violates the
+      UNIQUE anchor used by the loop's progress upsert (DDL-04 AC6).
+    requirement_ref: DDL-04
+    arrange: |
+      try h.conn.exec(
+          "INSERT INTO plat_migration_state (migration_id, tenant_schema, phase, status) VALUES ($1, $2, 'backfill', 'running')",
+          &.{ fx.migration_id_value, fx.tenant_schema_value },
+      );
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_migration_state (migration_id, tenant_schema, phase, status) VALUES ($1, $2, 'backfill', 'running')",
+          &.{ fx.migration_id_value, fx.tenant_schema_value },
+      );
+    assertions: |
+      // CUSTOM: assert the second INSERT returns a unique_violation (23505) on
+      // plat_migration_state_migration_tenant_phase_uq, and that exactly one row
+      // exists for (migration_id_value, tenant_schema_value, 'backfill').
+
+  - name: status_check_constraint_rejects_unknown_value
+    description: A status outside pending/running/applied/failed is rejected by the CHECK constraint.
+    requirement_ref: DDL-04
+    arrange: ""
+    act: |
+      const result = h.conn.exec(
+          "INSERT INTO plat_migration_state (migration_id, tenant_schema, phase, status) VALUES ($1, $2, 'backfill', 'bogus')",
+          &.{ fx.migration_id_value, fx.tenant_schema_value },
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation (SQLSTATE 23514) and that
+      // no row was inserted.
+
+  - name: backfill_batch_size_check_bounds
+    description: >
+      backfill_batch_size is bounded 500..50000 (DDL-04 body upper bound 50000,
+      AC4 floor 500); values outside are rejected by the CHECK constraint.
+    requirement_ref: DDL-04
+    arrange: ""
+    act: |
+      const too_small = h.conn.exec(
+          "INSERT INTO plat_migration_state (migration_id, tenant_schema, phase, status, backfill_batch_size) VALUES ($1, $2, 'backfill', 'pending', 100)",
+          &.{ fx.migration_id_value, fx.tenant_schema_value },
+      );
+    assertions: |
+      // CUSTOM: assert too_small returns CheckConstraintViolation (23514). Repeat
+      // with 60000 and assert the same; assert an insert with 500 and one with
+      // 50000 both succeed.
+
+  - name: resume_reads_persisted_progress
+    description: >
+      DDL-04 AC1 — an interrupted run's progress is queryable via the resume partial
+      index and carries the cumulative counters a resumed loop reads to skip
+      already-backfilled rows.
+    requirement_ref: DDL-04
+    arrange: ""
+    act: |
+      const result = try h.conn.query(std.testing.allocator,
+          "SELECT rows_updated_total, rows_remaining, backfill_batch_size, status FROM plat_migration_state WHERE migration_id = $1 AND status IN ('pending','running')",
+          &.{fx.migration_id_value});
+    assertions: |
+      // CUSTOM: assert result.rows.len == 1 (the seeded running row is found via
+      // idx_plat_migration_state_resume), rows_updated_total == "200000",
+      // rows_remaining == "50000", backfill_batch_size == "5000", status == "running".
+
+  - name: progress_recording_updates_counters_in_place
+    description: >
+      DDL-04 AC6 — recordBatchProgress updates rows_updated_total/rows_remaining/
+      last_batch_rows/last_batch_ms on the existing row (no second row created),
+      and a zero-remaining update leaves rows_remaining = 0 so the loop terminates.
+    requirement_ref: DDL-04
+    arrange: ""
+    act: |
+      try h.conn.exec(
+          "UPDATE plat_migration_state SET rows_updated_total = rows_updated_total + $3, rows_remaining = $4, last_batch_rows = $3, last_batch_ms = $5, updated_at = now() WHERE migration_id = $1 AND tenant_schema = $2 AND phase = 'backfill'",
+          &.{ fx.migration_id_value, fx.tenant_schema_value, "5000", "45000", "900" },
+      );
+    assertions: |
+      // CUSTOM: assert exactly one row remains, rows_updated_total == "205000",
+      // rows_remaining == "45000", last_batch_rows == "5000", last_batch_ms == "900".
+
+rollback_strategy: |
+  Forward-only. plat_migration_state is an append/progress-control table; no DROP
+  migration. If retired, a future migration archives completed state before any
+  structural change, per docs/anti-patterns.md's "DROP TABLE ... without a matching
+  data-preservation migration" entry.

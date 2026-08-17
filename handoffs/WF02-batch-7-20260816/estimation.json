@@ -1,0 +1,36 @@
+{
+  "run_id": "WF02-batch-7-20260816",
+  "created_at": "2026-08-16T15:52:29.588232Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "DDL-04",
+    "OBP-04",
+    "ORD-03",
+    "VLD-04"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Four backend requirements each extending an already-released module family (DDL-03 three-phase form; OBP-01..03 outbox; ORD-01/02/04 ordering; VLD-01..03 validation). Each is a new feature with schema/migration + API + integration tests, no cross-module engine/scheduler/auth internals.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Each requirement extends one existing module family (src/platform, outbox, src/ordering, definition validation) with some caller updates; no engine/scheduler/auth middleware signature changes.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 33,
+    "code-design-validator": 15,
+    "backend-dev": 9,
+    "test-designer": 8,
+    "test-design-validator": 8,
+    "test-runner": 4,
+    "release-validator": 2,
+    "doc-updater": 3,
+    "total": 82
+  }
+}

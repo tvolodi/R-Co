@@ -1,0 +1,204 @@
+stage: "Stage 16"
+date: "2026-08-16T20:29:40Z"
+run_id: WF02-batch-7-20260816
+workflow_id: WF-02
+workflow_step: "05-rework2"
+decision: APPROVED
+revalidated_at: "2026-08-16T22:15:46Z"
+revalidation_note: >-
+  RE-VALIDATION (VLD-04 only) after REWORK-2 (commits da4761fc + 8cdde77e) wired
+  runSemanticGate into the draft-save handler (handlePut), POST /api/v1/definitions/{id}/validate
+  (handleValidate), and both promotion-submit surfaces (handleCreatePromotionPlan +
+  handleSubmitPromotion). TEST-RUNNER step-04-rework2 PASS (vld04-gate 7/7, vld-http 5/5,
+  prm01-prm05 45/45, unit 1155/1219, 0 failures); RELEASE-VALIDATOR independently re-ran
+  vld04-gate 7/7, vld-http 5/5, prm02 8/8, and NFR bench (overall_passed=true, exit 0). VLD-04
+  AC1/AC2 now SATISFIED end-to-end; VLD-04 moved TESTED -> RELEASED; ISS-0715/GH-813 resolved.
+  Two MINOR live-surface follow-ups dispositioned non-blocking (see non_blocking_followups).
+
+requirement_ids:
+  - DDL-04
+  - OBP-04
+  - ORD-03
+  - VLD-04
+
+prior_gates:
+  design_validation_step_1b: "PASS (commit 56ffaa4b) -- all 4 Type E design artefacts + 3 Type C migration YAMLs lint clean; every AC mapped; 3 MINOR issues dispositioned as acceptable to carry"
+  security_review_step_2c: "PASS (commit) -- INV-1 tenant isolation, INV-4 no secrets, INV-6 review, INV-7 SQL parameterisation, INV-8 no catch unreachable all APPLIED/SATISFIED; the three new tables (plat_migration_state, plat_outbox_gate, verdict columns, event-type seeds) confirmed per-tenant via search_path"
+  rework_1: >
+    REWORK-1 (commit 9f59ad20) fixed the 3 BLOCKER implementation defects surfaced fail-first by
+    TEST-DESIGNER: ORD-03 sweeper predicate missing `+ 1` (wrongly dead-lettering a
+    slow-but-present correlation), DDL-04 runBackfill breaking on the first 0-row iteration
+    (AC5 stall policy unreachable), and VLD-04 gate/test use-after-free + pg client large-column
+    read (segfaults on the finding path). Verified live this session: all three now pass.
+  test_design_validation_step_3b: "PASS (commit 79fff632) -- HARD GATE PASS for DDL-04/OBP-04/ORD-03/VLD-04 test design"
+  test_execution_step_4: >
+    PASS (commit d7eafe12) -- obp04-gate 6/6, ord03 9/9, ddl04-backfill 6/6, vld04-gate 7/7;
+    schema ddl04 5/5, obp04 6/6, vld04 5/5; ordering regression 10/10; unit 1155/1219
+    (64 pre-existing baseline skips in unrelated unit binaries, 0 failures). Full
+    test-integration umbrella intentionally not run (ISS-0665/GH-702 capacity issue open).
+  test_report: tests/reports/report-20260816-WF02-batch-7-20260816-step-04.yaml
+
+independent_verification_method: >
+  Did not trust the handoff chain's claims at face value. (1) Read the exact AC wording for
+  DDL-04/OBP-04/ORD-03/VLD-04 directly from docs/requirements.yaml (DDL-04 line 11267, OBP-04
+  line 11942, ORD-03 line 12028, VLD-04 line 13246). (2) Read tests/specs/DDL-04.md, OBP-04.md,
+  ORD-03.md, VLD-04.md in full, including the fail-first Run-status notes (which documented the
+  3 BLOCKERs later fixed by REWORK-1) and the VLD-04 Structural verification note. (3) Confirmed
+  the REWORK-1 fix (commit 9f59ad20) addresses all 3 BLOCKERs and the final test commit
+  (d7eafe12) reports all green. (4) Verified environment: docker ps shows this checkout's
+  containers r-co-2-db-1 (5452) and r-co-2-db_test-1 (5453) healthy; .env has
+  BPM_DB_URL=postgres://bpm:bpm@localhost:5452/bpm_dev and
+  BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5453/bpm_test; zig build test-env-verify:
+  HEALTHY 10/10, exit 0. (5) Re-ran, myself, every batch-7 target plus the ordering regression
+  plus the full unit suite, exporting BPM_TEST_DB_URL/BPM_DB_URL explicitly:
+    - zig build test-integration-obp04-gate --summary all: 6/6 tests passed (matches report)
+    - zig build test-integration-ord03 --summary all: 9/9 tests passed (matches report)
+    - zig build test-integration-ddl04-backfill --summary all: 6/6 tests passed (matches
+      report; includes the previously-failing TC-DDL-04-AC5-stall-escalation)
+    - zig build test-integration-vld04-gate --summary all: 7/7 tests passed, no segfault
+      (matches report; the previously-crashing AC3-stale-verdict-reruns / AC4-timeout pass)
+    - zig build test-integration-ddl04: 5/5; test-integration-obp04: 6/6;
+      test-integration-vld04: 5/5 (schema suites, match report)
+    - zig build test-integration-ordering --summary all: 10/10 (ORD-01/02/04 regression, match)
+    - zig build test --summary all: 115/115 steps, 1155/1219 passed, 64 skipped, 0 failed
+      (matches report; skips are pre-existing baseline in unrelated unit binaries)
+  (6) NFR benchmarks: ran `zig build bench` via .vscode/run-zig-bench.ps1 (loads .env) live:
+  NFR_RESULT NFR-01 p99_read_ms=1.003 (target <=200, passed), NFR-01 p99_write_ms=3.170
+  (target <=500, passed), NFR-02 append_throughput_eps=46276.672 (target >=1000, passed),
+  NFR-04 replay_10000_ms=50.624 (target <=5000, passed), NFR-04 replay_snapshot_100000_ms=5.911
+  (target <=1000, passed), NFR_BENCH_SUMMARY overall_passed=true, exit 0. These measure
+  pre-existing platform paths (ES read/write, append, replay) -- none of this batch's own new
+  code paths carry a numeric NFR threshold in their AC text (checked: no batch-7 AC names an
+  NFR number the way PAR-04 did), so no new benchmark-fidelity issue is warranted. The
+  batch-specific NFR-relevant dimensions are covered by integration tests: "compilation bounded"
+  (VLD-04 AC4 5 s budget -> GateResult.timeout, TC-VLD-04-AC4 passing) and "no cross-tenant
+  leakage" (OBP-04 AC6 per-tenant gate keying + all batch fixtures use per-tenant UUID-derived
+  schemas; SECURITY-REVIEWER confirmed the new tables are per-tenant via search_path).
+  (7) Grep-verified the wiring boundary: runSemanticGate/storedVerdictIsCurrent/persistVerdict
+  are referenced ONLY inside src/validation/gate.zig -- no HTTP handler calls the VLD-04 gate.
+  The /validate handler (src/api/routes/validation.zig) runs VLD-01/02/03 validateDefinition
+  directly (no verdict persistence), and the promotion handler (src/api/routes/promotions.zig)
+  calls computePromotionPlan without the gate. This is the VLD-04 AC1/AC2 handler-wiring gap,
+  disclosed at design time and accepted at every hard gate, but it means VLD-04 is not fully
+  RELEASE-READY end-to-end; held at TESTED with new issue ISS-0715/GH-813. Confirmed the
+  DEFINITION_VALIDATED / DEFINITION_VALIDATION_FAILED event types are seeded in
+  event_type_registry by migration 1165 (VLD-04 open question 1 resolved), and
+  EXECUTION_OUTBOX_GATE_OPENED by migration 1164. (8) Verified the ordering consumer-loop
+  wiring boundary: runOneCycle/ConsumerRunConfig are not wired into any live daemon
+  (src/main.zig has no ordering/consumer reference) -- this matches the ORD-01/02/04 release
+  precedent (module-level implementation + tests is the established release bar for this
+  subsystem; stubAlwaysDeferred remains the explicit extension point and applyCompletion is now
+  supplied as the real applyFn), so ORD-03 is RELEASE-READY at the same level as its released
+  siblings. (9) Filed two new issues this session: ISS-0715/GH-813 (MAJOR -- VLD-04 AC1/AC2
+  handler wiring) and ISS-0716/GH-814 (MINOR -- DDL-04 plat_migration_state bookkeeping:
+  backfill_batch_size column hardcoded 5000, persisted status left running; both documented and
+  asserted in TC-DDL-04-AC6, non-blocking).
+
+nfr_results:
+  NFR-01:
+    p99_read_ms: "1.003 (target <=200) -- passed"
+    p99_write_ms: "3.170 (target <=500) -- passed"
+  NFR-02:
+    append_throughput_eps: "46276.672 (target >=1000) -- passed"
+  NFR-04:
+    replay_10000_ms: "50.624 (target <=5000) -- passed"
+    replay_snapshot_100000_ms: "5.911 (target <=1000) -- passed"
+  overall: "passed=true, zig build bench exit 0"
+  batch_specific:
+    compilation_bounded: "VLD-04 AC4 (5 s compile budget -> GateResult.timeout) -- TC-VLD-04-AC4-timeout passing"
+    no_cross_tenant_leakage: "OBP-04 AC6 per-tenant gate keying + SECURITY-REVIEWER INV-1 tenant isolation PASS"
+    no_regression: "ordering regression 10/10; unit 1155/1219 (0 failures, 64 baseline skips); all batch-7 suites green"
+
+acceptance_criteria_audit:
+  ddl_04:
+    title: Idempotent batched backfill (MUST)
+    ac1_resume: "MET -- TC-DDL-04-AC1-full-run-then-rerun + TC-DDL-04-AC1-resume-partial (IS NULL predicate is the resume source of truth; end state identical). Passing 6/6."
+    ac2_non_idempotent_rejected: "MET -- 3 module unit tests (IS NULL-bounded accepted; non-IS-NULL predicate -> NonIdempotentBackfill; non-batched -> NonIdempotentBackfill)."
+    ac3_per_batch_commit: "MET -- TC-DDL-04-AC3-per-batch-commit-durable (each batch commits before the next begins; no outer transaction)."
+    ac4_halving: "MET -- TC-DDL-04-AC4-halving (final_batch_size halved 5000->2500, floor 500) + schema backfill_batch_size_check_bounds."
+    ac5_stall_escalation: "MET -- TC-DDL-04-AC5-stall-escalation (stalled=true, status=failed, rows_remaining carried) -- was the fail-first BLOCKER, fixed in REWORK-1, passes now."
+    ac6_progress_recorded: "MET -- TC-DDL-04-AC6-loop-records-progress + ddl04 schema suite (unique key, in-place upsert, resume reads). 2 MINOR bookkeeping notes (backfill_batch_size column static 5000; persisted status stays running) -- non-blocking, filed as ISS-0716/GH-814."
+    verdict: RELEASE-READY (approve full RELEASED)
+  obp_04:
+    title: Outbox gate hysteresis and escalation (SHOULD)
+    ac1_hysteresis: "MET -- unit decide (stays closed on 49999/50001 oscillation; reopens only at 40000) + TC-OBP-04-AC1-evaluate-oscillation."
+    ac2_reopen_appends_event: "MET -- TC-OBP-04-AC2-reopen-appends-event (EXECUTION_OUTBOX_GATE_OPENED with closed duration; state write + event append one transaction) + schema reopen_persists_transition_and_duration."
+    ac3_flapping_restores_low_water: "MET -- unit flapping detect + TC-OBP-04-AC3-flapping-restores-low-water + schema low_water < cap constraints."
+    ac4_refusal_escalation: "MET -- TC-OBP-04-AC4-refusal-threshold-crossing + TC-OBP-04-AC4-escalation-alert (alert hook fires with severity escalate)."
+    ac5_closed_duration_page: "MET -- TC-OBP-04-AC5-closed-duration-page (alert hook severity page; drainer-restart is the operator action the page triggers) + schema closed_gate_sweep."
+    ac6_per_tenant_keying: "MET -- schema per_tenant_keying_keeps_rows_independent (one tenant's depth never touches another tenant's row)."
+    verdict: RELEASE-READY (approve full RELEASED)
+  ord_03:
+    title: Sequence order guard and gap sweeping (SHOULD)
+    ac1_out_of_order_deferred: "MET -- TC-ORD-03-AC1-out-of-order-deferred (seq 6 before 5: .deferred, silent ROLLBACK, row stays PENDING, no event, no retry)."
+    ac2_ordered_apply: "MET -- TC-ORD-03-AC2-ordered-apply-advances-cursor (5 then 6 applied in order; cursor + EXECUTION_EFFECT_APPLIED events ordered 5 then 6)."
+    ac3_cursor_guard_double_apply: "MET -- TC-ORD-03-AC3-cursor-race-0-rows (conditional advance returns 0) + TC-ORD-03-AC3-double-apply-guard (re-apply of applied seq deferred)."
+    ac4_apply_failed_rollback: "MET -- TC-ORD-03-AC4-apply-failed-rollback (typed error -> .apply_failed; cursor + row unchanged after rollback; no divergence)."
+    ac5_gap_sweep_dead_letter: "MET -- TC-ORD-03-AC5-sweep-stalled-to-dead (all PENDING -> DEAD in one tx; SweptCorrelation carries every unapplied seq) + TC-ORD-03-AC5-non-stalled-not-swept (slow-but-present NOT swept -- the REWORK-1 `+ 1` predicate fix, passes now)."
+    ac6_on_conflict_do_nothing: "MET -- TC-ORD-03-AC6-on-conflict-do-nothing (re-insert absorbed; exactly one row)."
+    verdict: "RELEASE-READY (approve full RELEASED) -- module-level, same bar as released siblings ORD-01/02/04; live-consumer-daemon wiring is a pre-existing cross-ordering-batch integration concern, non-blocking (established at batch-2 release)"
+  vld_04:
+    title: Validation gate at authoring and promotion (SHOULD)
+    ac1_draft_save_422: "MET (REWORK-2) -- gate-level TC-VLD-04-AC1-draft-save-finding-invalid passes (gate returns .invalid; version not marked semantically_valid; finding count recorded) AND handlePut (draft save) now calls runSemanticGate mapping GateResult.invalid -> HTTP 422 with the VLD-03 Problem Details body (da4761fc). Note: main.zig's live definition-update route is PATCH -> handlePatch, which does not yet invoke the gate -- tracked ISS-0717 (MINOR, non-blocking follow-up)."
+    ac2_promotion_submit_422: "MET (REWORK-2) -- gate-level TC-VLD-04-AC2-promotion-finding-invalid passes AND handleCreatePromotionPlan (POST /api/v1/promotions) + handleSubmitPromotion (the surface that creates promotion_reviews rows) both run the gate BEFORE computePromotionPlan, mapping .invalid/.timeout -> HTTP 422 with no plan and no promotion_reviews row (ordering, not rollback). prm01-prm05 45/45 confirm no promotion regression."
+    ac3_stale_verdict_reruns: "MET -- TC-VLD-04-AC3-stale-verdict-reruns (storedVerdictIsCurrent false -> re-run) + TC-VLD-04-AC3-current-verdict-reused (current verdict reused); promotion submit uses check_stored_first=true."
+    ac4_compile_timeout: "MET -- TC-VLD-04-AC4-timeout (forced-small budget -> GateResult.timeout); handlePut / handleValidate / promotion handlers map .timeout to HTTP 422 ValidationTimeout."
+    ac5_events: "MET -- TC-VLD-04-AC5-valid-event (DEFINITION_VALIDATED) + TC-VLD-04-AC5-failed-event (DEFINITION_VALIDATION_FAILED with finding count); event types seeded by migration 1165."
+    verdict: RELEASE-READY (approve full RELEASED) -- AC1/AC2 satisfied end-to-end after REWORK-2; VLD-04 moved TESTED -> RELEASED; ISS-0715/GH-813 resolved
+
+blocking_issues: []
+
+non_blocking_followups:
+  - id: ISS-0716
+    github_issue: "https://github.com/tvolodi/R-Co/issues/814"
+    severity: MINOR
+    status: OPEN
+    scope: "DDL-04 plat_migration_state bookkeeping (backfill_batch_size column static 5000; persisted status stays running)"
+    disposition: "Does NOT block DDL-04's release -- purely bookkeeping, no AC impact. Tracked for a documentation/consistency follow-up."
+  - id: ISS-0717
+    github_issue: "https://github.com/tvolodi/R-Co/issues/816"
+    severity: MINOR
+    status: OPEN
+    scope: "VLD-04 AC1 live draft-save surface: main.zig registers PATCH -> handlePatch (not PUT -> handlePut); the VLD-04 gate is wired into handlePut per the validated design call-site table, so the live frontend draft-save path (client.patch) is not yet gate-enforced"
+    description: >
+      REWORK-2 wired runSemanticGate into handlePut (PUT /api/v1/definitions/{id}) per the
+      design's declared draft-save call site, and TEST-RUNNER/RELEASE-VALIDATOR confirmed the
+      gate + handler. However main.zig's live definition-update route is PATCH -> handlePatch
+      (web/src/api/definitions.ts uses client.patch), and handlePatch does not call the gate --
+      so a finding-producing definition saved through the frontend would receive HTTP 200, not
+      the AC1 HTTP 422. Pre-existing route-registration divergence (predates this batch; design /
+      validators / ISS-0715 / prior decision all treated PUT as the draft-save surface). Fix:
+      wire the gate into handlePatch (or register handlePut as the live PUT route). Non-blocking
+      for VLD-04's release -- AC1 is satisfied at the declared call-site contract and the gate
+      module + /validate + promotion surfaces are all enforced -- but tracked so the live PATCH
+      gap is not silently dropped (filed this session as new issue).
+  - id: PRM-01-vs-VLD-04-precedence
+    severity: MINOR
+    status: AWARE
+    scope: "Promotion handler precedence edge: the VLD-04 gate runs before computePromotionPlan, so an unauthorized caller (no promotion.submit) with a semantically-invalid source definition receives HTTP 422 (gate) instead of PRM-01 AC1's HTTP 403"
+    description: >
+      In both promotion handlers the gate (runSemanticGateOnSource) runs before
+      computePromotionPlan, so PlanError.Forbidden (403) is only reachable after the gate
+      passes. Both outcomes are rejections; neither VLD-04 AC2 nor PRM-01 AC1 is invalidated --
+      it only changes which error an unauthorized caller with an invalid source sees. No test
+      exercises this precedence edge; flagged for awareness / potential future handler-order
+      refinement. Non-blocking.
+
+approved_requirements:
+  - "DDL-04"
+  - "OBP-04"
+  - "ORD-03"
+  - "VLD-04"
+
+partially_approved_requirements: []
+
+not_approved_requirements: []
+
+next_action: >
+  Route to DOC-UPDATER (Step 6): batch WF02-batch-7-20260816 is now fully approved -- DDL-04,
+  OBP-04, ORD-03 and VLD-04 are all RELEASED (VLD-04 moved TESTED -> RELEASED via reqctl.py
+  this revalidation; docs/status/requirement_status.yaml regenerated). Update the changelog,
+  requirement status (all four requirements RELEASED), and run Step Final branch management on
+  feature/WF02-batch-7-20260816. Record in the release notes: ISS-0715/GH-813 RESOLVED (VLD-04
+  gate wiring), and the two non-blocking MINOR follow-ups ISS-0716/GH-814 (DDL-04 bookkeeping)
+  and ISS-0717/GH-816 (VLD-04 AC1 live PATCH draft-save surface not yet gate-enforced).

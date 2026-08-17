@@ -393,10 +393,24 @@ pub const Conn = struct {
                 col.* = null;
             } else {
                 const col_len_u: usize = @intCast(col_len);
-                const col_data = self.reader.interface.take(col_len_u) catch
-                    return PgError.ConnectionFailed;
-                const bytes = allocator.dupe(u8, col_data) catch return PgError.OutOfMemory;
-                col.* = bytes;
+                if (col_len_u <= self.reader.interface.buffer.len) {
+                    // Fits in the reader's buffer — return a contiguous slice
+                    // and copy it into a caller-owned allocation.
+                    const col_data = self.reader.interface.take(col_len_u) catch
+                        return PgError.ConnectionFailed;
+                    const bytes = allocator.dupe(u8, col_data) catch return PgError.OutOfMemory;
+                    col.* = bytes;
+                } else {
+                    // Values larger than the reader's internal buffer cannot
+                    // be returned contiguously by take() (rebase asserts
+                    // buffer.len - seek >= n, so a single take() of a large
+                    // column panics). readAlloc accumulates in chunks into a
+                    // caller-owned allocation instead.
+                    col.* = self.reader.interface.readAlloc(allocator, col_len_u) catch |err| switch (err) {
+                        error.OutOfMemory => return PgError.OutOfMemory,
+                        else => return PgError.ConnectionFailed,
+                    };
+                }
             }
         }
         return row;

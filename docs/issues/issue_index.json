@@ -2838,6 +2838,42 @@
         "process"
       ],
       "created_at": "2026-08-16T09:29:12Z"
+    },
+    {
+      "id": "ISS-0716",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+      "severity": "MINOR",
+      "status": "OPEN",
+      "title": "DDL-04: plat_migration_state bookkeeping - backfill_batch_size column hardcoded 5000, persisted status stays running after completion",
+      "run_id": "WF02-batch-7-20260816",
+      "workflow_id": "WF-02",
+      "created_at": "2026-08-16T20:29:35Z",
+      "labels": [
+        "bug"
+      ],
+      "affected_areas": [
+        "src/platform/backfill.zig",
+        "migrations/1163_ddl04_plat_migration_state.sql"
+      ]
+    },
+    {
+      "id": "ISS-0717",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+      "severity": "MINOR",
+      "status": "OPEN",
+      "title": "VLD-04 AC1: live draft-save surface is PATCH (handlePatch), not PUT (handlePut) - frontend draft-save path is not gate-enforced",
+      "run_id": "WF02-batch-7-20260816",
+      "workflow_id": "WF-02",
+      "created_at": "2026-08-16T22:15:46Z",
+      "labels": [
+        "bug"
+      ],
+      "affected_areas": [
+        "src/api/routes/definitions.zig",
+        "src/main.zig",
+        "web/src/api/definitions.ts"
+      ],
+      "non_blocking": true
     }
   ]
 }

@@ -1,0 +1,58 @@
+{
+  "report_id": "WF02-batch-7-20260816-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-batch-7-20260816",
+  "step": "01",
+  "created_at": "2026-08-16T17:35:47Z",
+  "summary": "Produced design artefacts for all four stage-16 requirements: DDL-04 (Idempotent batched backfill), OBP-04 (Outbox gate hysteresis and escalation), ORD-03 (Sequence order guard and gap sweeping), VLD-04 (Validation gate at authoring and promotion). Classification per lego-catalog: DDL-04 = Type C (plat_migration_state) + Type E (src/platform/backfill.zig); OBP-04 = Type C (plat_outbox_gate) + Type E (src/outbox/gate.zig); ORD-03 = Type E only (schema already exists; DLQ item_type is code-only); VLD-04 = Type C (process_definitions verdict columns) + Type E (src/validation/gate.zig). All 4 Type E designs pass tools/lint_design_artefact.py (exit 0); all 3 Type C YAMLs pass lint + tools/codegen_migration.py --dry-run (exit 0). Every acceptance criterion of each requirement is addressed via an explicit AC-coverage table in each design. Requirement statuses advanced to IN_PROGRESS (closest legal reqctl status; DESIGNED is not in reqctl VALID_STATUSES though AGENT_SYSTEM.md names it in the lifecycle - flagged MINOR).",
+  "files_created": [
+    "src/design/ddl-04-idempotent-batched-backfill.md",
+    "templates/specs/ddl-04-plat-migration-state.migration.yaml",
+    "src/design/obp-04-outbox-gate-hysteresis-escalation.md",
+    "templates/specs/obp-04-plat-outbox-gate.migration.yaml",
+    "src/design/ord-03-sequence-order-guard-gap-sweeping.md",
+    "src/design/vld-04-validation-gate-authoring-promotion.md",
+    "templates/specs/vld-04-definition-semantic-verdict.migration.yaml"
+  ],
+  "files_modified": [
+    "docs/requirements.yaml",
+    "handoffs/WF02-batch-7-20260816/step-01-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "lint_design_artefact.py x4 (Type E)",
+      "status": "pass",
+      "detail": "ddl-04/obp-04/ord-03/vld-04 all exit 0"
+    },
+    {
+      "name": "lint_design_artefact.py x3 (Type C YAML)",
+      "status": "pass",
+      "detail": "ddl-04/obp-04/vld-04 migration YAMLs all exit 0"
+    },
+    {
+      "name": "codegen_migration.py --dry-run x3",
+      "status": "pass",
+      "detail": "ddl-04-plat-migration-state / obp-04-plat-outbox-gate / vld-04-definition-semantic-verdict all exit 0; generated SQL reviewed"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MINOR",
+      "description": "Handoff acceptance criterion #5 asks to set requirement status to DESIGNED via tools/reqctl.py set-status, but DESIGNED is not in reqctl.py VALID_STATUSES (DRAFT/VALIDATED/PENDING/IN_PROGRESS/IMPLEMENTED/TESTED/RELEASED/UNTRACKED/INFORMATIONAL/DEPRECATED) even though docs/agents/AGENT_SYSTEM.md and fn-update-requirement-status.md name DESIGNED in the canonical lifecycle. set-status ... DESIGNED hard-fails (exit 1). Used IN_PROGRESS as the closest legal status with an explanatory note for all four IDs (DDL-04/OBP-04/ORD-03/VLD-04). Recommend adding DESIGNED to reqctl.py VALID_STATUSES or amending the acceptance criterion."
+    },
+    {
+      "severity": "MINOR",
+      "description": "VLD-04: DEFINITION_VALIDATED / DEFINITION_VALIDATION_FAILED event types are not seeded in event_type_registry (migration 1152 seeds only EXECUTION_*); the Type C migration adds the verdict columns but BACKEND-DEV must seed the two event types (CUSTOM edit following 1152 pattern) before src/validation/gate.zig persistVerdict appends pass the ES-05 registry check. See src/design/vld-04-validation-gate-authoring-promotion.md Open questions #1."
+    },
+    {
+      "severity": "MINOR",
+      "description": "OBP-01/02/03 (outbox depth counter, ingress refusal, OutboxOverflow emit) are not yet implemented; OBP-04 designs the gate interface they will call (evaluateAndDecide/recordRefusal) so later handoffs do not change signatures. AC5's drainer restart is an operator/infra hook. See src/design/obp-04-outbox-gate-hysteresis-escalation.md Open questions."
+    }
+  ],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 1b): re-lint the 4 Type E designs and re-run codegen --dry-run on the 3 Type C YAMLs",
+    "CODE-DESIGN-VALIDATOR to confirm the DESIGNED-vs-VALID_STATUSES gap with ORCH/REQ-ANALYST"
+  ],
+  "blockers": []
+}

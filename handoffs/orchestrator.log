@@ -1928,6 +1928,10 @@
 2026-08-16T11:09:02Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-002b | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | STEP 2b: HARD GATE validate fix design
 2026-08-16T11:12:25Z | COMPLETE | WF03-iss0714-bench-env-20260816 | wf03-iss | CODE-DESIGN-VALIDATOR | PASS | STEP 2b: fix design validated (HARD GATE) - route to BACKEND-DEV Step 3
 2026-08-16T11:14:20Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-003 | ORCH -> BACKEND-DEV | PENDING | STEP 3: execute dev-DB ledger reconciliation per design
+2026-08-16T11:16:47Z | DONE | WF03-GH792-20260816 | --- | PIPELINE COMPLETE | GH-792 CLOSED (ISS-0707 RESOLVED, prm-09 public-qualification fix landed)
+2026-08-16T11:16:47Z | GIT  | WF03-GH792-20260816 | feature/WF03-GH792-20260816 | 59554217 | PR: https://github.com/tvolodi/R-Co/pull/810
+2026-08-16T11:16:47Z | LOOP | WF03-GH792-20260816 | --- | ORCH | claim released (r-co:GH-792 DONE, gh-792 closed, task/current.json empty) - continuing loop
+2026-08-16T11:20:00Z | LOOP_DEFER | --- | --- | ORCH | GH-809 released DEFERRED: failing bench DB at :5442/bpm_dev is the sibling r-co-1 stack dev DB; this workspace dev DB :5452 healthy (migrations_applied_at set); cross-workspace env repair; GH-809 left OPEN
 2026-08-16T11:26:27Z | COMPLETE | WF03-iss0714-bench-env-20260816 | wf03-iss0714-bench-env-20260816-003 | BACKEND-DEV | PASS | STEP 3: dev-DB reconciliation executed per design S3 (Steps A-C); gates D-1..D-7 all PASS (ledger 111, 98/98 covered, registry stamped, migrate exit 0 + 59 public backlog, bench exit 0, no test-DB regression); no src/migration changes
 2026-08-16T11:28:44Z | ROUTE | WF03 | WF03-iss0714-bench-env-20260816-005 | ORCH -> TEST-RUNNER | PENDING | STEP 5: verify reconciliation (bench green)
 2026-08-16T11:35:30Z | COMPLETE | WF03-iss0714-bench-env-20260816 | wf03-iss0714-bench-env-20260816-005 | TEST-RUNNER | STEP 5: verify reconciliation (ISS-0714/GH #809) — all 5 gates PASS; report tests/reports/WF03-iss0714-bench-env-20260816-verification.md
@@ -1939,6 +1943,7 @@
 2026-08-16T12:16:59Z | GIT | WF03-iss0714-bench-env-20260816 | feature/wf03-iss0714-bench-env-20260816 | 24523cb8 | PR: https://github.com/tvolodi/R-Co/pull/811
 2026-08-16T15:50:08Z | DISPATCH_STALE | ADHOC-gh799-close-20260816 | --- | ORCH | CLEARED — ISS-0709 status OPEN at origin/main HEAD (not already RESOLVED)
 2026-08-16T15:50:08Z | ROUTE | ADHOC | adhoc-gh799-close-20260816-001 | ORCH → DOC-UPDATER | PENDING | GH #799/ISS-0709 closure bookkeeping (PR #808 already merged, fix verified)
+2026-08-16T15:52:00Z | ROUTE | WF-02 | 00fade61 | ORCH -> BACKEND-DEV | PENDING | Step 00 git-setup feature/WF02-batch-7-20260816 (DDL-04, OBP-04, ORD-03, VLD-04 stage 16)
 2026-08-16T16:06:13Z | COMPLETE | ADHOC-gh799-close-20260816 | adhoc-gh | DOC-UPDATER | GH #799 closed (PR #808, commit 91a48040); ISS-0709 RESOLVED; issue_index updated; bookkeeping pushed to clean main; lint_handoffs.py exit 0
 2026-08-16T16:24:59Z | ROUTE | WF-02 | WF02-spt02-04-20260816-00-backend-dev | ORCH → BACKEND-DEV | PENDING
 2026-08-16T16:42:54Z | ROUTE | WF-02 | WF02-spt02-04-20260816-01-code-designer | ORCH → CODE-DESIGNER | PENDING
@@ -1978,3 +1983,24 @@
 2026-08-16T22:08:09Z | COMPLETE | ADHOC-close-released-req-issues-20260816 | ADHOC-close-released-req-issues-20260816-001-doc-updater | DOC-UPDATER | Closed 14 released-requirement tracking issues (#262/#263/#264/#231/#232/#233/#234/#236/#308/#237/#238/#268/#269/#270) with release-evidence comments; verified CLOSED; bookkeeping pushed to clean main; lint_handoffs.py exit 0
 2026-08-16T22:08:09Z | COMPLETE | ADHOC-close-released-req-issues-20260816 | 001 | DOC-UPDATER | PASS | closed 14 released-requirement tracking issues (SPT-02/03/04 #262/263/264 PR #815, PLC-01..04 #231..234 PR #787, PRM-02..05 #236/308/237/238 PR #795, VLD-01..03 #268..270 PR #808); bookkeeping 26ee02c0 on clean main
 2026-08-16T22:08:09Z | DONE | ADHOC-close-released-req-issues-20260816 | --- | PIPELINE COMPLETE | SPT-02/03/04 + PLC-01..04 + PRM-02..05 + VLD-01..03 GitHub tracking issues CLOSED
+2026-08-16T16:44:00Z | BENCH_ENV_CHECK | WF02-batch-7-20260816 | --- | ORCH | CLEARED - test-env-verify 10/10 exit 0 - dispatching TEST-RUNNER step-00a green-main gate
+2026-08-16T17:01:47Z | ROUTE | WF-02 | 6990badc | ORCH -> TEST-RUNNER | PENDING | Step 00a green-main gate (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T17:24:22Z | ROUTE | WF-02 | cf7ade4c | ORCH -> CODE-DESIGNER | PENDING | Step 01 design artefacts (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T17:37:12Z | ROUTE | WF-02 | 2c90d7eb | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | Step 01b HARD GATE design validation (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T17:41:49Z | ROUTE | WF-02 | f7fc9672 | ORCH -> BACKEND-DEV | PENDING | Step 2a implementation (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T18:09:39Z | handoff_completed | WF02-batch-7-20260816 | f7fc9672 | BACKEND-DEV | step-2a-backend-dev COMPLETED (PASS); commit 7b2d8584 pushed; migrations 1163-1166 applied; event types seeded
+2026-08-16T18:11:35Z | ROUTE | WF-02 | 65c4029b | ORCH -> SECURITY-REVIEWER | PENDING | Step 2c security hard gate (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T18:16:37Z | ROUTE | WF-02 | 7f50bdd7 | ORCH -> TEST-DESIGNER | PENDING | Step 03 test design (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T19:06:00Z | ROUTE | WF-02 | ddcf3706 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | Step 03b HARD GATE test-design validation (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T19:10:57Z | ROUTE | WF-02 | 7d471c16 | ORCH -> BACKEND-DEV | PENDING | Step 2a-rework1 fix 3 BLOCKERs (ORD-03 sweeper +1, DDL-04 stall reachable, VLD-04 heap corruption)
+2026-08-16T20:04:39Z | handoff-completed | WF02-batch-7-20260816 | 7d471c16 | BACKEND-DEV | step-2a-rework1 REWORK-1 fixed ORD-03 sweeper +1, DDL-04 stall loop, VLD-04 gate/test UAF + pg large-column read; ord03 9/9 obp04 6/6 ddl04 6/6 vld04 7/7
+2026-08-16T20:07:09Z | ROUTE | WF-02 | ec1bf1f5 | ORCH -> TEST-RUNNER | PENDING | Step 04 execute batch-7 tests (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T20:11:54Z | handoff-completed | WF02-batch-7-20260816 | ec1bf1f5 | TEST-RUNNER | step-04 all batch-7 suites PASS (obp04-gate 6/6 ord03 9/9 ddl04-backfill 6/6 vld04-gate 7/7; schema ddl04 5/5 obp04 6/6 vld04 5/5; ordering 10/10; unit 1155/1219 64 baseline skips); report tests/reports/report-20260816-WF02-batch-7-20260816-step-04.yaml
+2026-08-16T20:14:37Z | ROUTE | WF-02 | 4dec6570 | ORCH -> RELEASE-VALIDATOR | PENDING | Step 05 release validation (DDL-04, OBP-04, ORD-03, VLD-04)
+2026-08-16T20:32:20Z | COMPLETED | WF02-batch-7-20260816 | 4dec6570 | RELEASE-VALIDATOR | step-05 release validation done; decision PARTIAL (DDL-04/OBP-04/ORD-03 RELEASED, VLD-04 TESTED via ISS-0715/GH-813); filed ISS-0715/GH-813 + ISS-0716/GH-814; release decision docs/status/release-stage16-WF02-batch-7-20260816.yaml
+2026-08-16T20:33:34Z | ROUTE | WF-02 | fa7637f7 | ORCH -> BACKEND-DEV | PENDING | Step 2a-rework2 wire VLD-04 gate into handlers (ISS-0715/GH-813)
+2026-08-16T21:25:08Z | COMPLETE | WF02-batch-7-20260816 | fa7637f7 | BACKEND-DEV | PASS (REWORK-2 VLD-04 gate wired into handlers; vld04-gate 7/7, vld-http 5/5, prm suites green; commit da4761fc) -> TEST-DESIGNER/TEST-RUNNER
+2026-08-16T21:33:38Z | ROUTE | WF-02 | 58683e55 | ORCH -> TEST-RUNNER | PENDING | Step 04-rework2 re-verify VLD-04 handler wiring (AC1/AC2)
+2026-08-16T21:57:55Z | ROUTE | WF-02 | d8b00b6d | ORCH -> RELEASE-VALIDATOR | PENDING | Step 05-rework2 re-validate VLD-04 release
+2026-08-16T22:43:59Z | ROUTE | WF-02 | 1689e714 | ORCH -> DOC-UPDATER | PENDING | Step 06 changelog + status (DDL-04, OBP-04, ORD-03, VLD-04 RELEASED)
+2026-08-16T22:59:04Z | ROUTE | WF-02 | c9874333 | ORCH -> BACKEND-DEV | PENDING | Step Final git-merge + release.py (DDL-04, OBP-04, ORD-03, VLD-04)

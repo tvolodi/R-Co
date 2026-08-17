@@ -6,6 +6,11 @@ pub const DlqItemType = enum {
     SERVICE_TASK,
     WEBHOOK,
     TIMER,
+    /// ORD-03 AC5: a gap-swept correlation dead-lettered as one unit. The
+    /// item_type column (021_obs05_dead_letter_context.sql, no CHECK on
+    /// item_type) accepts this value without a migration; entry_type stays
+    /// legacy-only (see the ORD-03 design's open question #1).
+    EFFECT_CORRELATION,
 };
 
 pub const DlqStoreError = error{
@@ -771,6 +776,7 @@ pub fn itemTypeToString(item_type: DlqItemType) []const u8 {
         .SERVICE_TASK => "SERVICE_TASK",
         .WEBHOOK => "WEBHOOK",
         .TIMER => "TIMER",
+        .EFFECT_CORRELATION => "EFFECT_CORRELATION",
     };
 }
 
@@ -778,6 +784,7 @@ pub fn itemTypeFromString(raw: []const u8) ?DlqItemType {
     if (std.mem.eql(u8, raw, "SERVICE_TASK")) return .SERVICE_TASK;
     if (std.mem.eql(u8, raw, "WEBHOOK")) return .WEBHOOK;
     if (std.mem.eql(u8, raw, "TIMER")) return .TIMER;
+    if (std.mem.eql(u8, raw, "EFFECT_CORRELATION")) return .EFFECT_CORRELATION;
     return null;
 }
 
@@ -786,6 +793,7 @@ fn entryTypeForItemType(item_type: DlqItemType) []const u8 {
         .SERVICE_TASK => "service_task_failed",
         .WEBHOOK => "webhook_failed",
         .TIMER => "timer_failed",
+        .EFFECT_CORRELATION => "effect_correlation_failed",
     };
 }
 

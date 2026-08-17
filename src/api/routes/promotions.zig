@@ -6,6 +6,12 @@ const std = @import("std");
 const pool_mod = @import("pool");
 const auth = @import("../middleware/auth.zig");
 const plan_mod = @import("../../definition/promotion_plan.zig");
+// VLD-04 (WF02-batch-7-20260816): the semantic gate, run on the source ACTIVE
+// definition before the PRM-01 plan is computed. tenant_context routes the
+// gate's pool connection to the source tenant's schema.
+const tenant_context_mod = @import("tenant_context");
+const validation = @import("validation");
+const validation_gate = @import("validation_gate");
 
 pub const HandlerResult = struct {
     status_code: u16,
@@ -80,6 +86,38 @@ pub fn handleCreatePromotionPlan(
         .string => |s| s,
         else => return errorResult(allocator, 422, "INVALID_INPUT", "process_key must be a string"),
     };
+
+    // VLD-04 AC2: run the semantic gate on the source tenant's ACTIVE
+    // definition BEFORE the PRM-01 plan is computed. A failing gate returns
+    // HTTP 422 and guarantees that no promotion plan is computed and no
+    // promotion_reviews row is created (the gate runs before any plan
+    // computation or review-row write — ordering, not rollback).
+    const gate_result = runSemanticGateOnSource(
+        allocator,
+        pool,
+        source_tenant_id,
+        process_key,
+    ) catch |err| switch (err) {
+        error.SourceDefinitionNotFound => return errorResult(allocator, 404, "SOURCE_DEFINITION_NOT_FOUND", "No ACTIVE definition found for process_key in the source tenant"),
+        error.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "Service temporarily unavailable"),
+        else => return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error"),
+    };
+    switch (gate_result) {
+        // Clean pass: the source version is marked semantically_valid; the
+        // promotion may proceed to plan computation.
+        .valid => |verdict| validation_gate.freeValid(allocator, verdict),
+        .invalid => |inv| {
+            const failure = validation_gate.failureFromInvalid(inv);
+            const body_str = validation.serialiseValidationFailure(allocator, failure) catch {
+                validation_gate.freeInvalid(allocator, inv);
+                return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error");
+            };
+            validation_gate.freeInvalid(allocator, inv);
+            return .{ .status_code = 422, .body = body_str };
+        },
+        // VLD-04 AC4 — compilation exceeded the 5 s budget.
+        .timeout => return errorResult(allocator, 422, "VALIDATION_TIMEOUT", "Semantic validation exceeded the 5 second budget"),
+    }
 
     const plan = plan_mod.computePromotionPlan(
         allocator,
@@ -168,4 +206,83 @@ fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []con
         }
     }
     try buf.append(allocator, '"');
+}
+
+// ---------------------------------------------------------------------------
+// VLD-04 — source-tenant semantic gate before plan computation
+// ---------------------------------------------------------------------------
+
+/// Error set for `runSemanticGateOnSource`: the VLD-04 gate errors plus the
+/// source-definition resolution failures, all mapped by the caller to HTTP
+/// status codes (422 / 404 / 503 / 500).
+const SourceGateError = error{
+    /// No ACTIVE definition for `process_key` in the source tenant -> 404.
+    SourceDefinitionNotFound,
+    PoolExhausted,
+    TransactionFailed,
+    OutOfMemory,
+    // VLD-04 gate errors (propagated from runSemanticGate).
+    ValidationTimeout,
+    DefinitionNotFound,
+    VerdictWriteFailed,
+    EventAppendFailed,
+    PersistenceFailed,
+};
+
+/// Resolve the source tenant's ACTIVE definition for `process_key` and run
+/// the VLD-04 semantic gate on it. Sets the ambient tenant context to the
+/// source tenant so the gate's pool connection is routed to the source
+/// schema (mirrors computePromotionPlan's own routing). The gate runs with
+/// check_stored_first=true: a current + valid stored verdict is reused
+/// without recompiling (AC3); a stale verdict forces re-verification.
+///
+/// Security: every SQL parameter is bound as $N — no string interpolation.
+fn runSemanticGateOnSource(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    source_tenant_id: []const u8,
+    process_key: []const u8,
+) SourceGateError!validation_gate.GateResult {
+    const saved_ctx = blk: {
+        const s = tenant_context_mod.get();
+        break :blk if (s.len > 0) s else "";
+    };
+    defer if (saved_ctx.len > 0) tenant_context_mod.set(saved_ctx) else tenant_context_mod.clear();
+
+    tenant_context_mod.set(source_tenant_id);
+    const conn = pool.acquire() catch |err| return switch (err) {
+        pool_mod.PoolError.ExhaustedPool => SourceGateError.PoolExhausted,
+        else => SourceGateError.TransactionFailed,
+    };
+    defer pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        \\SELECT id::text
+        \\FROM process_definitions
+        \\WHERE name = $1 AND status = 'ACTIVE'
+        \\LIMIT 1
+    ,
+        &[_][]const u8{process_key},
+    ) catch |err| return switch (err) {
+        pool_mod.PoolError.ExhaustedPool => SourceGateError.PoolExhausted,
+        else => SourceGateError.TransactionFailed,
+    };
+    if (row == null) return SourceGateError.SourceDefinitionNotFound;
+    const r = row.?;
+    defer {
+        for (r) |col| if (col) |v| allocator.free(v);
+        allocator.free(r);
+    }
+    const id_str = r[0] orelse return SourceGateError.SourceDefinitionNotFound;
+    const definition_id = allocator.dupe(u8, id_str) catch return SourceGateError.OutOfMemory;
+    defer allocator.free(definition_id);
+
+    return validation_gate.runSemanticGate(allocator, pool, definition_id, 5_000, true) catch |err| switch (err) {
+        error.DefinitionNotFound, error.PersistenceFailed => SourceGateError.SourceDefinitionNotFound,
+        error.PoolExhausted => SourceGateError.PoolExhausted,
+        error.OutOfMemory => SourceGateError.OutOfMemory,
+        // ValidationTimeout / VerdictWriteFailed / EventAppendFailed.
+        else => |e| e,
+    };
 }
