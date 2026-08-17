@@ -6,7 +6,8 @@
   "step": "final",
   "created_at": "2026-08-17T06:29:48Z",
   "started_at": "2026-08-17T06:29:48Z",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T06:31:57Z",
   "workflow_ref": "WF-03",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
   "task": {
@@ -19,5 +20,16 @@
     "task_current_json": "task/current.json",
     "artifacts_in": []
   },
-  "result": {}
+  "result": {
+    "status": "PASS",
+    "summary": "Step Final complete — PR #818 squash-merged to main (093aa84f); feature/WF03-GH816-20260817 branch deleted (local + remote); GH-816 released as DONE via release.py; lint_handoffs exit 0 (0 BLOCKER, 0 MAJOR).",
+    "artifacts_out": {
+      "branch_name": "feature/WF03-GH816-20260817",
+      "commit_sha": "093aa84f",
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/818",
+      "push_status": "MERGED_SQUASH"
+    },
+    "issues": [],
+    "next_action": "WF03-GH816-20260817 COMPLETE"
+  }
 }
