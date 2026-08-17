@@ -6,7 +6,7 @@
   "step": "06",
   "created_at": "2026-08-17T12:05:49Z",
   "started_at": "2026-08-17T12:05:49Z",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "workflow_ref": "WF-02",
   "task": {
     "description": "Update documentation after RELEASE-VALIDATOR approved OBP-01, OBP-02, OBP-03, DDL-03.\n\nSteps:\n1. Update CHANGELOG.md \u2014 add an entry for this release:\n   - OBP-01: Outbox depth cap and cached depth counter\n   - OBP-02: External ingress refusal before transaction\n   - OBP-03: Typed outbox overflow on internal emit\n   - DDL-03: Phased DDL generation\n\n2. Update requirement status for all 4 requirements:\n   python tools/reqctl.py set-status OBP-01 RELEASED\n   python tools/reqctl.py set-status OBP-02 RELEASED\n   python tools/reqctl.py set-status OBP-03 RELEASED\n   python tools/reqctl.py set-status DDL-03 RELEASED\n\n3. Update docs/status/requirement_status.yaml with implemented_in, test_spec, test_run, released_at fields for each requirement.\n\n4. Run python tools/lint_handoffs.py \u2014 must exit 0.\n\n5. Commit changes on branch feature/WF02-obp-ddl-20260817 with message: docs(stage16): mark OBP-01/02/03 DDL-03 RELEASED\n\nReport: files changed, commit SHA.",
@@ -53,5 +53,21 @@
       "OBP-03": "tests/specs/OBP-03.md",
       "DDL-03": "tests/specs/DDL-03.md"
     }
+  },
+  "completed_at": "2026-08-17T12:08:44Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md (stage16 OBP-01/02/03 DDL-03 RELEASED entry); set OBP-01, OBP-02, OBP-03, DDL-03 to RELEASED via reqctl.py; regenerated docs/status/requirement_status.yaml (463 entries); lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 MINOR, 332 ACKNOWLEDGED); committed all changes as commit 71be0056 on branch feature/WF02-obp-ddl-20260817.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "docs/status/release-stage16-WF02-obp-ddl-20260817.yaml",
+      "handoffs/WF02-obp-ddl-20260817/step-06-doc-updater.json",
+      "handoffs/registry.json",
+      "commit:71be0056"
+    ],
+    "issues": [],
+    "next_action": "Step Final: create PR, merge squash, delete branch feature/WF02-obp-ddl-20260817, return repo to main"
   }
 }
