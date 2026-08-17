@@ -430,3 +430,60 @@ test "TC-VLD-04-AC5-failed-event: a failure appends DEFINITION_VALIDATION_FAILED
     try std.testing.expectEqual(@as(u64, 1), try countVerdictEvents(allocator, conn, "DEFINITION_VALIDATION_FAILED", fx));
     try std.testing.expectEqual(@as(u64, 0), try countVerdictEvents(allocator, conn, "DEFINITION_VALIDATED", fx));
 }
+
+// ---------------------------------------------------------------------------
+// TC-VLD-04-AC1-PATCH — handlePatch returns HTTP 422 on a finding-producing body
+// ---------------------------------------------------------------------------
+
+test "TC-VLD-04-AC1-PATCH: handlePatch returns HTTP 422 on a finding-producing body" {
+    // covers: VLD-04 AC1, live PATCH draft-save surface (ISS-0717)
+    const allocator = std.testing.allocator;
+    const url = try requireTestDbUrl(allocator);
+    defer allocator.free(url);
+    var pool = try makePool(allocator, url);
+    defer pool.deinit();
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    // Seed with a valid graph so store.update succeeds (structural validation passes).
+    const fx = try seedDefinition(allocator, conn, valid_graph_json);
+    defer fx.deinit(allocator);
+    defer cleanup(allocator, conn, fx);
+
+    // Parse invalid_graph_json (structurally valid, semantically invalid) into a DefinitionGraph.
+    var parsed_graph = try std.json.parseFromSlice(
+        bpm.definition.DefinitionGraph,
+        allocator,
+        invalid_graph_json,
+        .{ .ignore_unknown_fields = true, .allocate = .alloc_always },
+    );
+    defer parsed_graph.deinit();
+
+    const patch_body = bpm.definitions_routes.PatchDefinitionBody{
+        .name = null,
+        .version = null,
+        .description = null,
+        .graph = parsed_graph.value,
+        .stage = null,
+    };
+
+    var store = bpm.definition.Store.init(allocator, &pool);
+    defer store.deinit();
+
+    // handlePatch must return HTTP 422 when the semantic gate fires (ISS-0717 fix).
+    const result = bpm.definitions_routes.handlePatch(&store, allocator, fx.definition_id, patch_body);
+    defer allocator.free(result.body);
+
+    try std.testing.expectEqual(@as(u16, 422), result.status_code);
+    try std.testing.expect(result.body.len > 0);
+
+    // DB: semantically_valid is false after the failed gate call.
+    var rb = try conn.query(
+        allocator,
+        "SELECT semantically_valid::text FROM process_definitions WHERE id = $1::uuid",
+        &.{fx.definition_id},
+    );
+    defer rb.deinit();
+    try std.testing.expect(rb.rows.len >= 1);
+    try std.testing.expectEqualStrings("false", rb.rows[0][0] orelse "");
+}
