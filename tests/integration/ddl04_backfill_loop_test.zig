@@ -425,3 +425,61 @@ test "TC-DDL-04-AC6-loop-records-progress: the loop records cumulative counters 
     try std.testing.expectEqualStrings("applied", row[4] orelse "");
     try std.testing.expectEqualStrings("5000", row[5] orelse "");
 }
+
+test "TC-DDL-04-AC6b-persists-halved-batch-size: plat_migration_state records the adaptive batch size, not the initial default" {
+    // covers: DDL-04 (ISS-0716 — adaptive backfill_batch_size must be persisted)
+    const allocator = std.testing.allocator;
+    const url = try requireTestDbUrl(allocator);
+    defer allocator.free(url);
+    var pool = try makePool(allocator, url);
+    defer pool.deinit();
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    const fx = try setupFixtures(allocator, conn);
+    defer fx.deinit(allocator);
+    defer cleanup(conn, fx);
+
+    // 6000 rows; batch_size 5000, batch_timeout_ms 1 (every real batch exceeds
+    // 1 ms): iter 1 uses size 5000 -> halves to 2500; iter 2 uses 2500 ->
+    // halves to 1250; iter 3 uses 1250, 0 updates, exits.
+    // The terminal status write must persist backfill_batch_size = 1250, NOT
+    // the initial default 5000.  Pre-fix recordBatchProgress hardcoded 5000;
+    // this assertion distinguishes pre-fix from post-fix.
+    try seedNullRows(allocator, conn, fx, 6000);
+    const sql = try generatedSql(allocator, fx, "");
+    defer allocator.free(sql);
+    const gb = backfill.GeneratedBackfill{
+        .migration_id = fx.migration_id,
+        .tenant_schema = "tenant_default",
+        .table = fx.table_name,
+        .column = "amount",
+        .sql = sql,
+        .order = 2,
+    };
+
+    const cfg = backfill.BackfillConfig{
+        .backfill_batch_size = 5000,
+        .batch_size_floor = 500,
+        .batch_timeout_ms = 1,
+        .stall_threshold_iterations = 10,
+    };
+
+    const result = try backfill.runBackfill(allocator, &pool, gb, cfg);
+    try std.testing.expectEqual(@as(i64, 6000), result.rows_updated_total);
+    try std.testing.expectEqual(@as(u32, 1250), result.final_batch_size);
+
+    // The persisted backfill_batch_size must reflect the halved final value
+    // (1250), not the initial config value (5000).
+    var rows = try conn.query(allocator,
+        \\SELECT backfill_batch_size::text, status
+        \\FROM plat_migration_state
+        \\WHERE migration_id = $1 AND tenant_schema = 'tenant_default' AND phase = 'backfill'
+    , &.{fx.migration_id});
+    defer rows.deinit();
+    try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
+    const row = rows.rows[0];
+    try std.testing.expect(row.len >= 2);
+    try std.testing.expectEqualStrings("1250", row[0] orelse "");
+    try std.testing.expectEqualStrings("applied", row[1] orelse "");
+}

@@ -30,7 +30,7 @@ family, so unit + integration against real Postgres is the proportionate ceiling
 | AC3 | GIVEN a backfill batch, WHEN it executes, THEN it holds `ROW EXCLUSIVE` on the table and commits before the next batch begins; no transaction spans two batches. | `TC-DDL-04-AC3-per-batch-commit-durable` (every batch committed; no outer transaction) |
 | AC4 | GIVEN a batch exceeds 5 s, WHEN the next batch is planned, THEN `backfill_batch_size` is halved for that tenant with a floor of 500 rows. | `TC-DDL-04-AC4-halving` (config `batch_timeout_ms` forced below real batch latency → `final_batch_size` halved) |
 | AC5 | GIVEN ten consecutive iterations report no progress, WHEN the loop detects the stall, THEN it stops and escalates with the remaining `IS NULL` row count for each tenant. | `TC-DDL-04-AC5-stall-escalation` (stuck table: 0 rows updated but rows remain → `stalled = true` after threshold) |
-| AC6 | Rows updated per batch and remaining `IS NULL` rows per tenant are recorded in `plat_migration_state`. | `ddl04_plat_migration_state: progress_recording_updates_counters_in_place` (schema test) + `TC-DDL-04-AC6-loop-records-progress` (real loop writes cumulative counters) |
+| AC6 | Rows updated per batch and remaining `IS NULL` rows per tenant are recorded in `plat_migration_state`. | `ddl04_plat_migration_state: progress_recording_updates_counters_in_place` (schema test) + `TC-DDL-04-AC6-loop-records-progress` (real loop writes cumulative counters) + `TC-DDL-04-AC6b-persists-halved-batch-size` (adaptive batch_size persisted; distinguishes pre-fix from post-fix) |
 
 ---
 
@@ -133,13 +133,27 @@ backfill were complete.
 ### TC-DDL-04-AC6-loop-records-progress: the loop records cumulative counters into plat_migration_state
 **Given:** A table with `N` rows needing backfill and a unique `(migration_id, tenant_schema,
 'backfill')` key.
-**When:** `runBackfill` runs to completion.
+**When:** `runBackfill` runs to completion with the default config (`backfill_batch_size = 5000`).
 **Then:** Exactly one `plat_migration_state` row exists for the key; `rows_updated_total == N`,
-`rows_remaining == 0`, `last_batch_rows` is the last batch's count, `last_batch_ms >= 0`,
-`status == 'applied'` — and no second row was created by the upsert across batches.
+`rows_remaining == 0`, `last_batch_rows == 0` (the terminating zero-rows batch), `last_batch_ms >= 0`,
+`status == 'applied'`, `backfill_batch_size == 5000` — and no second row was created by the upsert
+across batches.
 **Layer:** integration
 **Acceptance criterion mapped:** AC6
 **Zig test:** `TC-DDL-04-AC6-loop-records-progress` (`tests/integration/ddl04_backfill_loop_test.zig`)
+
+### TC-DDL-04-AC6b-persists-halved-batch-size: plat_migration_state records the adaptive batch size, not the initial default
+**Given:** A table with 6000 rows needing backfill, config `backfill_batch_size = 5000`,
+`batch_timeout_ms = 1` (every real batch exceeds 1 ms) so halving fires on each non-empty batch.
+**When:** `runBackfill` runs to completion (iter 1 uses size 5000 → halves to 2500; iter 2 uses
+2500 → halves to 1250; iter 3 uses 1250, 0 updates, exits).
+**Then:** `plat_migration_state.backfill_batch_size` for the key equals `1250` (the final adaptive
+value) — **not** `5000` (the initial config default). This assertion distinguishes the pre-fix
+state (where `recordBatchProgress` hardcoded 5000) from the post-fix state (where the live
+`batch_size` is passed and persisted). `status` must also be `applied`.
+**Layer:** integration
+**Acceptance criterion mapped:** AC6 (ISS-0716 — adaptive backfill_batch_size persistence)
+**Zig test:** `TC-DDL-04-AC6b-persists-halved-batch-size` (`tests/integration/ddl04_backfill_loop_test.zig`)
 
 ### ddl04_plat_migration_state: unique_constraint_on_migration_tenant_phase
 **Given:** A `plat_migration_state` row for `(migration_id, tenant_schema, 'backfill')`.
