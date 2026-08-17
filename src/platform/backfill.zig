@@ -291,6 +291,7 @@ pub fn runBackfill(
             rows_updated,
             @intCast(elapsed_ms),
             stall_count,
+            batch_size,
         );
 
         conn.commit() catch return error.PersistenceFailed;
@@ -326,6 +327,11 @@ pub fn runBackfill(
         }
     }
 
+    const term_conn = pool.acquire() catch return error.PoolExhausted;
+    defer pool.release(term_conn);
+    const final_status_str: []const u8 = if (stalled) "failed" else "applied";
+    try recordTerminalStatus(term_conn, backfill.migration_id, backfill.tenant_schema, "backfill", final_status_str, final_batch_size);
+
     return BackfillResult{
         .migration_id = backfill.migration_id,
         .tenant_schema = backfill.tenant_schema,
@@ -351,6 +357,7 @@ pub fn recordBatchProgress(
     last_batch_rows: i64,
     last_batch_ms: i64,
     stall_count: u32,
+    batch_size: u32,
 ) BackfillError!void {
     // Short-lived serialisation buffers; the pool Conn exposes no allocator,
     // so the generic conn's own buffers are backed by page_allocator (one
@@ -366,6 +373,8 @@ pub fn recordBatchProgress(
     defer a.free(ms_text);
     const stall_text = std.fmt.allocPrint(a, "{d}", .{stall_count}) catch return error.OutOfMemory;
     defer a.free(stall_text);
+    const batch_size_text = std.fmt.allocPrint(a, "{d}", .{batch_size}) catch return error.OutOfMemory;
+    defer a.free(batch_size_text);
 
     // Upsert on the (migration_id, tenant_schema, phase) UNIQUE anchor: the
     // first batch INSERTs the running row; every later batch UPDATEs it in
@@ -376,19 +385,46 @@ pub fn recordBatchProgress(
         \\   rows_updated_total, rows_remaining, last_batch_rows, last_batch_ms, stall_count,
         \\   started_at, updated_at)
         \\VALUES
-        \\  ($1, $2, $3, 'running', 1, 5000,
+        \\  ($1, $2, $3, 'running', 1, $9,
         \\   $4, $5, $6, $7, $8,
         \\   now(), now())
         \\ON CONFLICT (migration_id, tenant_schema, phase) DO UPDATE SET
-        \\  status = 'running',
-        \\  rows_updated_total = EXCLUDED.rows_updated_total,
-        \\  rows_remaining = EXCLUDED.rows_remaining,
-        \\  last_batch_rows = EXCLUDED.last_batch_rows,
-        \\  last_batch_ms = EXCLUDED.last_batch_ms,
-        \\  stall_count = EXCLUDED.stall_count,
-        \\  updated_at = now()
+        \\  backfill_batch_size    = EXCLUDED.backfill_batch_size,
+        \\  rows_updated_total     = EXCLUDED.rows_updated_total,
+        \\  rows_remaining         = EXCLUDED.rows_remaining,
+        \\  last_batch_rows        = EXCLUDED.last_batch_rows,
+        \\  last_batch_ms          = EXCLUDED.last_batch_ms,
+        \\  stall_count            = EXCLUDED.stall_count,
+        \\  updated_at             = now()
     ,
-        &.{ migration_id, tenant_schema, phase, total_text, remaining_text, rows_text, ms_text, stall_text },
+        &.{ migration_id, tenant_schema, phase, total_text, remaining_text, rows_text, ms_text, stall_text, batch_size_text },
+    ) catch return error.PersistenceFailed;
+}
+
+/// Write the terminal status (applied/failed) into plat_migration_state after
+/// the backfill loop exits. Called on a separate pool connection; autocommitted.
+pub fn recordTerminalStatus(
+    conn: anytype,
+    migration_id: []const u8,
+    tenant_schema: []const u8,
+    phase: []const u8,
+    final_status: []const u8,
+    final_batch_size: u32,
+) BackfillError!void {
+    const a = std.heap.page_allocator;
+    const batch_size_text = std.fmt.allocPrint(a, "{d}", .{final_batch_size}) catch return error.OutOfMemory;
+    defer a.free(batch_size_text);
+
+    conn.exec(
+        \\UPDATE plat_migration_state
+        \\SET    status              = $4,
+        \\       backfill_batch_size = $5,
+        \\       updated_at          = now()
+        \\WHERE  migration_id  = $1
+        \\  AND  tenant_schema = $2
+        \\  AND  phase         = $3
+    ,
+        &.{ migration_id, tenant_schema, phase, final_status, batch_size_text },
     ) catch return error.PersistenceFailed;
 }
 

@@ -1,0 +1,33 @@
+{
+  "handoff_id": "WF03-GH814-20260817-04-test-designer",
+  "run_id": "WF03-GH814-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "step": "04",
+  "created_at": "2026-08-17T06:47:54Z",
+  "started_at": "2026-08-17T06:47:54Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T06:49:00Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "task": {
+    "description": "Step 4 — Test spec verification for WF03-GH814.\n\nBACKEND-DEV updated TC-DDL-04-AC6 in tests/integration/ddl04_backfill_loop_test.zig to assert status='applied' and backfill_batch_size='5000' (per design).\n\n1. Read tests/specs/DDL-04.md (if it exists) — check if TC-DDL-04-AC6 is documented.\n2. If missing or outdated, update tests/specs/DDL-04.md with the corrected TC-DDL-04-AC6 spec (Given/When/Then reflecting the new assertions).\n3. Verify the implementation in ddl04_backfill_loop_test.zig matches the updated spec.\n4. Confirm test isolation (per-test data, defer cleanup).\n5. Return PASS if spec is correct and implementation matches."
+  },
+  "context": {
+    "issue_id": "ISS-0716",
+    "artifacts_in": [
+      "src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md",
+      "tests/integration/ddl04_backfill_loop_test.zig",
+      "tests/specs/DDL-04.md"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "TC-DDL-04-AC6 spec updated in tests/specs/DDL-04.md: Then clause now documents backfill_batch_size==5000 and last_batch_rows==0 (terminating batch), matching the assertions BACKEND-DEV added to ddl04_backfill_loop_test.zig. status='applied' was already documented. Implementation verified: 6 assertions (rows_updated_total, rows_remaining, last_batch_rows, status, backfill_batch_size, one-row upsert) all align with spec. Fixture isolation confirmed: per-test UUID table_name and migration_id, defer cleanup. lint_test_isolation exit=0; lint_handoffs exit=0.",
+    "artifacts_out": [
+      "tests/specs/DDL-04.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  }
+}

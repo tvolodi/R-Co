@@ -1,0 +1,32 @@
+{
+  "handoff_id": "WF03-GH814-20260817-02-code-designer",
+  "run_id": "WF03-GH814-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "step": "02",
+  "created_at": "2026-08-17T06:37:39Z",
+  "started_at": "2026-08-17T06:37:39Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
+  "task": {
+    "description": "Step 2 \u2014 Produce a fix design artefact for ISS-0716 / GH-814.\n\nRoot cause (from Step 1):\n- src/platform/backfill.zig line 379: recordBatchProgress INSERT hardcodes 5000 for backfill_batch_size; the live adaptive batch_size variable is never passed.\n- src/platform/backfill.zig line 383: ON CONFLICT UPDATE always writes status='running' (no terminal write).\n- src/platform/backfill.zig line 329: runBackfill returns without any call to persist terminal status ('applied'/'failed').\n- tests/integration/ddl04_backfill_loop_test.zig TC-DDL-04-AC6 asserts status='running' (must be updated to 'applied').\n\nDesign artefact: src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md\n\nDesign MUST specify:\n1. The signature change for recordBatchProgress: add `batch_size: u32` as a new parameter (position $9 in the SQL or adjusted as appropriate).\n2. The SQL change for the INSERT: replace the 5000 literal with $<N> bound to `batch_size`.\n3. A new function or call site for persisting terminal status: either extend the existing recordBatchProgress to accept an optional final_status, or add a recordTerminalStatus call after the loop completes.\n4. The exact call site in runBackfill where the terminal status write happens (after the loop, before returning BackfillResult).\n5. Test update: TC-DDL-04-AC6 assertion changes from status='running' to status='applied' (success path) / status='failed' (stall path).\n6. No implementation code \u2014 interfaces, function signatures, SQL parameter tables, prose only.\n\nWrite the design to src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md."
+  },
+  "context": {
+    "issue_id": "ISS-0716",
+    "artifacts_in": [
+      "docs/issues/ISS-0716.json",
+      "src/platform/backfill.zig"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for DDL-04 backfill bookkeeping fix (ISS-0716/GH-814) \u2014 Type E prose artefact covering: recordBatchProgress signature (add batch_size:u32 as ), SQL INSERT literal-> + ON CONFLICT UPDATE removes status=running + adds backfill_batch_size=EXCLUDED, new recordTerminalStatus function spec (UPDATE plat_migration_state SET status=, backfill_batch_size=), call site placement in runBackfill (after loop, before return), TC-DDL-04-AC6 assertion update (status=applied, backfill_batch_size column added, NOTE comment removed).",
+    "artifacts_out": [
+      "src/design/wf03-gh814-ddl04-backfill-bookkeeping-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b / WF-02 Step 1b)"
+  },
+  "completed_at": "2026-08-17T06:38:37Z"
+}

@@ -2843,9 +2843,11 @@
       "id": "ISS-0716",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/814",
       "severity": "MINOR",
-      "status": "OPEN",
+      "status": "RESOLVED",
+      "resolved_at": "2026-08-17T07:08:30Z",
       "title": "DDL-04: plat_migration_state bookkeeping - backfill_batch_size column hardcoded 5000, persisted status stays running after completion",
       "run_id": "WF02-batch-7-20260816",
+      "resolved_by_run_id": "WF03-GH814-20260817",
       "workflow_id": "WF-02",
       "created_at": "2026-08-16T20:29:35Z",
       "labels": [
