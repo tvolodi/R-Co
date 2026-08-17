@@ -7,7 +7,7 @@
 //! Security: all values are bound as $N parameters — no SQL string interpolation.
 const std = @import("std");
 const db = @import("pool");
-const mod = @import("mod.zig");
+const mod = @import("effects_mod");
 
 pub const EffectSpec = mod.EffectSpec;
 pub const EffectQueueError = mod.EffectQueueError;

@@ -1,0 +1,65 @@
+{
+  "report_id": "WF02-obp-ddl-20260817-step-01b-rework1-code-design-validator",
+  "agent_id": "CODE-DESIGN-VALIDATOR",
+  "run_id": "WF02-obp-ddl-20260817",
+  "step": "01b-rework1",
+  "created_at": "2026-08-17T08:15:12Z",
+  "summary": "Re-gated all 4 rework1 artifacts. 3 of 4 failures from step-01b are resolved: Y111 FIXED (migration_number changed to 1167, no collision with existing 1166_ord03_ordering_event_types_seed.sql); E050 FIXED (lint_design_artefact.py exits 0 on all 4 design markdown files — obp-01, obp-02, obp-03, ddl-03 — all code blocks now <=40 lines); OQ FIXED (all 3 open questions have Resolved Open Questions sections with formal decisions or out-of-scope declarations). One MAJOR issue remains unfixed: Y132 — in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml, all 4 test_cases have `assertions` formatted as YAML lists (e.g. `- row_count: 1`) instead of block scalar strings. Every other migration YAML in templates/specs/ uses `assertions: |` block scalar with `// CUSTOM:` placeholder text. Both lint_design_artefact.py (TypeError: expected string or bytes-like object, got 'list') and codegen_migration.py --dry-run (AttributeError: 'list' object has no attribute 'rstrip') crash with exit 1. AC coverage, cross-design consistency, and completeness for BACKEND-DEV are all confirmed good. Result: FAIL — route back to CODE-DESIGNER for rework2.",
+  "files_created": [],
+  "files_modified": [
+    "handoffs/WF02-obp-ddl-20260817/step-01b-code-design-validator-rework1.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "lint_design_artefact.py src/design/obp-01-outbox-depth-cap.md",
+      "status": "pass",
+      "detail": "OK — 1 file(s) checked, no issues"
+    },
+    {
+      "name": "lint_design_artefact.py src/design/obp-02-ingress-refusal.md",
+      "status": "pass",
+      "detail": "OK — 1 file(s) checked, no issues"
+    },
+    {
+      "name": "lint_design_artefact.py src/design/obp-03-outbox-overflow.md",
+      "status": "pass",
+      "detail": "OK — 1 file(s) checked, no issues"
+    },
+    {
+      "name": "lint_design_artefact.py src/design/ddl-03-phased-ddl-generation.md",
+      "status": "pass",
+      "detail": "OK — 1 file(s) checked, no issues"
+    },
+    {
+      "name": "lint_design_artefact.py templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml",
+      "status": "fail",
+      "detail": "TypeError: expected string or bytes-like object, got 'list' at lint_migration_spec:260 ASSERTION_HINT.search(assertions) — exit 1"
+    },
+    {
+      "name": "codegen_migration.py --dry-run templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml",
+      "status": "fail",
+      "detail": "AttributeError: 'list' object has no attribute 'rstrip' at _emit_test_block:202 — exit 1"
+    },
+    {
+      "name": "migration_number collision check (Y111)",
+      "status": "pass",
+      "detail": "1167 not found in migrations/ — highest numeric migration is 1166_ord03_ordering_event_types_seed.sql"
+    },
+    {
+      "name": "lint_handoffs.py",
+      "status": "pass",
+      "detail": "exit 0, no issues for WF02-obp-ddl-20260817 run"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "MAJOR",
+      "description": "Y132 REMAINING: test_cases[0..3].assertions in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml are YAML lists (e.g. '- row_count: 1', '- column: is_nullable\\n  value: NO') instead of block scalar strings. The migration spec toolchain expects assertions to be a string field containing a '// CUSTOM:' placeholder. Both lint_design_artefact.py and codegen_migration.py --dry-run crash with exit 1. Fix required: change each test_case assertions from a list to 'assertions: |\\n  // CUSTOM: <description>'. See templates/specs/obp-04-plat-outbox-gate.migration.yaml for the correct pattern."
+    }
+  ],
+  "next_steps": [
+    "Route back to CODE-DESIGNER for rework2: fix assertions format in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml (all 4 test_cases). Change each 'assertions:' list to a block scalar string with '// CUSTOM:' placeholder. No changes needed to any of the 4 design markdown files."
+  ],
+  "blockers": []
+}

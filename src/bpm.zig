@@ -113,9 +113,11 @@ pub const quota_policy = @import("config/quota_policy.zig"); // EXP-601
 pub const quota_enforcement = @import("api/middleware/quota_enforcement.zig"); // EXP-601
 pub const service_scope_validator = @import("definition/service_scope_validator.zig"); // SVC-03
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04
-pub const effects_mod = @import("effects/mod.zig"); // EXP-301/302/303 async effects subsystem
+// Named module imports so mod.zig and queue.zig each belong to only one module
+// (Zig 0.16 single-owner rule, OBP-03 ISS-OBP03-module-conflict).
+pub const effects_mod = @import("effects_mod"); // EXP-301/302/303 async effects subsystem
 pub const effects_stub = @import("effects/stub.zig"); // EXP-303 stub executor
-pub const effects_queue = @import("effects/queue.zig"); // EXP-301 outbox queue
+pub const effects_queue = @import("effects_queue"); // EXP-301 outbox queue
 pub const effects_worker = @import("effects/worker.zig"); // EXP-301 worker loop
 pub const secrets = @import("secrets/mod.zig"); // EXP-501 secrets provider surface
 pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definition promotion domain

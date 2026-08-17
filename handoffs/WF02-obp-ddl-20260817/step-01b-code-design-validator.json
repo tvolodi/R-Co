@@ -1,0 +1,76 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-01b-code-design-validator",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "step": "01b",
+  "created_at": "2026-08-17T07:54:03Z",
+  "started_at": "2026-08-17T07:54:03Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Hard gate \u2014 validate CODE-DESIGNER output for WF02-obp-ddl-20260817 before implementation.\n\nDesign files to validate:\n- src/design/obp-01-outbox-depth-cap.md\n- src/design/obp-02-ingress-refusal.md\n- src/design/obp-03-outbox-overflow.md\n- src/design/ddl-03-phased-ddl-generation.md\n\nRequirements covered: OBP-01, OBP-02, OBP-03, DDL-03 (from docs/requirements.yaml).\n\nFor each design file, verify:\n1. Every acceptance criterion from the corresponding requirement is covered by a named data structure, function signature, or migration \u2014 no AC is left unaddressed.\n2. No implementation code is present (pseudocode and interfaces only).\n3. The design is complete enough for BACKEND-DEV to implement without ambiguity.\n4. No contradictions between the four designs (especially OBP-01 depth interface used by OBP-02 and OBP-03).\n5. The three open questions flagged by CODE-DESIGNER (plat_outbox vs effects_outbox naming, tenant extraction mechanism, identifier allow-list) are either resolved in the design or explicitly out-of-scope with a clear rationale.\n\nReturn PASS only if all 5 checks pass for all 4 designs.\nReturn FAIL with specific gaps if any check fails.\n\nWrite result into the handoff file when done.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": [
+      "OBP-01",
+      "OBP-02",
+      "OBP-03",
+      "DDL-03"
+    ],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "src/design/obp-01-outbox-depth-cap.md",
+      "src/design/obp-02-ingress-refusal.md",
+      "src/design/obp-03-outbox-overflow.md",
+      "src/design/ddl-03-phased-ddl-generation.md"
+    ]
+  },
+  "completed_at": "2026-08-17T07:57:51Z",
+  "result": {
+    "status": "FAIL",
+    "summary": "4 of 5 design artefacts failed lint_design_artefact.py (BLOCKER/MAJOR). BLOCKER: migration_number 1165 in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml collides with migrations/1165_vld04_definition_semantic_verdict.sql (Y111). MAJOR E050: obp-01, obp-02, ddl-03 each contain a fenced code block exceeding 40 lines. MAJOR Y132 x12: migration YAML test_cases missing requirement_ref, act, assertions. obp-03 passes lint. Coverage and cross-design consistency are good. Three open questions are flagged with proposed defaults but not formally resolved.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "code": "Y111",
+        "artefact": "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml",
+        "description": "migration_number 1165 collides with existing migrations/1165_vld04_definition_semantic_verdict.sql. CODE-DESIGNER must choose an unused migration number before BACKEND-DEV proceeds."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "E050",
+        "artefact": "src/design/obp-01-outbox-depth-cap.md",
+        "description": "Fenced code block at line 71 exceeds 40 lines. Design should sketch signatures, not implement. Split or trim the DepthCache/DepthEntry struct block."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "E050",
+        "artefact": "src/design/obp-02-ingress-refusal.md",
+        "description": "Fenced code block at line 70 exceeds 40 lines. Split the outbox_cap.zig public interface block into smaller signature-only excerpts."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "E050",
+        "artefact": "src/design/ddl-03-phased-ddl-generation.md",
+        "description": "Fenced code block at line 75 exceeds 40 lines. Split the ddl_generate.zig type declarations block."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "Y132",
+        "artefact": "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml",
+        "description": "test_cases[0..3] each missing required fields: requirement_ref, act, assertions. All 4 test case entries must be completed."
+      },
+      {
+        "severity": "MINOR",
+        "code": "OQ-unresolved",
+        "artefact": "src/design/obp-01-outbox-depth-cap.md, src/design/obp-02-ingress-refusal.md, src/design/ddl-03-phased-ddl-generation.md",
+        "description": "Three open questions have proposed defaults but are not formally resolved or declared out-of-scope with rationale. (1) effects_outbox vs plat_outbox naming (OBP-01 OQ1): design assumes they are the same; REQ-ANALYST must confirm before countPending is implemented. (2) Tenant extraction mechanism (OBP-02 OQ1): design defers to ratelimit.zig pattern; BACKEND-DEV must confirm exact field/function. (3) Identifier allow-list for generatePhases (DDL-03 OQ1): design proposes [a-z0-9_]; REQ-ANALYST must confirm. These must be resolved or explicitly declared out-of-scope before BACKEND-DEV starts."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework: fix migration_number collision (BLOCKER), trim E050 code blocks (MAJOR), complete test_case fields (MAJOR), resolve or formally close the three open questions."
+  }
+}

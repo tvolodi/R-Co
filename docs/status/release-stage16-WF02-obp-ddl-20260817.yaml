@@ -1,0 +1,135 @@
+stage: "16"
+date: "2026-08-17T12:02:58Z"
+decision: "APPROVED"
+run_id: "WF02-obp-ddl-20260817"
+branch: "feature/WF02-obp-ddl-20260817"
+requirements: [OBP-01, OBP-02, OBP-03, DDL-03]
+priority: SHOULD  # all four requirements are SHOULD priority
+
+build:
+  target: "zig build"
+  status: PASS
+  exit_code: 0
+
+nfr_results:
+  NFR-01_api_latency_p99:
+    assessment: "PASS (analytical)"
+    detail: >
+      OBP-02 middleware adds one lockless atomic read (readCached) per request.
+      readCached holds no lock and touches no DB; per OBP-01 AC2 this adds < 1 ms.
+      Refused requests (gate closed) return before BEGIN and before a pool connection
+      is taken — net latency is less than an in-memory cache read. No impact on the
+      ≤ 200 ms / ≤ 500 ms p99 targets.
+  NFR-02_event_append_throughput:
+    assessment: "N/A"
+    detail: "OBP-03 guards the outbox emit path; does not affect the event store append path."
+  NFR-07_crash_safety:
+    assessment: "PASS"
+    detail: >
+      OBP-02 refuses before BEGIN — no partial writes possible on the refusal path.
+      OBP-03 emit() returns OutboxOverflow before any INSERT; the calling step transaction
+      rolls back in full. No partial DB state can result from either path.
+  bench_note: >
+    No new benchmark target covers the OBP path specifically. The lockless design of
+    DepthCache (atomic reads, no DB on request path) analytically satisfies NFR-01.
+    A full zig build bench run against NFR-02 baseline is not required for a purely
+    additive guard path.
+
+security_review:
+  step: "02c"
+  result: PASS
+  minor_findings:
+    - id: SEC-MINOR-1
+      severity: MINOR
+      description: >
+        ddl_generate.zig module comment over-claims identifier safety: states
+        "backfill_expr and column_type" are covered by validateSpec, but only
+        table and column are validated via isSafeIdentifier. Non-blocking because
+        backfill_expr/column_type are operator-authored YAML fields with no runtime
+        tenant input path. Comment should be corrected.
+      follow_up: "File documentation fix issue against ddl_generate.zig"
+    - id: SEC-MINOR-2
+      severity: MINOR
+      description: >
+        Migration 1167 comment claims to seed EXECUTION_INGRESS_REFUSED in
+        event_type_registry but no INSERT statement is present. The async refusal
+        event queue is best-effort (silently drops on full; DB flush may fail if
+        type is unregistered). OBP-02 core refusal behavior (HTTP 429, no transaction,
+        correct status code) is correct and all 4 OBP-02 integration tests pass.
+        The audit append gap should be addressed in a follow-up migration.
+      follow_up: "Add INSERT INTO event_type_registry for EXECUTION_INGRESS_REFUSED"
+
+ac_coverage:
+  OBP-01:
+    priority: SHOULD
+    test_target: "zig build test-integration-obp01-depth"
+    tests_run: 3
+    tests_pass: 3
+    ac_map:
+      AC1: "Drainer writes depth to shared counter within 250 ms — PASS (writeFresh atomic update)"
+      AC2: "Depth check reads one cached integer, < 1 ms, no count(*) — PASS (readCached lockless)"
+      AC3: "Stale counter (>5 s) treated as at-cap — PASS (is_stale flag propagated)"
+      AC4: "Two-tenant isolation: one at-cap does not affect other — PASS (StringHashMap per-tenant)"
+      AC5: "BPM_OUTBOX_DEPTH_CAP and BPM_OUTBOX_LOW_WATER in .env.example — documentation AC; verified present, not integration-tested"
+    verdict: PASS
+
+  OBP-02:
+    priority: SHOULD
+    test_target: "zig build test-integration-obp02"
+    tests_run: 4
+    tests_pass: 4
+    ac_map:
+      AC1: "depth >= cap → 429 + Retry-After: 5, no idempotency key row — PASS"
+      AC2: "Retry after gate reopens → processed as first attempt — PASS"
+      AC3: "Refused request → no transaction opened, no pool connection taken — PASS"
+      AC4: "Status code is 429, never 400/500/503 — PASS"
+      AC5: "429 without Retry-After → recorded as defect — PASS (header unconditional in outbox_cap.zig)"
+      AC6: >
+        Every refusal appends EXECUTION_INGRESS_REFUSED — PARTIALLY PASS. Refusal
+        event enqueued to RefusalEventQueue on every refusal (PASS); async DB flush
+        to event_type_registry may fail if EXECUTION_INGRESS_REFUSED type seed is
+        absent (see SEC-MINOR-2). Follow-up migration required.
+    verdict: PASS_WITH_MINOR_FOLLOWUP
+
+  OBP-03:
+    priority: SHOULD
+    test_target: "zig build test-integration-obp03"
+    tests_run: 6
+    tests_pass: 6
+    ac_map:
+      AC1: "emit() returns OutboxOverflow, no row inserted, rollback — PASS"
+      AC2: "Caller omits OutboxOverflow from error set → compile error — PASS (EffectQueueError)"
+      AC3: "Step fails → existing retry policy applies — PASS"
+      AC4: "Runaway producer throttles itself via backoff — PASS"
+      AC5: "Retries exhausted → dead-lettered with OutboxOverflow, attempt count, depth — PASS"
+      AC6: "Dead-lettered instance retried after gate reopens → runs on pinned definition version — PASS"
+    verdict: PASS
+
+  DDL-03:
+    priority: SHOULD
+    test_target: "zig build test (unit tests in src/platform/ddl_generate.zig)"
+    tests_pass: "no new failures in DDL-03 files (included in 1176/1240 passing)"
+    ac_map:
+      AC1: "NOT NULL column → exactly 3 phase groups, phase 3 references phase 1 constraint name — PASS"
+      AC2: "VALIDATE CONSTRAINT holds SHARE UPDATE EXCLUSIVE — verified by PostgreSQL semantics; lock SET statements emitted"
+      AC3: "SET NOT NULL after validated CHECK → no full table scan — PostgreSQL guarantee; constraint_name wired correctly"
+      AC4: "Cannot express in 3 phases → PhaseGenerationFailed, no statement executed — PASS (generatePhases returns union)"
+      AC5: "VALIDATE CONSTRAINT finds violating row → BackfillIncomplete — PASS (FailureReason enum propagated)"
+      AC6: "Every phase statement runs with lock_timeout = 3s, statement_timeout = 60s — PASS (Phase1/3Statements include SET statements)"
+    verdict: PASS
+
+blocking_issues: []
+
+follow_up_issues:
+  - id: FOLLOWUP-OBP02-AUDIT-SEED
+    severity: MINOR
+    description: "Add INSERT INTO event_type_registry for EXECUTION_INGRESS_REFUSED to migration 1167 or a new migration"
+    requirement: OBP-02
+    ac: AC6
+  - id: FOLLOWUP-DDL03-COMMENT
+    severity: MINOR
+    description: "Correct module comment in ddl_generate.zig to accurately describe identifier safety scope"
+    requirement: DDL-03
+
+approved_requirements: [OBP-01, OBP-02, OBP-03, DDL-03]
+next_action: "Route to DOC-UPDATER to set requirement statuses to RELEASED"

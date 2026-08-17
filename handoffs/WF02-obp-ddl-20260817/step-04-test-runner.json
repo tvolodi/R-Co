@@ -1,0 +1,85 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-04-test-runner",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "04",
+  "created_at": "2026-08-17T10:17:14Z",
+  "started_at": "2026-08-17T10:17:14Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T10:22:40Z",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Run the test suite for WF02-obp-ddl-20260817 on branch feature/WF02-obp-ddl-20260817.\n\nEnvironment is verified healthy (10/10 checks passed).\n\nSteps:\n1. Verify on branch feature/WF02-obp-ddl-20260817\n2. zig build (must exit 0)\n3. zig build test (unit tests, must exit 0)\n4. zig build test-integration-obp01-depth -j1 (OBP-01 depth cache)\n5. zig build test-integration-obp02 -j1 (OBP-02 ingress refusal)\n6. zig build test-integration-obp03 -j1 (OBP-03 overflow)\n7. zig build test-ddl-generate (DDL-03 unit tests if separate target, else included in step 3)\n8. Report pass/fail counts for each target\n\nWrite structured test report to tests/reports/report-20260817-WF02-obp-ddl.yaml.\n\nReturn PASS only if all test targets exit 0 with no failures.\nReturn FAIL with specific failures if any test target fails.",
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "context": {
+    "requirement_ids": [
+      "OBP-01",
+      "OBP-02",
+      "OBP-03",
+      "DDL-03"
+    ],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "bench_env_check": "CLEARED 10/10",
+    "artifacts_in": [
+      "tests/integration/obp01_depth_cache_test.zig",
+      "tests/integration/obp02_ingress_refusal_test.zig",
+      "tests/integration/obp03_outbox_overflow_test.zig",
+      "src/platform/ddl_generate.zig"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "3/6 test targets failed. Build: PASS. Unit (zig build test): PASS. DDL-03 (test-ddl-generate): PASS. Integration targets OBP-01 (test-integration-obp01-depth), OBP-02 (test-integration-obp02), OBP-03 (test-integration-obp03): all 3 FAIL with compile errors.",
+    "artifacts_out": ["tests/reports/report-20260817-WF02-obp-ddl.yaml"],
+    "issues": [
+      {
+        "id": "ISS-OBP01-queryrow-api",
+        "severity": "BLOCKER",
+        "requirement": "OBP-01",
+        "target": "test-integration-obp01-depth",
+        "kind": "compile_error",
+        "description": "obp01_depth_cache_test.zig:86,152 calls h.conn.queryRow() — method does not exist in pg.Conn",
+        "file": "tests/integration/obp01_depth_cache_test.zig",
+        "lines": [86, 152]
+      },
+      {
+        "id": "ISS-OBP01-embedfile-path",
+        "severity": "BLOCKER",
+        "requirement": "OBP-01",
+        "target": "test-integration-obp01-depth",
+        "kind": "compile_error",
+        "description": "obp01_depth_cache_test.zig:173 — @embedFile(\"../../.env.example\") escapes package root boundary",
+        "file": "tests/integration/obp01_depth_cache_test.zig",
+        "lines": [173]
+      },
+      {
+        "id": "ISS-OBP02-var-mutability",
+        "severity": "BLOCKER",
+        "requirement": "OBP-02",
+        "target": "test-integration-obp02",
+        "kind": "compile_error",
+        "description": "obp02_ingress_refusal_test.zig:239,247 — var spy should be const (never mutated); '_ = spy' is pointless discard",
+        "file": "tests/integration/obp02_ingress_refusal_test.zig",
+        "lines": [239, 247]
+      },
+      {
+        "id": "ISS-OBP03-module-conflict",
+        "severity": "BLOCKER",
+        "requirement": "OBP-03",
+        "target": "test-integration-obp03",
+        "kind": "compile_error",
+        "description": "src/outbox/emit.zig is simultaneously root of modules 'outbox_depth' and 'outbox_emit' — Zig module isolation violation in build.zig dep wiring for OBP-03 integration target",
+        "file": "src/outbox/emit.zig",
+        "lines": [1, 21]
+      }
+    ],
+    "next_action": "ORCH must spawn WF-03 issue-fixer for each BLOCKER issue before this workflow can advance"
+  }
+}

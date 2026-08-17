@@ -8,7 +8,7 @@
 //! Intended for deterministic sandbox/simulation contexts and unit tests.
 //! Test assertions access http_call_count, email_count, and recorded directly.
 const std = @import("std");
-const mod = @import("mod.zig");
+const mod = @import("effects_mod");
 
 pub const EffectSpec = mod.EffectSpec;
 pub const EffectKind = mod.EffectKind;

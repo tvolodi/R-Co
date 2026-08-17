@@ -2054,3 +2054,41 @@
 2026-08-17T07:07:43Z | ROUTE | WF-03 | WF03-GH814-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | GH-814 changelog + ISS-0716 RESOLVED
 2026-08-17T07:10:30Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-06-doc-updater | DOC-UPDATER | Step 06 PASS: changelog+ISS-0716 RESOLVED; lint 0; commit 86f69f38
 2026-08-17T07:10:30Z | ROUTE | WF-03 | WF03-GH814-20260817-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-814 Step Final git-merge + release.py
+2026-08-17T07:13:34Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-final-backend-dev | BACKEND-DEV | Step Final PASS: PR #819 squash-merged ac0b6de6; branch deleted; release.py DONE; lint 0; clean main
+2026-08-17T07:13:34Z | DONE | WF03-GH814-20260817 | --- | PIPELINE COMPLETE | GH-814/ISS-0716 RESOLVED — backfill bookkeeping fixed; PR #819 merged ac0b6de6
+2026-08-17T07:13:34Z | GIT | WF03-GH814-20260817 | feature/WF03-GH814-20260817 | ac0b6de6 | PR: https://github.com/tvolodi/R-Co/pull/819
+2026-08-17T07:26:58Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | Stage 16 SHOULD batch: OBP-01,OBP-02,OBP-03,DDL-03 git-setup
+2026-08-17T07:40:32Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01-code-designer | ORCH -> CODE-DESIGNER | PENDING | OBP-01/02/03 + DDL-03 design artefacts
+2026-08-17T07:54:03Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | OBP-01/02/03 + DDL-03 design hard gate
+2026-08-17T07:58:47Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-01b-code-design-validator | CODE-DESIGN-VALIDATOR | FAIL: Y111 BLOCKER migration collision + E050 MAJOR code blocks + Y132 MAJOR yaml gaps + OQ MINOR unresolved
+2026-08-17T07:58:47Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01-code-designer-rework1 | ORCH -> CODE-DESIGNER | PENDING | rework1: fix Y111+E050+Y132+OQ
+2026-08-17T08:11:22Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01b-code-design-validator-rework1 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | rework1 re-gate OBP-01/02/03 + DDL-03
+2026-08-17T08:16:35Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-01b-code-design-validator-rework1 | CODE-DESIGN-VALIDATOR | FAIL: Y132 MAJOR assertions format still wrong in migration YAML
+2026-08-17T08:16:35Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01-code-designer-rework2 | ORCH -> CODE-DESIGNER | PENDING | rework2 (FINAL): fix Y132 assertions block scalar in migration YAML
+2026-08-17T08:18:29Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01b-code-design-validator-rework2 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | rework2 re-gate: verify Y132 fixed
+2026-08-17T08:22:51Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-01b-code-design-validator-rework2 | CODE-DESIGN-VALIDATOR | Step 01b PASS (rework2): all 5 checks pass; Y132 fixed; lint 0; BACKEND-DEV unblocked
+2026-08-17T08:22:51Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING | implement OBP-01/02/03 + DDL-03
+2026-08-17T09:17:51Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02a-backend-dev | BACKEND-DEV | Step 02a PASS: OBP-01/02/03/DDL-03 implemented; zig build/test exit 0; commit 2597cf4c pushed
+2026-08-17T09:17:51Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02c-security-reviewer | ORCH -> SECURITY-REVIEWER | PENDING | tenant-data path security review: depth cache + ingress middleware
+2026-08-17T09:23:36Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02c-security-reviewer | SECURITY-REVIEWER | Step 02c PASS: all 8 invariants checked; 2 MINOR non-blocking findings logged; TEST-DESIGNER unblocked
+2026-08-17T09:23:36Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03-test-designer | ORCH -> TEST-DESIGNER | PENDING | OBP-01/02/03 + DDL-03 test specs + integration tests
+2026-08-17T09:39:31Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-03-test-designer | TEST-DESIGNER | Step 03 PASS: 4 specs + 3 integration test files + DDL-03 unit tests; lint_test_isolation exit 0; build wired
+2026-08-17T09:39:31Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | OBP-01/02/03 + DDL-03 hard gate
+2026-08-17T09:47:27Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-03b-test-design-validator | TEST-DESIGN-VALIDATOR | FAIL: OBP-02 AC6 test only checks seed row, not flushRefusalEvents() payload
+2026-08-17T09:47:27Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03-test-designer-rework1 | ORCH -> TEST-DESIGNER | PENDING | rework1: fix OBP-02 AC6 + spec desc updates
+2026-08-17T10:13:00Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-03b-test-design-validator-rework1 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | rework1 re-gate: verify OBP-02 AC6 fix
+2026-08-17T10:17:14Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-03b-test-design-validator-rework1 | TEST-DESIGN-VALIDATOR | Step 03b PASS (rework1): 5/5 checks; OBP-02 AC6 flush-path verified; lint 0
+2026-08-17T10:17:14Z | BENCH_ENV_CHECK | WF02-obp-ddl-20260817 | --- | ORCH | CLEARED 10/10 env healthy
+2026-08-17T10:17:14Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-04-test-runner | ORCH -> TEST-RUNNER | PENDING | run OBP-01/02/03 + DDL-03 integration tests
+2026-08-17T10:24:39Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-04-test-runner | TEST-RUNNER | FAIL: 4 compile errors in obp01/02/03 test files; DDL-03 PASS
+2026-08-17T10:24:39Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev-rework1 | ORCH -> BACKEND-DEV | PENDING | rework1: fix 4 compile errors in integration test files
+2026-08-17T11:16:00Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02a-backend-dev-rework1 | BACKEND-DEV | rework1 PASS: 4 compile errors fixed; zig build exit 0; pushed
+2026-08-17T11:16:00Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING | rework1: re-run all integration test targets
+2026-08-17T11:27:52Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-04-test-runner-rework1 | TEST-RUNNER | FAIL: 4 runtime failures ISS-OBP-T01 (stale-test logic), T02 (dangling ptr), T03 (mem leak), T04 (schema filter)
+2026-08-17T11:27:52Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev-rework2 | ORCH -> BACKEND-DEV | PENDING | rework2 (FINAL): fix 4 runtime test failures
+2026-08-17T11:57:11Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02a-backend-dev-rework2 | BACKEND-DEV | rework2 PASS: OBP-01 3/3 OBP-02 4/4 OBP-03 6/6; commit 80393ab7 pushed
+2026-08-17T11:57:11Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-04-test-runner-rework2 | ORCH -> TEST-RUNNER | PENDING | final verification run
+2026-08-17T12:01:08Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-04-test-runner-rework2 | TEST-RUNNER | Step 04 PASS (rework2): obp01 3/3 obp02 4/4 obp03 6/6; report updated
+2026-08-17T12:01:08Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING | OBP-01/02/03 + DDL-03 release decision
+2026-08-17T12:05:49Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-05-release-validator | RELEASE-VALIDATOR | Step 05 APPROVED: OBP-01/02/03 DDL-03 all PASS; 2 MINOR follow-ups non-blocking
+2026-08-17T12:05:49Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | CHANGELOG + set-status RELEASED for OBP-01/02/03 + DDL-03

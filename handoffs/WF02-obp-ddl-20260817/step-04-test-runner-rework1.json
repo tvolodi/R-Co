@@ -1,0 +1,71 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-04-test-runner-rework1",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "04-rework1",
+  "created_at": "2026-08-17T11:16:00Z",
+  "started_at": "2026-08-17T11:16:00Z",
+  "completed_at": "2026-08-17T11:23:55Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Re-run test suite after compile-error fixes on branch feature/WF02-obp-ddl-20260817.\n\nSteps:\n1. zig build (must exit 0)\n2. zig build test (unit tests; note pre-existing iss0173 inherited failure is acceptable if it existed before this run)\n3. zig build test-integration-obp01-depth -j1\n4. zig build test-integration-obp02 -j1\n5. zig build test-integration-obp03 -j1\n\nFor step 2: if zig build test has failures, check if they are pre-existing (not in OBP-01/02/03/DDL-03 files). Any NEW unit test failures in the files introduced by this run (src/outbox/depth.zig, src/outbox/emit.zig, src/api/middleware/outbox_cap.zig, src/platform/ddl_generate.zig, src/effects/worker.zig, src/effects/mod.zig) are FAIL. Pre-existing failures in unrelated files are acceptable if unchanged from main.\n\nUpdate tests/reports/report-20260817-WF02-obp-ddl.yaml with the new results.\n\nReturn PASS only if all 5 steps exit 0 (or step 2 has only pre-existing unrelated failures).\nReturn FAIL with specific failures if any target newly fails.",
+    "functions_to_call": ["fn:run-unit-tests", "fn:run-integration-tests", "fn:write-test-report"]
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "bench_env_check": "CLEARED 10/10",
+    "artifacts_in": [
+      "tests/integration/obp01_depth_cache_test.zig",
+      "tests/integration/obp02_ingress_refusal_test.zig",
+      "tests/integration/obp03_outbox_overflow_test.zig"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "zig build: PASS. Unit: 1176/1240 pass (64 skip), pre-existing failures only. OBP-01-depth: 2/3 pass, 1 fail. OBP-02: 2/4 pass, 2 fail. OBP-03: 5/6 pass, 1 fail. 4 new test failures in OBP test files.",
+    "artifacts_out": ["tests/reports/report-20260817-WF02-obp-ddl.yaml"],
+    "issues": [
+      {
+        "id": "ISS-OBP-T01",
+        "severity": "HIGH",
+        "test": "TC-OBP-01-AC3-stale-treats-as-at-cap",
+        "file": "tests/integration/obp01_depth_cache_test.zig",
+        "line": 157,
+        "kind": "test_logic_error",
+        "description": "Test calls writeFresh twice (updating depth_refreshed_at to now()), then checks DB row staleness — always gets 'f'. Fix: remove the DB re-query after writeFresh; rely on readCached(stale_cache).is_stale."
+      },
+      {
+        "id": "ISS-OBP-T02",
+        "severity": "HIGH",
+        "test": "TC-OBP-02-AC1-429-no-idempotency-row",
+        "file": "tests/integration/obp02_ingress_refusal_test.zig",
+        "line": 129,
+        "kind": "dangling_pointer",
+        "description": "outbox_cap.apply defers free of body_json; TestResponseWriter.writeBody stores raw slice without copying; writer.body is dangling after apply() returns. Fix: dupe body in writeBody, or transfer ownership."
+      },
+      {
+        "id": "ISS-OBP-T03",
+        "severity": "MEDIUM",
+        "test": "TC-OBP-02-AC2-key-unused-after-reopen",
+        "file": "tests/integration/obp02_ingress_refusal_test.zig",
+        "line": 151,
+        "kind": "memory_leak",
+        "description": "requireTestDbUrl return value discarded without free. Fix: defer std.testing.allocator.free(url)."
+      },
+      {
+        "id": "ISS-OBP-T04",
+        "severity": "MEDIUM",
+        "test": "TC-OBP-03-AC6-pinned-version-on-retry",
+        "file": "tests/integration/obp03_outbox_overflow_test.zig",
+        "line": 312,
+        "kind": "test_logic_error",
+        "description": "information_schema.columns query missing AND table_schema = 'public'; TestHarness tenant schema also has instance_projections, returns count 2 instead of 1."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER or BACKEND-DEV (WF-03) to fix 4 test issues in OBP-01/02/03 test files."
+  }
+}

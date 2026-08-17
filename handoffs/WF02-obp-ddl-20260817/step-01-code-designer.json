@@ -1,0 +1,39 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-01-code-designer",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "step": "01",
+  "created_at": "2026-08-17T07:40:32Z",
+  "started_at": "2026-08-17T07:40:32Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T07:52:51Z",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Produce design artefacts for the Stage 16 outbox capacity + DDL phased-generation batch.\n\nRequirements to design:\n1. OBP-01 — Outbox depth cap and cached depth counter (stage 16, SHOULD)\n2. OBP-02 — External ingress refusal before transaction (stage 16, SHOULD)\n3. OBP-03 — Typed outbox overflow on internal emit (stage 16, SHOULD)\n4. DDL-03 — Phased DDL generation (stage 16, SHOULD)\n\nRead each requirement fully from docs/requirements.yaml before designing.\n\nFor each requirement, produce a design artefact at:\n- src/design/obp-01-outbox-depth-cap.md\n- src/design/obp-02-ingress-refusal.md\n- src/design/obp-03-outbox-overflow.md\n- src/design/ddl-03-phased-ddl-generation.md\n\nEach design MUST cover:\n- All acceptance criteria from the requirement, mapped to specific data structures, function signatures, and control flow\n- New or modified source files (src/*.zig or migrations/)\n- Test stub expectations (what integration tests must verify)\n- Migration SQL if schema changes are needed\n- No implementation code — interfaces, types, pseudocode only\n\nOBP context — read these existing files before designing:\n- src/outbox/ (existing outbox subsystem)\n- Look for OBP-04 implementation files (the hysteresis gate, already RELEASED)\n- docs/requirements.yaml for OBP-04 body to understand what's already built\n\nDDL context — read these before designing DDL-03:\n- src/design/ files for DDL-01, DDL-02, DDL-04 (already designed/implemented)\n- src/ddl/ (existing DDL validator subsystem)\n- DDL-02 acceptance criteria (expand-then-constrain ordering) since DDL-03 extends it\n\nFunctions to call: fn:read-backend-conventions, fn:load-requirements\n\nComplete all 4 design files in one step. Write result into the handoff file.",
+    "functions_to_call": ["fn:read-backend-conventions", "fn:load-requirements"]
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for OBP-01/02/03 (outbox backpressure) and DDL-03 (phased DDL generation) — types: [C (OBP-01), E (OBP-01/02/03/DDL-03)]",
+    "artifacts_out": [
+      "src/design/obp-01-outbox-depth-cap.md",
+      "src/design/obp-02-ingress-refusal.md",
+      "src/design/obp-03-outbox-overflow.md",
+      "src/design/ddl-03-phased-ddl-generation.md",
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml"
+    ],
+    "issues": [
+      "OBP-01 open question: requirement body uses `plat_outbox` as table name but codebase uses `effects_outbox` — REQ-ANALYST should confirm before BACKEND-DEV implements countPending",
+      "OBP-02 open question: tenant_schema extraction mechanism from request context should be confirmed with BACKEND-DEV against ratelimit.zig precedent",
+      "DDL-03 open question: identifier allow-list for safe SQL embedding needs explicit confirmation from REQ-ANALYST"
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  }
+}

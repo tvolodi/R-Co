@@ -14,10 +14,14 @@
 //!   - The event log stays source of truth; outbox rows are projections.
 const std = @import("std");
 const db = @import("pool");
-const mod = @import("mod.zig");
-const queue = @import("queue.zig");
+const mod = @import("effects_mod");
+// Named import so queue.zig is not a raw file duplicate in bpm (OBP-03 fix).
+const queue = @import("effects_queue");
 const http_adapter = @import("adapters/http.zig");
 const email_adapter = @import("adapters/email.zig");
+const depth_mod = @import("outbox_depth");
+const gate_mod = @import("outbox_gate");
+const outbox_cap = @import("outbox_cap");
 const logger = @import("../obs/logger.zig");
 const secrets = @import("../secrets/mod.zig");
 
@@ -521,6 +525,144 @@ fn resolveSecretValue(
     });
     defer resolved.deinit(allocator);
     return allocator.dupe(u8, resolved.value);
+}
+
+// ---------------------------------------------------------------------------
+// OBP-01 — depth cache refresh (called at the end of each sweep cycle)
+// ---------------------------------------------------------------------------
+
+/// Count pending effects_outbox rows for one tenant. Used by refreshDepthOnce
+/// to compute the depth before calling depth.writeFresh.
+/// Security: tenant_schema is bound as a parameter ($1) — no SQL injection.
+fn countPending(
+    allocator: std.mem.Allocator,
+    conn: anytype,
+    tenant_schema: []const u8,
+) u64 {
+    const result = conn.query(
+        allocator,
+        "SELECT COUNT(*)::text FROM effects_outbox WHERE tenant_schema = $1 AND status = 'pending'",
+        &.{tenant_schema},
+    ) catch return 0;
+    defer {
+        var r = result;
+        r.deinit();
+    }
+    if (result.rows.len == 0 or result.rows[0].len == 0) return 0;
+    const val = result.rows[0][0] orelse return 0;
+    return std.fmt.parseInt(u64, val, 10) catch 0;
+}
+
+/// Flush all pending RefusalEvent entries from `queue` to the DB.
+/// Acquires one pool connection for the entire batch; all appends in one txn.
+/// Called by refreshDepthOnce. No-op if the queue is empty.
+pub fn flushRefusalEvents(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    refusal_q: *outbox_cap.RefusalEventQueue,
+    config: gate_mod.OutboxGateConfig,
+) void {
+    // Platform event sentinels (same as gate.zig).
+    const PLATFORM_INSTANCE_ID = "00000000-0000-0000-0000-0000000000ff";
+    const PLATFORM_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+    const PLATFORM_TENANT_ID = "00000000-0000-0000-0000-000000000000";
+
+    var events: [outbox_cap.QUEUE_CAPACITY]outbox_cap.RefusalEvent = undefined;
+    var count: usize = 0;
+    while (refusal_q.pop()) |ev| {
+        events[count] = ev;
+        count += 1;
+        if (count >= outbox_cap.QUEUE_CAPACITY) break;
+    }
+    if (count == 0) return;
+
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+
+    conn.begin() catch return;
+    errdefer conn.rollback() catch {};
+
+    for (events[0..count]) |ev| {
+        const payload = std.fmt.allocPrint(
+            allocator,
+            "{{\"tenant_schema\":\"{s}\",\"depth\":{d},\"cap\":{d}}}",
+            .{ ev.tenant_schema, ev.depth, ev.cap },
+        ) catch continue;
+        defer allocator.free(payload);
+        const idempotency_key = std.fmt.allocPrint(
+            allocator,
+            "ingress-refused:{s}:{d}",
+            .{ ev.tenant_schema, ev.refused_at_ms },
+        ) catch continue;
+        defer allocator.free(idempotency_key);
+
+        const idem = conn.query(
+            allocator,
+            \\INSERT INTO plat_event_idempotency (idempotency_key, event_id, created_at)
+            \\VALUES ($1, gen_random_uuid(), NOW())
+            \\ON CONFLICT (idempotency_key) DO NOTHING
+            \\RETURNING event_id::text
+        ,
+            &.{idempotency_key},
+        ) catch continue;
+        defer {
+            var r = idem;
+            r.deinit();
+        }
+        if (idem.rows.len == 0) continue;
+        if (idem.rows[0].len == 0 or idem.rows[0][0] == null) continue;
+        const event_id = idem.rows[0][0].?;
+
+        conn.exec(
+            \\INSERT INTO events
+            \\  (event_id, instance_id, event_type, payload, actor_id,
+            \\   sequence_number, idempotency_key, metadata, tenant_id, global_seq)
+            \\VALUES
+            \\  ($1::uuid, $2::uuid, 'EXECUTION_INGRESS_REFUSED', $3::jsonb, $4::uuid,
+            \\   0, $5, '{}'::jsonb, $6::uuid, nextval('public.events_global_seq'))
+        ,
+            &.{ event_id, PLATFORM_INSTANCE_ID, payload, PLATFORM_ACTOR_ID, idempotency_key, PLATFORM_TENANT_ID },
+        ) catch continue;
+
+        _ = gate_mod.recordRefusal(allocator, conn, ev.tenant_schema, config) catch {};
+    }
+
+    conn.commit() catch {};
+}
+
+/// Refresh the in-memory DepthCache for every tenant in plat_outbox_gate, and
+/// evaluate gate state. Called by the background loop after each sweep cycle
+/// (OBP-01 AC1/AC2). Also flushes the RefusalEventQueue (OBP-02 side channel).
+pub fn refreshDepthOnce(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    depth_cache: *depth_mod.DepthCache,
+    refusal_queue: *outbox_cap.RefusalEventQueue,
+    gate_config: gate_mod.OutboxGateConfig,
+) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+
+    // Enumerate all tenants that have a gate row.
+    const rows = conn.query(
+        allocator,
+        "SELECT tenant_schema FROM plat_outbox_gate",
+        &.{},
+    ) catch return;
+    defer {
+        var r = rows;
+        r.deinit();
+    }
+
+    for (rows.rows) |row| {
+        const tenant_schema = row[0] orelse continue;
+        const pending = countPending(allocator, conn, tenant_schema);
+        depth_mod.writeFresh(depth_cache, conn, tenant_schema, pending) catch {};
+        _ = gate_mod.evaluateAndDecide(allocator, conn, tenant_schema, pending, gate_config) catch {};
+    }
+
+    // Flush any queued refusal events to the DB (OBP-02 async append).
+    flushRefusalEvents(allocator, pool, refusal_queue, gate_config);
 }
 
 fn logWorkerError(allocator: std.mem.Allocator, component: []const u8, message: []const u8) void {

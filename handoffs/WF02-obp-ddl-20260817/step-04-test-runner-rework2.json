@@ -1,0 +1,29 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-04-test-runner-rework2",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "04-rework2",
+  "created_at": "2026-08-17T11:57:11Z",
+  "started_at": "2026-08-17T11:57:11Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T11:59:32Z",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Final verification run after rework2 fixes on branch feature/WF02-obp-ddl-20260817.\n\nBACKEND-DEV reported all targets passing (OBP-01: 3/3, OBP-02: 4/4, OBP-03: 6/6). Verify independently:\n\n1. zig build (exit 0)\n2. zig build test (pre-existing failures only, not in OBP/DDL files)\n3. zig build test-integration-obp01-depth -j1\n4. zig build test-integration-obp02 -j1\n5. zig build test-integration-obp03 -j1\n\nUpdate tests/reports/report-20260817-WF02-obp-ddl.yaml with final results.\n\nReturn PASS if all OBP integration targets pass. Return FAIL only if new failures exist.",
+    "functions_to_call": ["fn:run-unit-tests", "fn:run-integration-tests", "fn:write-test-report"]
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 5 targets passed. build: PASS. unit: 1176/1240 passed (64 skipped, 2 pre-existing binary exits: iss0173-orphan TC-01–TC-04, ISS-602 differential corpus — no new failures). OBP-01: 3/3 PASS. OBP-02: 4/4 PASS. OBP-03: 6/6 PASS.",
+    "artifacts_out": ["tests/reports/report-20260817-WF02-obp-ddl.yaml"],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  }
+}

@@ -130,6 +130,7 @@ pub const EffectExecutorVTable = struct {
 pub const EffectQueueError = error{
     PersistenceFailed,
     OutOfMemory,
+    OutboxOverflow, // OBP-03: depth at or above cap, or depth cache stale
 };
 
 pub const EffectReentryError = error{

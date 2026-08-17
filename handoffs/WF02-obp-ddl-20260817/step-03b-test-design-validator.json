@@ -1,0 +1,60 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-03b-test-design-validator",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "step": "03b",
+  "created_at": "2026-08-17T09:39:31Z",
+  "started_at": "2026-08-17T09:39:31Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T09:45:26Z",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Hard gate — validate TEST-DESIGNER output for WF02-obp-ddl-20260817 before TEST-RUNNER executes.\n\nTest specs to validate:\n- tests/specs/OBP-01.md\n- tests/specs/OBP-02.md\n- tests/specs/OBP-03.md\n- tests/specs/DDL-03.md\n\nIntegration test files to validate:\n- tests/integration/obp01_depth_cache_test.zig\n- tests/integration/obp02_ingress_refusal_test.zig\n- tests/integration/obp03_outbox_overflow_test.zig\n- src/platform/ddl_generate.zig (DDL-03 unit tests added inline)\n\nFor each requirement, verify:\n1. Every MUST-priority AC has at least one runnable integration test (no SkipZigTest on MUST tests without a documented counterpart)\n2. No test coverage is deferred — all ACs from OBP-01/02/03/DDL-03 have corresponding TCs\n3. Fixtures are isolated — no shared test state across TCs (verified by lint_test_isolation.py)\n4. Tests are self-sufficient — each test sets up its own prerequisites\n5. Build wiring is correct — test-integration-obp01-depth, test-integration-obp02, test-integration-obp03 targets exist in build.zig\n\nReturn PASS only if all 5 checks pass for all 4 requirements.\nReturn FAIL with specific gaps if any check fails.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "tests/specs/OBP-01.md",
+      "tests/specs/OBP-02.md",
+      "tests/specs/OBP-03.md",
+      "tests/specs/DDL-03.md",
+      "tests/integration/obp01_depth_cache_test.zig",
+      "tests/integration/obp02_ingress_refusal_test.zig",
+      "tests/integration/obp03_outbox_overflow_test.zig",
+      "src/platform/ddl_generate.zig"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Test design for OBP-01/OBP-02/OBP-03/DDL-03 validated. Checks 1, 3, 4, 5 pass. Check 2 fails: OBP-02 AC6 implementation substitutes a migration-seed pre-condition check for the required flushRefusalEvents + event-payload integration test. The spec TC explicitly calls gate.flushRefusalEvents() and asserts the emitted row carries tenant/depth/cap; the actual test only queries event_type_registry for the seeded row. Two MINOR naming discrepancies also noted.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "requirement": "OBP-02",
+        "ac": "AC6",
+        "check": "check-2-no-deferred-coverage",
+        "description": "TC-OBP-02-AC6-ingress-refused-event only verifies that the EXECUTION_INGRESS_REFUSED row exists in event_type_registry (migration seed). The spec TC requires: (a) push a RefusalEvent to a RefusalEventQueue, (b) call gate.flushRefusalEvents(allocator, pool, queue, config), (c) assert one row in the event log with event_type = EXECUTION_INGRESS_REFUSED and payload containing tenant_schema, depth=50000, cap=50000. The implemented test passes even if flushRefusalEvents is completely broken. AC6 behavior is effectively untested."
+      },
+      {
+        "severity": "MINOR",
+        "requirement": "OBP-02",
+        "ac": "AC5",
+        "check": "check-2-spec-name-mismatch",
+        "description": "Spec maps AC5 to test name 'obp02: stale cache - also returns 429' but the unit test in src/api/middleware/outbox_cap.zig is named 'obp02: stale cache - returns 429 (fail-closed)'. Functional coverage is equivalent; names differ. Spec should be updated to match the implementation name."
+      },
+      {
+        "severity": "MINOR",
+        "requirement": "OBP-01",
+        "ac": "AC2",
+        "check": "check-2-spec-tc-scope-mismatch",
+        "description": "Spec TC for AC2 describes a stub conn tracking exec() calls across 1000 readCached iterations. The actual readCached() signature takes no conn parameter (lockless in-memory read), so there is no conn to stub. The existing tests provide structurally equivalent proof that no count(*) can be issued. Spec TC description is outdated relative to the implementation; spec should be updated."
+      }
+    ],
+    "next_action": "Route back to TEST-DESIGNER (step 03) for rework: fix OBP-02 AC6 test to call flushRefusalEvents with a real RefusalEventQueue and assert the emitted event payload (event_type, tenant_schema, depth, cap), then re-submit for re-validation. Also update spec for AC5 name and AC2 TC description (MINOR)."
+  }
+}

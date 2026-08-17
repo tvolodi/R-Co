@@ -4,7 +4,7 @@
 //! Injects the Idempotency-Key header using EffectSpec.effect_event_id.
 //! No-op on secret_ref (deferred to EXP-501).
 const std = @import("std");
-const mod = @import("../mod.zig");
+const mod = @import("effects_mod");
 
 pub const EffectSpec = mod.EffectSpec;
 pub const HttpEffectSpec = mod.HttpEffectSpec;

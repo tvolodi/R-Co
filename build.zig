@@ -217,6 +217,68 @@ pub fn build(b: *std.Build) void {
     // @import("../db/partition_attach.zig") escapes their module root, which
     // Zig 0.16 rejects ("import of file outside module path"). Both files
     // import this as `@import("partition_attach")` instead.
+
+    // OBP-01 (WF02-obp-ddl-20260817): src/outbox/depth.zig — per-tenant
+    // in-memory depth cache. No deps beyond std. Provided as a named module
+    // so src/api/middleware/outbox_cap.zig can import it as
+    // `@import("outbox_depth")` even when built as a standalone addTest root
+    // (relative `../../outbox/depth.zig` would escape outbox_cap.zig's module
+    // root and be rejected by Zig 0.16).
+    const depth_cache_mod = b.createModule(.{
+        .root_source_file = b.path("src/outbox/depth.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // OBP-04: src/outbox/gate.zig — outbox ingress gate. No deps beyond std.
+    // Defined early so bpm_src_mod (which gains outbox_gate as a named dep for
+    // worker.zig's @import("outbox_gate")) can reference it without a forward
+    // declaration issue. The unit-test step is wired further below.
+    const outbox_gate_mod = b.createModule(.{
+        .root_source_file = b.path("src/outbox/gate.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // OBP-02: src/api/middleware/outbox_cap.zig — ingress refusal middleware.
+    // Provided as a named module (same pattern as partition_attach_mod) so that
+    // worker.zig can use @import("outbox_cap") rather than a relative path,
+    // avoiding Zig 0.16's single-owner rule violation.
+    const outbox_cap_mod = b.createModule(.{
+        .root_source_file = b.path("src/api/middleware/outbox_cap.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "outbox_depth", .module = depth_cache_mod },
+        },
+    });
+
+    // OBP-03 / ISS-OBP03-module-conflict: src/effects/mod.zig as a named
+    // module so it belongs to ONLY ONE module (Zig 0.16 single-owner rule).
+    // Many files in both bpm and effects_queue_mod import this; providing it
+    // as a named dep prevents it being a raw file in multiple modules.
+    const effects_mod_module = b.createModule(.{
+        .root_source_file = b.path("src/effects/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // OBP-03 / ISS-OBP03-module-conflict: src/effects/queue.zig as a named
+    // module. Defined EARLY (before bpm_src_mod) so that bpm_src_mod can
+    // reference it without a forward-declaration issue. bpm.zig and worker.zig
+    // import this as @import("effects_queue") (named), which prevents queue.zig
+    // from being a raw file in bpm’s file set — required by Zig 0.16’s
+    // single-owner rule when outbox_emit also depends on queue.zig as its root.
+    const effects_queue_mod = b.createModule(.{
+        .root_source_file = b.path("src/effects/queue.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "effects_mod", .module = effects_mod_module },
+        },
+    });
+
     const partition_attach_mod = b.createModule(.{
         .root_source_file = b.path("src/db/partition_attach.zig"),
         .target = target,
@@ -859,6 +921,21 @@ pub fn build(b: *std.Build) void {
             // bpm — do the same. Supplied here so integration binaries that
             // import bpm_src_mod standalone compile these handlers.
             .{ .name = "validation_gate", .module = validation_gate_mod },
+            // WF02-obp-ddl-20260817 (OBP-01/02): src/api/middleware/outbox_cap.zig
+            // (reachable via bpm via worker.zig) does `@import("outbox_depth")`.
+            // Supplied here so the main build and integration binaries that import
+            // bpm_src_mod compile the middleware correctly.
+            .{ .name = "outbox_depth", .module = depth_cache_mod },
+            // OBP-01: worker.zig imports gate as `@import("outbox_gate")`.
+            .{ .name = "outbox_gate", .module = outbox_gate_mod },
+            // OBP-02: worker.zig imports outbox_cap as `@import("outbox_cap")`.
+            .{ .name = "outbox_cap", .module = outbox_cap_mod },
+            // OBP-03 ISS-OBP03-module-conflict: bpm.zig and worker.zig now use
+            // @import("effects_queue") (named) instead of relative path so that
+            // queue.zig belongs to only the effects_queue module (single-owner rule).
+            .{ .name = "effects_queue", .module = effects_queue_mod },
+            // effects_mod: same single-owner fix for mod.zig.
+            .{ .name = "effects_mod", .module = effects_mod_module },
         },
     });
 
@@ -3022,12 +3099,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_platform_backfill_tests.step);
 
     // OBP-04: src/outbox/gate.zig — outbox ingress gate hysteresis + escalation
-    // (pure decide() + DB persistence). Self-contained module (std only).
-    const outbox_gate_mod = b.createModule(.{
-        .root_source_file = b.path("src/outbox/gate.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    // (pure decide() + DB persistence). outbox_gate_mod defined early above
+    // so bpm_src_mod can reference it. Use it directly for the test target.
     const outbox_gate_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/outbox/gate.zig"),
@@ -3039,6 +3112,91 @@ pub fn build(b: *std.Build) void {
     const test_outbox_gate_step = b.step("test-outbox-gate", "Run OBP-04 outbox gate module unit tests (no DB)");
     test_outbox_gate_step.dependOn(&run_outbox_gate_tests.step);
     test_step.dependOn(&run_outbox_gate_tests.step);
+
+    // OBP-01: src/outbox/depth.zig — per-tenant in-memory depth cache.
+    // Relative imports only (std); no named-module wiring needed.
+    const outbox_depth_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/outbox/depth.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_outbox_depth_tests = b.addRunArtifact(outbox_depth_tests);
+    const test_outbox_depth_step = b.step("test-outbox-depth", "Run OBP-01 outbox depth cache unit tests (no DB)");
+    test_outbox_depth_step.dependOn(&run_outbox_depth_tests.step);
+    test_step.dependOn(&run_outbox_depth_tests.step);
+
+    // OBP-02: src/api/middleware/outbox_cap.zig — ingress refusal middleware.
+    // Provides outbox_depth as a named import (cross-dir import pattern,
+    // same as partition_attach and partition_maintenance above).
+    const outbox_cap_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/api/middleware/outbox_cap.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "outbox_depth", .module = depth_cache_mod },
+            },
+        }),
+    });
+    const run_outbox_cap_tests = b.addRunArtifact(outbox_cap_tests);
+    const test_outbox_cap_step = b.step("test-outbox-cap", "Run OBP-02 outbox cap middleware unit tests (no DB)");
+    test_outbox_cap_step.dependOn(&run_outbox_cap_tests.step);
+    test_step.dependOn(&run_outbox_cap_tests.step);
+
+    // OBP-03: src/outbox/emit.zig — typed outbox overflow emit wrapper.
+    // Provides effects_queue and outbox_depth as named imports (cross-dir
+    // imports pattern).
+    // (effects_queue_mod defined earlier in this file, before bpm_src_mod.)
+    // OBP-03 integration tests need emit.zig as a named module. Declared
+    // here (before the unit-test addTest below) so the integration target
+    // below can reference it. The module is identical in shape to the
+    // outbox_emit_tests root below — same deps, same file — but stored as a
+    // separate `const` so the integration binary can reference it without
+    // the single-owner module rule collision.
+    const outbox_emit_mod = b.createModule(.{
+        .root_source_file = b.path("src/outbox/emit.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "effects_queue", .module = effects_queue_mod },
+            // Resolve emit.zig's @import("depth.zig") as a named module dep so
+            // depth.zig is not also included as a raw file in outbox_emit's file
+            // set (Zig 0.16 single-owner rule: depth.zig is already the root of
+            // outbox_depth; it cannot belong to two modules simultaneously).
+            .{ .name = "depth.zig", .module = depth_cache_mod },
+        },
+    });
+    const outbox_emit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/outbox/emit.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "effects_queue", .module = effects_queue_mod },
+                .{ .name = "depth.zig", .module = depth_cache_mod },
+            },
+        }),
+    });
+    const run_outbox_emit_tests = b.addRunArtifact(outbox_emit_tests);
+    const test_outbox_emit_step = b.step("test-outbox-emit", "Run OBP-03 outbox emit overflow unit tests (no DB)");
+    test_outbox_emit_step.dependOn(&run_outbox_emit_tests.step);
+    test_step.dependOn(&run_outbox_emit_tests.step);
+
+    // DDL-03: src/platform/ddl_generate.zig — pure three-phase DDL generator.
+    // Imports backfill.zig via relative path (same directory).
+    const ddl_generate_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/platform/ddl_generate.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_ddl_generate_tests = b.addRunArtifact(ddl_generate_tests);
+    const test_ddl_generate_step = b.step("test-ddl-generate", "Run DDL-03 phased DDL generator unit tests (no DB)");
+    test_ddl_generate_step.dependOn(&run_ddl_generate_tests.step);
+    test_step.dependOn(&run_ddl_generate_tests.step);
 
     // ORD-03: src/ordering/sweeper.zig — 60 s gap sweeper (dead-letters stalled
     // correlations as one unit). Named module shared by the compile/unit test
@@ -3106,6 +3264,91 @@ pub fn build(b: *std.Build) void {
     test_integration_obp04_step.dependOn(&clean_test_db.step);
     test_integration_obp04_step.dependOn(&run_obp04_integration_tests.step);
     test_integration_others_step.dependOn(&run_obp04_integration_tests.step);
+
+    // OBP-01 migration integration test (generated by codegen_migration.py).
+    const obp01_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp01_plat_outbox_gate_depth_ts_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_obp01_integration_tests = addIntegrationRun(b, obp01_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp01_step = b.step("test-integration-obp01", "Run obp01_plat_outbox_gate_depth_ts_test.zig in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_obp01_step.dependOn(&clean_test_db.step);
+    test_integration_obp01_step.dependOn(&run_obp01_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp01_integration_tests.step);
+
+    // OBP-01 depth cache integration tests (TEST-DESIGNER: WF02-obp-ddl-20260817).
+    // Exercises writeFresh / readCached / depth_refreshed_at DB update against
+    // real PostgreSQL. Needs outbox_depth named import in addition to the
+    // standard integration_imports.
+    var obp01_depth_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 1) catch @panic("OOM");
+    obp01_depth_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    obp01_depth_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "outbox_depth", .module = depth_cache_mod },
+    });
+    const obp01_depth_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp01_depth_cache_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = obp01_depth_integration_imports.items,
+        }),
+    });
+    const run_obp01_depth_integration_tests = addIntegrationRun(b, obp01_depth_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp01_depth_step = b.step("test-integration-obp01-depth", "Run OBP-01 depth cache integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_obp01_depth_step.dependOn(&clean_test_db.step);
+    test_integration_obp01_depth_step.dependOn(&run_obp01_depth_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp01_depth_integration_tests.step);
+
+    // OBP-02 ingress-refusal middleware integration tests (TEST-DESIGNER: WF02-obp-ddl-20260817).
+    // Exercises apply() / RefusalEventQueue / plat_idempotency_key absence against
+    // real PostgreSQL. Needs outbox_depth + outbox_cap named imports.
+    var obp02_ingress_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 3) catch @panic("OOM");
+    obp02_ingress_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    obp02_ingress_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "outbox_depth", .module = depth_cache_mod },
+        .{ .name = "outbox_cap", .module = outbox_cap_mod },
+        .{ .name = "outbox_gate", .module = outbox_gate_mod },
+    });
+    const obp02_ingress_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp02_ingress_refusal_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = obp02_ingress_integration_imports.items,
+        }),
+    });
+    const run_obp02_ingress_integration_tests = addIntegrationRun(b, obp02_ingress_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp02_step = b.step("test-integration-obp02", "Run OBP-02 ingress-refusal middleware integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_obp02_step.dependOn(&clean_test_db.step);
+    test_integration_obp02_step.dependOn(&run_obp02_ingress_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp02_ingress_integration_tests.step);
+
+    // OBP-03 outbox overflow integration tests (TEST-DESIGNER: WF02-obp-ddl-20260817).
+    // Exercises emit() / OutboxOverflow / dead_letter_items shape against real
+    // PostgreSQL. Needs outbox_depth + outbox_emit named imports.
+    var obp03_overflow_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 2) catch @panic("OOM");
+    obp03_overflow_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    obp03_overflow_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "outbox_depth", .module = depth_cache_mod },
+        .{ .name = "outbox_emit", .module = outbox_emit_mod },
+    });
+    const obp03_overflow_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp03_outbox_overflow_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = obp03_overflow_integration_imports.items,
+        }),
+    });
+    const run_obp03_overflow_integration_tests = addIntegrationRun(b, obp03_overflow_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp03_step = b.step("test-integration-obp03", "Run OBP-03 outbox overflow integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_obp03_step.dependOn(&clean_test_db.step);
+    test_integration_obp03_step.dependOn(&run_obp03_overflow_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp03_overflow_integration_tests.step);
 
     const vld04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{

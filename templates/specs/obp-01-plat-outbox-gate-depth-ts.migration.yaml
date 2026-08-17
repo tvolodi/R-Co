@@ -1,0 +1,125 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: OBP-01 (Outbox depth cap and cached depth counter) — adds
+# `depth_refreshed_at` to the existing `plat_outbox_gate` table (created by
+# migration 1164 for OBP-04) to enable the drainer to record when depth was
+# last refreshed, supporting OBP-01 AC3's 5-second staleness check.
+#
+# Also seeds EXECUTION_INGRESS_REFUSED in event_type_registry (required by
+# OBP-02 — seeded here in the same migration pass to keep outbox-related
+# event types together, matching the precedent in migration 1164 which seeded
+# EXECUTION_OUTBOX_GATE_OPENED alongside plat_outbox_gate).
+#
+# See src/design/obp-01-outbox-depth-cap.md for the full module design.
+# See src/design/obp-02-ingress-refusal.md for OBP-02's event-seed rationale.
+#
+# Naming: plat_outbox_gate already exists (1164_obp04_plat_outbox_gate.sql).
+# This migration alters it to add the single new column.
+
+schema_version: 1
+migration_number: 1167
+name: obp01_plat_outbox_gate_depth_ts
+requirement_ids: [OBP-01, OBP-02]
+purpose: |
+  Adds depth_refreshed_at to plat_outbox_gate so the drainer can record when
+  it last refreshed the cached depth (OBP-01 AC3: a cached value older than 5 s
+  is treated as at-cap). Also seeds EXECUTION_INGRESS_REFUSED in
+  event_type_registry for OBP-02's async audit event append.
+
+tables:
+  - mode: alter
+    name: plat_outbox_gate
+    add_columns:
+      # Timestamp of the last depth refresh written by the drainer. Distinct
+      # from updated_at (which advances on every row write, including gate state
+      # transitions). Used by the middleware for the OBP-01 AC3 staleness check.
+      # DEFAULT now() so existing rows are not orphaned by the ALTER.
+      - { name: depth_refreshed_at, type: "timestamptz", not_null: true, default: "now()" }
+
+custom_sql: |
+  -- Seed EXECUTION_INGRESS_REFUSED in event_type_registry (OBP-02).
+  -- Guarded: event_type_registry is a PER_TENANT table; the DO $$ block skips
+  -- gracefully in the public schema pass where the table does not exist.
+  -- Idempotent via ON CONFLICT (name, schema_version) DO NOTHING.
+  -- retention_class = 'retain_forever' matches EXECUTION_OUTBOX_GATE_OPENED
+  -- (migration 1164) — EXECUTION_* is a protected family.
+  DO $$
+  BEGIN
+      IF to_regclass('event_type_registry') IS NULL THEN
+          RAISE NOTICE '1165: event_type_registry absent in this schema pass — skipping EXECUTION_INGRESS_REFUSED seed (per-tenant table).';
+          RETURN;
+      END IF;
+      INSERT INTO event_type_registry (name, schema_version, json_schema, description, retention_class)
+      VALUES (
+          'EXECUTION_INGRESS_REFUSED', 1,
+          '{"type":"object","required":["tenant_schema","depth","cap"],"additionalProperties":false,"properties":{"tenant_schema":{"type":"string"},"depth":{"type":"integer","minimum":0},"cap":{"type":"integer","minimum":1}}}'::jsonb,
+          'OBP-02: external ingress refused because outbox depth is at or above the cap; emitted asynchronously by the drainer flush loop',
+          'retain_forever'
+      )
+      ON CONFLICT (name, schema_version) DO NOTHING;
+  END $$;
+
+fixtures:
+  - name: tenant_schema
+    kind: random_string
+  - name: other_tenant_schema
+    kind: random_string
+  - name: seed_gate_row
+    kind: sql_setup
+    sql: |
+      INSERT INTO plat_outbox_gate
+        (tenant_schema, state, depth, cap, low_water, depth_refreshed_at)
+      VALUES
+        ($1, 'open', 100, 50000, 40000, now())
+      ON CONFLICT (tenant_schema) DO UPDATE
+        SET depth = EXCLUDED.depth, depth_refreshed_at = EXCLUDED.depth_refreshed_at;
+    params: [tenant_schema]
+
+test_cases:
+  - name: TC-OBP-01-depth-refreshed-at-exists
+    requirement_ref: OBP-01
+    description: |
+      GIVEN the migration has run, WHEN plat_outbox_gate is inspected,
+      THEN depth_refreshed_at column exists and is NOT NULL.
+    act: |
+      SELECT column_name, is_nullable
+      FROM information_schema.columns
+      WHERE table_name = 'plat_outbox_gate' AND column_name = 'depth_refreshed_at';
+    assertions: |
+      // CUSTOM: assert exactly 1 row is returned and is_nullable == 'NO',
+      // confirming depth_refreshed_at exists on plat_outbox_gate and is NOT NULL.
+  - name: TC-OBP-01-depth-refreshed-at-independent-of-state-transition
+    requirement_ref: OBP-01
+    description: |
+      GIVEN a row with depth_refreshed_at = T0, WHEN only the gate state
+      column is updated (e.g. state flips from open to closed), THEN
+      depth_refreshed_at remains T0 (not advanced by the state update).
+    act: |
+      UPDATE plat_outbox_gate SET state = 'closed' WHERE tenant_schema = $1;
+      SELECT depth_refreshed_at FROM plat_outbox_gate WHERE tenant_schema = $1;
+    assertions: |
+      // CUSTOM: assert depth_refreshed_at for the row equals the value inserted
+      // during seed_gate_row (i.e. it was not advanced by the state-column UPDATE).
+  - name: TC-OBP-01-stale-after-5s
+    requirement_ref: OBP-01
+    description: |
+      GIVEN depth_refreshed_at is set to now() - interval '6 seconds',
+      WHEN the middleware reads the row, THEN it observes is_stale=true
+      and treats depth as at-cap.
+    act: |
+      UPDATE plat_outbox_gate
+        SET depth_refreshed_at = now() - interval '6 seconds'
+        WHERE tenant_schema = $1;
+    assertions: |
+      // CUSTOM: assert the row's depth_refreshed_at is more than 5 s in the past
+      // and that middleware logic treats this as is_stale = true (depth is at-cap).
+  - name: TC-OBP-02-ingress-refused-event-seeded
+    requirement_ref: OBP-02
+    description: |
+      GIVEN the migration has run in a tenant schema, WHEN event_type_registry
+      is queried for EXECUTION_INGRESS_REFUSED, THEN one row is returned.
+    act: |
+      SELECT COUNT(*)::int AS n FROM event_type_registry
+      WHERE name = 'EXECUTION_INGRESS_REFUSED';
+    assertions: |
+      // CUSTOM: assert n == 1, confirming EXECUTION_INGRESS_REFUSED was seeded
+      // exactly once in event_type_registry for this tenant schema.

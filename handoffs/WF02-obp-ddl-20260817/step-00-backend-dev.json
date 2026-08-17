@@ -1,0 +1,31 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-00-backend-dev",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "00",
+  "created_at": "2026-08-17T07:26:58Z",
+  "started_at": "2026-08-17T07:26:58Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T07:39:48Z",
+  "workflow_ref": "WF-02",
+  "result": {
+    "status": "PASS",
+    "summary": "Feature branch feature/WF02-obp-ddl-20260817 created from main (d5a8706761a207f9364d49e5f4ad53205d612ba5) and pushed to origin.",
+    "artifacts_out": [],
+    "branch_name": "feature/WF02-obp-ddl-20260817",
+    "base_commit_sha": "d5a8706761a207f9364d49e5f4ad53205d612ba5",
+    "push_status": "new branch pushed to origin/feature/WF02-obp-ddl-20260817",
+    "issues": [],
+    "next_action": "Route to next step (BACKEND-DEV implementation)"
+  },
+  "task": {
+    "description": "Step 00 — Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md for WF02-obp-ddl-20260817.\n\nBranch: feature/WF02-obp-ddl-20260817\nBase: main (current HEAD)\n\nSteps:\n1. Verify you are on main with a clean working tree.\n2. git fetch origin\n3. git checkout -b feature/WF02-obp-ddl-20260817\n4. git push -u origin feature/WF02-obp-ddl-20260817\n5. Record: branch_name, base_commit_sha, push_status in result.\n\nReturn PASS only when the branch is created and pushed.",
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "artifacts_in": []
+  }
+}
