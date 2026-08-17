@@ -174,7 +174,7 @@ test "par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED" {
         var rows = try conn.query(
             alloc,
             "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
-            &.{"00000000-0000-0000-0000-0000000000ff"},
+            &.{bpm.store.PLATFORM_INSTANCE_ID},
         );
         defer rows.deinit();
         if (rows.rows.len > 0 and rows.rows[0].len > 0) {
@@ -200,7 +200,7 @@ test "par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED" {
         var rows = try conn.query(
             alloc,
             "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
-            &.{"00000000-0000-0000-0000-0000000000ff"},
+            &.{bpm.store.PLATFORM_INSTANCE_ID},
         );
         defer rows.deinit();
         if (rows.rows.len > 0 and rows.rows[0].len > 0) {
@@ -227,7 +227,7 @@ test "par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED" {
         var rows = try conn.query(
             alloc,
             "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
-            &.{"00000000-0000-0000-0000-0000000000ff"},
+            &.{bpm.store.PLATFORM_INSTANCE_ID},
         );
         defer rows.deinit();
         if (rows.rows.len > 0 and rows.rows[0].len > 0) {

@@ -32,6 +32,10 @@ const metrics = @import("obs_metrics");
 /// Raw 16-byte UUID v4 representation.
 pub const Uuid = [16]u8;
 pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
+/// Shared platform event sentinel values used across scheduler and test code.
+pub const PLATFORM_INSTANCE_ID: []const u8 = platform.PLATFORM_INSTANCE_ID;
+pub const PLATFORM_ACTOR_ID: []const u8 = platform.PLATFORM_ACTOR_ID;
+pub const PLATFORM_TENANT_ID: []const u8 = platform.PLATFORM_TENANT_ID;
 
 // ---------------------------------------------------------------------------
 // Public error set

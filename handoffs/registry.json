@@ -1,8 +1,32 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-17T12:47:56Z",
+  "last_updated": "2026-08-17T20:27:19Z",
   "entries": [
+    {
+      "handoff_id": "ADHOC-par02-03-05-release-20260817-01-backend-dev-rework4",
+      "file": "handoffs/ADHOC-par02-03-05-release-20260817/step-01-backend-dev-rework4.json",
+      "run_id": "ADHOC-par02-03-05-release-20260817",
+      "step": "01-rework4",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-17T20:23:22Z",
+      "completed_at": "2026-08-17T20:27:19Z",
+      "status": "COMPLETED",
+      "result_status": "FAIL"
+    },
+    {
+      "handoff_id": "ADHOC-par02-03-05-release-20260817-0.5-issue-fixer",
+      "file": "handoffs/ADHOC-par02-03-05-release-20260817/step-0.5-issue-fixer.json",
+      "run_id": "ADHOC-par02-03-05-release-20260817",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-17T20:01:59Z",
+      "completed_at": "2026-08-17T20:03:53Z",
+      "status": "COMPLETED",
+      "result_status": "PASS"
+    },
     {
       "handoff_id": "ADHOC-par02-03-05-release-20260817-00-backend-dev",
       "file": "handoffs/ADHOC-par02-03-05-release-20260817/step-00-backend-dev.json",
@@ -23,21 +47,33 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-17T12:47:56Z",
-      "completed_at": null,
-      "status": "PENDING",
-      "result_status": null
+      "completed_at": "2026-08-17T13:11:57Z",
+      "status": "COMPLETED",
+      "result_status": "PASS"
     },
     {
-      "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner",
-      "file": "handoffs/ADHOC-par02-03-05-release-20260817/step-02-test-runner.json",
+      "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner-rework1",
+      "file": "handoffs/ADHOC-par02-03-05-release-20260817/step-02-test-runner-rework1.json",
       "run_id": "ADHOC-par02-03-05-release-20260817",
-      "step": "02",
+      "step": "02-rework1",
       "from_agent": "ORCH",
       "to_agent": "TEST-RUNNER",
-      "created_at": "2026-08-17T12:47:56Z",
-      "completed_at": null,
-      "status": "PENDING",
-      "result_status": null
+      "created_at": "2026-08-17T13:22:26Z",
+      "completed_at": "2026-08-17T13:37:35Z",
+      "status": "COMPLETED",
+      "result_status": "FAIL"
+    },
+    {
+      "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner-rework3",
+      "file": "handoffs/ADHOC-par02-03-05-release-20260817/step-02-test-runner-rework3.json",
+      "run_id": "ADHOC-par02-03-05-release-20260817",
+      "step": "02-rework3",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-17T14:02:27Z",
+      "completed_at": "2026-08-17T19:59:09Z",
+      "status": "COMPLETED",
+      "result_status": "FAIL"
     },
     {
       "handoff_id": "ADHOC-par02-03-05-release-20260817-03-release-validator",
