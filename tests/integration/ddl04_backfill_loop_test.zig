@@ -411,18 +411,17 @@ test "TC-DDL-04-AC6-loop-records-progress: the loop records cumulative counters 
     // Exactly one progress row for (migration_id, tenant_schema, 'backfill')
     // with the cumulative counters — the AC6 in-place upsert (no second row).
     var rows = try conn.query(allocator,
-        \\SELECT rows_updated_total::text, rows_remaining::text, last_batch_rows::text, last_batch_ms::text, status
+        \\SELECT rows_updated_total::text, rows_remaining::text, last_batch_rows::text,
+        \\       last_batch_ms::text, status, backfill_batch_size::text
         \\FROM plat_migration_state WHERE migration_id = $1 AND tenant_schema = 'tenant_default' AND phase = 'backfill'
     , &.{fx.migration_id});
     defer rows.deinit();
     try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
     const row = rows.rows[0];
-    try std.testing.expect(row.len >= 5);
+    try std.testing.expect(row.len >= 6);
     try std.testing.expectEqualStrings("12000", row[0] orelse "");
     try std.testing.expectEqualStrings("0", row[1] orelse "");
     try std.testing.expectEqualStrings("0", row[2] orelse ""); // final (zero) batch
-    // NOTE: the implementation leaves status = 'running' after the loop (the
-    // design's applied/failed terminal transition is not written) — asserted
-    // here as the actual behaviour; reported as a MINOR discrepancy.
-    try std.testing.expectEqualStrings("running", row[4] orelse "");
+    try std.testing.expectEqualStrings("applied", row[4] orelse "");
+    try std.testing.expectEqualStrings("5000", row[5] orelse "");
 }
