@@ -1,5 +1,13 @@
 {
-  "status": "OPEN",
+  "status": "RESOLVED",
+  "resolved_at": "2026-08-17T06:27:57Z",
+  "resolution": "Wired runSemanticGate into handlePatch (src/api/routes/definitions.zig) — the live PATCH /api/v1/definitions/{id} draft-save handler now invokes the VLD-04 semantic gate and returns HTTP 422 on findings, mirroring the handlePut gate block. Added handler-level integration test TC-VLD-04-AC1-PATCH in tests/integration/vld04_gate_test.zig asserting HTTP 422 on a finding-producing definition saved via PATCH. Gate block copied verbatim from handlePut (lines 412-444); handlePut left intact (dead code, removal deferred). bpm.zig updated to expose runSemanticGate to handlePatch. Run WF03-GH816-20260817, commit b9f61314.",
+  "files_changed": [
+    "src/api/routes/definitions.zig",
+    "src/bpm.zig",
+    "tests/integration/vld04_gate_test.zig",
+    "tests/specs/VLD-04.md"
+  ],
   "classification": "DEFECT",
   "workflow_id": "WF-02",
   "run_id": "WF02-batch-7-20260816",
@@ -26,7 +34,15 @@
   "summary": "The VLD-04 gate is wired into handlePut (PUT /api/v1/definitions/{id}) per the validated design call-site table, but main.zig registers PATCH -> handlePatch as the only live definition-update route and handlePatch does not call runSemanticGate. The frontend save path (web/src/api/definitions.ts client.patch) therefore bypasses the gate: a finding-producing definition saved through the UI receives HTTP 200, not the AC1 HTTP 422. Non-blocking for VLD-04 release (AC1 satisfied at the declared call-site contract; gate module + /validate + promotion surfaces all enforced), tracked so the live PATCH gap is not silently dropped.",
   "description": "REWORK-2 (da4761fc) wired runSemanticGate into handlePut per src/design/vld-04-validation-gate-authoring-promotion.md call-site table (Draft save = PUT /api/v1/definitions/{id}). gate-level TC-VLD-04-AC1 passes and handlePut maps .invalid -> HTTP 422. However src/main.zig line ~717 registers PATCH /api/v1/definitions/{id} -> handlePatch (no method == .PUT branch), and handlePatch (src/api/routes/definitions.zig line ~458) calls store.update but does NOT run the gate. web/src/api/definitions.ts updateDefinition uses client.patch. So the live frontend draft-save path is not gate-enforced. This is a pre-existing route-registration divergence (predates this batch; design, CODE-DESIGN-VALIDATOR, TEST-DESIGN-VALIDATOR, ISS-0715 and the prior release decision all treated PUT as the draft-save surface). Fix: wire the gate into handlePatch (mirroring handlePut) or register handlePut as the live PUT route, and add a handler-level test on the chosen live surface asserting HTTP 422 on findings.",
   "symptom": "A finding-producing definition saved via PATCH /api/v1/definitions/{id} (the frontend save path) returns HTTP 200 instead of the VLD-04 AC1 HTTP 422.",
-  "investigation_notes": "Raised as MINOR by BACKEND-DEV (step-2a-rework2) and TEST-RUNNER (step-04-rework2); confirmed by RELEASE-VALIDATOR grep: main.zig registers PATCH -> handlePatch; handlePatch has no runSemanticGate call; frontend uses client.patch.",
+  "root_cause": {
+    "diagnosed_at": "2026-08-17T05:43:42Z",
+    "diagnosed_by": "ISSUE-FIXER (WF03-GH816-20260817)",
+    "category": "A — Logic error (gate wired into dead handler)",
+    "definitive_mismatch": "src/main.zig line 717 routes PATCH /api/v1/definitions/{id} -> handlePatch (no .PUT branch exists for definitions). handlePut (src/api/routes/definitions.zig line 362) calls runSemanticGate (line 412) but is never registered and therefore never called — it is dead code. handlePatch (line 458) is the live handler; it calls store.update but has no runSemanticGate call. web/src/api/definitions.ts line 29 (definitionsApi.update) uses client.patch, confirming the frontend draft-save path exclusively hits handlePatch. Design doc src/design/vld-04-validation-gate-authoring-promotion.md line 163 names 'PUT /api/v1/definitions/{id}' as the draft-save call site, but no PUT route for definitions was ever registered in main.zig — the route registration diverged from the design at some earlier point without being caught.",
+    "recommended_fix": "Option 1 — Wire runSemanticGate into handlePatch. Copy the gate block from handlePut (lines 412-444 of definitions.zig) verbatim into handlePatch after store.update succeeds. This requires a single-file change (src/api/routes/definitions.zig only); main.zig and web/src/api/definitions.ts are unchanged. Option 2 (register handlePut as PUT + change frontend to PUT) requires changes to three files, is more invasive, and does not improve REST semantics — PATCH is the correct verb for a partial draft update. Option 1 is preferred.",
+    "fix_justification": "The PATCH route and the frontend are internally consistent (both use PATCH/client.patch). The only gap is the missing gate call inside handlePatch. Fixing the handler is a minimal, contained change with zero impact on the API surface or the frontend. Option 2 would break any non-frontend caller already using PATCH and requires a frontend change that adds no semantic value."
+  },
+  "investigation_notes": "Raised as MINOR by BACKEND-DEV (step-2a-rework2) and TEST-RUNNER (step-04-rework2); confirmed by RELEASE-VALIDATOR grep: main.zig registers PATCH -> handlePatch; handlePatch has no runSemanticGate call; frontend uses client.patch. ISSUE-FIXER (WF03-GH816-20260817) confirmed via direct file reads: main.zig has no .PUT branch for definitions (handlePut is dead code); handlePatch lines 458-524 call store.update then return 200 with no gate; handlePut lines 362-456 call runSemanticGate correctly but are unreachable from any route.",
   "reproduction": "Save a finding-producing definition through the frontend (PATCH /api/v1/definitions/{id}) - observe HTTP 200 with no gate 422.",
   "acceptance_criteria": [
     "handlePatch (the live PATCH draft-save surface) invokes runSemanticGate and returns HTTP 422 on findings (or handlePut is registered as the live PUT route and the frontend switches to PUT)",
