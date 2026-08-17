@@ -1,0 +1,34 @@
+{
+  "handoff_id": "WF03-GH816-20260817-04-test-designer",
+  "run_id": "WF03-GH816-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "step": "04",
+  "created_at": "2026-08-17T06:18:00Z",
+  "started_at": "2026-08-17T06:18:00Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "task": {
+    "description": "Step 4 — Write/verify the test specification for TC-VLD-04-AC1-PATCH.\n\nContext: BACKEND-DEV has already added TC-VLD-04-AC1-PATCH to tests/integration/vld04_gate_test.zig as part of Step 3 implementation. Your task is to write/validate the formal test spec entry for this test case and confirm the implementation matches.\n\n1. Read tests/integration/vld04_gate_test.zig to find the TC-VLD-04-AC1-PATCH test.\n2. Read tests/specs/VLD-04.md (or equivalent) to check if TC-VLD-04-AC1-PATCH is documented there.\n3. If VLD-04.md exists, add TC-VLD-04-AC1-PATCH spec entry if missing. If it doesn't exist, note that.\n4. Confirm the implemented test covers: (a) PATCH with invalid body returns HTTP 422, (b) semantically_valid stays false in DB after the PATCH.\n5. Confirm the test is properly isolated (per-test schema, no shared state).\n6. Write your result: PASS if TC-VLD-04-AC1-PATCH is correctly specified and implemented, FAIL with gaps otherwise."
+  },
+  "context": {
+    "issue_id": "ISS-0717",
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/816",
+    "artifacts_in": [
+      "src/design/wf03-gh816-vld04-patch-gate-fix.md",
+      "tests/integration/vld04_gate_test.zig",
+      "tests/specs/VLD-04.md"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "TC-VLD-04-AC1-PATCH spec entry added to tests/specs/VLD-04.md (was missing). Implementation in tests/integration/vld04_gate_test.zig verified: (a) calls handlePatch with an invalid-graph PatchDefinitionBody and asserts status_code == 422, (b) queries process_definitions to assert semantically_valid = false. Fixture isolation confirmed: per-test UUID via seedDefinition, defer cleanup, no SkipZigTest, real PostgreSQL via BPM_TEST_DB_URL (hard-fails if absent). Implementation matches design spec (src/design/wf03-gh816-vld04-patch-gate-fix.md) exactly.",
+    "artifacts_out": [
+      "tests/specs/VLD-04.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "completed_at": "2026-08-17T06:20:23Z"
+}

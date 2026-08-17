@@ -1,0 +1,33 @@
+{
+  "handoff_id": "WF03-GH816-20260817-00-backend-dev",
+  "run_id": "WF03-GH816-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "00",
+  "created_at": "2026-08-17T05:39:02Z",
+  "started_at": "2026-08-17T05:39:36Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T05:40:27Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Branch name: feature/WF03-GH816-20260817. Base: main. Record branch_name, base_commit_sha, and push_status in result.",
+    "branch_name": "feature/WF03-GH816-20260817"
+  },
+  "context": {
+    "issue_title": "VLD-04 AC1: live draft-save surface is PATCH (handlePatch), not PUT (handlePut) — frontend draft-save path is not gate-enforced",
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/816",
+    "artifacts_in": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Feature branch feature/WF03-GH816-20260817 created from main HEAD and pushed to origin.",
+    "artifacts_out": {
+      "branch_name": "feature/WF03-GH816-20260817",
+      "base_commit_sha": "66b0e705492459e9cb1f3f4311c5262ee67a56e8",
+      "push_status": "pushed"
+    },
+    "issues": [],
+    "next_action": "ORCH routes to next step per active workflow"
+  }
+}

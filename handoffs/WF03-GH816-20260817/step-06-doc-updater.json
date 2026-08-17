@@ -1,0 +1,44 @@
+{
+  "handoff_id": "WF03-GH816-20260817-06-doc-updater",
+  "run_id": "WF03-GH816-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "step": "06",
+  "created_at": "2026-08-17T06:27:16Z",
+  "started_at": "2026-08-17T06:27:16Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T06:29:26Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "task": {
+    "description": "Step 6 — Documentation and status updates for WF03-GH816-20260817 (ISS-0717).\n\n1. Update CHANGELOG.md: add entry for GH-816 fix (VLD-04 AC1: wire runSemanticGate into handlePatch so PATCH /api/v1/definitions/{id} returns 422 when semantic gate fires).\n2. Update docs/issues/ISS-0717.json: set status='RESOLVED', set resolved_at to current timestamp, set resolution field with a summary of the fix, set files_changed list.\n3. Update docs/issues/issue_index.json: set ISS-0717 status='RESOLVED', set resolved_at.\n4. Run python tools/lint_handoffs.py — must exit 0.\n\nDO NOT merge the branch or close the GitHub issue here — that is done in Step Final by BACKEND-DEV (which calls release.py --close-github-issue)."
+  },
+  "context": {
+    "issue_id": "ISS-0717",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+    "branch": "feature/WF03-GH816-20260817",
+    "commit": "b9f61314",
+    "files_changed": [
+      "src/api/routes/definitions.zig",
+      "src/bpm.zig",
+      "tests/integration/vld04_gate_test.zig",
+      "tests/specs/VLD-04.md"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0717.json",
+      "docs/issues/issue_index.json",
+      "CHANGELOG.md"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with GH-816/ISS-0717 fix entry (2026-08-17 section). ISS-0717.json: status RESOLVED, resolved_at 2026-08-17T06:27:57Z, resolution summary and files_changed set. issue_index.json: ISS-0717 status RESOLVED, resolved_at set. python tools/lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR, 1 pre-existing MINOR, 332 ACK). Committed as 380f7dc3 on feature/WF03-GH816-20260817.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0717.json",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Step Final — BACKEND-DEV: gh pr create + merge, close GH-816, return to main"
+  }
+}

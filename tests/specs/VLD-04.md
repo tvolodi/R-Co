@@ -25,7 +25,7 @@ is the proportionate ceiling.
 
 | # | Acceptance criterion (verbatim from `docs/requirements.yaml`) | Test case(s) |
 |---|---|---|
-| AC1 | GIVEN any finding at draft save, WHEN the request completes, THEN the platform returns HTTP 422 and the version is not marked `semantically_valid`. | `TC-VLD-04-AC1-draft-save-finding-invalid` (integration: `runSemanticGate` on an invalid graph → `.invalid`, row `semantically_valid = false`, `validation_finding_count > 0`). HTTP 422 mapping lives in the handler — see Structural verification note. |
+| AC1 | GIVEN any finding at draft save, WHEN the request completes, THEN the platform returns HTTP 422 and the version is not marked `semantically_valid`. | `TC-VLD-04-AC1-draft-save-finding-invalid` (integration: `runSemanticGate` on an invalid graph → `.invalid`, row `semantically_valid = false`, `validation_finding_count > 0`). HTTP 422 mapping lives in the handler — see Structural verification note. `TC-VLD-04-AC1-PATCH` (integration: live `handlePatch` surface — PATCH with an invalid graph returns HTTP 422 and leaves `semantically_valid = false` in DB; covers ISS-0717). |
 | AC2 | GIVEN any finding at promotion submit, WHEN the request completes, THEN the platform returns HTTP 422, computes no promotion plan and creates no `promotion_reviews` row. | `TC-VLD-04-AC2-promotion-finding-invalid` (integration: the gate returns `.invalid` for a promotion-submitted definition; no plan / no `promotion_reviews` row is guaranteed by the gate-before-plan ordering — see Structural verification note). |
 | AC3 | GIVEN a stored verdict produced by an earlier compiler version, WHEN promotion submit runs, THEN validation re-runs instead of accepting the stored verdict. | `TC-VLD-04-AC3-stale-verdict-reruns` + `TC-VLD-04-AC3-current-verdict-reused` (integration `storedVerdictIsCurrent` + `runSemanticGate` `check_stored_first`) |
 | AC4 | GIVEN compilation exceeds 5 seconds, WHEN the budget expires, THEN the platform returns HTTP 422 `ValidationTimeout` naming the sites compiled before expiry. | `TC-VLD-04-AC4-timeout` (integration: `runSemanticGate` with a forced-small budget against a large graph → `GateResult.timeout`) |
@@ -185,6 +185,21 @@ finding count 0 (AC5/AC3 comparison source).
 **Layer:** integration (schema contract)
 **Acceptance criterion mapped:** supports AC5 (finding count is a non-negative cardinality)
 **Zig test:** `vld04_definition_semantic_verdict: finding_count_check_rejects_negative`
+
+### TC-VLD-04-AC1-PATCH: handlePatch returns HTTP 422 on a finding-producing body
+**Given:** A DRAFT definition row in `process_definitions` seeded with a valid graph
+(`seedDefinition(allocator, conn, valid_graph_json)`). A `definition.Store` initialised from the
+same pool. A `PatchDefinitionBody` with `graph` set to `invalid_graph_json` (structurally valid,
+semanticially invalid — a guard referencing `amount` which is `UnknownVariable` under the empty
+env) and all other fields `null`.
+**When:** `definitions_routes.handlePatch(&store, allocator, fx.definition_id, patch_body)` is
+called.
+**Then:** `HandlerResult.status_code` equals 422; `HandlerResult.body` is non-empty; the
+`process_definitions` row's `semantically_valid` column is `false` (queried via `conn` after the
+call).
+**Layer:** integration (live handler surface)
+**Acceptance criterion mapped:** AC1, on the live PATCH draft-save surface (ISS-0717)
+**Zig test:** `TC-VLD-04-AC1-PATCH` (`tests/integration/vld04_gate_test.zig`)
 
 ---
 

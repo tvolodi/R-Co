@@ -1,0 +1,33 @@
+{
+  "handoff_id": "WF03-GH816-20260817-02-code-designer",
+  "run_id": "WF03-GH816-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "step": "02",
+  "created_at": "2026-08-17T05:44:40Z",
+  "started_at": "2026-08-17T05:44:40Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "task": {
+    "description": "Step 2 \u2014 Produce a fix design artefact for ISS-0717 / GH-816.\n\nRoot cause (from Step 1):\n- src/main.zig registers PATCH /api/v1/definitions/{id} -> handlePatch only. No PUT route exists.\n- handlePatch in src/api/routes/definitions.zig calls store.update then returns HTTP 200 without calling runSemanticGate.\n- handlePut exists and calls runSemanticGate but is dead code (no route registered).\n- The frontend (web/src/api/definitions.ts) uses client.patch -> handlePatch is the live surface.\n\nRecommended fix: Option 1 \u2014 Wire runSemanticGate into handlePatch in src/api/routes/definitions.zig.\n\nDesign artefact to produce: src/design/wf03-gh816-vld04-patch-gate-fix.md\n\nThe design MUST specify:\n1. The EXACT call-site change in handlePatch: where to insert the runSemanticGate call (after store.update succeeds, before the HTTP 200 return), matching the pattern already used in handlePut.\n2. The return values: .invalid result -> HTTP 422 with the findings JSON body; .timeout -> HTTP 422; .ok -> HTTP 200 as before.\n3. A new integration test to add: TC-VLD-04-AC1-PATCH \u2014 POST (or create) a definition, PATCH it with a finding-producing body, assert HTTP 422 is returned. The test should be added to the existing vld04 integration test file.\n4. Any other call sites in definitions.zig where the same pattern should be audited (e.g. handleCreate, handlePut \u2014 confirm handlePut already correct).\n5. Do NOT include any implementation code in the design \u2014 interfaces, types, call-site tables, and prose only.\n\nWrite the design to src/design/wf03-gh816-vld04-patch-gate-fix.md and return its path in result.artifacts_out."
+  },
+  "context": {
+    "issue_id": "ISS-0717",
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/816",
+    "artifacts_in": [
+      "docs/issues/ISS-0717.json",
+      "src/api/routes/definitions.zig",
+      "src/design/vld-04-validation-gate-authoring-promotion.md"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix design for ISS-0717 / GH-816: specifies exact insertion point for runSemanticGate in handlePatch (after store.update succeeds, before HTTP 200), HTTP return contracts (.valid=200, .invalid=422 with findings body, .timeout=422), new TC-VLD-04-AC1-PATCH integration test spec, and audit confirming handleCreate needs no gate and handlePut is already correct. Type E design only \u2014 no parameter files. No open questions.",
+    "artifacts_out": [
+      "src/design/wf03-gh816-vld04-patch-gate-fix.md"
+    ],
+    "issues": []
+  },
+  "completed_at": "2026-08-17T05:46:51Z"
+}

@@ -1,0 +1,31 @@
+{
+  "handoff_id": "WF03-GH816-20260817-02b-code-design-validator",
+  "run_id": "WF03-GH816-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "step": "02b",
+  "created_at": "2026-08-17T05:48:52Z",
+  "started_at": "2026-08-17T05:48:52Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T05:50:41Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "task": {
+    "description": "Hard gate — validate the CODE-DESIGNER's fix design artefact at src/design/wf03-gh816-vld04-patch-gate-fix.md.\n\nChecks:\n1. The design covers ISS-0717's AC: VLD-04 AC1 enforcement on the PATCH /api/v1/definitions/{id} route (handlePatch).\n2. The design does NOT contain implementation code — only call-site tables, prose, return-value contracts, and test specification.\n3. The insertion point is specific enough for BACKEND-DEV to implement without ambiguity.\n4. The HTTP return value contracts are complete (all three gate results: .valid, .invalid, .timeout).\n5. The test case TC-VLD-04-AC1-PATCH is specified with enough detail for TEST-DESIGNER/BACKEND-DEV to implement.\n6. No acceptance criterion of ISS-0717 is left uncovered.\n\nReturn PASS if all checks pass, FAIL with specific list of gaps otherwise."
+  },
+  "context": {
+    "issue_id": "ISS-0717",
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/816",
+    "artifacts_in": [
+      "src/design/wf03-gh816-vld04-patch-gate-fix.md",
+      "docs/issues/ISS-0717.json"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/wf03-gh816-vld04-patch-gate-fix.md validated — all 6 checks pass. lint_design_artefact.py exits 0, no issues. All ISS-0717 acceptance criteria covered. Insertion point unambiguous (handlePatch line 458, after defer freeDefinition, before serializeDefinition). All three gate results (.valid→200, .invalid→422, .timeout→422) contracted. TC-VLD-04-AC1-PATCH specified with full Given/When/Then and helpers. No implementation code present.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  }
+}
