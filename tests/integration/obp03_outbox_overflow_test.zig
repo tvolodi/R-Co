@@ -70,7 +70,8 @@ test "TC-OBP-03-AC2-compile-time-enforcement: OutboxOverflow is a member of Effe
 
 test "TC-OBP-03-AC1-emit-returns-overflow-no-row: emit() at cap returns OutboxOverflow; no effects_outbox row" {
     // covers: OBP-03 AC1
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -122,7 +123,8 @@ test "TC-OBP-03-AC4-self-throttle: emit() succeeds after depth falls below cap" 
     // covers: OBP-03 AC4 — when depth falls below cap, emit() transitions from
     // OutboxOverflow to success, reducing the producer's effective emit rate to
     // zero while at cap (self-throttling).
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -216,7 +218,8 @@ test "TC-OBP-03-AC5-dlq-entry-overflow-depths: dead_letter_items accepts OutboxO
     // reason='OutboxOverflow', attempt_count, and depth_per_attempt JSON array.
     // This test seeds the row and reads it back to verify the schema accepts the
     // OutboxOverflow metadata shape.
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -292,7 +295,8 @@ test "TC-OBP-03-AC6-pinned-version-on-retry: instance_projections has definition
     // version is the definition_id stored in instance_projections at instance
     // start. This test confirms the column exists so the engine can resume a
     // dead-lettered instance against the pinned version without a schema error.
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -303,6 +307,7 @@ test "TC-OBP-03-AC6-pinned-version-on-retry: instance_projections has definition
         \\FROM information_schema.columns
         \\WHERE table_name = 'instance_projections'
         \\  AND column_name = 'definition_id'
+        \\  AND table_schema = 'public'
     ,
         &.{},
     );

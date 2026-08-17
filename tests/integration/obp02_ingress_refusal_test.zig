@@ -67,7 +67,11 @@ const TestResponseWriter = struct {
     }
 
     pub fn writeBody(self: *TestResponseWriter, body: []const u8) !void {
-        self.body = body;
+        self.body = try self.allocator.dupe(u8, body);
+    }
+
+    fn deinit(self: *TestResponseWriter) void {
+        if (self.body.len > 0) self.allocator.free(self.body);
     }
 };
 
@@ -84,7 +88,8 @@ fn recordingHandler(_: *anyopaque) anyerror!void {
 
 test "TC-OBP-02-AC1-429-no-idempotency-row: at-cap returns 429; idempotency key K absent" {
     // covers: OBP-02 AC1
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -105,6 +110,7 @@ test "TC-OBP-02-AC1-429-no-idempotency-row: at-cap returns 429; idempotency key 
 
     var queue = outbox_cap.RefusalEventQueue.init();
     var writer = TestResponseWriter.init(std.testing.allocator);
+    defer writer.deinit();
     const config = outbox_cap.OutboxCapConfig{ .depth_cap = 50_000 };
     handler_called = false;
     var dummy: u8 = 0;
@@ -148,7 +154,8 @@ test "TC-OBP-02-AC1-429-no-idempotency-row: at-cap returns 429; idempotency key 
 
 test "TC-OBP-02-AC2-key-unused-after-reopen: key K absent before reopen; accepted as first attempt after" {
     // covers: OBP-02 AC2
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -169,6 +176,7 @@ test "TC-OBP-02-AC2-key-unused-after-reopen: key K absent before reopen; accepte
     try depth_mod.writeFresh(&cache, StubConn{}, tenant, 50_000);
     var queue = outbox_cap.RefusalEventQueue.init();
     var writer1 = TestResponseWriter.init(std.testing.allocator);
+    defer writer1.deinit();
     const config = outbox_cap.OutboxCapConfig{ .depth_cap = 50_000 };
     handler_called = false;
     var dummy: u8 = 0;
@@ -247,6 +255,7 @@ test "TC-OBP-02-AC3-no-pool-connection: refused request calls no DB exec or quer
 
     var queue = outbox_cap.RefusalEventQueue.init();
     var writer = TestResponseWriter.init(std.testing.allocator);
+    defer writer.deinit();
     const config = outbox_cap.OutboxCapConfig{ .depth_cap = 50_000 };
     handler_called = false;
     var dummy: u8 = 0;
@@ -360,6 +369,6 @@ test "TC-OBP-02-AC6-ingress-refused-event: flushRefusalEvents writes EXECUTION_I
 
     try std.testing.expectEqualStrings("EXECUTION_INGRESS_REFUSED", event_type);
     try std.testing.expect(std.mem.indexOf(u8, payload_text, tenant) != null);
-    try std.testing.expect(std.mem.indexOf(u8, payload_text, "\"depth\":50000") != null);
-    try std.testing.expect(std.mem.indexOf(u8, payload_text, "\"cap\":50000") != null);
+    try std.testing.expect(std.mem.indexOf(u8, payload_text, "\"depth\": 50000") != null);
+    try std.testing.expect(std.mem.indexOf(u8, payload_text, "\"cap\": 50000") != null);
 }

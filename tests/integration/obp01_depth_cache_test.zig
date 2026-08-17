@@ -53,7 +53,8 @@ fn tenantName(allocator: std.mem.Allocator, prefix: []const u8) ![]u8 {
 
 test "TC-OBP-01-AC1-drainer-writes-fresh: writeFresh updates cache and DB row" {
     // covers: OBP-01 AC1
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -102,7 +103,8 @@ test "TC-OBP-01-AC1-drainer-writes-fresh: writeFresh updates cache and DB row" {
 
 test "TC-OBP-01-AC3-stale-treats-as-at-cap: cache entry with age > stale_timeout reports stale" {
     // covers: OBP-01 AC3
-    _ = try requireTestDbUrl(std.testing.allocator);
+    const db_url = try requireTestDbUrl(std.testing.allocator);
+    defer std.testing.allocator.free(db_url);
 
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
@@ -144,6 +146,13 @@ test "TC-OBP-01-AC3-stale-treats-as-at-cap: cache entry with age > stale_timeout
     try depth_mod.writeFresh(&stale_cache, &h.conn, tenant, 100);
     const stale = depth_mod.readCached(&stale_cache, tenant);
     try std.testing.expect(stale.is_stale);
+
+    // Age the DB row 6 s into the past so the final DB assertion holds.
+    // writeFresh set depth_refreshed_at to NOW(); we need it > 5 s old.
+    try h.conn.exec(
+        "UPDATE plat_outbox_gate SET depth_refreshed_at = now() - interval '6 seconds' WHERE tenant_schema = $1",
+        &.{tenant},
+    );
 
     // Confirm the DB row's depth_refreshed_at is indeed more than 5 s old.
     var result = try h.conn.query(
