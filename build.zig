@@ -3124,6 +3124,20 @@ pub fn build(b: *std.Build) void {
             .{ .name = "pool", .module = pool_root_mod },
         },
     });
+    // OBP-03 integration tests need emit.zig as a named module. Declared
+    // here (before the unit-test addTest below) so the integration target
+    // below can reference it. The module is identical in shape to the
+    // outbox_emit_tests root below — same deps, same file — but stored as a
+    // separate `const` so the integration binary can reference it without
+    // the single-owner module rule collision.
+    const outbox_emit_mod = b.createModule(.{
+        .root_source_file = b.path("src/outbox/emit.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "effects_queue", .module = effects_queue_mod_for_emit },
+        },
+    });
     const outbox_emit_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/outbox/emit.zig"),
@@ -3234,6 +3248,76 @@ pub fn build(b: *std.Build) void {
     test_integration_obp01_step.dependOn(&clean_test_db.step);
     test_integration_obp01_step.dependOn(&run_obp01_integration_tests.step);
     test_integration_others_step.dependOn(&run_obp01_integration_tests.step);
+
+    // OBP-01 depth cache integration tests (TEST-DESIGNER: WF02-obp-ddl-20260817).
+    // Exercises writeFresh / readCached / depth_refreshed_at DB update against
+    // real PostgreSQL. Needs outbox_depth named import in addition to the
+    // standard integration_imports.
+    var obp01_depth_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 1) catch @panic("OOM");
+    obp01_depth_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    obp01_depth_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "outbox_depth", .module = depth_cache_mod },
+    });
+    const obp01_depth_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp01_depth_cache_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = obp01_depth_integration_imports.items,
+        }),
+    });
+    const run_obp01_depth_integration_tests = addIntegrationRun(b, obp01_depth_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp01_depth_step = b.step("test-integration-obp01-depth", "Run OBP-01 depth cache integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_obp01_depth_step.dependOn(&clean_test_db.step);
+    test_integration_obp01_depth_step.dependOn(&run_obp01_depth_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp01_depth_integration_tests.step);
+
+    // OBP-02 ingress-refusal middleware integration tests (TEST-DESIGNER: WF02-obp-ddl-20260817).
+    // Exercises apply() / RefusalEventQueue / plat_idempotency_key absence against
+    // real PostgreSQL. Needs outbox_depth + outbox_cap named imports.
+    var obp02_ingress_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 3) catch @panic("OOM");
+    obp02_ingress_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    obp02_ingress_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "outbox_depth", .module = depth_cache_mod },
+        .{ .name = "outbox_cap", .module = outbox_cap_mod },
+        .{ .name = "outbox_gate", .module = outbox_gate_mod },
+    });
+    const obp02_ingress_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp02_ingress_refusal_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = obp02_ingress_integration_imports.items,
+        }),
+    });
+    const run_obp02_ingress_integration_tests = addIntegrationRun(b, obp02_ingress_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp02_step = b.step("test-integration-obp02", "Run OBP-02 ingress-refusal middleware integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_obp02_step.dependOn(&clean_test_db.step);
+    test_integration_obp02_step.dependOn(&run_obp02_ingress_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp02_ingress_integration_tests.step);
+
+    // OBP-03 outbox overflow integration tests (TEST-DESIGNER: WF02-obp-ddl-20260817).
+    // Exercises emit() / OutboxOverflow / dead_letter_items shape against real
+    // PostgreSQL. Needs outbox_depth + outbox_emit named imports.
+    var obp03_overflow_integration_imports = std.ArrayList(std.Build.Module.Import).initCapacity(b.allocator, integration_imports.len + 2) catch @panic("OOM");
+    obp03_overflow_integration_imports.appendSliceAssumeCapacity(integration_imports);
+    obp03_overflow_integration_imports.appendSliceAssumeCapacity(&.{
+        .{ .name = "outbox_depth", .module = depth_cache_mod },
+        .{ .name = "outbox_emit", .module = outbox_emit_mod },
+    });
+    const obp03_overflow_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obp03_outbox_overflow_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = obp03_overflow_integration_imports.items,
+        }),
+    });
+    const run_obp03_overflow_integration_tests = addIntegrationRun(b, obp03_overflow_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_obp03_step = b.step("test-integration-obp03", "Run OBP-03 outbox overflow integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_obp03_step.dependOn(&clean_test_db.step);
+    test_integration_obp03_step.dependOn(&run_obp03_overflow_integration_tests.step);
+    test_integration_others_step.dependOn(&run_obp03_overflow_integration_tests.step);
 
     const vld04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{

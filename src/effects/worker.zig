@@ -555,7 +555,7 @@ fn countPending(
 /// Flush all pending RefusalEvent entries from `queue` to the DB.
 /// Acquires one pool connection for the entire batch; all appends in one txn.
 /// Called by refreshDepthOnce. No-op if the queue is empty.
-fn flushRefusalEvents(
+pub fn flushRefusalEvents(
     allocator: std.mem.Allocator,
     pool: *db.Pool,
     refusal_q: *outbox_cap.RefusalEventQueue,
