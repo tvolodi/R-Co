@@ -1,5 +1,5 @@
 const std = @import("std");
-const event_store = @import("../event_store/store.zig");
+const event_store = @import("event_store"); // single-owner: named module, not relative path
 
 pub const SimulationRunId = [16]u8;
 pub const TenantId = [16]u8;

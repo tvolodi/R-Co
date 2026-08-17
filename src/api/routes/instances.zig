@@ -9,8 +9,8 @@ const std = @import("std");
 const instance_mod = @import("../../engine/instance.zig");
 const task_mod = @import("../../tasks/store.zig");
 const reconstruction_mod = @import("../../engine/reconstruction.zig");
-const event_store = @import("../../event_store/store.zig");
-const event_registry = @import("../../event_store/registry.zig");
+const event_store = @import("event_store"); // single-owner: named module, not relative path
+const event_registry = @import("event_store").registry_module; // single-owner: registry.zig inside event_store_mod
 const timeline_mod = @import("../../obs/timeline.zig");
 const pagination = @import("../pagination.zig");
 

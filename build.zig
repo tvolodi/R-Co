@@ -633,6 +633,11 @@ pub fn build(b: *std.Build) void {
         // `validation` entry above (gate.zig is its own module root and lives under
         // the root module's source tree).
         .{ .name = "validation_gate", .module = validation_gate_mod },
+        // REWORK-2: src/engine/pin_resolver.zig (reached via main.zig →
+        // instances.zig → instance.zig → pin_resolver.zig) now imports
+        // registry.zig via @import("event_store").registry_module to avoid
+        // double-ownership of registry.zig (Zig 0.16 single-owner rule).
+        .{ .name = "event_store", .module = event_store_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -935,6 +940,12 @@ pub fn build(b: *std.Build) void {
             .{ .name = "effects_queue", .module = effects_queue_mod },
             // effects_mod: same single-owner fix for mod.zig.
             .{ .name = "effects_mod", .module = effects_mod_module },
+            // REWORK-2: simulation/types.zig and tenant_store.zig (owned by
+            // bpm_src_mod via relative chain from bpm.zig) now use
+            // @import("event_store") instead of relative ../event_store/store.zig
+            // to satisfy Zig 0.16's single-owner rule (store.zig is also
+            // event_store_mod's root).
+            .{ .name = "event_store", .module = event_store_mod },
         },
     });
 
@@ -1638,19 +1649,13 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/simulation_test_root.zig"),
             .target = target,
             .optimize = optimize,
-            // simulation/types.zig and tenant_store.zig both reach
-            // ../event_store/store.zig by RELATIVE path, so store.zig is a plain
-            // member of this shim's own module — and its four named imports must
-            // therefore be supplied at this module's level, not inherited from
-            // anywhere. Design §2.5 anticipated exactly this ("BACKEND-DEV adds
-            // whatever named imports the compiler demands and records them");
-            // these four are the complete set demanded.
+            // REWORK-2: simulation/types.zig and tenant_store.zig now import
+            // event_store by NAMED module (@import("event_store")) rather than
+            // relative path, so event_store_mod is the only import needed here.
+            // store.zig's own named deps (pool, pipeline_context, obs_metrics,
+            // json_schema) are handled internally by event_store_mod.
             .imports = &.{
-                .{ .name = "pool", .module = pool_root_mod },
-                .{ .name = "tenant_context", .module = tenant_context_mod },
-                .{ .name = "pipeline_context", .module = pipeline_context_mod },
-                .{ .name = "obs_metrics", .module = obs_metrics_mod },
-                .{ .name = "json_schema", .module = json_schema_mod },
+                .{ .name = "event_store", .module = event_store_mod },
             },
         }),
     });
