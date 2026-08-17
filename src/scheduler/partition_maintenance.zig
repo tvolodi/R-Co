@@ -270,7 +270,7 @@ pub const PartitionMaintenanceScheduler = struct {
         parent: []const u8,
         range: MonthRange,
     ) PartitionMaintenanceError!bool {
-        const partition_name = try std.fmt.allocPrint(allocator, "{s}_{s}", .{ parent, range.suffix });
+        const partition_name = std.fmt.allocPrint(allocator, "{s}_{s}", .{ parent, range.suffix }) catch return PartitionMaintenanceError.TransactionFailed;
         defer allocator.free(partition_name);
 
         // Already tracked as ATTACHED in plat_partition_catalog?
@@ -285,9 +285,9 @@ pub const PartitionMaintenanceScheduler = struct {
         defer existing.deinit();
         if (existing.rows.len > 0) return false;
 
-        const start_text = try formatTimestamptzLiteral(allocator, range.start_us);
+        const start_text = formatTimestamptzLiteral(allocator, range.start_us) catch return PartitionMaintenanceError.TransactionFailed;
         defer allocator.free(start_text);
-        const end_text = try formatTimestamptzLiteral(allocator, range.end_us);
+        const end_text = formatTimestamptzLiteral(allocator, range.end_us) catch return PartitionMaintenanceError.TransactionFailed;
         defer allocator.free(end_text);
 
         const create_sql = std.fmt.allocPrint(
