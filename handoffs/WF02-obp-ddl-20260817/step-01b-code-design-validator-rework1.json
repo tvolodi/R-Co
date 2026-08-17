@@ -1,0 +1,47 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-01b-code-design-validator-rework1",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "step": "01b-rework1",
+  "created_at": "2026-08-17T08:11:22Z",
+  "started_at": "2026-08-17T08:11:22Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Re-gate after CODE-DESIGNER rework1 \u2014 verify all 4 validator failures from step-01b are now resolved.\n\nRe-check all 5 criteria:\n1. AC coverage for OBP-01, OBP-02, OBP-03, DDL-03\n2. No implementation code (E050 code blocks \u226440 lines each)\n3. Complete enough for BACKEND-DEV\n4. No contradictions between designs\n5. Open questions formally resolved or declared out-of-scope\n\nAlso verify:\n- Y111 BLOCKER: migration_number in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml no longer collides with existing migrations/\n- Y132 MAJOR: all test_cases in the migration YAML have requirement_ref, act, assertions\n\nReturn PASS if all issues are resolved. Return FAIL with specific remaining gaps if not.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": [
+      "OBP-01",
+      "OBP-02",
+      "OBP-03",
+      "DDL-03"
+    ],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "src/design/obp-01-outbox-depth-cap.md",
+      "src/design/obp-02-ingress-refusal.md",
+      "src/design/obp-03-outbox-overflow.md",
+      "src/design/ddl-03-phased-ddl-generation.md",
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml"
+    ]
+  },
+  "completed_at": "2026-08-17T08:15:12Z",
+  "result": {
+    "status": "FAIL",
+    "summary": "3 of 4 rework1 fixes verified; 1 MAJOR issue remains. Y111 FIXED (migration_number 1167, no collision with existing 1166). E050 FIXED (all 4 design markdown files pass lint with exit 0; all code blocks <=40 lines). OQ FIXED (all 3 open questions formally resolved or declared out-of-scope in Resolved Open Questions sections). Y132 STILL FAILING: assertions fields in all 4 test_cases in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml are YAML lists (e.g. '- row_count: 1') instead of block scalar strings. Both lint_design_artefact.py and codegen_migration.py --dry-run crash with AttributeError/'expected string or bytes-like object' (exit 1). All other migration YAMLs in templates/specs/ use 'assertions: |' block scalar with '// CUSTOM:' placeholder text. CODE-DESIGNER must convert each assertions list to a block scalar string.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "code": "Y132",
+        "artefact": "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml",
+        "description": "All 4 test_cases have 'assertions' formatted as a YAML list of dicts (e.g. '- row_count: 1', '- column: is_nullable\\n  value: \"NO\"'). The migration spec schema requires assertions to be a block scalar string (assertions: |) containing a '// CUSTOM:' placeholder. Both lint_design_artefact.py (TypeError: expected string or bytes-like object, got 'list') and codegen_migration.py --dry-run (AttributeError: 'list' object has no attribute 'rstrip') crash with exit 1. Fix: change each assertions field from a list to a string block scalar, e.g. 'assertions: |\\n  // CUSTOM: assert row_count=1 and is_nullable=NO for depth_refreshed_at column.' See obp-04-plat-outbox-gate.migration.yaml for the correct format."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework2: fix assertions format in migration YAML (MAJOR Y132 remaining)."
+  }
+}

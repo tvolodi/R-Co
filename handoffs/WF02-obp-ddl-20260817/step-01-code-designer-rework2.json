@@ -1,0 +1,37 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-01-code-designer-rework2",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "step": "01-rework2",
+  "created_at": "2026-08-17T08:16:35Z",
+  "started_at": "2026-08-17T08:16:35Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T08:17:53Z",
+  "workflow_ref": "WF-02",
+  "rework_count": 2,
+  "max_rework": 2,
+  "task": {
+    "description": "Rework 2 — Fix the single remaining Y132 issue in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml.\n\n**ONLY this file needs to change.** All 4 design markdown files are already passing.\n\nThe problem: all test_cases[*].assertions entries use a YAML list format:\n  assertions:\n    - row_count: 1\n\nThe correct format used by every other migration YAML in templates/specs/ is a block scalar:\n  assertions: |\n    // CUSTOM: describe what to verify here\n\nFix: change all 4 test_cases[*].assertions values from YAML list to block scalar with a descriptive // CUSTOM: placeholder.\n\nAfter fixing, verify:\n1. python tools/lint_design_artefact.py templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml exits 0\n2. python tools/codegen_migration.py templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml --dry-run exits 0 (if this tool exists)\n\nNo other files need changing.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": ["OBP-01"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml"
+    ],
+    "validator_failures": {
+      "MAJOR_Y132": "test_cases assertions must be block scalar 'assertions: |' with '// CUSTOM:' placeholder, not a YAML list"
+    }
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed Y132: converted all 4 test_cases[*].assertions from YAML list to block scalar with // CUSTOM: placeholder. lint_design_artefact.py exits 0; codegen_migration.py --dry-run exits 0.",
+    "artifacts_out": [
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml"
+    ],
+    "issues": []
+  }
+}

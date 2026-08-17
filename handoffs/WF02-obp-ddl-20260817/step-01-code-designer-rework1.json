@@ -1,0 +1,49 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-01-code-designer-rework1",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "step": "01-rework1",
+  "created_at": "2026-08-17T07:58:47Z",
+  "started_at": "2026-08-17T07:58:47Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "rework_count": 1,
+  "max_rework": 2,
+  "task": {
+    "description": "Rework 1 — Fix CODE-DESIGN-VALIDATOR gaps in the OBP-01/02/03 + DDL-03 design artefacts.\n\nFix these issues in the design files:\n\n**BLOCKER — migration number collision:**\n- In templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml, change migration_number from 1165 to a number that does not collide with existing migrations. Check the migrations/ directory for the highest existing migration number and use max+1.\n\n**MAJOR E050 — code blocks > 40 lines:**\n- src/design/obp-01-outbox-depth-cap.md line 71: shorten the fenced code block to ≤40 lines (extract to a summary comment or split into multiple shorter blocks)\n- src/design/obp-02-ingress-refusal.md line 70: same fix\n- src/design/ddl-03-phased-ddl-generation.md line 75: same fix\n\n**MAJOR Y132 — migration YAML test_cases missing required fields:**\n- In templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml, add `requirement_ref`, `act`, and `assertions` to all test_cases entries\n\n**MINOR OQ-unresolved — formally resolve or declare out-of-scope:**\n- In each affected design file, add a 'Resolved Open Questions' section that either:\n  a) Formally resolves each question with a concrete answer, or\n  b) Explicitly declares it out-of-scope for this batch with rationale\n- The three questions to resolve: (1) plat_outbox vs effects_outbox naming convention, (2) tenant extraction mechanism for the middleware, (3) identifier allow-list for OBP-02 event\n\nAfter fixing, verify:\n- No code block in any design file is >40 lines\n- migration_number in migration YAML does not collide with any existing migration file\n- All test_cases in migration YAML have requirement_ref, act, assertions\n- All open questions are formally resolved or declared out-of-scope\n\nUpdate all affected files on branch feature/WF02-obp-ddl-20260817.",
+    "functions_to_call": ["fn:read-backend-conventions"]
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "src/design/obp-01-outbox-depth-cap.md",
+      "src/design/obp-02-ingress-refusal.md",
+      "src/design/obp-03-outbox-overflow.md",
+      "src/design/ddl-03-phased-ddl-generation.md",
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml",
+      "handoffs/WF02-obp-ddl-20260817/step-01b-code-design-validator.json"
+    ],
+    "validator_failures": {
+      "BLOCKER_Y111": "migration_number 1165 collides with migrations/1165_vld04_definition_semantic_verdict.sql",
+      "MAJOR_E050": ["obp-01 line 71", "obp-02 line 70", "ddl-03 line 75 - code blocks >40 lines"],
+      "MAJOR_Y132": "migration YAML test_cases missing requirement_ref, act, assertions",
+      "MINOR_OQ": "plat_outbox naming, tenant extraction, identifier allow-list not formally resolved"
+    }
+  },
+  "completed_at": "2026-08-17T08:10:12Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1 complete — all 4 validator failures resolved: Y111 migration_number changed 1165→1167 (max existing 1166+1); E050 three code blocks split to ≤40 lines (obp-01 split into 2, obp-02 split into 2, ddl-03 split into 3); Y132 all 4 test_cases entries updated with requirement_ref+act+assertions; OQ all three open questions formally resolved or declared out-of-scope in their respective design files.",
+    "artifacts_out": [
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml",
+      "src/design/obp-01-outbox-depth-cap.md",
+      "src/design/obp-02-ingress-refusal.md",
+      "src/design/ddl-03-phased-ddl-generation.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  }
+}

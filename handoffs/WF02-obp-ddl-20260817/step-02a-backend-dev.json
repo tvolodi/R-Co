@@ -1,0 +1,27 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-02a-backend-dev",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "02a",
+  "created_at": "2026-08-17T08:22:51Z",
+  "started_at": "2026-08-17T08:22:51Z",
+  "status": "PENDING",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Implement OBP-01, OBP-02, OBP-03, and DDL-03 per the design artefacts on branch feature/WF02-obp-ddl-20260817.\n\nRead all 4 design files in full before writing any code:\n- src/design/obp-01-outbox-depth-cap.md\n- src/design/obp-02-ingress-refusal.md\n- src/design/obp-03-outbox-overflow.md\n- src/design/ddl-03-phased-ddl-generation.md\n\nImplement in order (OBP-01 is the foundation):\n\n**OBP-01 (Outbox depth cap and cached depth counter):**\n- Create src/outbox/depth.zig: DepthCache struct with atomic counter, refreshed every 250ms by drainer, staleness check (>5s = at-cap)\n- Wire DepthCache into the outbox drainer (effects/worker.zig or equivalent)\n- Read BPM_OUTBOX_DEPTH_CAP and BPM_OUTBOX_LOW_WATER from env at startup\n- Add both env vars to .env.example with defaults and empty-value behaviour\n- Per-tenant keying (keyed by tenant schema)\n\n**OBP-02 (External ingress refusal before transaction):**\n- Create src/api/middleware/outbox_cap.zig: check DepthCache before BEGIN, before pool connection, before idempotency key write\n- Return HTTP 429 Retry-After:5 with body {\"error\":\"outbox_at_capacity\",\"depth\":<n>,\"cap\":<n>}\n- Refused request leaves idempotency key unused\n- Append EXECUTION_INGRESS_REFUSED event via async side channel (no pool connection for the refused request itself)\n- Wire middleware into the router\n\n**OBP-03 (Typed outbox overflow on internal emit):**\n- Add error.OutboxOverflow to outbox.emit() error set\n- Depth check at emit time: if at cap, return OutboxOverflow, do not insert row\n- Compile-time enforcement: every caller must declare OutboxOverflow in its error set\n- DLQ entry carries depth_per_attempt[] when retries exhausted\n\n**DDL-03 (Phased DDL generation):**\n- Create src/platform/ddl_generate.zig: three-phase generator for column additions with NOT NULL constraints\n- Phase 1: ADD COLUMN ... NULL + ADD CONSTRAINT ... NOT VALID\n- Phase 2: backfill (DDL-04 path)\n- Phase 3: VALIDATE CONSTRAINT + ALTER COLUMN SET NOT NULL\n- Deterministic constraint naming: <table>_<column>_nn\n- Return PhaseGenerationFailed for changes that cannot be expressed in three phases\n\n**Migration (if needed):** Apply any required SQL migration via the migration system. Check templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml for guidance on schema changes needed.\n\n**After implementing:**\n1. Run zig build (must exit 0)\n2. Run zig build test (unit tests, must exit 0 or regressions explained)\n3. Commit all changes on feature/WF02-obp-ddl-20260817 with message: feat(stage16-should): implement OBP-01/02/03 outbox capacity + DDL-03 phased generation\n4. Push to origin\n\nReport: list of files created/modified, migration numbers used, build exit code, test results.",
+    "functions_to_call": ["fn:read-backend-conventions", "fn:check-zig-build", "fn:apply-migrations"]
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "src/design/obp-01-outbox-depth-cap.md",
+      "src/design/obp-02-ingress-refusal.md",
+      "src/design/obp-03-outbox-overflow.md",
+      "src/design/ddl-03-phased-ddl-generation.md",
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml"
+    ]
+  }
+}

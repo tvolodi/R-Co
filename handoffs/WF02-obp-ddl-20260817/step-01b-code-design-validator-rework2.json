@@ -1,0 +1,35 @@
+{
+  "handoff_id": "WF02-obp-ddl-20260817-01b-code-design-validator-rework2",
+  "run_id": "WF02-obp-ddl-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "step": "01b-rework2",
+  "created_at": "2026-08-17T08:18:29Z",
+  "started_at": "2026-08-17T08:18:29Z",
+  "status": "COMPLETED",
+  "workflow_ref": "WF-02",
+  "task": {
+    "description": "Re-gate after rework2 — verify Y132 is now fixed.\n\nOnly check the Y132 issue: all test_cases[*].assertions in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml must use block scalar format with // CUSTOM: placeholder.\n\nAlso verify the full 5-check gate still passes:\n1. AC coverage for OBP-01, OBP-02, OBP-03, DDL-03\n2. No implementation code / E050 ≤40 lines each block\n3. Complete enough for BACKEND-DEV\n4. No contradictions between designs\n5. All open questions formally resolved or declared out-of-scope\n\nReturn PASS if all issues are now resolved. This is rework2 — if any issue remains, escalate.",
+    "functions_to_call": []
+  },
+  "context": {
+    "requirement_ids": ["OBP-01", "OBP-02", "OBP-03", "DDL-03"],
+    "stage": "16",
+    "branch": "feature/WF02-obp-ddl-20260817",
+    "artifacts_in": [
+      "src/design/obp-01-outbox-depth-cap.md",
+      "src/design/obp-02-ingress-refusal.md",
+      "src/design/obp-03-outbox-overflow.md",
+      "src/design/ddl-03-phased-ddl-generation.md",
+      "templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml"
+    ]
+  },
+  "completed_at": "2026-08-17T08:21:42Z",
+  "result": {
+    "status": "PASS",
+    "summary": "All issues from rework1 and rework2 are now resolved. Y132 FIXED: all 4 test_cases[*].assertions in templates/specs/obp-01-plat-outbox-gate-depth-ts.migration.yaml now use block scalar format (assertions: |) with // CUSTOM: placeholder text. lint_design_artefact.py exits 0 on all 5 artefacts (4 design md + 1 migration yaml). codegen_migration.py --dry-run exits 0 and generates correct scaffold. Full 5-check gate: (1) AC coverage confirmed for OBP-01 (5 ACs), OBP-02 (6 ACs), OBP-03 (6 ACs), DDL-03 (6 ACs); (2) E050 clean on all files; (3) complete for BACKEND-DEV — all function signatures, error taxonomies, data flow diagrams, and dependencies present; (4) no cross-design contradictions — OBP-02 and OBP-03 both reference DepthCache.readCached consistently with OBP-01 interface; (5) open questions resolved — 3 Resolved Open Questions sections present across obp-01, obp-02, ddl-03. Migration number 1167 confirmed free (last existing is 1166_ord03).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and/or FRONTEND-DEV (Step 2b)"
+  }
+}

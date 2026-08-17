@@ -2054,3 +2054,17 @@
 2026-08-17T07:07:43Z | ROUTE | WF-03 | WF03-GH814-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | GH-814 changelog + ISS-0716 RESOLVED
 2026-08-17T07:10:30Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-06-doc-updater | DOC-UPDATER | Step 06 PASS: changelog+ISS-0716 RESOLVED; lint 0; commit 86f69f38
 2026-08-17T07:10:30Z | ROUTE | WF-03 | WF03-GH814-20260817-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-814 Step Final git-merge + release.py
+2026-08-17T07:13:34Z | COMPLETE | WF03-GH814-20260817 | WF03-GH814-20260817-final-backend-dev | BACKEND-DEV | Step Final PASS: PR #819 squash-merged ac0b6de6; branch deleted; release.py DONE; lint 0; clean main
+2026-08-17T07:13:34Z | DONE | WF03-GH814-20260817 | --- | PIPELINE COMPLETE | GH-814/ISS-0716 RESOLVED — backfill bookkeeping fixed; PR #819 merged ac0b6de6
+2026-08-17T07:13:34Z | GIT | WF03-GH814-20260817 | feature/WF03-GH814-20260817 | ac0b6de6 | PR: https://github.com/tvolodi/R-Co/pull/819
+2026-08-17T07:26:58Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | Stage 16 SHOULD batch: OBP-01,OBP-02,OBP-03,DDL-03 git-setup
+2026-08-17T07:40:32Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01-code-designer | ORCH -> CODE-DESIGNER | PENDING | OBP-01/02/03 + DDL-03 design artefacts
+2026-08-17T07:54:03Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | OBP-01/02/03 + DDL-03 design hard gate
+2026-08-17T07:58:47Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-01b-code-design-validator | CODE-DESIGN-VALIDATOR | FAIL: Y111 BLOCKER migration collision + E050 MAJOR code blocks + Y132 MAJOR yaml gaps + OQ MINOR unresolved
+2026-08-17T07:58:47Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01-code-designer-rework1 | ORCH -> CODE-DESIGNER | PENDING | rework1: fix Y111+E050+Y132+OQ
+2026-08-17T08:11:22Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01b-code-design-validator-rework1 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | rework1 re-gate OBP-01/02/03 + DDL-03
+2026-08-17T08:16:35Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-01b-code-design-validator-rework1 | CODE-DESIGN-VALIDATOR | FAIL: Y132 MAJOR assertions format still wrong in migration YAML
+2026-08-17T08:16:35Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01-code-designer-rework2 | ORCH -> CODE-DESIGNER | PENDING | rework2 (FINAL): fix Y132 assertions block scalar in migration YAML
+2026-08-17T08:18:29Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-01b-code-design-validator-rework2 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | rework2 re-gate: verify Y132 fixed
+2026-08-17T08:22:51Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-01b-code-design-validator-rework2 | CODE-DESIGN-VALIDATOR | Step 01b PASS (rework2): all 5 checks pass; Y132 fixed; lint 0; BACKEND-DEV unblocked
+2026-08-17T08:22:51Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING | implement OBP-01/02/03 + DDL-03
