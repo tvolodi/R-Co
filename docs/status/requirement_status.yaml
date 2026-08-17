@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-17T03:52:11Z'
+last_updated: '2026-08-17T12:07:44Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4472,10 +4472,13 @@ requirements:
     test_run: tests/reports/report-20260811-WF02-batch-2.yaml
     released_at: '2026-08-11T14:00:40Z'
   DDL-03:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Phased DDL generation
+    implemented_in:
+    - src/platform/ddl_generate.zig
+    released_at: '2026-08-17T12:07:39Z'
   DDL-04:
     status: RELEASED
     stage: '16'
@@ -4662,20 +4665,32 @@ requirements:
     test_run: tests/reports/report-20260811-WF02-batch-1.yaml
     released_at: '2026-08-11T11:18:15Z'
   OBP-01:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Outbox depth cap and cached depth counter
+    implemented_in:
+    - src/outbox/depth.zig
+    - src/effects/worker.zig
+    released_at: '2026-08-17T12:07:31Z'
   OBP-02:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: External ingress refusal before transaction
+    implemented_in:
+    - src/api/middleware/outbox_cap.zig
+    - migrations/1167_obp01_plat_outbox_gate_depth_ts.sql
+    released_at: '2026-08-17T12:07:37Z'
   OBP-03:
-    status: DRAFT
+    status: RELEASED
     stage: '16'
     priority: SHOULD
     title: Typed outbox overflow on internal emit
+    implemented_in:
+    - src/outbox/emit.zig
+    - src/effects/mod.zig
+    released_at: '2026-08-17T12:07:38Z'
   OBP-04:
     status: RELEASED
     stage: '16'

@@ -2082,3 +2082,13 @@
 2026-08-17T10:17:14Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-04-test-runner | ORCH -> TEST-RUNNER | PENDING | run OBP-01/02/03 + DDL-03 integration tests
 2026-08-17T10:24:39Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-04-test-runner | TEST-RUNNER | FAIL: 4 compile errors in obp01/02/03 test files; DDL-03 PASS
 2026-08-17T10:24:39Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev-rework1 | ORCH -> BACKEND-DEV | PENDING | rework1: fix 4 compile errors in integration test files
+2026-08-17T11:16:00Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02a-backend-dev-rework1 | BACKEND-DEV | rework1 PASS: 4 compile errors fixed; zig build exit 0; pushed
+2026-08-17T11:16:00Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING | rework1: re-run all integration test targets
+2026-08-17T11:27:52Z | FAIL | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-04-test-runner-rework1 | TEST-RUNNER | FAIL: 4 runtime failures ISS-OBP-T01 (stale-test logic), T02 (dangling ptr), T03 (mem leak), T04 (schema filter)
+2026-08-17T11:27:52Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-02a-backend-dev-rework2 | ORCH -> BACKEND-DEV | PENDING | rework2 (FINAL): fix 4 runtime test failures
+2026-08-17T11:57:11Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-02a-backend-dev-rework2 | BACKEND-DEV | rework2 PASS: OBP-01 3/3 OBP-02 4/4 OBP-03 6/6; commit 80393ab7 pushed
+2026-08-17T11:57:11Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-04-test-runner-rework2 | ORCH -> TEST-RUNNER | PENDING | final verification run
+2026-08-17T12:01:08Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-04-test-runner-rework2 | TEST-RUNNER | Step 04 PASS (rework2): obp01 3/3 obp02 4/4 obp03 6/6; report updated
+2026-08-17T12:01:08Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING | OBP-01/02/03 + DDL-03 release decision
+2026-08-17T12:05:49Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-05-release-validator | RELEASE-VALIDATOR | Step 05 APPROVED: OBP-01/02/03 DDL-03 all PASS; 2 MINOR follow-ups non-blocking
+2026-08-17T12:05:49Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | CHANGELOG + set-status RELEASED for OBP-01/02/03 + DDL-03

@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-17T05:05:27Z'
+generated_at: '2026-08-17T12:07:39Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -11250,7 +11250,7 @@ requirements:
     title: Phased DDL generation
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** DDL-02, turning the ordering rule into generated output.
 
@@ -11268,8 +11268,11 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:58Z'
+    last_updated: '2026-08-17T12:07:39Z'
     workflow: PW-05
+    implemented_in:
+    - src/platform/ddl_generate.zig
+    released_at: '2026-08-17T12:07:39Z'
   DDL-04:
     id: DDL-04
     title: Idempotent batched backfill
@@ -11882,7 +11885,7 @@ requirements:
     title: Outbox depth cap and cached depth counter
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > The outbox SHOULD have a per-tenant depth cap `BPM_OUTBOX_DEPTH_CAP`, read from the environment at startup with a default of 50000 and never inferred from disk, memory, or observed throughput. Depth SHALL be read from a cached counter that the outbox drainer refreshes every 250 ms; no request path SHALL issue `SELECT count(*) FROM plat_outbox`. A cached value older than 5 s SHALL be treated as at-cap.
 
@@ -11897,14 +11900,18 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:24Z'
+    last_updated: '2026-08-17T12:07:31Z'
     workflow: PW-08
+    implemented_in:
+    - src/outbox/depth.zig
+    - src/effects/worker.zig
+    released_at: '2026-08-17T12:07:31Z'
   OBP-02:
     id: OBP-02
     title: External ingress refusal before transaction
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > **Extends:** API-10, adding a capacity-driven refusal distinct from rate limiting.
 
@@ -11922,14 +11929,18 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:25Z'
+    last_updated: '2026-08-17T12:07:37Z'
     workflow: PW-08
+    implemented_in:
+    - src/api/middleware/outbox_cap.zig
+    - migrations/1167_obp01_plat_outbox_gate_depth_ts.sql
+    released_at: '2026-08-17T12:07:37Z'
   OBP-03:
     id: OBP-03
     title: Typed outbox overflow on internal emit
     stage: '16'
     priority: SHOULD
-    status: DRAFT
+    status: RELEASED
     body: |-
       > An internal emit runs inside a step transaction and has no response to write, so it SHALL NOT be refused with a status code. When outbox depth is at or above the cap, `outbox.emit()` SHALL return the typed error `error.OutboxOverflow`, no outbox row SHALL be inserted, the step transaction SHALL roll back, and the node's configured retry policy and the existing dead letter path SHALL handle it. `OutboxOverflow` SHALL appear in the declared error set of `outbox.emit()` and of every caller.
 
@@ -11945,8 +11956,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:26Z'
+    last_updated: '2026-08-17T12:07:38Z'
     workflow: PW-08
+    implemented_in:
+    - src/outbox/emit.zig
+    - src/effects/mod.zig
+    released_at: '2026-08-17T12:07:38Z'
   OBP-04:
     id: OBP-04
     title: Outbox gate hysteresis and escalation
