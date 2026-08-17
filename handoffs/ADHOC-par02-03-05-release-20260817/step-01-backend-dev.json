@@ -6,7 +6,7 @@
   "step": "01",
   "created_at": "2026-08-17T12:47:56Z",
   "started_at": "2026-08-17T12:51:25Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "workflow_ref": "ADHOC",
   "priority": "NORMAL",
   "context": {
@@ -38,5 +38,29 @@
     ],
     "functions_to_call": []
   },
-  "result": null
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T14:01:35Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented PAR-03 AC6 EXECUTION_PARTITION_DETACHED/DROPPED event emissions and TC-PAR-02-09 integration test. Fixed a pre-existing bug in Store.appendPlatform() (SET LOCAL search_path TO public pointed to non-existent public.events/public.plat_event_idempotency after GBL-112; removed the override so pool's tenant search_path is used). Added store field + initWithStore to PartitionRetention. Added DETACHED emit in archiveOnePartition() and DROPPED emit in runEphemeralDrop() (both non-fatal). Added range_start/range_end to runEphemeralDrop query. TC-PAR-02-09 test added in par02_partition_catalog_test.zig. REWORK-1: Fixed build.zig — moved event_store_mod definition before partition_maintenance_mod so it is in scope when wired as a named import. REWORK-2: Fixed Zig 0.16 single-owner rule — store.zig and registry.zig were double-owned (event_store_mod root + relative imports in bpm.zig, main.zig, instances.zig, pin_resolver.zig, simulation/types.zig, simulation/tenant_store.zig). Fixed by converting all relative @import(\"event_store/store.zig\") to @import(\"event_store\") and @import(\"../event_store/registry.zig\") to @import(\"event_store\").registry_module. Added event_store_mod to bpm_src_mod imports and vendor_imports. Updated simulation_tests imports (event_store_mod replaces 5 individual pool/tenant_context/pipeline_context/obs_metrics/json_schema imports). zig build and zig build test both exit 0. REWORK-3: Fixed error.OutOfMemory propagation in ensurePartitionAttached() — replaced 3 `try` calls (allocPrint for partition_name, formatTimestamptzLiteral for start_text/end_text) with `catch return PartitionMaintenanceError.TransactionFailed` so OutOfMemory stays within PartitionMaintenanceError. zig build and zig build test both exit 0.",
+    "artifacts_out": [
+      "src/event_store/store.zig",
+      "src/scheduler/partition_retention.zig",
+      "tests/integration/par02_partition_catalog_test.zig",
+      "build.zig",
+      "src/bpm.zig",
+      "src/main.zig",
+      "src/api/routes/instances.zig",
+      "src/engine/pin_resolver.zig",
+      "src/simulation/types.zig",
+      "src/simulation/tenant_store.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Store.appendPlatform() had SET LOCAL search_path TO public which pointed to public.events and public.plat_event_idempotency — both dropped by GBL-112 and not re-created. This caused appendPlatform to always fail silently (TransactionFailed swallowed by non-fatal catch). Fix: removed the search_path override so pool's existing tenant search_path (tenant_default, public) is used. Platform events now write to tenant_default.events. This is consistent with how worker.zig, ordering/consumer.zig, outbox/gate.zig write platform events (no search_path override). No migration needed."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER for integration test execution (zig build test-integration-par02, test-integration-par03)"
+  }
 }
