@@ -1,0 +1,32 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-04-doc-updater",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "step": "04",
+  "created_at": "2026-08-17T12:47:56Z",
+  "started_at": null,
+  "status": "PENDING",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02", "PAR-03", "PAR-05"],
+    "stage": "16",
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "release_decision": "docs/status/release-stage16-par02-03-05-20260817.yaml"
+  },
+  "task": {
+    "description": "Update documentation after RELEASE-VALIDATOR approved PAR-02, PAR-03, PAR-05.\n\n1. CHANGELOG.md — add entry for this release:\n   - PAR-02: Proactive future partition creation — all ACs now met including AC5 (EXECUTION_PARTITION_CREATED event) and TC-PAR-02-09 test\n   - PAR-03: Partition-scoped retention and archival — AC6 implemented (EXECUTION_PARTITION_DETACHED/DROPPED events)\n   - PAR-05: Online conversion to a partitioned event log — archival integration complete\n\n2. Update requirement status:\n   python tools/reqctl.py set-status PAR-02 RELEASED\n   python tools/reqctl.py set-status PAR-03 RELEASED\n   python tools/reqctl.py set-status PAR-05 RELEASED\n\n3. Update notes in docs/requirements.yaml for PAR-02/PAR-03/PAR-05:\n   - Remove the stale 'ISS-0670 / GH-711 (OPEN)' note from PAR-02 and PAR-03\n   - Replace with: 'All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0670 RESOLVED (GH-711 closed). AC5/AC6 event emissions implemented and tested.'\n   - For PAR-05: Remove 'ISS-0686 / GH-733 (OPEN)' note, replace with: 'All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0686 RESOLVED (GH-733 closed). archiveLegacyTable() integrated.'\n\n4. Update docs/status/requirement_status.yaml (run python tools/reqctl.py render-status)\n\n5. Run python tools/lint_handoffs.py — must exit 0.\n\n6. Commit with message: docs(stage16): mark PAR-02/PAR-03/PAR-05 RELEASED",
+    "acceptance_criteria": [
+      "CHANGELOG updated",
+      "PAR-02, PAR-03, PAR-05 set to RELEASED via reqctl",
+      "Stale notes updated in requirements.yaml",
+      "lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status"
+    ]
+  },
+  "result": null
+}

@@ -12,6 +12,8 @@
 // BPM_TEST_DB_URL must be set; the test connects to a real PostgreSQL.
 const std = @import("std");
 const helpers = @import("helpers.zig");
+const portable_env = @import("env");
+const bpm = @import("bpm");
 
 fn randomSuffix(h: *helpers.TestHarness, allocator: std.mem.Allocator) ![]u8 {
     const id = try h.newUuidString(allocator);
@@ -124,4 +126,115 @@ test "par02_partition_catalog: run_log_unique_per_date_enforces_idempotency" {
     // ON CONFLICT DO NOTHING absorbed the second insert silently — no error,
     // matching PAR-02 AC2's "raises no error", and RETURNING yields zero rows.
     try std.testing.expectEqual(@as(usize, 0), second.rows.len);
+}
+
+// TC-PAR-02-09 (PAR-02 AC5): ensurePartitionAttached emits EXECUTION_PARTITION_CREATED
+// in the events table (via Store.appendPlatform).
+//
+// Verifies that each new partition creation appends exactly one platform event and
+// that a subsequent call for already-ATTACHED partitions emits no additional events
+// (idempotency at the event-emission level).
+test "par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED" {
+    const alloc = std.testing.allocator;
+    // Ensure migrations are applied.
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const env = portable_env.globalEnviron();
+    const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => return error.SkipZigTest,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    // Create pool, registry, store — same pattern as event_store_integration_test.zig.
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+    var pool = try bpm.pool.Pool.init(std.testing.io, alloc, bpm.pool.PoolConfig{
+        .url = url,
+        .pool_size = 3,
+    });
+    defer pool.deinit();
+    var registry = bpm.registry.Registry.init(alloc, &pool);
+    defer registry.deinit();
+    var store = bpm.store.Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    // Delete today's run-log row so runMaintenanceCycle() always runs fresh,
+    // even when this test is re-run against the same DB on the same day.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        conn.exec("DELETE FROM plat_partition_maintenance_run_log WHERE run_date = CURRENT_DATE", &.{}) catch {};
+    }
+
+    // Count EXECUTION_PARTITION_CREATED events written by prior test runs.
+    const count_before: i64 = blk: {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var rows = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+            &.{"00000000-0000-0000-0000-0000000000ff"},
+        );
+        defer rows.deinit();
+        if (rows.rows.len > 0 and rows.rows[0].len > 0) {
+            break :blk std.fmt.parseInt(i64, rows.rows[0][0] orelse "0", 10) catch 0;
+        }
+        break :blk 0;
+    };
+
+    // Run the daily maintenance cycle with a store so appendPlatform is called.
+    var scheduler = bpm.partition_maintenance.PartitionMaintenanceScheduler.initWithStore(
+        &pool,
+        bpm.partition_maintenance.PartitionMaintenanceConfig{},
+        &store,
+    );
+    const result = try scheduler.runMaintenanceCycle(alloc);
+    try std.testing.expect(result.ran);
+    try std.testing.expect(result.partitions_created > 0);
+
+    // Exactly one EXECUTION_PARTITION_CREATED event per partition created.
+    const count_after: i64 = blk: {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var rows = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+            &.{"00000000-0000-0000-0000-0000000000ff"},
+        );
+        defer rows.deinit();
+        if (rows.rows.len > 0 and rows.rows[0].len > 0) {
+            break :blk std.fmt.parseInt(i64, rows.rows[0][0] orelse "0", 10) catch 0;
+        }
+        break :blk 0;
+    };
+    try std.testing.expectEqual(count_before + @as(i64, @intCast(result.partitions_created)), count_after);
+
+    // Idempotency: delete the run-log and re-run; all partitions are already ATTACHED
+    // so ensurePartitionAttached() returns false for each, emitting no new events.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        conn.exec("DELETE FROM plat_partition_maintenance_run_log WHERE run_date = CURRENT_DATE", &.{}) catch {};
+    }
+    const result2 = try scheduler.runMaintenanceCycle(alloc);
+    try std.testing.expect(result2.ran);
+    try std.testing.expectEqual(@as(u32, 0), result2.partitions_created);
+
+    const count_idempotent: i64 = blk: {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var rows = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+            &.{"00000000-0000-0000-0000-0000000000ff"},
+        );
+        defer rows.deinit();
+        if (rows.rows.len > 0 and rows.rows[0].len > 0) {
+            break :blk std.fmt.parseInt(i64, rows.rows[0][0] orelse "0", 10) catch 0;
+        }
+        break :blk 0;
+    };
+    // No new events emitted on idempotent re-run.
+    try std.testing.expectEqual(count_after, count_idempotent);
 }

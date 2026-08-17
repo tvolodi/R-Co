@@ -1,0 +1,42 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-01-backend-dev",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "01",
+  "created_at": "2026-08-17T12:47:56Z",
+  "started_at": "2026-08-17T12:51:25Z",
+  "status": "PENDING",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02", "PAR-03"],
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "design_references": [
+      "src/design/ISS-0670-platform-event-convention.md",
+      "src/event_store/platform.zig (PLATFORM_INSTANCE_ID, PLATFORM_ACTOR_ID, PLATFORM_TENANT_ID constants)",
+      "src/event_store/store.zig (appendPlatform method)",
+      "src/scheduler/partition_maintenance.zig (reference: EXECUTION_PARTITION_CREATED emit pattern, lines ~328-360)",
+      "tests/specs/PAR-02.md (TC-PAR-02-09 spec: asserting EXECUTION_PARTITION_CREATED in events table)",
+      "tests/specs/PAR-03.md (AC6 spec: EXECUTION_PARTITION_DETACHED/DROPPED events)"
+    ],
+    "existing_event_types_in_migration_1152": [
+      "EXECUTION_PARTITION_CREATED",
+      "EXECUTION_PARTITION_DETACHED",
+      "EXECUTION_PARTITION_DROPPED"
+    ]
+  },
+  "task": {
+    "description": "Implement the two remaining PAR-03 AC6 event emissions and the missing TC-PAR-02-09 integration test.\n\n## Change 1: PAR-03 AC6 — add EXECUTION_PARTITION_DETACHED emit to archiveOnePartition()\n\nIn src/scheduler/partition_retention.zig, function archiveOnePartition():\n- After the successful DETACH PARTITION (conn.exec(detach_sql)) and the subsequent UPDATE plat_partition_catalog SET state = 'DETACHED', add an appendPlatform call emitting EXECUTION_PARTITION_DETACHED.\n- Use the same non-fatal pattern as EXECUTION_PARTITION_CREATED in partition_maintenance.zig (lines ~328-360):\n  - Payload JSON: {\"partition_name\":\"<table_name>\",\"parent_table\":\"events\",\"range_start\":\"<range_start_text>\",\"range_end\":\"<range_end_text>\"}\n  - idempotency_key: \"EXECUTION_PARTITION_DETACHED:<table_name>\"\n  - event_type: \"EXECUTION_PARTITION_DETACHED\"\n- PartitionRetention already has access to `self.store` (check if a store field exists — if not, add it to the struct using the same pattern as PartitionMaintenance).\n- Non-fatal: emit failure should log a warning, NOT propagate the error.\n\n## Change 2: PAR-03 AC6 — add EXECUTION_PARTITION_DROPPED emit\n\nIn src/scheduler/partition_retention.zig, locate runEphemeralDrop() (the function that handles events_ephemeral DROP TABLE):\n- After each successful DROP TABLE execution, add an appendPlatform call emitting EXECUTION_PARTITION_DROPPED.\n  - Payload JSON: {\"partition_name\":\"<partition_name>\",\"parent_table\":\"events_ephemeral\",\"range_start\":\"<range_start_text>\",\"range_end\":\"<range_end_text>\"}\n  - idempotency_key: \"EXECUTION_PARTITION_DROPPED:<partition_name>\"\n  - event_type: \"EXECUTION_PARTITION_DROPPED\"\n- Same non-fatal pattern.\n\n## Change 3: TC-PAR-02-09 integration test\n\nIn tests/integration/par02_partition_catalog_test.zig:\n- Add test function `test \"par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED\"` (matching the name in tests/specs/PAR-02.md TC-PAR-02-09).\n- The test should:\n  1. Set up a Store (backed by the test DB) and a PartitionMaintenance instance.\n  2. Call ensurePartitionAttached() for a test partition.\n  3. Query: SELECT count(*) FROM events WHERE event_type = 'EXECUTION_PARTITION_CREATED' AND payload::jsonb->>'partition_name' = '<test_partition_name>'\n  4. Assert count >= 1.\n- Reference the existing par02 test setup for DB/Store wiring.\n\nAfter all changes:\n- Run `zig build` to confirm compilation.\n- Run `zig build test-integration-tm -- --test-filter par02` to verify TC-PAR-02-09 passes.\n- Run `zig build test-integration-tm -- --test-filter par03` to verify the existing PAR-03 tests still pass.\n\nCommit message: `feat(par03): PAR-03 AC6 EXECUTION_PARTITION_DETACHED/DROPPED events + TC-PAR-02-09 test`",
+    "acceptance_criteria": [
+      "appendPlatform(EXECUTION_PARTITION_DETACHED) called in archiveOnePartition() after successful detach — non-fatal",
+      "appendPlatform(EXECUTION_PARTITION_DROPPED) called in runEphemeralDrop() after successful drop — non-fatal",
+      "TC-PAR-02-09 test added in par02_partition_catalog_test.zig asserting EXECUTION_PARTITION_CREATED in events table",
+      "zig build exits 0",
+      "zig build test-integration-tm -- --test-filter par02 exits 0",
+      "zig build test-integration-tm -- --test-filter par03 exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": null
+}

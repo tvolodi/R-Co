@@ -276,11 +276,10 @@ pub const Store = struct {
         conn.exec("BEGIN", &.{}) catch return StoreError.TransactionFailed;
         errdefer conn.exec("ROLLBACK", &.{}) catch {};
 
-        // Platform events are cross-tenant; public schema holds all three event tables.
-        conn.exec("SET LOCAL search_path TO public", &.{}) catch {
-            conn.exec("ROLLBACK", &.{}) catch {};
-            return StoreError.TransactionFailed;
-        };
+        // Platform events are written to the current pool connection's tenant schema
+        // (search_path set by pool.acquire via api_tenant_context). public.events and
+        // public.plat_event_idempotency do not exist (dropped by GBL-112); using the
+        // pool's existing search_path (e.g. tenant_default,public) is correct here.
 
         // ES-03: idempotency via plat_event_idempotency.
         const idem_rows = conn.query(

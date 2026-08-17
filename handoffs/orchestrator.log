@@ -2092,3 +2092,9 @@
 2026-08-17T12:01:08Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING | OBP-01/02/03 + DDL-03 release decision
 2026-08-17T12:05:49Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-05-release-validator | RELEASE-VALIDATOR | Step 05 APPROVED: OBP-01/02/03 DDL-03 all PASS; 2 MINOR follow-ups non-blocking
 2026-08-17T12:05:49Z | ROUTE | WF-02 | WF02-obp-ddl-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | CHANGELOG + set-status RELEASED for OBP-01/02/03 + DDL-03
+2026-08-17T12:11:34Z | COMPLETE | WF02-obp-ddl-20260817 | WF02-obp-ddl-20260817-06-doc-updater | DOC-UPDATER | Step 06 PASS: OBP-01/02/03 DDL-03 RELEASED; changelog updated; lint 0; PR #820 squash-merged b3dfec44; branch deleted; clean main
+2026-08-17T12:11:34Z | DONE | WF02-obp-ddl-20260817 | --- | PIPELINE COMPLETE | OBP-01 OBP-02 OBP-03 DDL-03 RELEASED
+2026-08-17T12:11:34Z | GIT | WF02-obp-ddl-20260817 | feature/WF02-obp-ddl-20260817 | b3dfec44 | PR: https://github.com/tvolodi/R-Co/pull/820
+2026-08-17T12:49:51Z | ROUTE | ADHOC-par02-03-05-release-20260817 | ADHOC-par02-03-05-release-20260817-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | Stage 16 completion: PAR-03 AC6 EXECUTION_PARTITION_DETACHED/DROPPED + TC-PAR-02-09 test + release PAR-02/PAR-03/PAR-05
+2026-08-17T12:51:17Z | COMPLETE | ADHOC-par02-03-05-release-20260817 | ADHOC-par02-03-05-release-20260817-00-backend-dev | BACKEND-DEV | Step 00 PASS: branch feature/ADHOC-par02-03-05-release-20260817 from b3dfec44, zig build exit 0
+2026-08-17T12:51:22Z | ROUTE | ADHOC-par02-03-05-release-20260817 | ADHOC-par02-03-05-release-20260817-01-backend-dev | ORCH -> BACKEND-DEV | PENDING | implement PAR-03 AC6 event emissions + TC-PAR-02-09 test

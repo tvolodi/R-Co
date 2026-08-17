@@ -16,6 +16,9 @@ const db = @import("pool");
 // cannot escape its own module root with a relative path that crosses into
 // src/db/ (Zig 0.16's single-owner module rule).
 const partition_attach = @import("partition_attach");
+// PAR-03 AC6 (ADHOC-par02-03-05-release-20260817): event_store for appendPlatform
+const event_store = @import("event_store");
+const Store = event_store.Store;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -69,9 +72,15 @@ const PROTECTED_FAMILY_GUARD_SQL =
 pub const PartitionRetention = struct {
     pool: *db.Pool,
     config: RetentionConfig,
+    /// Optional: set to emit platform events on detach/drop (PAR-03 AC6, ISS-0670).
+    store: ?*Store = null,
 
     pub fn init(pool: *db.Pool, config: RetentionConfig) PartitionRetention {
         return .{ .pool = pool, .config = config };
+    }
+
+    pub fn initWithStore(pool: *db.Pool, config: RetentionConfig, store: *Store) PartitionRetention {
+        return .{ .pool = pool, .config = config, .store = store };
     }
 
     /// DETACH-then-ATTACH every `events` partition older than
@@ -215,8 +224,6 @@ pub const PartitionRetention = struct {
         range_end_text: []const u8,
         result: *ArchivalAgingResult,
     ) RetentionError!void {
-        _ = self;
-
         const detach_sql = std.fmt.allocPrint(allocator, "ALTER TABLE events DETACH PARTITION {s} CONCURRENTLY", .{table_name}) catch
             return RetentionError.TransactionFailed;
         defer allocator.free(detach_sql);
@@ -231,6 +238,37 @@ pub const PartitionRetention = struct {
             "UPDATE plat_partition_catalog SET state = 'DETACHED', updated_at = NOW() WHERE table_name = $1",
             &.{table_name},
         ) catch return RetentionError.TransactionFailed;
+
+        // PAR-03 AC6: emit EXECUTION_PARTITION_DETACHED (ISS-0670 non-fatal pattern).
+        if (self.store) |s| {
+            const payload_json = std.fmt.allocPrint(
+                allocator,
+                "{{\"partition_name\":\"{s}\",\"parent_table\":\"events\"," ++
+                    "\"range_start\":\"{s}\",\"range_end\":\"{s}\"}}",
+                .{ table_name, range_start_text, range_end_text },
+            ) catch null;
+            if (payload_json) |pj| {
+                defer allocator.free(pj);
+                const ikey = std.fmt.allocPrint(
+                    allocator,
+                    "EXECUTION_PARTITION_DETACHED:{s}",
+                    .{table_name},
+                ) catch null;
+                if (ikey) |ik| {
+                    defer allocator.free(ik);
+                    _ = s.appendPlatform(allocator, .{
+                        .event_type = "EXECUTION_PARTITION_DETACHED",
+                        .payload = pj,
+                        .idempotency_key = ik,
+                    }) catch |err| {
+                        std.log.warn(
+                            "appendPlatform EXECUTION_PARTITION_DETACHED failed for {s}: {any}",
+                            .{ table_name, err },
+                        );
+                    };
+                }
+            }
+        }
 
         // events_archive carries one column events does not: archived_at
         // TIMESTAMPTZ NOT NULL DEFAULT NOW() (migration 1147). PostgreSQL's
@@ -391,7 +429,7 @@ pub const PartitionRetention = struct {
 
         var aged = conn.query(
             allocator,
-            \\SELECT table_name FROM plat_partition_catalog
+            \\SELECT table_name, range_start::text, range_end::text FROM plat_partition_catalog
             \\WHERE parent_table = 'events_ephemeral' AND state = 'ATTACHED'
             \\  AND range_end < NOW() - ($1 || ' months')::interval
             \\ORDER BY range_end ASC
@@ -404,8 +442,10 @@ pub const PartitionRetention = struct {
         defer aged.deinit();
 
         for (aged.rows) |row| {
-            if (row.len == 0) continue;
+            if (row.len < 3) continue;
             const table_name = row[0] orelse continue;
+            const range_start_text = row[1] orelse "";
+            const range_end_text = row[2] orelse "";
 
             const guard_sql = std.fmt.allocPrint(allocator, PROTECTED_FAMILY_GUARD_SQL, .{table_name}) catch
                 return RetentionError.TransactionFailed;
@@ -444,6 +484,37 @@ pub const PartitionRetention = struct {
                 "UPDATE plat_partition_catalog SET state = 'DROPPED', updated_at = NOW() WHERE table_name = $1",
                 &.{table_name},
             ) catch return RetentionError.TransactionFailed;
+
+            // PAR-03 AC6: emit EXECUTION_PARTITION_DROPPED (ISS-0670 non-fatal pattern).
+            if (self.store) |s| {
+                const payload_json = std.fmt.allocPrint(
+                    allocator,
+                    "{{\"partition_name\":\"{s}\",\"parent_table\":\"events_ephemeral\"," ++
+                        "\"range_start\":\"{s}\",\"range_end\":\"{s}\"}}",
+                    .{ table_name, range_start_text, range_end_text },
+                ) catch null;
+                if (payload_json) |pj| {
+                    defer allocator.free(pj);
+                    const ikey = std.fmt.allocPrint(
+                        allocator,
+                        "EXECUTION_PARTITION_DROPPED:{s}",
+                        .{table_name},
+                    ) catch null;
+                    if (ikey) |ik| {
+                        defer allocator.free(ik);
+                        _ = s.appendPlatform(allocator, .{
+                            .event_type = "EXECUTION_PARTITION_DROPPED",
+                            .payload = pj,
+                            .idempotency_key = ik,
+                        }) catch |err| {
+                            std.log.warn(
+                                "appendPlatform EXECUTION_PARTITION_DROPPED failed for {s}: {any}",
+                                .{ table_name, err },
+                            );
+                        };
+                    }
+                }
+            }
 
             result.dropped += 1;
         }

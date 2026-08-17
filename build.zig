@@ -1338,6 +1338,9 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "pool", .module = pool_root_mod },
                 .{ .name = "partition_attach", .module = partition_attach_mod },
+                // PAR-03 AC6 (ADHOC-par02-03-05-release-20260817): partition_retention.zig
+                // now imports event_store for appendPlatform calls.
+                .{ .name = "event_store", .module = event_store_mod },
             },
         }),
     });
