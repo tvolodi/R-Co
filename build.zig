@@ -287,6 +287,20 @@ pub fn build(b: *std.Build) void {
             .{ .name = "pool", .module = pool_root_mod },
         },
     });
+    // ISS-0148: event_store_mod must be defined here (before partition_maintenance_mod)
+    // because partition_maintenance.zig imports it. The unit-test wiring below reuses
+    // this same module handle.
+    const event_store_mod = b.createModule(.{
+        .root_source_file = b.path("src/event_store/store.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "pipeline_context", .module = pipeline_context_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            .{ .name = "json_schema", .module = json_schema_mod },
+        },
+    });
     // PAR-05 (WF02-batch-4-20260811): src/scheduler/partition_maintenance.zig,
     // given as a named module for the SAME reason partition_attach_mod is —
     // src/db/partition_conversion.zig sits in a DIFFERENT directory than
@@ -305,6 +319,7 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "pool", .module = pool_root_mod },
             .{ .name = "partition_attach", .module = partition_attach_mod },
+            .{ .name = "event_store", .module = event_store_mod },
         },
     });
     // PAR-05: src/db/partition_conversion.zig — the online partition
@@ -660,23 +675,7 @@ pub fn build(b: *std.Build) void {
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
-    // ISS-0148: tests/unit/event_store_test.zig is a standalone test root, so it
-    // cannot reach src/event_store/*.zig by relative @import ("import of file
-    // outside module path"). Expose store.zig as a named module instead. Its own
-    // named imports (pool / pipeline_context / obs_metrics) must be supplied at
-    // this module's level; registry.zig is reached from store.zig by relative
-    // path and so is a plain member of this module.
-    const event_store_mod = b.createModule(.{
-        .root_source_file = b.path("src/event_store/store.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "pool", .module = pool_root_mod },
-            .{ .name = "pipeline_context", .module = pipeline_context_mod },
-            .{ .name = "obs_metrics", .module = obs_metrics_mod },
-            .{ .name = "json_schema", .module = json_schema_mod },
-        },
-    });
+    // ISS-0148: event_store_mod is defined earlier (before partition_maintenance_mod).
     const event_store_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/event_store_test.zig"),
