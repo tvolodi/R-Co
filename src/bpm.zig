@@ -149,6 +149,11 @@ pub const solution_pack_routes = @import("api/routes/solution_packs.zig"); // SO
 // `instance_routes`, `promotion_review_routes` etc. The route handler
 // itself lives in src/main.zig's tree (no separate named module needed).
 pub const validation_routes = @import("api/routes/validation.zig"); // VLD-03 HTTP handler
+// WF03-GH816-20260817 (VLD-04 AC1 fix): expose definitions_routes so the
+// TC-VLD-04-AC1-PATCH integration test can call handlePatch directly.
+// Relative @imports from tests/integration/ escape the module root (Zig 0.16
+// rejects them); re-exporting here is the established shim pattern.
+pub const definitions_routes = @import("api/routes/definitions.zig"); // API-02
 
 // ISS-0147 / GH #463 — src/wasm subsystem (WASM-01..14, all RELEASED).
 //

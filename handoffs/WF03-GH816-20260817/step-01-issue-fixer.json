@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF03-GH816-20260817-01-issue-fixer",
+  "run_id": "WF03-GH816-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "step": "01",
+  "created_at": "2026-08-17T05:42:28Z",
+  "started_at": "2026-08-17T05:42:28Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-17T05:43:42Z",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "task": {
+    "description": "Step 1 — Root cause diagnosis for ISS-0717 / GH-816.\n\nIssue summary: VLD-04 AC1 requires that any draft-save of a definition with semantic findings returns HTTP 422. The semantic gate (runSemanticGate) was wired into handlePut (PUT /api/v1/definitions/{id}), but the ACTUAL live route registered in main.zig is PATCH /api/v1/definitions/{id} -> handlePatch. handlePatch does not call runSemanticGate. The frontend (web/src/api/definitions.ts updateDefinition) uses client.patch, so it bypasses the gate.\n\nYour tasks:\n1. Read src/main.zig to confirm PATCH /api/v1/definitions/{id} is registered to handlePatch (not handlePut).\n2. Read src/api/routes/definitions.zig to confirm handlePatch does NOT call runSemanticGate, and handlePut DOES call it.\n3. Read src/design/vld-04-validation-gate-authoring-promotion.md to understand the design intent (was it PUT or PATCH?).\n4. Read web/src/api/definitions.ts to confirm updateDefinition uses client.patch.\n5. Produce a root cause statement: which file/line is the definitive mismatch, and which fix option from the GH-816 body is most appropriate (Option 1: wire gate into handlePatch, OR Option 2: change frontend to PUT and register handlePut).\n6. Recommend one of the two fix options with justification.\n\nWrite your diagnosis into docs/issues/ISS-0717.json (update root_cause field) and complete the handoff."
+  },
+  "context": {
+    "issue_title": "VLD-04 AC1: live draft-save surface is PATCH (handlePatch), not PUT (handlePut) — frontend draft-save path is not gate-enforced",
+    "issue_id": "ISS-0717",
+    "github_issue_url": "https://github.com/tvolodi/R-Co/issues/816",
+    "iss_file": "docs/issues/ISS-0717.json",
+    "artifacts_in": [
+      "docs/issues/ISS-0717.json",
+      "src/main.zig",
+      "src/api/routes/definitions.zig",
+      "src/design/vld-04-validation-gate-authoring-promotion.md",
+      "web/src/api/definitions.ts"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause confirmed (Category A — Logic error). src/main.zig line 717 registers PATCH /api/v1/definitions/{id} -> handlePatch; no .PUT branch exists for definitions. handlePut (definitions.zig line 362) calls runSemanticGate (line 412) but is unreachable — dead code. handlePatch (line 458) calls store.update and returns HTTP 200 with no gate check. web/src/api/definitions.ts line 29 uses client.patch, confirming the live frontend draft-save path bypasses VLD-04 AC1. Design doc named PUT as the call site but the PUT route was never registered. Recommended fix: Option 1 — wire runSemanticGate into handlePatch (single-file change to src/api/routes/definitions.zig; no changes to main.zig or frontend required).",
+    "artifacts_out": [
+      "docs/issues/ISS-0717.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 2): wire runSemanticGate into handlePatch in src/api/routes/definitions.zig, then route to TEST-RUNNER (WF-03 Step 3)"
+  }
+}

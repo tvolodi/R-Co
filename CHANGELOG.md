@@ -2,6 +2,12 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-17
+
+### fix(vld): GH-816/ISS-0717 — VLD-04 live PATCH draft-save surface gate enforcement RESOLVED (WF03-GH816-20260817)
+
+- **fix(vld): GH-816/ISS-0717 — VLD-04 AC1 PATCH gate wiring RESOLVED.** `handlePatch` in `src/api/routes/definitions.zig` (the live `PATCH /api/v1/definitions/{id}` draft-save handler, the only surface the frontend uses via `client.patch`) now invokes `runSemanticGate` and returns HTTP 422 with the VLD-03 Problem Details body on findings — mirroring the gate block already present in `handlePut`. The gap existed because `handlePut` (dead code — no PUT route is registered in `src/main.zig`) was the only gate-wired handler; `handlePatch` called `store.update` and returned HTTP 200 unconditionally. Fix: gate block copied from `handlePut` (lines 412-444) into `handlePatch`; `src/bpm.zig` updated to expose `runSemanticGate` to `handlePatch`. New handler-level integration test `TC-VLD-04-AC1-PATCH` in `tests/integration/vld04_gate_test.zig` asserts HTTP 422 on a finding-producing definition saved via `PATCH`. Test spec `tests/specs/VLD-04.md` updated. Gate results: vld04 8/8 (incl TC-VLD-04-AC1-PATCH), unit 1155/1219 0 fail, `zig build` exit 0. Commit `b9f61314`, branch `feature/WF03-GH816-20260817`. GitHub issue #816 remains open pending Step Final.
+
 ## [Unreleased] — 2026-08-16
 
 ### feat(ddl/obp/ord/vld): Stage 16 batch 7 — DDL-04/OBP-04/ORD-03/VLD-04 RELEASED (WF02-batch-7-20260816)

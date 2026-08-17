@@ -1,0 +1,23 @@
+{
+  "handoff_id": "WF03-GH816-20260817-final-backend-dev",
+  "run_id": "WF03-GH816-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "final",
+  "created_at": "2026-08-17T06:29:48Z",
+  "started_at": "2026-08-17T06:29:48Z",
+  "status": "IN_PROGRESS",
+  "workflow_ref": "WF-03",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+  "task": {
+    "description": "Step Final — Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md for WF03-GH816-20260817.\n\nBranch: feature/WF03-GH816-20260817\nGitHub issue to close: #816\n\nSteps:\n1. Ensure you are on feature/WF03-GH816-20260817 (or checkout it).\n2. Push the latest commits if not already pushed.\n3. Create a PR: `gh pr create --base main --head feature/WF03-GH816-20260817 --title 'fix(GH-816): wire runSemanticGate into handlePatch for VLD-04 AC1' --body 'Fixes #816. Wires runSemanticGate into handlePatch so PATCH /api/v1/definitions/{id} returns HTTP 422 when the semantic gate fires (VLD-04 AC1). Adds TC-VLD-04-AC1-PATCH integration test. ISS-0717 RESOLVED.'`\n4. Squash-merge the PR: `gh pr merge --squash --auto` or equivalent.\n5. Delete the feature branch (local and remote).\n6. Checkout main and pull.\n7. Run: python \"C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py\" task/current.json --status DONE --close-github-issue\n8. Run: python tools/lint_handoffs.py (must exit 0).\n9. Verify local repo is on clean main.\n\nRecord: branch_name, commit_sha_list, pr_url, push_status in result."
+  },
+  "context": {
+    "issue_id": "ISS-0717",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/816",
+    "branch": "feature/WF03-GH816-20260817",
+    "task_current_json": "task/current.json",
+    "artifacts_in": []
+  },
+  "result": {}
+}

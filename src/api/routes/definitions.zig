@@ -497,6 +497,37 @@ pub fn handlePatch(
     };
     defer freeDefinition(allocator, def);
 
+    // VLD-04 AC1: run the semantic gate on the newly-persisted draft. The
+    // graph just changed, so check_stored_first=false forces re-verification
+    // (a stored verdict from a previous save would be stale). Any finding ->
+    // HTTP 422; the version's verdict columns are left semantically_valid =
+    // false by persistVerdict, so the authoring request fails (AC1).
+    const gate = validation_gate.runSemanticGate(
+        allocator,
+        store.pool,
+        id_str,
+        5_000,
+        false,
+    ) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+
+    switch (gate) {
+        .valid => |verdict| validation_gate.freeValid(allocator, verdict),
+        .invalid => |inv| {
+            const failure = validation_gate.failureFromInvalid(inv);
+            const body_str = validation.serialiseValidationFailure(allocator, failure) catch {
+                validation_gate.freeInvalid(allocator, inv);
+                return errorResult(allocator, 500, "serialization failed");
+            };
+            validation_gate.freeInvalid(allocator, inv);
+            return .{ .status_code = 422, .body = body_str };
+        },
+        .timeout => return errorResult(allocator, 422, "validation_timeout"),
+    }
+
     const resp_body = serializeDefinition(allocator, def) catch
         return errorResult(allocator, 500, "serialization failed");
     return .{ .status_code = 200, .body = resp_body };

@@ -2005,3 +2005,24 @@
 2026-08-16T22:43:59Z | ROUTE | WF-02 | 1689e714 | ORCH -> DOC-UPDATER | PENDING | Step 06 changelog + status (DDL-04, OBP-04, ORD-03, VLD-04 RELEASED)
 2026-08-16T22:59:04Z | ROUTE | WF-02 | c9874333 | ORCH -> BACKEND-DEV | PENDING | Step Final git-merge + release.py (DDL-04, OBP-04, ORD-03, VLD-04)
 2026-08-17T04:25:42Z | DONE | WF02-batch-7-20260816 | c9874333-313d-4695-8f85-03225b127ce9 | BACKEND-DEV | WF02-batch-7-20260816 COMPLETE — DDL-04/OBP-04/ORD-03/VLD-04 RELEASED; feature/WF02-batch-7-20260816 squash-merged; task BATCH-e0c55c6ac25e released
+2026-08-17T05:39:02Z | ROUTE | WF-03 | WF03-GH816-20260817-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-816 VLD-04 PATCH route gate gap — git-setup
+2026-08-17T05:40:27Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-00-backend-dev | BACKEND-DEV | Step 00 PASS: branch feature/WF03-GH816-20260817 created from 66b0e705, pushed
+2026-08-17T05:41:22Z | ROUTE | WF-03 | WF03-GH816-20260817-00.5-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | GH-816 ISS-0717 registry lookup + verify
+2026-08-17T05:42:28Z | ROUTE | WF-03 | WF03-GH816-20260817-01-issue-fixer | ORCH -> ISSUE-FIXER | PENDING | GH-816 root cause diagnosis
+2026-08-17T05:44:40Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-01-issue-fixer | ISSUE-FIXER | Step 01 PASS: root cause = handlePatch missing runSemanticGate call; recommended fix Option 1 (wire gate into handlePatch in definitions.zig only)
+2026-08-17T05:44:40Z | ROUTE | WF-03 | WF03-GH816-20260817-02-code-designer | ORCH -> CODE-DESIGNER | PENDING | GH-816 fix design: wire runSemanticGate into handlePatch
+2026-08-17T05:48:52Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-02-code-designer | CODE-DESIGNER | Step 02 PASS: design at src/design/wf03-gh816-vld04-patch-gate-fix.md; gate block after store.update in handlePatch; TC-VLD-04-AC1-PATCH specified
+2026-08-17T05:48:52Z | ROUTE | WF-03 | WF03-GH816-20260817-02b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | GH-816 design validation hard gate
+2026-08-17T05:51:39Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-02b-code-design-validator | CODE-DESIGN-VALIDATOR | Step 02b PASS: all 6 checks verified — design complete and unambiguous
+2026-08-17T05:51:39Z | ROUTE | WF-03 | WF03-GH816-20260817-03-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-816 implement fix: wire runSemanticGate into handlePatch
+2026-08-17T06:15:51Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-03-backend-dev | BACKEND-DEV | Step 03 PASS: gate block wired into handlePatch; TC-VLD-04-AC1-PATCH added; 8/8 vld04 tests pass; commit b9f61314 pushed
+2026-08-17T06:18:00Z | BENCH_ENV_CHECK | WF03-GH816-20260817 | --- | ORCH | CLEARED — zig build test-env-verify exit 0 (HEALTHY 10/10) — dispatching TEST-DESIGNER step-04
+2026-08-17T06:18:00Z | ROUTE | WF-03 | WF03-GH816-20260817-04-test-designer | ORCH -> TEST-DESIGNER | PENDING | GH-816 TC-VLD-04-AC1-PATCH spec validation
+2026-08-17T06:21:07Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-04-test-designer | TEST-DESIGNER | Step 04 PASS: TC-VLD-04-AC1-PATCH added to VLD-04.md; implementation verified (422 on PATCH, semantically_valid=false)
+2026-08-17T06:21:07Z | ROUTE | WF-03 | WF03-GH816-20260817-04b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | GH-816 TC-VLD-04-AC1-PATCH hard gate validation
+2026-08-17T06:23:51Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-04b-test-design-validator | TEST-DESIGN-VALIDATOR | Step 04b PASS: all 5 checks validated; TC-VLD-04-AC1-PATCH self-sufficient, isolated, covers ISS-0717
+2026-08-17T06:23:51Z | ROUTE | WF-03 | WF03-GH816-20260817-05-test-runner | ORCH -> TEST-RUNNER | PENDING | GH-816 run vld04 integration tests
+2026-08-17T06:27:16Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-05-test-runner | TEST-RUNNER | Step 05 PASS: build exit 0; vld04 8/8 (incl TC-VLD-04-AC1-PATCH); unit 1155/1219 0 fail; report written
+2026-08-17T06:27:16Z | ROUTE | WF-03 | WF03-GH816-20260817-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | GH-816 changelog + ISS-0717 RESOLVED (RELEASE-VALIDATOR skipped: MINOR)
+2026-08-17T06:29:48Z | COMPLETE | WF03-GH816-20260817 | WF03-GH816-20260817-06-doc-updater | DOC-UPDATER | Step 06 PASS: changelog updated; ISS-0717 RESOLVED; lint_handoffs exit 0; commit 380f7dc3
+2026-08-17T06:29:48Z | ROUTE | WF-03 | WF03-GH816-20260817-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | GH-816 Step Final git-merge + release.py
