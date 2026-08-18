@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-03-test-designer-rework1",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "03-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-qry01-04-20260818/step-03-test-designer-rework1.json",
+  "created_at": "2026-08-18T07:16:13Z",
+  "started_at": "2026-08-18T07:16:30Z",
+  "completed_at": "2026-08-18T07:31:09Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "artifacts_in": [
+      "tests/integration/query_qry01_04_test.zig"
+    ],
+    "rework_reason": "test-env-verify C5 BLOCKER: T010 — tests/integration/query_qry01_04_test.zig:56 uses hardcoded UUID '00000000-0000-0000-0000-000000000099'. Per T010, test UUIDs must be generated per-test to avoid cross-test interference. Fix: replace the hardcoded UUID with a unique per-test generated UUID (e.g. using generateTestUUID() or a timestamp-derived value consistent with the repo pattern)."
+  },
+  "task": {
+    "description": "Fix T010 isolation violation in tests/integration/query_qry01_04_test.zig. Line 56 has a hardcoded UUID '00000000-0000-0000-0000-000000000099'. Find the pattern used for test UUID generation in other integration tests (e.g., tests/integration/tenant_test.zig or similar) and apply the same pattern to replace the hardcoded UUID with a per-test generated UUID. Check the whole file for any other hardcoded UUIDs that would also violate T010. Run zig build to verify compilation. Then re-run `zig build test-env-verify` and confirm C5 passes (exit 0). Commit the fix with message: 'test(query): fix T010 per-test UUID generation in query_qry01_04_test.zig'.",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed T010 isolation violation in tests/integration/query_qry01_04_test.zig. Added generateTestUserId(allocator) helper using fillRandom + UUID v4 formatting. Changed testAuth() to testAuth(user_id: []const u8) and foreignAuth() to foreignAuth(user_id, tenant_id_str). Updated all 15 testAuth() call sites and 1 foreignAuth() call site to generate per-test UUIDs. Corrected a multi-line call site that got misaligned. zig build: exit 0. zig build test-env-verify: exit 0, all 10 checks PASS including C5 test isolation lint (no BLOCKER findings). Committed as d9a27865.",
+    "artifacts_out": [
+      "tests/integration/query_qry01_04_test.zig"
+    ],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}

@@ -1,0 +1,46 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-00-backend-dev",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-qry01-04-20260818/step-00-backend-dev.json",
+  "created_at": "2026-08-18T05:29:24Z",
+  "started_at": "2026-08-18T05:30:01Z",
+  "completed_at": "2026-08-18T05:31:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Branch name: feature/WF02-qry01-04-20260818. Pull main, create branch, push. Record branch_name, base_commit_sha, and push_status in result.",
+    "fn": "fn:git-setup",
+    "branch": "feature/WF02-qry01-04-20260818"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup complete. Pulled main (already up to date), created branch feature/WF02-qry01-04-20260818, pushed to origin.",
+    "artifacts_out": [
+      "branch_name: feature/WF02-qry01-04-20260818",
+      "base_commit_sha: c8bb2b21e2aca6f5e46affb9e0f6b56acb7c115d",
+      "push_status: new branch pushed to origin"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to next step per WF-02"
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

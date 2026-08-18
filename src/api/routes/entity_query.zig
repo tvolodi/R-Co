@@ -427,7 +427,11 @@ fn appendDenyAudit(
     ) catch return;
     defer allocator.free(after_state);
     const trace_id = trace_context.get();
-    _ = audit_mod.writeAuditInTx(allocator, conn, tenant_id, actor_id, "entity.query", "entity_key", entity_key, null, after_state, trace_id, null) catch {};
+    const audit_id = audit_mod.writeAuditInTx(allocator, conn, tenant_id, actor_id, "entity.query", "entity_key", entity_key, null, after_state, trace_id, null) catch |err| {
+        std.log.warn("appendDenyAudit: {}", .{err});
+        return;
+    };
+    allocator.free(audit_id);
 }
 
 fn appendQueryAudit(
@@ -459,7 +463,11 @@ fn appendQueryAudit(
     ) catch return;
     defer allocator.free(after_state);
     const trace_id = trace_context.get();
-    _ = audit_mod.writeAuditInTx(allocator, conn, tenant_id, actor_id, "entity.query", "entity_key", entity_key, null, after_state, trace_id, null) catch {};
+    const audit_id = audit_mod.writeAuditInTx(allocator, conn, tenant_id, actor_id, "entity.query", "entity_key", entity_key, null, after_state, trace_id, null) catch |err| {
+        std.log.warn("appendQueryAudit: {}", .{err});
+        return;
+    };
+    allocator.free(audit_id);
 }
 
 fn currentMicrosecondTimestamp() i64 {

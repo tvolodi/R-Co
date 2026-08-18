@@ -1,0 +1,60 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-02c-security-reviewer",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-02c-security-reviewer.json",
+  "created_at": "2026-08-18T06:34:27Z",
+  "started_at": "2026-08-18T06:34:40Z",
+  "completed_at": "2026-08-18T06:41:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "commit_sha": "951e44a1",
+    "artifacts_in": [
+      "src/entities/query/types.zig",
+      "src/entities/query/allowlist.zig",
+      "src/entities/query/compiler.zig",
+      "src/entities/query/cursor.zig",
+      "src/api/routes/entity_query.zig",
+      "migrations/1168_qry_filterable_keys.sql",
+      "src/design/qry-01-04-entity-query.md",
+      "docs/agents/instructions/security-invariants.md"
+    ]
+  },
+  "task": {
+    "description": "Review the implementation of QRY-01..04 (commit 951e44a1 on feature/WF02-qry01-04-20260818) against all numbered security invariants in docs/agents/instructions/security-invariants.md. Key areas to check: (1) SQL injection defence — all filter values as positional params, operator/column names from closed enum/allowlist only, no client text concatenated into SQL; (2) Tenant data isolation — entity_key resolved under caller's tenant_id, WHERE tenant_id in all queries, RLS on filterable_fields table; (3) Probe indistinguishability — emptyEnvelope identical for deny and unknown entity_key paths; (4) Audit completeness — EntityQueryExecuted logs field names and row count but NOT filter values; (5) No capability leakage through field names or error messages that reveal tenant data.",
+    "commit_sha": "951e44a1",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Security review of QRY-01..04 implementation (commit 951e44a1, feature/WF02-qry01-04-20260818). Scope confirmed: new API route (entity_query.zig), new migration (1168_qry_filterable_keys.sql), new Zig modules (query/types, allowlist, compiler, cursor), audit.zig change — all touch tenant-data paths. INV-1 FAIL: checkEntityRegistered queries public.entity_definitions with an application-level tenant_id predicate, violating the schema-per-tenant rule (INV-1: not a tenant_id row predicate on a shared table). entity_definitions is PER_TENANT per GBL-134/GBL-137 migration history; src/entities/definition.zig (the canonical entity module) correctly omits the schema prefix. Migration lint: clean (0 violations). INV-2 PASS: entity_key not found and not authorised both return emptyEnvelope(); no unauthorized entity type information leaves the server. SELECT * projection returns all per-tenant columns; field-level column stripping is not in scope for QRY-01..04. INV-3 NOT APPLICABLE: no Lua/Wasm host-API functions added. INV-4 PASS: appendQueryAudit logs only filter_field_names and row_count, never filter values; no secret material in any logged field. INV-5 PASS: EMPTY_ENVELOPE constant is returned byte-identically for both the deny (not_registered) and unknown entity_key (DB error) paths; HTTP 200 in both cases; no 403/404 distinguishability. INV-6: this handoff. INV-7 FAIL: compiler.zig::columnExpr for jsonb_key fields generates SQL of the form payload ->> 'key_name' by interpolating AllowlistedField.name (sourced from entity_filterable_keys.key_name, a tenant-admin-controlled TEXT column with no character-set constraint) as a raw SQL string literal. A key_name containing a single-quote character breaks out of the SQL literal, enabling SQL injection. Filter values are correctly bound as $N parameters; operators correctly derive from a closed enum; typed_column field names are hardcoded constants (safe). Only the JSONB key path is affected. Fix: parameterize the key name as $N and use payload ->> $N. INV-8 PASS: grep of diff confirms no catch unreachable in any new code; all error paths use typed error sets.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "invariant": "INV-1",
+        "severity": "BLOCKER",
+        "file": "src/api/routes/entity_query.zig",
+        "line": 163,
+        "description": "checkEntityRegistered queries public.entity_definitions with tenant_id = $1::uuid predicate. INV-1 requires schema-per-tenant isolation, not a tenant_id row predicate on a public shared table. entity_definitions is classified PER_TENANT per GBL-134/GBL-137 migration history; the canonical copy lives in the per-tenant schema. The established pattern in src/entities/definition.zig queries without the public. prefix, relying on search_path for isolation. Fix: change the query to omit the public. schema prefix (SELECT 1 FROM entity_definitions WHERE ...) so the connection pool search_path resolves it to the tenant schema."
+      },
+      {
+        "invariant": "INV-7",
+        "severity": "BLOCKER",
+        "file": "src/entities/query/compiler.zig",
+        "line": 54,
+        "description": "columnExpr() for ColumnKind.jsonb_key generates SQL of the form payload ->> 'field_name' by interpolating AllowlistedField.name (loaded from entity_filterable_keys.key_name) as a SQL string literal rather than as a $N positional parameter. The entity_filterable_keys table has key_name TEXT NOT NULL with no character-set constraint, making it tenant-admin-controllable data. A key_name containing a single quote breaks out of the SQL literal, enabling SQL injection. Fix: add the key name as an additional $N parameter and use payload ->> $N in the generated SQL fragment."
+      }
+    ],
+    "next_action": "Route back to BACKEND-DEV for rework (rework_count will be 1)"
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

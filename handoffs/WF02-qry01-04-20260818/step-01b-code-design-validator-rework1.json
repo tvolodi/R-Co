@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-01b-code-design-validator-rework1",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "01b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-qry01-04-20260818/step-01b-code-design-validator-rework1.json",
+  "created_at": "2026-08-18T05:57:32Z",
+  "started_at": "2026-08-18T05:57:45Z",
+  "completed_at": null,
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "src/design/qry-01-04-entity-query.md",
+      "docs/requirements.yaml (entries: QRY-01, QRY-02, QRY-03, QRY-04)"
+    ],
+    "previous_result": "FAIL — E050 violations fixed, QRY-03 AC2 page_size added in rework1"
+  },
+  "task": {
+    "description": "Re-validate the updated design artefact src/design/qry-01-04-entity-query.md against QRY-01, QRY-02, QRY-03, and QRY-04 after CODE-DESIGNER rework1. Verify: (1) All E050 violations resolved (no fenced block > 40 lines). (2) QRY-03 AC2 now covered (page_size in response). (3) All other ACs still covered. (4) No implementation code. (5) Tenant isolation and SQL injection defence explicit. If PASS, set QRY-01..QRY-04 to DESIGN-REVIEWED via reqctl.py.",
+    "design_file": "src/design/qry-01-04-entity-query.md",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Rework1 resolved all 5 E050 violations (linter exits 0, no code block > 40 lines) and QRY-03 AC2 (page_size: u16 correctly added to EntityQueryResponse). All QRY-01, QRY-02, QRY-03 ACs and QRY-04 ACs 1/2/4/5/6 are covered. MAJOR gap: the rework1 addition of page_size to EntityQueryResponse introduces a new QRY-04 AC3 violation. emptyEnvelope() returns the constant {\"items\":[],\"next_cursor\":null} (no page_size field), while the granted+zero-rows path serialises EntityQueryResponse which always includes page_size: u16. These two shapes are structurally distinguishable to the client. QRY-04 AC3 requires the three cases (no grant, unknown entity_key, granted+zero rows) to be indistinguishable. The design must explicitly reconcile this conflict before BACKEND-DEV proceeds.",
+    "artifacts_out": [
+      "src/design/qry-01-04-entity-query.md (validated, FAIL)"
+    ],
+    "issues": [
+      {
+        "id": "CDV-REWORK1-01",
+        "severity": "MAJOR",
+        "requirement": "QRY-04",
+        "ac": "AC3",
+        "description": "emptyEnvelope() returns {\"items\":[],\"next_cursor\":null} with no page_size field. The granted+zero-rows path goes through EntityQueryResponse which includes page_size: u16 (always present, per QRY-03 AC2). A client can distinguish deny/unknown responses (no page_size key) from granted+zero-rows responses (page_size present) by inspecting the JSON object. This violates QRY-04 AC3: 'the three cases are indistinguishable to the client'. The conflict was introduced by rework1 adding page_size to EntityQueryResponse to satisfy QRY-03 AC2 — without updating the emptyEnvelope contract. Proposed resolution options (CODE-DESIGNER must choose and document one): (A) emptyEnvelope() also includes page_size: 50 (the default constant), making it structurally identical to the zero-rows+grant response when no page_size was requested — document that non-default page_size values are NOT reflected in deny responses as an intentional design choice; (B) parse page_size from the request body BEFORE the grant check so emptyEnvelope() can reflect the requested value; (C) make EntityQueryResponse.page_size conditional (omitted when items is empty) and explicitly note that QRY-03 AC2 is satisfied only for non-empty result sets."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework2. Max rework remaining: 1."
+  },
+  "completed_at": "2026-08-18T06:04:02Z",
+  "max_rework": 3,
+  "rework_count": 1
+}

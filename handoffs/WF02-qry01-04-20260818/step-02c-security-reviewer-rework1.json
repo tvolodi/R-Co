@@ -1,0 +1,49 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-02c-security-reviewer-rework1",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "02c-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-02c-security-reviewer-rework1.json",
+  "created_at": "2026-08-18T06:46:12Z",
+  "started_at": "2026-08-18T06:46:25Z",
+  "completed_at": "2026-08-18T06:51:28Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "artifacts_in": [
+      "src/api/routes/entity_query.zig",
+      "src/entities/query/compiler.zig",
+      "docs/agents/instructions/security-invariants.md"
+    ],
+    "previous_result": "FAIL \u2014 INV-1 public. prefix removed, INV-7 jsonb key now positional param (rework1)"
+  },
+  "task": {
+    "description": "Re-run security review after BACKEND-DEV rework1 fixed: (1) INV-1: entity_query.zig checkEntityRegistered() no longer uses public.entity_definitions prefix. (2) INV-7: compiler.zig columnExpr() now passes jsonb key name as $N positional parameter. Verify both fixes are correct. Re-check all other invariants. If PASS, TEST-DESIGNER may proceed.",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Security review rework1 \u2014 WF02-qry01-04-20260818. INV-1 BLOCKER FIX CONFIRMED: checkEntityRegistered() in entity_query.zig uses entity_definitions (no public. prefix); search_path provides tenant scoping. Migration 1168_qry_filterable_keys.sql creates entity_filterable_keys without public. prefix (scope: tenant_only). lint_migration_schema.py exits 0 (no new BLOCKER findings); lint_sql_table_refs.py exits 0. INV-7 BLOCKER FIX CONFIRMED: compiler.zig columnExpr() for jsonb_key now appends field.name as  positional parameter via params.append() and generates payload ->>  \u2014 key name is no longer string-interpolated into SQL. lint_sql_param_types.py exits 0. No std.fmt.allocPrint.*SELECT/INSERT/UPDATE/DELETE patterns in diff. INV-2 APPLIES AND PASSES: server enforces entity-type authorisation before response via checkEntityRegistered(); unauthorised/unknown entity types return byte-identical emptyEnvelope(); response scope is tenant-owned entity data only. INV-4 APPLIES AND PASSES: audit records contain only entity_key, filter field names, and metrics \u2014 no secret material; no new structs serialising SecretRef plaintext. INV-5 APPLIES AND PASSES: EMPTY_ENVELOPE constant string is byte-identical for all non-authorised paths (not_registered, cross-tenant probe, and DB error all return the same 200 + empty items body); QRY-04 comment in file header confirms byte-identity requirement. INV-3 NOT APPLICABLE: no new Lua/Wasm host functions. INV-8 APPLIES AND PASSES: zero catch unreachable instances in the entire diff; all error paths use typed error propagation. INV-6 SATISFIED by this handoff. Route to TEST-DESIGNER (Step 3).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}

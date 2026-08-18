@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-01-code-designer-rework1",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "01-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-01-code-designer-rework1.json",
+  "created_at": "2026-08-18T05:44:39Z",
+  "started_at": "2026-08-18T05:45:00Z",
+  "completed_at": "2026-08-18T05:56:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "src/design/qry-01-04-entity-query.md",
+      "handoffs/WF02-qry01-04-20260818/step-01b-code-design-validator.json"
+    ],
+    "rework_reason": "CODE-DESIGN-VALIDATOR returned FAIL (rework 1/3). Fixes required: (1) Five fenced Zig code blocks exceed 40 lines each (E050 violations at lines 40, 102, 161, 226, 324) \u2014 condense each to show only the public signatures BACKEND-DEV needs; move full annotations to prose. (2) ASCII data-flow diagram exceeds 40 lines \u2014 replace with compact Mermaid flowchart (<=40 lines). (3) QRY-03 AC2 coverage gap: EntityQueryResponse is missing a page_size field \u2014 add page_size: u16 to the response type and note it echoes the effective value (50 when omitted, supplied value otherwise)."
+  },
+  "task": {
+    "description": "Fix src/design/qry-01-04-entity-query.md per CODE-DESIGN-VALIDATOR failures. (1) Condense the five over-long fenced Zig blocks (lines ~40, ~102, ~161, ~226, ~324) to <=40 lines each \u2014 show only public signatures, move annotations to prose. (2) Replace the over-long ASCII data-flow diagram with a compact Mermaid flowchart (<=40 lines). (3) Add page_size: u16 to EntityQueryResponse and note it echoes the effective value (default 50). Re-run lint_design_artefact.py to verify zero violations before completing the handoff.",
+    "output_file": "src/design/qry-01-04-entity-query.md",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for qry-01-04-entity-query — type E (QRY-01, QRY-02, QRY-03, QRY-04). Fixed all E050 violations: condensed 5 over-long fenced blocks (types.zig, allowlist.zig, compiler.zig, cursor.zig, handler) to ≤40 lines each; replaced ASCII data-flow diagram with compact Mermaid flowchart (17 lines); added page_size: u16 to EntityQueryResponse with prose note that it echoes the effective value (50 when request omits it). lint_design_artefact.py exits 0.",
+    "artifacts_out": [
+      "src/design/qry-01-04-entity-query.md"
+    ],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}

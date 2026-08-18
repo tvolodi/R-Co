@@ -1,0 +1,41 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-02a-backend-dev-rework1",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "02a-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-qry01-04-20260818/step-02a-backend-dev-rework1.json",
+  "created_at": "2026-08-18T06:42:42Z",
+  "started_at": "2026-08-18T06:42:55Z",
+  "completed_at": "2026-08-18T06:45:41Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "artifacts_in": [
+      "src/api/routes/entity_query.zig",
+      "src/entities/query/compiler.zig",
+      "handoffs/WF02-qry01-04-20260818/step-02c-security-reviewer.json"
+    ],
+    "rework_reason": "SECURITY-REVIEWER returned FAIL (rework 1/3). Two BLOCKER fixes required: (1) INV-1: entity_query.zig checkEntityRegistered() queries 'public.entity_definitions' — must drop the 'public.' prefix so the tenant schema search_path resolves it correctly per the per-tenant table pattern. (2) INV-7 SQL INJECTION: compiler.zig columnExpr() for ColumnKind.jsonb_key string-interpolates AllowlistedField.name into 'payload ->> ''field_name''' — the JSONB key name must be passed as an additional $N positional parameter: 'payload ->> $N'."
+  },
+  "task": {
+    "description": "Fix two BLOCKER security issues on branch feature/WF02-qry01-04-20260818: (1) In src/api/routes/entity_query.zig, find checkEntityRegistered() and change the query from 'public.entity_definitions' to 'entity_definitions' (drop the public. prefix) so it resolves through the connection's search_path to the tenant schema. (2) In src/entities/query/compiler.zig, find columnExpr() for the jsonb_key case and change the SQL from 'payload ->> ''field_name''' (string-interpolated) to 'payload ->> $N' where N is the next parameter index, and add AllowlistedField.name as an additional element to the params array. This makes JSONB key names positional parameters, eliminating the SQL injection vector. Run zig build after both fixes. Commit with message: 'fix(query): INV-1 drop public. prefix; INV-7 jsonb key as positional param'.",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed both BLOCKER security issues. (1) INV-1: Removed 'public.' prefix from entity_definitions query in checkEntityRegistered() so the connection's search_path resolves to the tenant schema. (2) INV-7: Refactored columnExpr() to accept params and pidx pointers; for jsonb_key fields, the key name is now appended as a positional $N parameter instead of being string-interpolated into the SQL. Both call sites (filter loop and sort loop) updated. zig build exits 0.",
+    "artifacts_out": [
+      "src/api/routes/entity_query.zig",
+      "src/entities/query/compiler.zig"
+    ],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}
