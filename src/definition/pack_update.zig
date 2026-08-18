@@ -239,7 +239,7 @@ pub fn computePackUpdatePlan(
                     \\WHERE name = $1
                     \\LIMIT 1
                 ,
-                    &[_][]const u8{ ia.artefact_id },
+                    &[_][]const u8{ia.artefact_id},
                 ) catch null;
                 if (theirs_row) |r| {
                     defer {

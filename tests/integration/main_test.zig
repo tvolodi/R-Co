@@ -229,6 +229,8 @@ const vld_unit_integration = @import("validation_vld_unit_test.zig");
 const vld_http_integration = @import("validation_vld_http_test.zig");
 // Stage 17 / WF02-qry01-04-20260818 — QRY-01..04 entity query endpoint
 const query_qry01_04_integration = @import("query_qry01_04_test.zig");
+// Stage 17 / WF02-agt01-04-20260818 — AGT-01..04 agent artifact submission
+const agt01_04_agent_artifacts_integration = @import("agt01_04_agent_artifacts_test.zig");
 
 comptime {
     _ = std;
@@ -337,6 +339,7 @@ comptime {
     _ = vld_unit_integration;
     _ = vld_http_integration;
     _ = query_qry01_04_integration;
+    _ = agt01_04_agent_artifacts_integration;
 }
 
 test "integration placeholder" {

@@ -1,4 +1,4 @@
-﻿const std = @import("std");
+const std = @import("std");
 const pool_mod = @import("pool");
 
 pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
@@ -668,7 +668,7 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             "SELECT status, is_active::text FROM users WHERE id = $1::uuid",
-            &[_][]const u8{ user_id },
+            &[_][]const u8{user_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -710,7 +710,7 @@ pub const Registry = struct {
             \\WHERE id = $1::uuid
             \\LIMIT 1
         ,
-            &[_][]const u8{ user_id },
+            &[_][]const u8{user_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1199,7 +1199,7 @@ pub const Registry = struct {
             \\  )
             \\RETURNING 1::text
         ,
-            &[_][]const u8{ group_id },
+            &[_][]const u8{group_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1232,7 +1232,7 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             "SELECT id::text FROM groups WHERE id = $1::uuid LIMIT 1",
-            &[_][]const u8{ group_id },
+            &[_][]const u8{group_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,

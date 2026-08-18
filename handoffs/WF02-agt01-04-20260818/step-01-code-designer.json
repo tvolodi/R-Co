@@ -1,0 +1,36 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-01-code-designer",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T17:26:55Z",
+  "started_at": "2026-08-18T17:27:31Z",
+  "completed_at": "2026-08-18T17:31:46Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "base_commit": "07c2d5e6a18104f77824169fd05881938024bd6b",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Produce a design artefact for AGT-01, AGT-02, AGT-03, AGT-04. Read each requirement from docs/requirements.yaml (or via `python tools/reqctl.py show AGT-01` etc). Write the design to src/design/AGT-01-04-agent-artifacts.md. The design must cover:\n\n1. AGT-01: Agent artifact envelope with kind discrimination\n   - POST /api/v1/agent/artifacts endpoint schema\n   - `kind` enum: test_report, design_artifact, patch_set, scenario_run\n   - Per-kind payload schemas (versioned, closed/strict)\n   - GET /api/v1/agent/artifacts/schemas endpoint\n   - DB: agent_artifacts table with kind column\n   - HTTP 400 unknown_artifact_kind, HTTP 422 artifact_payload_invalid\n\n2. AGT-02: Non-production artifact environment enforcement\n   - Environment class read from deployment config (not request body/header)\n   - HTTP 403 wrong_environment before schema validation\n   - Artifacts stored in `staging` schema only\n   - ArtifactSubmissionRejected audit event\n\n3. AGT-03: Artifact submission idempotency per attempt\n   - Unique index on (tenant_id, task_spec_id, attempt_count)\n   - INSERT ... ON CONFLICT ... RETURNING xmax = 0 AS inserted\n   - HTTP 201 (new), HTTP 200 (re-hit same hash), HTTP 409 spec_hash_mismatch or attempt_count_regressed\n   - touched_at advances on re-hit; payload unchanged\n\n4. AGT-04: Immutable task specs bound by spec hash\n   - task_specs table with spec_hash (SHA-256 of RFC 8785 canonical JSON, 64 hex chars)\n   - No update path; HTTP 409 task_spec_immutable on update attempt\n   - HTTP 404 task_spec_not_found when artifact references unknown spec_hash\n   - RFC 8785 canonical JSON serialisation (key order, whitespace, number formatting)\n\nThe design MUST include:\n- Type/struct definitions (Zig types for DB rows and API request/response)\n- Migration DDL for new tables (agent_artifacts, task_specs)\n- API route signatures\n- Data flow description\n- No implementation code (no function bodies)"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for AGT-01-04 agent artifact submission \u2014 Type E (novel/cross-cutting). Covers: kind-discriminated envelope, environment enforcement, xmax idempotency, RFC 8785 spec_hash immutability.",
+    "artifacts_out": [
+      "src/design/AGT-01-04-agent-artifacts.md"
+    ],
+    "issues": []
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

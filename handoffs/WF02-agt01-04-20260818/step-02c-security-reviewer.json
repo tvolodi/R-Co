@@ -1,0 +1,68 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-02c-security-reviewer",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T18:05:52Z",
+  "started_at": "2026-08-18T18:06:24Z",
+  "completed_at": "2026-08-18T18:10:39Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": [
+      "src/api/routes/agent_artifacts.zig",
+      "migrations/1171_agt01_03_agent_artifacts.sql",
+      "src/main.zig",
+      "src/design/AGT-01-04-agent-artifacts.md"
+    ]
+  },
+  "task": {
+    "description": "Security review of tenant-data-path changes for AGT-01..04. Review the implementation in src/api/routes/agent_artifacts.zig and migrations/1171_agt01_03_agent_artifacts.sql against the numbered security invariants in docs/agents/instructions/security-invariants.md. Pay special attention to: (1) tenant isolation \u2014 all queries must filter by tenant_id from the authenticated context, never from request body; (2) probe indistinguishability \u2014 AGT-02 403 response must not leak owner info for wrong-environment or any cross-tenant probe; (3) field authorisation \u2014 environment_class must come from deployment config only; (4) SQL parameterisation \u2014 all queries must use $N placeholders; (5) sandbox capability gating per invariants; (6) no catch unreachable on realistic failures. Return PASS if all invariants satisfied, FAIL with specific violation IDs if not."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 8 security invariants assessed against src/api/routes/agent_artifacts.zig, migrations/1171_agt01_03_agent_artifacts.sql, and src/main.zig diff. No BLOCKER violations found. Two minor findings documented below.",
+    "artifacts_out": [
+      "src/api/routes/agent_artifacts.zig",
+      "migrations/1171_agt01_03_agent_artifacts.sql",
+      "src/main.zig"
+    ],
+    "invariant_assessments": {
+      "INV-1": "PASS — staging.agent_artifacts is in the staging schema (not public, not tenant_<slug>). All SQL queries on it include WHERE tenant_id = $1::uuid. The task_specs lookup is unqualified (resolves via search_path to the tenant schema — correct isolation). Unauthenticated requests default to DEFAULT_TENANT_ID (nil UUID), which has no task_specs, blocking artifact creation. Shared staging table pattern is architecturally intentional.",
+      "INV-2": "PASS — Payload is never returned in responses. Response struct contains only artifact metadata (artifact_id, kind, task_spec_id, attempt_count, spec_hash, created_at, touched_at). Field selection is server-side before serialisation.",
+      "INV-3": "N/A — No Lua/Wasm host functions added.",
+      "INV-4": "PASS — Audit event ArtifactSubmissionRejected includes only principal (user_id) and environment_class literal 'production'. Artifact payload is never logged or included in the audit after_state or in any response.",
+      "INV-5": "PASS — wrongEnv403() returns a fixed body with no environment-differentiating content. Cross-tenant task_spec probe returns same task_spec_not_found 404 as a genuinely non-existent spec (both paths: search_path-scoped task_specs lookup returns null). MINOR GAP: no integration test asserting response-byte-equality between cross-tenant probe and genuine not-found for this new resource type (per INV-5 verification guidance).",
+      "INV-6": "PASS — This SECURITY-REVIEWER handoff satisfies the meta-invariant gate.",
+      "INV-7": "PASS — All SQL queries use $N placeholders. No std.fmt.allocPrint in any SQL-construction path. Grep for allocPrint.*SELECT|INSERT|UPDATE|DELETE returned zero hits.",
+      "INV-8": "PASS — grep for 'catch unreachable' in agent_artifacts.zig returned zero hits."
+    },
+    "issues": [
+      {
+        "id": "SEC-AGT-01",
+        "severity": "MINOR",
+        "invariant": null,
+        "description": "unknownKind400() echoes the user-supplied kind string using {s} format specifier without JSON escaping. A kind value containing '\"', '\\', or control characters produces a malformed JSON 400 response body. Not a server-security violation (no data exposure, no SQL path) but can cause JSON parse failures in monitoring/log-analysis tooling. Recommend routing received through appendJsonVal for consistent escaping.",
+        "recommended_fix": "In unknownKind400, serialise received via appendJsonVal into the buffer rather than using {s} directly."
+      },
+      {
+        "id": "SEC-AGT-02",
+        "severity": "MINOR",
+        "invariant": "INV-5",
+        "description": "No integration test asserting response-byte-equality between cross-tenant task_spec probe and genuine not-found for agent_artifacts. Per INV-5 verification guidance, this gap should be closed by TEST-DESIGNER.",
+        "recommended_fix": "TEST-DESIGNER should add an integration test that submits a spec_hash belonging to tenant-B from tenant-A's context and asserts the 404 body is byte-identical to submitting a spec_hash that has never existed."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

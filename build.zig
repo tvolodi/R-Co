@@ -2091,6 +2091,19 @@ pub fn build(b: *std.Build) void {
     test_integration_pin01_step.dependOn(&clean_test_db.step);
     test_integration_pin01_step.dependOn(&run_pin01_integration_tests.step);
 
+    const agt01_04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/agt01_04_test_root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_agt01_04_integration_tests = addIntegrationRun(b, agt01_04_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_agt01_04_step = b.step("test-integration-agt01-04", "Run AGT-01..04 agent artifact submission integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_agt01_04_step.dependOn(&clean_test_db.step);
+    test_integration_agt01_04_step.dependOn(&run_agt01_04_integration_tests.step);
+
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/xc04_kernel_determinism_test.zig"),
