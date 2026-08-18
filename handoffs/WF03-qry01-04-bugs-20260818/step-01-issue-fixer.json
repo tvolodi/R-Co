@@ -1,0 +1,47 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-01-issue-fixer",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-01-issue-fixer.json",
+  "created_at": "2026-08-18T08:48:22Z",
+  "started_at": "2026-08-18T08:48:56Z",
+  "completed_at": "2026-08-18T08:53:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "github_issues": [
+      "#823",
+      "#824",
+      "#825",
+      "#826"
+    ],
+    "design_artefact": "src/design/qry-01-04-entity-query.md",
+    "test_report": "tests/reports/WF02-qry01-04-20260818-test-report-rework3.yaml",
+    "source_files": [
+      "src/entity_query.zig",
+      "src/allowlist.zig",
+      "tests/integration/query_qry01_04_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1 \u2014 Root cause diagnosis for all 4 QRY bugs. Read the affected source files and confirm root causes:\n\n1. ISS-QRY-ALLOWLIST-KIND-01 (#823): Read src/allowlist.zig. Find where entity_filterable_keys rows are loaded and how .kind is assigned. Confirm that .kind is hardcoded to .jsonb_key without merging typed columns from entity_definitions. Read src/design/qry-01-04-entity-query.md \u00a7allowlist for the intended behavior (typed columns from entity_definitions.definition_json.fields where queried=true should merge with priority over jsonb keys).\n\n2. ISS-QRY-RESPONSE-FIELD-NAME-01 (#824): Read src/entity_query.zig. Find the filter_field_not_allowlisted error response path. Confirm field name is missing.\n\n3. ISS-QRY-CURSOR-PARSE-01 (#825): Read src/entity_query.zig or src/cursor.zig. Find cursor serialization/deserialization. Identify why sort-fingerprint doesn't round-trip for empty sort spec.\n\n4. ISS-QRY-AUDIT-SCHEMA-01 (#826): Read tests/integration/query_qry01_04_test.zig around the cross-tenant probe test. Find the audit_entries.created_at reference. Confirm the actual column name (run: docker exec r-co-db_test-1 psql -U bpm -d bpm_test -c 'SELECT column_name FROM information_schema.columns WHERE table_name=audit_entries ORDER BY ordinal_position LIMIT 10;' or similar).\n\nDocument confirmed root causes. Update ISS files in docs/issues/ with diagnosis. Return PASS with all 4 root causes confirmed."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 4 QRY bug root causes confirmed via source inspection and live DB verification. (1) ISS-QRY-ALLOWLIST-KIND-01 (#823, Cat A): src/entities/query/allowlist.zig loadAllowlist never queries entity_definitions.definition_json.fields; all entity_filterable_keys rows get .kind=.jsonb_key; typed-column merge entirely absent; tenant_id also silently discarded causing cross-tenant leakage risk. (2) ISS-QRY-RESPONSE-FIELD-NAME-01 (#824, Cat A): CompileError.FilterFieldNotAllowlisted carries no field name; handler maps it to static string without the rejected field name; test assertion result.body contains internal_note fails. (3) ISS-QRY-CURSOR-PARSE-01 (#825, Cat A): cursor format uses colon as outer delimiter; buildFingerprint produces values with colons (e.g. record_id:asc); decodeCursor uses indexOf(colon) which finds the colon inside the fingerprint, truncating it; for no-sort case fp_raw=record_id != record_id:asc -> CursorSortMismatch -> HTTP 400. (4) ISS-QRY-AUDIT-SCHEMA-01 (#826, Cat D, test bug): audit_entries column is timestamp not created_at (confirmed via DB); two tests use ORDER BY created_at DESC at lines 560 and 985 in query_qry01_04_test.zig.",
+    "artifacts_out": [
+      "docs/issues/ISS-QRY-ALLOWLIST-KIND-01.json",
+      "docs/issues/ISS-QRY-RESPONSE-FIELD-NAME-01.json",
+      "docs/issues/ISS-QRY-CURSOR-PARSE-01.json",
+      "docs/issues/ISS-QRY-AUDIT-SCHEMA-01.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 2) to implement fixes for #823, #824, #825, #826"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

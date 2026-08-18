@@ -1,0 +1,28 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-03-backend-dev",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-03-backend-dev.json",
+  "created_at": "2026-08-18T09:13:41Z",
+  "started_at": "2026-08-18T09:14:23Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "workflow": "WF-03",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "design_artefact": "src/design/fix-ISS-QRY-bugs-20260818.md",
+    "issues_to_fix": ["#823", "#824", "#825", "#826"],
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "task": {
+    "description": "WF-03 Step 3 — Implement all 4 QRY bug fixes per src/design/fix-ISS-QRY-bugs-20260818.md.\n\n## Fix 1: ISS-QRY-ALLOWLIST-KIND-01 (#823) — src/entities/query/allowlist.zig\n- Remove `_ = tenant_id;` — tenant_id MUST be used as a positional parameter\n- loadAllowlist must make TWO queries:\n  a) entity_filterable_keys: search_path handles tenant isolation (no tenant_id predicate), WHERE entity_key=$1 → AllowlistedField{.kind=.jsonb_key}\n  b) entity_definitions (in public schema — qualify as public.entity_definitions): WHERE tenant_id=$1::uuid AND name=$2 AND status='ACTIVE' → parse definition_json.fields array where queried=true → AllowlistedField{.kind=.typed_column, .name=field.name}\n- Merge: typed_column entries take precedence over same-name jsonb_key entries (typed columns shadow jsonb keys)\n- IMPORTANT: entity_definitions is in public schema; entity_filterable_keys is in per-tenant schema (search_path)\n\n## Fix 2: ISS-QRY-RESPONSE-FIELD-NAME-01 (#824) — src/entities/query/compiler.zig + route handler\n- Add field name payload to FilterFieldNotAllowlisted error (or use out-parameter *?[]const u8 as designed)\n- Route handler must emit: {\"error\":\"filter_field_not_allowlisted\",\"field\":\"<rejected_field_name>\"}\n\n## Fix 3: ISS-QRY-CURSOR-PARSE-01 (#825) — src/entities/query/cursor.zig\n- Change cursor encoding: base64url-encode the fingerprint value to eliminate colon ambiguity\n- New format: QE:<ts>:<b64url_fingerprint>:<values_pipe_separated>\n- Update both encodeCursor and decodeCursor to use new format\n- Old cursors (without base64url fingerprint) must fail with CursorMalformed (safe behaviour)\n\n## Fix 4: ISS-QRY-AUDIT-SCHEMA-01 (#826) — tests/integration/query_qry01_04_test.zig\n- Replace `ORDER BY created_at DESC` with `ORDER BY timestamp DESC` at lines ~560 and ~985\n\n## After all fixes:\n1. zig build (exit 0)\n2. git add -A; git commit -m 'fix(QRY): typed-column merge + field-name error + cursor encoding + test audit column (#823 #824 #825 #826)'\n3. Confirm commit hash"
+  },
+  "result": null,
+  "max_rework": 3,
+  "rework_count": 0
+}

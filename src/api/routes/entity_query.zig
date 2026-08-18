@@ -85,10 +85,27 @@ pub fn handleEntityQuery(
     };
     defer allocator.free(table_name);
 
-    const compiled = query_compiler.compile(allocator, table_name, al, req, tenant_id_slice) catch |err| {
+    var rejected_filter_field: ?[]const u8 = null;
+    defer if (rejected_filter_field) |n| allocator.free(n);
+
+    const compiled = query_compiler.compile(allocator, table_name, al, req, tenant_id_slice, &rejected_filter_field) catch |err| {
+        if (err == error.FilterFieldNotAllowlisted) {
+            const body: []const u8 = if (rejected_filter_field) |fname|
+                std.fmt.allocPrint(
+                    allocator,
+                    "{{\"error\":\"filter_field_not_allowlisted\",\"field\":\"{s}\"}}",
+                    .{fname},
+                ) catch
+                    std.fmt.allocPrint(allocator, "{{\"error\":\"filter_field_not_allowlisted\"}}", .{}) catch
+                        "{\"error\":\"filter_field_not_allowlisted\"}"
+            else
+                std.fmt.allocPrint(allocator, "{{\"error\":\"filter_field_not_allowlisted\"}}", .{}) catch
+                    "{\"error\":\"filter_field_not_allowlisted\"}";
+            return .{ .status_code = 400, .body = body };
+        }
         const detail: []const u8 = switch (err) {
             error.OperatorNotRecognised => "operator_not_recognised",
-            error.FilterFieldNotAllowlisted => "filter_field_not_allowlisted",
+            error.FilterFieldNotAllowlisted => unreachable,
             error.OperatorNotValidForType => "operator_not_valid_for_type",
             error.SortFieldNotAllowlisted => "sort_field_not_allowlisted",
             error.TooManySortFields => "too_many_sort_fields",

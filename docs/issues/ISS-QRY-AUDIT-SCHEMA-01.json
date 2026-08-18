@@ -1,0 +1,28 @@
+{
+  "id": "ISS-QRY-AUDIT-SCHEMA-01",
+  "title": "QRY: qry04 cross-tenant test references audit_entries.created_at \u2014 column is named timestamp",
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "D",
+  "affected_areas": [
+    "tests/integration/query_qry01_04_test.zig"
+  ],
+  "requirements": [
+    "QRY-04"
+  ],
+  "failing_tests": [
+    "qry04_cross_tenant_probe_returns_empty_envelope"
+  ],
+  "symptom": "Test qry04_cross_tenant_probe_returns_empty_envelope queries audit_entries.created_at but the column is named timestamp (not created_at). sqlstate=42703.",
+  "root_cause": "Test bug \u2014 incorrect column name reference. The audit_entries table has a column named 'timestamp', not 'created_at'.",
+  "acceptance_criteria": [
+    "Test updated to reference audit_entries.timestamp instead of audit_entries.created_at",
+    "qry04_cross_tenant_probe_returns_empty_envelope passes with sqlstate 00000"
+  ],
+  "fix_note": "This is a test bug, not an implementation bug. No change to source implementation required.",
+  "discovered_by": "TEST-RUNNER WF03-qry01-04-bugs-20260818 rework3",
+  "filed_at": "2026-08-18T08:45:41Z",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/826",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "diagnosis": "CONFIRMED (Category D, test bug). DB inspection shows audit_entries has column timestamp not created_at. Full column list: audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state, tenant_id, pipeline_run_id, chain_hash, prev_chain_hash, payload_full, trace_id. Two tests in query_qry01_04_test.zig use ORDER BY created_at DESC: qry04_cross_tenant_probe_returns_empty_envelope (line 985) and qry01_audit_event_recorded_without_filter_values (line 560). Both must be updated to use timestamp."
+}

@@ -75,7 +75,9 @@ pub fn compile(
     al: allowlist.EntityAllowlist,
     request: types.EntityQueryRequest,
     tenant_id: []const u8,
+    rejected_filter_field: *?[]const u8,
 ) CompileError!CompiledQuery {
+    rejected_filter_field.* = null;
     const page_size: u16 = blk: {
         const requested = request.page_size orelse DEFAULT_PAGE_SIZE;
         if (requested > MAX_PAGE_SIZE) return CompileError.PageSizeExceedsMax;
@@ -105,7 +107,10 @@ pub fn compile(
     }
 
     for (request.filters) |f| {
-        const af = al.find(f.field) orelse return CompileError.FilterFieldNotAllowlisted;
+        const af = al.find(f.field) orelse {
+            rejected_filter_field.* = allocator.dupe(u8, f.field) catch null;
+            return CompileError.FilterFieldNotAllowlisted;
+        };
 
         if (f.op == .contains and af.storage_type != .text) return CompileError.OperatorNotValidForType;
         if ((f.op == .lt or f.op == .lte or f.op == .gt or f.op == .gte) and

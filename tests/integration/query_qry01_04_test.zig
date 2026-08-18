@@ -557,7 +557,7 @@ test "qry01_audit_event_recorded_without_filter_values" {
     const audit_row = (try conn.queryRow(
         allocator,
         "SELECT after_state FROM audit_entries WHERE resource_id = $1 AND action = 'entity.query' " ++
-            "ORDER BY created_at DESC LIMIT 1",
+            "ORDER BY timestamp DESC LIMIT 1",
         &.{entity_key},
     )) orelse return error.AuditRowMissing;
     defer {
@@ -982,7 +982,7 @@ test "qry04_cross_tenant_probe_returns_empty_envelope" {
     const audit_row = try conn.queryRow(
         allocator,
         "SELECT after_state FROM audit_entries WHERE resource_id = $1 AND action = 'entity.query' " ++
-            "ORDER BY created_at DESC LIMIT 1",
+            "ORDER BY timestamp DESC LIMIT 1",
         &.{entity_key},
     );
     if (audit_row) |r| {

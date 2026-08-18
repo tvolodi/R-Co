@@ -43,7 +43,14 @@ pub fn encodeCursor(
     raw.appendSlice(allocator, CURSOR_PREFIX) catch return error.OutOfMemory;
     raw.appendSlice(allocator, ts_str) catch return error.OutOfMemory;
     raw.append(allocator, ':') catch return error.OutOfMemory;
-    raw.appendSlice(allocator, fingerprint.value) catch return error.OutOfMemory;
+
+    // Base64url-encode fingerprint so embedded colons cannot break the separator.
+    const fp_b64_len = std.base64.url_safe_no_pad.Encoder.calcSize(fingerprint.value.len);
+    const fp_b64 = allocator.alloc(u8, fp_b64_len) catch return error.OutOfMemory;
+    defer allocator.free(fp_b64);
+    _ = std.base64.url_safe_no_pad.Encoder.encode(fp_b64, fingerprint.value);
+
+    raw.appendSlice(allocator, fp_b64) catch return error.OutOfMemory;
     raw.append(allocator, ':') catch return error.OutOfMemory;
 
     for (tuple, 0..) |val, i| {
@@ -88,13 +95,25 @@ pub fn decodeCursor(
 
     const rest_after_ts = after_prefix[colon1 + 1 ..];
     const colon2 = std.mem.indexOf(u8, rest_after_ts, ":") orelse return CursorDecodeError.CursorMalformed;
-    const fp_raw = rest_after_ts[0..colon2];
+    const fp_b64_raw = rest_after_ts[0..colon2];
 
-    if (!std.mem.eql(u8, fp_raw, fingerprint.value)) return CursorDecodeError.CursorSortMismatch;
+    // Decode the base64url-encoded fingerprint segment.
+    const decoded_fp_len = std.base64.url_safe_no_pad.Decoder.calcSizeForSlice(fp_b64_raw) catch
+        return CursorDecodeError.CursorMalformed;
+    const fp_decoded = allocator.alloc(u8, decoded_fp_len) catch return CursorDecodeError.OutOfMemory;
+    std.base64.url_safe_no_pad.Decoder.decode(fp_decoded, fp_b64_raw) catch {
+        allocator.free(fp_decoded);
+        return CursorDecodeError.CursorMalformed;
+    };
+    if (!std.mem.eql(u8, fp_decoded, fingerprint.value)) {
+        allocator.free(fp_decoded);
+        return CursorDecodeError.CursorSortMismatch;
+    }
 
     const values_raw = rest_after_ts[colon2 + 1 ..];
     var tuple: std.ArrayList([]u8) = .empty;
     errdefer {
+        allocator.free(fp_decoded);
         for (tuple.items) |v| allocator.free(v);
         tuple.deinit(allocator);
     }
@@ -111,13 +130,10 @@ pub fn decodeCursor(
 
     if (tuple.items.len != order_by_count) return CursorDecodeError.CursorMalformed;
 
-    const fp_copy = allocator.dupe(u8, fp_raw) catch return CursorDecodeError.OutOfMemory;
-    errdefer allocator.free(fp_copy);
-
     const tuple_slice = tuple.toOwnedSlice(allocator) catch return CursorDecodeError.OutOfMemory;
 
     return QueryCursor{
-        .fingerprint = .{ .value = fp_copy },
+        .fingerprint = .{ .value = fp_decoded },
         .tuple = @ptrCast(tuple_slice),
         .issued_at_us = issued_at_us,
         .allocator = allocator,
