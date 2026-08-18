@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-02a-backend-dev.json",
   "created_at": "2026-08-18T12:54:03Z",
   "started_at": "2026-08-18T12:54:03Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-18T13:23:29Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "run_id": "WF02-qry05-sbx01-03-20260818",
@@ -32,7 +32,26 @@
       "src/api/routes/agent_sandboxes.zig"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented QRY-05 field-level read grants + field stripping, SBX-01 orchestrator role gate, SBX-02 server-authoritative principal, SBX-03 sandbox list/claim with role-differentiated views. zig build check exits 0.",
+    "artifacts_out": [
+      "migrations/1169_qry05_entity_field_grants.sql",
+      "migrations/1170_sbx_task_specs_agent_sandboxes.sql",
+      "src/entities/query/field_grants.zig",
+      "src/entities/query/allowlist.zig",
+      "src/api/routes/entity_query.zig",
+      "src/api/middleware/agent_auth.zig",
+      "src/crypto/canonical_json.zig",
+      "src/api/routes/agent_task_specs.zig",
+      "src/api/routes/agent_sandboxes.zig",
+      "src/api/middleware/auth.zig",
+      "src/main.zig"
+    ],
+    "commit_sha": "e197a78aafec4d323bdf5c10fdacfa02338eb2af",
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
   "max_rework": 3,
   "rework_count": 0
 }
