@@ -349,7 +349,7 @@ fn getStoredPrincipal(
         allocator.free(row);
     }
     const principal = row[0] orelse return null;
-    return allocator.dupe(u8, principal);
+    return try allocator.dupe(u8, principal);
 }
 
 /// Returns the owner_principal stored in agent_sandboxes for the given sandbox_id.
@@ -368,7 +368,7 @@ fn getSandboxOwner(
         allocator.free(row);
     }
     const owner = row[0] orelse return null;
-    return allocator.dupe(u8, owner);
+    return try allocator.dupe(u8, owner);
 }
 
 /// Returns the sandbox status string.
@@ -387,7 +387,7 @@ fn getSandboxStatus(
         allocator.free(row);
     }
     const status = row[0] orelse return null;
-    return allocator.dupe(u8, status);
+    return try allocator.dupe(u8, status);
 }
 
 // ── TC-SBX-01-01: Scope only → HTTP 403 orchestrator_role_required ───────────
