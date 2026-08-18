@@ -51,9 +51,9 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
 }
 
-fn testAuth() auth_mod.AuthContext {
+fn testAuth(user_id: []const u8) auth_mod.AuthContext {
     return .{
-        .user_id = "00000000-0000-0000-0000-000000000099",
+        .user_id = user_id,
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "integration-qry01-04",
@@ -63,8 +63,8 @@ fn testAuth() auth_mod.AuthContext {
 }
 
 /// Build an AuthContext carrying a different tenant_id (cross-tenant probe).
-fn foreignAuth(tenant_id_str: []const u8) auth_mod.AuthContext {
-    var ctx = testAuth();
+fn foreignAuth(user_id: []const u8, tenant_id_str: []const u8) auth_mod.AuthContext {
+    var ctx = testAuth(user_id);
     @memcpy(ctx.tenant_id[0..36], tenant_id_str[0..36]);
     return ctx;
 }
@@ -91,6 +91,18 @@ fn uniqueEntityKey(allocator: std.mem.Allocator, prefix: []const u8) ![]u8 {
     var bytes: [4]u8 = undefined;
     fillRandom(&bytes);
     return std.fmt.allocPrint(allocator, "{s}_{x}", .{ prefix, bytes });
+}
+
+/// Generate a random UUID v4 string for use as a per-test user identifier.
+fn generateTestUserId(allocator: std.mem.Allocator) ![]u8 {
+    var bytes: [16]u8 = undefined;
+    fillRandom(&bytes);
+    bytes[6] = (bytes[6] & 0x0F) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3F) | 0x80; // RFC 4122 variant
+    const hex = std.fmt.bytesToHex(&bytes, .lower);
+    return std.fmt.allocPrint(allocator, "{s}-{s}-{s}-{s}-{s}", .{
+        hex[0..8], hex[8..12], hex[12..16], hex[16..20], hex[20..32],
+    });
 }
 
 /// Ask the DB for a fresh UUID.
@@ -325,7 +337,9 @@ test "qry01_valid_eq_filter_returns_matching_rows" {
     try conn.exec(insert_row_sql, &.{ DEFAULT_TENANT_ID, "inactive" });
 
     const body = "{\"filters\":[{\"field\":\"status\",\"op\":\"eq\",\"value\":\"active\"}]}";
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body);
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 200), result.status_code);
@@ -356,7 +370,9 @@ test "qry01_unknown_op_returns_400_operator_not_recognised" {
 
     // Unknown operator "LIKE" is outside the FilterOp enum.
     const body = "{\"filters\":[{\"field\":\"status\",\"op\":\"LIKE\",\"value\":\"act%\"}]}";
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body);
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 400), result.status_code);
@@ -412,7 +428,9 @@ test "qry01_filter_value_is_positional_param_not_interpolated" {
     // SQL injection attempt as filter value. If parameterisation were broken,
     // "' OR 1=1 --" would return all rows; correct behaviour returns 0 rows.
     const body = "{\"filters\":[{\"field\":\"status\",\"op\":\"eq\",\"value\":\"' OR 1=1 --\"}]}";
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body);
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 200), result.status_code);
@@ -469,7 +487,9 @@ test "qry01_read_only_no_dml" {
     const count_before_str = row_before[0] orelse return error.TestUnexpectedResult;
 
     // Execute the query via the handler.
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, "{}");
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, "{}");
     defer freeBody(allocator, result);
     try testing.expectEqual(@as(u16, 200), result.status_code);
 
@@ -527,7 +547,9 @@ test "qry01_audit_event_recorded_without_filter_values" {
 
     // Query with a sensitive filter value that must not appear in audit.
     const body = "{\"filters\":[{\"field\":\"status\",\"op\":\"eq\",\"value\":\"secret_value_123\"}]}";
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body);
     defer freeBody(allocator, result);
     try testing.expectEqual(@as(u16, 200), result.status_code);
 
@@ -578,7 +600,9 @@ test "qry02_non_allowlisted_field_returns_400" {
 
     // internal_note is deliberately NOT in entity_filterable_keys.
     const body = "{\"filters\":[{\"field\":\"internal_note\",\"op\":\"eq\",\"value\":\"foo\"}]}";
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body);
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 400), result.status_code);
@@ -617,7 +641,9 @@ test "qry02_sort_non_allowlisted_field_returns_400" {
 
     // Sort on unknown_score — not in filterable_keys.
     const body = "{\"sort\":[{\"field\":\"unknown_score\",\"dir\":\"asc\"}]}";
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body);
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 400), result.status_code);
@@ -658,7 +684,9 @@ test "qry03_default_page_size_is_50" {
     // Insert 60 rows — more than the default page size of 50.
     try insertEntRows(allocator, conn, entity_key, DEFAULT_TENANT_ID, 60);
 
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, "{}");
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, "{}");
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 200), result.status_code);
@@ -701,7 +729,9 @@ test "qry03_page_size_exceeds_max_returns_400" {
     defer dropEntTable(allocator, conn, entity_key);
 
     const body = "{\"page_size\":500}";
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body);
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 400), result.status_code);
@@ -740,7 +770,9 @@ test "qry03_cursor_pagination_returns_next_page" {
 
     // First page.
     const body1 = "{\"page_size\":3}";
-    const result1 = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body1);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result1 = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body1);
     defer freeBody(allocator, result1);
     try testing.expectEqual(@as(u16, 200), result1.status_code);
 
@@ -759,7 +791,7 @@ test "qry03_cursor_pagination_returns_next_page" {
     );
     defer allocator.free(body2);
 
-    const result2 = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body2);
+    const result2 = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body2);
     defer freeBody(allocator, result2);
     try testing.expectEqual(@as(u16, 200), result2.status_code);
 
@@ -805,7 +837,9 @@ test "qry03_cursor_sort_mismatch_returns_400" {
 
     // First request: sort by created_at desc, page_size=3 → produces a cursor.
     const body1 = "{\"page_size\":3,\"sort\":[{\"field\":\"created_at\",\"dir\":\"desc\"}]}";
-    const result1 = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body1);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result1 = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body1);
     defer freeBody(allocator, result1);
     try testing.expectEqual(@as(u16, 200), result1.status_code);
 
@@ -821,7 +855,7 @@ test "qry03_cursor_sort_mismatch_returns_400" {
     );
     defer allocator.free(body2);
 
-    const result2 = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, body2);
+    const result2 = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, body2);
     defer freeBody(allocator, result2);
 
     try testing.expectEqual(@as(u16, 400), result2.status_code);
@@ -859,7 +893,9 @@ test "qry04_denied_entity_returns_empty_envelope" {
     defer cleanupEntity(conn, other_tenant_id, entity_key);
 
     // Caller uses DEFAULT_TENANT_ID — entity not registered for them.
-    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(), entity_key, "{}");
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const result = entity_query.handleEntityQuery(allocator, &pool, testAuth(uid), entity_key, "{}");
     defer freeBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 200), result.status_code);
@@ -883,10 +919,12 @@ test "qry04_unknown_entity_returns_same_empty_envelope" {
     // entity_key completely unknown — also send an undeclared filter key to
     // verify authorisation is decided BEFORE filter validation (QRY-04 AC-4).
     const body = "{\"filters\":[{\"field\":\"nonexistent_column\",\"op\":\"eq\",\"value\":\"x\"}]}";
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
     const result = entity_query.handleEntityQuery(
         allocator,
         &pool,
-        testAuth(),
+        testAuth(uid),
         "nonexistent_type_zzz99",
         body,
     );
@@ -931,7 +969,9 @@ test "qry04_cross_tenant_probe_returns_empty_envelope" {
     const tenant_b_id = try dbUuid(allocator, conn);
     defer allocator.free(tenant_b_id);
 
-    const auth_b = foreignAuth(tenant_b_id);
+    const uid = try generateTestUserId(allocator);
+    defer allocator.free(uid);
+    const auth_b = foreignAuth(uid, tenant_b_id);
     const result = entity_query.handleEntityQuery(allocator, &pool, auth_b, entity_key, "{}");
     defer freeBody(allocator, result);
 
