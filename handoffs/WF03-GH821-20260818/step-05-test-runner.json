@@ -1,0 +1,49 @@
+{
+  "handoff_id": "cea64e9d-39ab-4048-a319-d1df6edb66bf",
+  "run_id": "WF03-GH821-20260818",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-GH821-20260818/step-05-test-runner.json",
+  "created_at": "2026-08-18T11:19:30Z",
+  "started_at": "2026-08-18T11:19:30Z",
+  "completed_at": "2026-08-18T11:22:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "ff86e7a3-5555-4075-89f3-f4a4be82b40c"
+    ],
+    "artifacts_in": [
+      "src/design/WF03-GH821-fix-design.md",
+      "tests/integration/par02_partition_catalog_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 5 — Test run for GH-821 on branch feature/WF03-GH821-20260818.\n\nThe fix for GH-821 is already in the codebase. Run the following checks to confirm the fix is solid and no regressions were introduced:\n\n1. python tools/lint_test_isolation.py tests/integration  (must exit 0)\n2. zig build check  (must exit 0)\n3. zig build test-env-verify  (run if available; target C5 gate green)\n4. If PAR-02 unit/integration tests exist: zig build test 2>&1 (confirm no new failures)\n\nReport all outputs. Write a test report to tests/reports/report-<date>-WF03-GH821-step05.md.",
+    "acceptance_criteria": [
+      "lint_test_isolation.py exits 0",
+      "zig build check exits 0",
+      "No new test failures introduced",
+      "Test report written to tests/reports/"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 4 checks passed on branch feature/WF03-GH821-20260818. lint_test_isolation exit 0 (192 files, no issues). zig build check exit 0. test-env-verify HEALTHY (10/10 gates). Unit tests 1160/1240 passed (80 intentionally skipped DB-gated tests). No new failures introduced by GH-821 T010 UUID-violation fix (bc9af23f).",
+    "artifacts_out": ["tests/reports/report-20260818-WF03-GH821-step05.yaml"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH821-20260818",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  }
+}

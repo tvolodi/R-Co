@@ -1,0 +1,52 @@
+{
+  "handoff_id": "518dccf1-cb91-42bc-a76d-9a8c04a17039",
+  "run_id": "WF03-GH821-20260818",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-GH821-20260818/step-01-issue-fixer.json",
+  "created_at": "2026-08-18T11:00:18Z",
+  "started_at": "2026-08-18T11:00:18Z",
+  "completed_at": "2026-08-18T11:03:41Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "46d1c2ff-84c5-4cef-bc7f-d82b0f4abe03",
+      "f84b7710-f849-4fe9-a656-b1ad4a1580e8"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0718.json",
+      "tests/integration/par02_partition_catalog_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1 — Root-cause diagnosis for GH-821 / ISS-0718.\n\nRead the test file tests/integration/par02_partition_catalog_test.zig and locate line 177. Identify exactly:\n1. What UUID literal is hardcoded there\n2. What the UUID is used for (which test, which fixture)\n3. Why this violates T010 isolation rules\n4. What the correct fix is (replace with per-test-generated UUID via std.crypto.random or similar Zig mechanism)\n5. Whether any other lines in the same file also use hardcoded UUIDs that should also be fixed\n\nDocument the diagnosis clearly so CODE-DESIGNER can produce an accurate fix design.",
+    "acceptance_criteria": [
+      "The exact offending UUID literal is identified and quoted",
+      "The scope of the fix is defined (line 177 only, or more lines)",
+      "The correct Zig approach for per-test UUID generation is identified",
+      "result.summary explains root cause clearly"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "DIAGNOSIS COMPLETE — ISS-0718 already resolved in commit bc9af23f; ISS-0718.json requires bookkeeping update to RESOLVED.\n\nCategory: A (logic/fixture error) — already fixed within the originating run (ADHOC-par02-03-05-release-20260817).\n\nRoot cause (historical, now fixed):\nDuring ADHOC-par02-03-05-release-20260817, the new test 'par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED' was drafted with a hardcoded non-sentinel UUID literal `\"00000000-0000-0000-0000-0000000000ff\"` passed to `bpm.api_tenant_context.set(...)`. This UUID is NOT the all-zeros sentinel (ends in `0000000000ff`, not `000000000000`), so T010 flagged it. ISS-0718 was registered and GH-821 filed during that run's step-0.5.\n\nFix applied (bc9af23f, 2026-08-18T01:10:39Z):\nThe UUID was changed to `\"00000000-0000-0000-0000-000000000000\"` (the all-zeros sentinel), which lint_test_isolation.py explicitly exempts via `ALL_ZEROS_UUID` constant. This is semantically correct: `bpm.api_tenant_context.set` for platform-level operations uses the all-zeros no-tenant sentinel, not a per-test random UUID. The fix is in `tests/integration/par02_partition_catalog_test.zig` line 235.\n\nCurrent state verified:\n- `python tools/lint_test_isolation.py tests/integration/par02_partition_catalog_test.zig` → `OK — 1 file(s) checked, no isolation issues.`\n- Only UUID literal in the file is `00000000-0000-0000-0000-000000000000` at line 235 (exempted sentinel).\n- No other hardcoded non-sentinel UUIDs exist anywhere in the file.\n- `randomSuffix()` helper (line 17) and all three test cases use `h.newUuidString()` for per-test fixture names — fully T010-compliant.\n\nScope: Line 235 only was the offending site. No further lines in the file violate T010.\n\nRequired follow-up (Step 2 action):\nUpdate ISS-0718.json status to RESOLVED with resolution note referencing bc9af23f. Close GH-821. No source code changes required — fix is already in HEAD.",
+    "artifacts_out": [
+      "handoffs/WF03-GH821-20260818/step-01-issue-fixer.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  }
+}

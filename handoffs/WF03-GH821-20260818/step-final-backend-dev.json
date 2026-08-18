@@ -1,0 +1,52 @@
+{
+  "handoff_id": "36bbe74d-c7be-4822-82dc-20225c892f26",
+  "run_id": "WF03-GH821-20260818",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH821-20260818/step-final-backend-dev.json",
+  "created_at": "2026-08-18T11:25:44Z",
+  "started_at": "2026-08-18T11:25:44Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "0b08842a-5165-4813-b2bf-449d5857cf1c"
+    ],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0718.json",
+      "src/design/WF03-GH821-fix-design.md"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step Final — git-merge for WF03-GH821-20260818.\n\nExecute fn:git-merge per docs/agents/protocols/GIT_MERGE.md:\n\n1. On branch feature/WF03-GH821-20260818, stage and commit all modified files:\n   - CHANGELOG.md\n   - docs/issues/ISS-0718.json  \n   - src/design/WF03-GH821-fix-design.md\n   - tests/reports/report-20260818-WF03-GH821-step05.yaml\n   - handoffs/WF03-GH821-20260818/ (all handoff files)\n   Commit message: 'fix(test): verify par02 UUID sentinel fix; resolve GH-821 / ISS-0718'\n\n2. Push the feature branch to origin\n\n3. Create a PR: gh pr create --title 'fix(test): par02 UUID hardcoded-sentinel fix verified (GH-821)' --body 'Verifies that the T010 UUID isolation fix (bc9af23f) is in place and all gates pass. Closes #821'\n\n4. Merge the PR (squash merge): gh pr merge --squash --auto or merge directly\n\n5. After merge: git checkout main && git pull origin main\n\n6. Run: python C:\\Users\\tvolo\\dev\\ai-dala\\TaskManager\\scripts\\release.py task/current.json --status DONE --close-github-issue\n   (This releases the TaskManager claim AND closes GH-821)\n\n7. Run: python tools/lint_handoffs.py  (must exit 0 before completing)\n\nRecord branch_name, commit_sha_list, pr_url, push_status in result.git_evidence.\nConfirm local repo is on main with clean working tree in result.summary.",
+    "acceptance_criteria": [
+      "All modified files committed and pushed to feature branch",
+      "PR created and merged to main",
+      "Local repo on main with clean working tree",
+      "release.py exits 0 (claim released, GH-821 closed)",
+      "lint_handoffs.py exits 0",
+      "result.git_evidence.push_status = 'ok'"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": {
+    "status": null,
+    "summary": null,
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH821-20260818",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  }
+}

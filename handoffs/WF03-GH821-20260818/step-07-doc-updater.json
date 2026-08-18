@@ -1,0 +1,50 @@
+{
+  "handoff_id": "0b08842a-5165-4813-b2bf-449d5857cf1c",
+  "run_id": "WF03-GH821-20260818",
+  "workflow_id": "WF-03",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-GH821-20260818/step-07-doc-updater.json",
+  "created_at": "2026-08-18T11:23:49Z",
+  "started_at": "2026-08-18T11:23:49Z",
+  "completed_at": "2026-08-18T11:24:35Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "cea64e9d-39ab-4048-a319-d1df6edb66bf"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0718.json",
+      "tests/reports/report-20260818-WF03-GH821-step05.yaml",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 7 — Documentation update for GH-821 / ISS-0718.\n\nAll tests passed. The T010 UUID fix was already applied at bc9af23f. Your tasks:\n\n1. Update CHANGELOG.md — add an entry under the current version (or create an Unreleased section if none) noting the fix:\n   'fix(test): replace hardcoded UUID literal with all-zeros sentinel in par02 integration fixture (GH-821, ISS-0718)'\n\n2. Update docs/issues/ISS-0718.json — set status to 'RESOLVED', add resolved_at timestamp, add resolved_by: 'bc9af23f', add run_id: 'WF03-GH821-20260818'\n\n3. Do NOT close GH-821 here — that is handled by BACKEND-DEV in Step Final with the --close-github-issue flag on release.py.\n\n4. Do NOT call release.py — that is Step Final's responsibility.\n\n5. Run python tools/lint_handoffs.py before completing and confirm it exits 0.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with the fix entry",
+      "docs/issues/ISS-0718.json status = RESOLVED with resolved_at and resolved_by",
+      "lint_handoffs.py exits 0",
+      "result.status = PASS"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "CHANGELOG.md updated with fix(test) entry for GH-821/ISS-0718 under [Unreleased] 2026-08-18. docs/issues/ISS-0718.json set to RESOLVED with resolved_at 2026-08-18T11:24:35Z, resolved_by bc9af23f, resolution_run WF03-GH821-20260818. lint_handoffs.py exits 0 (0 unacknowledged errors).",
+    "artifacts_out": ["CHANGELOG.md", "docs/issues/ISS-0718.json"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  }
+}
