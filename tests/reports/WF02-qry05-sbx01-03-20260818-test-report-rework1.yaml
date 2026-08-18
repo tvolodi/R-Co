@@ -1,0 +1,116 @@
+run_id: WF02-qry05-sbx01-03-20260818
+rework: 1
+report_type: integration
+test_step: test-integration-qry05-sbx
+executed_at: "2026-08-18T14:43:43Z"
+branch: feature/WF02-qry05-sbx01-03-20260818
+environment:
+  BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5434/bpm_test"
+  db_test_port: 5434
+  db_test_container: r-co-db_test-1
+  migrations_applied: 159
+  test_env_verify: HEALTHY
+
+summary:
+  status: PASS
+  total: 23
+  passed: 23
+  failed: 0
+  skipped: 0
+
+test_binaries:
+  - file: tests/integration/qry05_field_stripping_test.zig
+    passed: 6
+    failed: 0
+    total: 6
+  - file: tests/integration/sbx01_02_03_agent_role_gates_test.zig
+    passed: 17
+    failed: 0
+    total: 17
+
+tests:
+  # QRY-05: entity field stripping
+  - id: qry05_01_ungranted_caller_field_absent_from_items
+    requirement: QRY-05
+    status: PASS
+  - id: qry05_02_granted_caller_field_present_in_items
+    requirement: QRY-05
+    status: PASS
+  - id: qry05_03_ungranted_filter_on_restricted_field_returns_400
+    requirement: QRY-05
+    status: PASS
+  - id: qry05_04_ungranted_sort_on_restricted_field_returns_400
+    requirement: QRY-05
+    status: PASS
+  - id: qry05_05_stripping_all_fields_leaves_record_id
+    requirement: QRY-05
+    status: PASS
+  - id: qry05_06_cross_tenant_grant_isolation
+    requirement: QRY-05
+    status: PASS
+
+  # SBX-01: agent role gates — submission
+  - id: sbx01_01_scope_only_no_role_returns_403
+    requirement: SBX-01
+    status: PASS
+  - id: sbx01_02_role_only_no_scope_returns_403
+    requirement: SBX-01
+    status: PASS
+  - id: sbx01_03_both_credentials_task_spec_accepted
+    requirement: SBX-01
+    status: PASS
+  - id: sbx01_04_conflicting_roles_no_conflicting_audit_known_gap_sec_minor_01
+    requirement: SBX-01
+    status: PASS
+  - id: sbx01_05_rejected_submission_writes_rejection_audit
+    requirement: SBX-01
+    status: PASS
+  - id: sbx01_06_implementer_role_no_scope_returns_403
+    requirement: SBX-01
+    status: PASS
+
+  # SBX-02: token principal enforcement
+  - id: sbx02_01_no_principal_in_body_server_sets_token_subject
+    requirement: SBX-02
+    status: PASS
+  - id: sbx02_02_body_principal_discarded_server_value_persisted
+    requirement: SBX-02
+    status: PASS
+  - id: sbx02_03_two_orchestrators_same_body_different_spec_hash
+    requirement: SBX-02
+    status: PASS
+  - id: sbx02_04_task_spec_submitted_audit_has_correct_principal
+    requirement: SBX-02
+    status: PASS
+  - id: sbx02_05_hash_based_on_token_principal_not_body_principal
+    requirement: SBX-02
+    status: PASS
+
+  # SBX-03: sandbox claiming and listing
+  - id: sbx03_01_orchestrator_claim_returns_403_orchestrator_may_not_claim
+    requirement: SBX-03
+    status: PASS
+  - id: sbx03_02_no_agent_role_claim_returns_403_implementer_role_required
+    requirement: SBX-03
+    status: PASS
+  - id: sbx03_03_implementer_claim_sandbox_201_bound
+    requirement: SBX-03
+    status: PASS
+  - id: sbx03_04_orchestrator_list_sees_all_tenant_sandboxes
+    requirement: SBX-03
+    status: PASS
+  - id: sbx03_05_implementer_list_sees_only_own_sandboxes
+    requirement: SBX-03
+    status: PASS
+  - id: sbx03_06_rejected_orchestrator_claim_writes_sandbox_claim_rejected_audit
+    requirement: SBX-03
+    status: PASS
+
+fixes_applied_in_rework1:
+  - token-principal SBX-02
+  - audit column
+  - provisionSchema idempotency
+  - allowlist response
+  - memory leak
+
+next_action: "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
