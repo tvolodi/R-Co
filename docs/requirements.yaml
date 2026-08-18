@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-18T10:38:41Z'
+generated_at: '2026-08-18T15:03:54Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12815,7 +12815,7 @@ requirements:
     title: Server-side field stripping on query results
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** QRY-01, enforcing field-level read grants on the server.
 
@@ -12833,8 +12833,16 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:58Z'
+    last_updated: '2026-08-18T15:03:45Z'
     workflow: PW-10
+    implemented_in:
+    - src/entities/query/field_grants.zig
+    - src/entities/query/allowlist.zig
+    - src/api/routes/entity_query.zig
+    - migrations/1169_qry05_entity_field_grants.sql
+    - tests/integration/qry05_field_stripping_test.zig
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
   RND-UI-01:
     id: RND-UI-01
     title: Six-state renderer union and single error classifier
@@ -13008,7 +13016,7 @@ requirements:
     title: Orchestrator role gate on task-spec submission
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** IDN-05, separating the orchestrating agent from the implementing agent at the API layer.
 
@@ -13026,14 +13034,22 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:05Z'
+    last_updated: '2026-08-18T15:03:52Z'
     workflow: PW-12
+    implemented_in:
+    - src/api/middleware/agent_auth.zig
+    - src/api/routes/agent_task_specs.zig
+    - migrations/1170_sbx_task_specs_agent_sandboxes.sql
+    - tests/integration/sbx01_02_03_agent_role_gates_test.zig
+    - tests/specs/SBX-01-03.md
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
   SBX-02:
     id: SBX-02
     title: Server-authoritative orchestrator principal
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** SBX-01, making the orchestrator identity server-authoritative.
 
@@ -13051,14 +13067,20 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:07Z'
+    last_updated: '2026-08-18T15:03:53Z'
     workflow: PW-12
+    implemented_in:
+    - src/crypto/canonical_json.zig
+    - src/api/routes/agent_task_specs.zig
+    - tests/integration/sbx01_02_03_agent_role_gates_test.zig
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
   SBX-03:
     id: SBX-03
     title: Orchestrator excluded from sandbox claim
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** SBX-01, denying the orchestrator execution authority over sandboxes.
 
@@ -13076,8 +13098,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:08Z'
+    last_updated: '2026-08-18T15:03:54Z'
     workflow: PW-12
+    implemented_in:
+    - src/api/routes/agent_sandboxes.zig
+    - migrations/1170_sbx_task_specs_agent_sandboxes.sql
+    - tests/integration/sbx01_02_03_agent_role_gates_test.zig
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
   SBX-04:
     id: SBX-04
     title: Sandbox ownership binding at claim
