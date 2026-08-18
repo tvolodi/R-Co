@@ -227,7 +227,7 @@ fn parseNextCursor(allocator: std.mem.Allocator, body: []const u8) !?[]u8 {
     };
     const cursor_val = obj.get("next_cursor") orelse return null;
     return switch (cursor_val) {
-        .string => |s| allocator.dupe(u8, s),
+        .string => |s| try allocator.dupe(u8, s),
         .null => null,
         else => null,
     };
