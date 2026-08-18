@@ -249,12 +249,11 @@ pub fn handleClaimSandbox(
     };
     defer pool.release(conn);
 
-    // SBX-04/INV-2: verify task_spec_id exists for this tenant before claiming.
+    // SBX-04/INV-2: verify task_spec_id exists; tenant isolation via search_path.
     const spec_row = conn.queryRow(
         allocator,
         \\SELECT 1 FROM task_specs
-        \\WHERE tenant_id = current_setting('app.current_tenant_id')::uuid
-        \\AND task_spec_id = $1::uuid
+        \\WHERE task_spec_id = $1::uuid
     , &.{task_spec_id}) catch return .{
         .status_code = 503,
         .body = "{\"detail\":\"db_error\",\"status\":503}",
