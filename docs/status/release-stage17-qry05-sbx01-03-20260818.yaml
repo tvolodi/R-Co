@@ -1,0 +1,103 @@
+stage: "17"
+date: "2026-08-18T15:00:34Z"
+decision: "APPROVED"
+run_id: "WF02-qry05-sbx01-03-20260818"
+branch: "feature/WF02-qry05-sbx01-03-20260818"
+requirements: [QRY-05, SBX-01, SBX-02, SBX-03]
+priority: MUST
+
+test_report:
+  file: "tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml"
+  rework: 1
+  summary: "23/23 PASS"
+  breakdown:
+    QRY-05: "6/6 PASS"
+    SBX-01: "6/6 PASS"
+    SBX-02: "5/5 PASS"
+    SBX-03: "6/6 PASS"
+
+acceptance_criteria_coverage:
+  QRY-05:
+    - "qry05_01: ungranted caller field absent from items"
+    - "qry05_02: granted caller field present in items"
+    - "qry05_03: ungranted filter on restricted field returns 400"
+    - "qry05_04: ungranted sort on restricted field returns 400"
+    - "qry05_05: stripping all fields leaves record_id"
+    - "qry05_06: cross-tenant grant isolation"
+    - verdict: ALL MUST ACs covered
+  SBX-01:
+    - "sbx01_01: scope only, no role → 403 orchestrator_role_required"
+    - "sbx01_02: role only, no scope → 403 orchestrator_role_required"
+    - "sbx01_03: both credentials → task spec accepted"
+    - "sbx01_04: conflicting roles → 403 conflicting_agent_roles (known gap sec_minor_01)"
+    - "sbx01_05: rejected submission writes TaskSpecSubmissionRejected audit"
+    - "sbx01_06: implementer role, no scope → 403"
+    - verdict: ALL MUST ACs covered
+  SBX-02:
+    - "sbx02_01: no principal in body → server sets token subject"
+    - "sbx02_02: body principal discarded → server value persisted"
+    - "sbx02_03: two orchestrators, same body → different spec_hash"
+    - "sbx02_04: task spec submitted → audit has correct principal"
+    - "sbx02_05: hash based on token principal, not body principal"
+    - verdict: ALL MUST ACs covered
+  SBX-03:
+    - "sbx03_01: orchestrator claim → 403 orchestrator_may_not_claim"
+    - "sbx03_02: no agent role claim → 403 implementer_role_required"
+    - "sbx03_03: implementer claim → 201 bound"
+    - "sbx03_04: orchestrator list sees all tenant sandboxes"
+    - "sbx03_05: implementer list sees only own sandboxes"
+    - "sbx03_06: rejected orchestrator claim writes SandboxClaimRejected audit"
+    - verdict: ALL MUST ACs covered
+
+unit_tests:
+  command: "zig build test"
+  exit_code: 0
+  status: PASS
+  notes: >
+    Exit 0 confirmed. Three 'failed command:' print lines in zig 0.16 test runner output
+    are cosmetic artifacts (pre-existing on origin/main): iss0173-orphan TC-01..04
+    confirmed pre-existing per ISS-0173/GH#500; ISS-602 differential corpus confirmed
+    passing standalone; DB-skip tests expected when BPM_TEST_DB_URL not in unit test env.
+    No regressions introduced by this branch (diff limited to src/api/middleware/,
+    src/api/routes/, src/crypto/, src/db/provisioning.zig, src/entities/query/,
+    src/main.zig, and two integration test files).
+
+nfr_results:
+  NFR-01_p99_read_ms:
+    target: "<=200 ms"
+    actual: "1.116 ms"
+    passed: true
+  NFR-01_p99_write_ms:
+    target: "<=500 ms"
+    actual: "2.237 ms"
+    passed: true
+  NFR-02_append_throughput_eps:
+    target: ">=1000 events/sec"
+    actual: "54278.841 events/sec"
+    passed: true
+  NFR-04_replay_10000_ms:
+    target: "<=5000 ms"
+    actual: "43.481 ms"
+    passed: true
+  NFR-04_replay_snapshot_100000_ms:
+    target: "<=1000 ms"
+    actual: "7.013 ms"
+    passed: true
+  bench_summary: "overall_passed=true (run_id bench-1787064968111)"
+  bench_note: >
+    QRY-05 field stripping adds one in-memory allowlist pass per result item before
+    serialisation; no additional DB queries or network calls. Bench confirms no latency
+    regression: p99 read 1.116 ms remains well within the 200 ms NFR-01 threshold.
+
+blocking_issues: []
+approved_requirements:
+  - QRY-05
+  - SBX-01
+  - SBX-02
+  - SBX-03
+
+decision_summary: >
+  All 23 integration tests pass (23/23, rework 1). Unit test suite exits 0 with no
+  branch-introduced regressions. NFR-01 bench confirms p99 read 1.116 ms and p99 write
+  2.237 ms, both well within thresholds. All MUST acceptance criteria for QRY-05,
+  SBX-01, SBX-02, SBX-03 have explicit passing tests. Release APPROVED for stage 17.
