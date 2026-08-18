@@ -1,0 +1,50 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-01-backend-dev-rework6",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "01-rework6",
+  "created_at": "2026-08-17T20:48:39Z",
+  "started_at": "2026-08-17T20:51:17Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02"],
+    "stage": "16",
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "test_run": "ADHOC-par02-03-05-release-20260817 step-02-rework4",
+    "blocking_sql": "ALTER TABLE events ATTACH PARTITION events_2026_09 FOR VALUES FROM ('2026-09-01 00:00:00') TO ('2026-10-01 00:00:00')",
+    "related_handoff_ids": [
+      "ADHOC-par02-03-05-release-20260817-02-test-runner-rework4",
+      "ADHOC-par02-03-05-release-20260817-01-backend-dev-rework5"
+    ]
+  },
+  "task": {
+    "description": "Fix the remaining PAR-02 attach-state blocker in tests/integration/par02_partition_catalog_test.zig. The current reset helper clears stale catalog rows, but the rerun still fails when runMaintenanceCycle() tries to attach events_2026_09 with SQLSTATE 42809. Strengthen the reset logic so rerunnable tests clear any lingering physical attachment state for future events partitions before the first maintenance cycle, then rerun the explicit 5434 validation sequence: zig build test-env-verify, zig build test, zig build test-integration-par02, and zig build test-integration-par03. Preserve the shared bpm.store.PLATFORM_INSTANCE_ID-based event assertion and the idempotency check.",
+    "acceptance_criteria": [
+      "tests/integration/par02_partition_catalog_test.zig no longer fails on SQLSTATE 42809 when attaching events_2026_09",
+      "zig build test-env-verify passes with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test",
+      "zig build test passes",
+      "zig build test-integration-par02 passes",
+      "zig build test-integration-par03 passes"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "The PAR-02 cleanup helper improved rerun behavior, but the explicit 5434 validation still fails. The remaining blocker is stale inherited partition state under tenant_default: the maintenance job still reaches events_2026_09 and hits SQLSTATE 42809, so the reset logic needs one more pass aimed at the exact live child relations, not just the catalog rows.",
+    "artifacts_out": [
+      "tests/integration/par02_partition_catalog_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "The PAR-02 rerun still fails when runMaintenanceCycle() tries to attach events_2026_09. The current cleanup removes logical rows and some detach targets, but not all physical inherited child relations in the tenant schema. The next fix needs to inspect and remove the exact lingering live partition state before the first maintenance cycle.",
+        "location": "tests/integration/par02_partition_catalog_test.zig"
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV for one more rework focused on the exact inherited child tables under tenant_default, then rerun the explicit 5434 validation sequence."
+  },
+  "completed_at": "2026-08-17T21:09:47Z"
+}

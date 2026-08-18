@@ -1,0 +1,48 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner-rework5",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "02-rework5",
+  "created_at": "2026-08-18T00:30:40Z",
+  "started_at": "2026-08-18T00:30:40Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02", "PAR-03"],
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "head_commit": "67f2f641",
+    "last_test_run_result": "ESCALATED — rework7 BACKEND-DEV escalated without running tests; T010 fix (67f2f641) applied after escalation",
+    "known_state": {
+      "par03": "PASS (4/4 confirmed in rework4)",
+      "par02_other_tests": "PASS (3/4 confirmed in rework4)",
+      "par02_ac5": "UNKNOWN — last actual test run (rework4) showed SQLSTATE 42809; rework5-7 BACKEND-DEV changes not yet validated by TEST-RUNNER",
+      "t010_fix": "Commit 67f2f641 'fix(par02): remove platform UUID literal from integration test' — applied but not yet tested"
+    },
+    "environment": {
+      "db_test_url": "postgres://bpm:bpm@localhost:5434/bpm_test",
+      "bpm_test_url": "http://127.0.0.1:8080",
+      "bpm_idp_base_url": "http://localhost:8081"
+    }
+  },
+  "task": {
+    "description": "Run a full validation pass on the current HEAD (67f2f641) of feature/ADHOC-par02-03-05-release-20260817. This is the first actual test run after the BACKEND-DEV rework5-7 changes (physical partition DETACH+DROP in reset helper) and the T010 fix (67f2f641 — removes hardcoded UUID from par02 run-log test).\n\nAll commands MUST use BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test explicitly.\n\n1. Run: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-env-verify\n   - Must exit 0 (HEALTHY, 10/10)\n\n2. Run: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test --summary all\n   - Must exit 0, 0 failures\n\n3. Run: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-par02 --summary all\n   - Must exit 0, 4/4 pass (including par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED)\n\n4. Run: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-par03 --summary all\n   - Must exit 0, 4/4 pass\n\nIf par02_ac5 fails, report the EXACT failure message, assertion text, and any logged warnings (appendPlatform warn lines). Do NOT infer the failure — run the test and capture actual output.\n\nUpdate tests/reports/report-20260817-ADHOC-par02-03-05.yaml with a 'rework5' section.\n\nReturn PASS only if all 4 commands exit 0 and par02+par03 all tests pass.\nReturn FAIL with exact error details if anything fails.",
+    "acceptance_criteria": [
+      "test-env-verify HEALTHY 10/10 with explicit 5434 BPM_TEST_DB_URL",
+      "zig build test exits 0, 0 failures",
+      "zig build test-integration-par02 exits 0, 4/4 pass",
+      "zig build test-integration-par03 exits 0, 4/4 pass",
+      "rework5 section appended to tests/reports/report-20260817-ADHOC-par02-03-05.yaml"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 4 acceptance criteria met. test-env-verify HEALTHY 10/10 (exit 0). Unit tests 1176/1240 pass, 64 skipped, 0 fail (exit 0). PAR-02 integration 4/4 pass including par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED (exit 0). PAR-03 integration 4/4 pass (exit 0). The resetFuturePartitionStateForMaintenanceRun helper and intToStr defer fix resolve the SQLSTATE 42809 stale partition attach blocker from rework4.",
+    "artifacts_out": ["tests/reports/report-20260817-ADHOC-par02-03-05.yaml"],
+    "issues": [],
+    "next_action": "Route to ORCH — all PAR-02 and PAR-03 acceptance criteria satisfied; working tree changes (rework5-7) must be committed and branch merged via release workflow"
+  },
+  "completed_at": "2026-08-18T00:36:24Z"
+}

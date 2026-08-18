@@ -1,0 +1,49 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-03-release-validator-rework1",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "step": "03-rework1",
+  "created_at": "2026-08-18T01:00:28Z",
+  "started_at": "2026-08-18T01:00:28Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02", "PAR-03", "PAR-05"],
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "head_commit": "d4214528",
+    "prior_blockers_resolved": {
+      "BLOCKER-1": "RESOLVED — src/scheduler/partition_maintenance.zig and tests/integration/par02_partition_catalog_test.zig committed as d4214528; zig build test-integration-par02 4/4 pass against committed code",
+      "BLOCKER-2": "RESOLVED — zig build test-integration-iss0686 exits 0, 1/1 pass"
+    },
+    "test_results": {
+      "test_env_verify": "HEALTHY 10/10 (rework5)",
+      "unit_tests": "1176/1240 pass, 64 skipped, 0 fail (rework5, rework8)",
+      "par02": "4/4 pass (rework5 + rework8 post-commit verification)",
+      "par03": "4/4 pass (rework5)",
+      "iss0686": "1/1 pass (rework6)",
+      "report": "tests/reports/report-20260817-ADHOC-par02-03-05.yaml"
+    },
+    "prior_release_decision": "docs/status/release-stage16-par02-03-05-20260817.yaml (BLOCKED — prior two blockers now resolved)"
+  },
+  "task": {
+    "description": "Perform final release validation for PAR-02, PAR-03, and PAR-05 on branch feature/ADHOC-par02-03-05-release-20260817 (HEAD d4214528).\n\nBoth prior blockers from the first RELEASE-VALIDATOR pass are resolved:\n- BLOCKER-1: uncommitted files are now committed (d4214528)\n- BLOCKER-2: test-integration-iss0686 passes 1/1\n\nFor each requirement, verify all ACs are met against committed code:\n\nPAR-02 (AC1-AC5): AC1-AC4 previously PASS (WF02-batch-3); AC5 now implemented (EXECUTION_PARTITION_CREATED in partition_maintenance.zig ensurePartitionAttached) and tested (TC-PAR-02-09 in par02_partition_catalog_test.zig, 4/4 pass).\n\nPAR-03 (AC1-AC6): AC1-AC5 previously PASS (WF02-batch-3); AC6 now implemented (EXECUTION_PARTITION_DETACHED/DROPPED in partition_retention.zig) and tested (par03 4/4 pass).\n\nPAR-05 (AC1-AC5 + trailing sentence): AC1-AC5 previously PASS (WF02-batch-4); events_legacy archival clause now implemented (archiveLegacyTable in partition_retention.zig) and tested (iss0686 1/1 pass).\n\nCheck NFR applicability per the original batch-3/batch-4 release decisions (NFR benchmarks not applicable — no new HTTP surface). The NFR bench was run in the prior decision (batch-3: not applicable; batch-4: not applicable).\n\nUpdate docs/status/release-stage16-par02-03-05-20260817.yaml with APPROVED decision.\n\nReturn APPROVED if all ACs are met and no new blockers found.",
+    "acceptance_criteria": [
+      "PAR-02 all 5 ACs confirmed met against committed d4214528",
+      "PAR-03 all 6 ACs confirmed met against committed d4214528",
+      "PAR-05 all ACs including events_legacy trailing sentence confirmed met",
+      "docs/status/release-stage16-par02-03-05-20260817.yaml updated with APPROVED decision",
+      "python tools/lint_handoffs.py exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for stage 16 — PAR-02, PAR-03, PAR-05. Both prior blockers resolved: BLOCKER-1 cleared by BACKEND-DEV commit d4214528 (both uncommitted files now committed; rework8 confirmed test-integration-par02 4/4 PASS against committed code). BLOCKER-2 cleared by TEST-RUNNER rework6 (test-integration-iss0686 1/1 PASS against d4214528). All ACs verified: PAR-02 5/5, PAR-03 6/6, PAR-05 AC1-AC5 + trailing events_legacy archival AC. NFR benchmarks not applicable (no new HTTP surface). docs/status/release-stage16-par02-03-05-20260817.yaml updated to APPROVED.",
+    "artifacts_out": ["docs/status/release-stage16-par02-03-05-20260817.yaml"],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set PAR-02, PAR-03, PAR-05 status RELEASED in docs/requirements.yaml"
+  },
+  "completed_at": "2026-08-18T01:03:03Z"
+}

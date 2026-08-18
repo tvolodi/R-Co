@@ -1,0 +1,149 @@
+stage: "16"
+date: "2026-08-18T01:03:03Z"
+run_id: ADHOC-par02-03-05-release-20260817
+workflow_step: "03-rework1"
+decision: APPROVED
+
+requirement_ids:
+  - PAR-02
+  - PAR-03
+  - PAR-05
+
+prior_gates:
+  test_execution_step_2: >
+    PASS (rework5 — commit 67f2f641 + uncommitted working tree changes).
+    par02 4/4 PASS, par03 4/4 PASS, unit 1176/1240 PASS (64 skipped),
+    test-env-verify HEALTHY 10/10.
+  test_report: tests/reports/report-20260817-ADHOC-par02-03-05.yaml
+
+independent_verification_method: >
+  (1) Read exact AC wording for PAR-02, PAR-03, PAR-05 directly from docs/requirements.yaml
+  lines 12145-12275. (2) Grepped src/ for EXECUTION_PARTITION_CREATED — confirmed call site
+  at src/scheduler/partition_maintenance.zig lines 330-353 (ISS-0670 resolved). Grepped for
+  EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED — confirmed call sites at
+  src/scheduler/partition_retention.zig lines 242-265 and 488-511 (ISS-0670 resolved). (3)
+  Confirmed archiveLegacyTable() is implemented in partition_retention.zig (lines 338+) and
+  called at line 145 for rows where parent_table='events_legacy'. Confirmed events_legacy
+  catalog registration in src/db/partition_conversion.zig lines 519-542 (ISS-0686 resolved).
+  Commit 81205de9 (feat(par05): ISS-0686 register events_legacy + archiveLegacyTable (#733)
+  (#738)) confirmed as an ancestor of HEAD via git merge-base. (4) Ran git status: found two
+  uncommitted files — src/scheduler/partition_maintenance.zig (intToStr defer fix) and
+  tests/integration/par02_partition_catalog_test.zig (resetFuturePartitionStateForMaintenanceRun
+  helper). The rework5 passing result (par02 4/4) was recorded against HEAD + these uncommitted
+  changes. (5) Read tests/specs/PAR-05.md Coverage note: PAR-05 trailing AC is documented as
+  covered by tests/integration/iss0686_archived_state_test.zig (archived_state_accepted).
+  Confirmed the file exists. Confirmed build target test-integration-iss0686 exists in build.zig
+  (lines 3618-3629). This target was NOT run in the rework5 suite (which only ran
+  test-integration-par02 and test-integration-par03). (6) Read batch-3 and batch-4 release
+  decisions for format precedent and AC audit methodology.
+
+acceptance_criteria_audit:
+  par_02:
+    title: Proactive future partition creation
+    ac1: "PASS — carried from batch-3 (WF02-batch-3-20260811, 4/4 tests, independent re-run)"
+    ac2: "PASS — carried from batch-3"
+    ac3: "PASS — carried from batch-3"
+    ac4: "PASS — carried from batch-3"
+    ac5: >
+      EVIDENCE CONDITIONAL — EXECUTION_PARTITION_CREATED emission is implemented at
+      partition_maintenance.zig lines 330-353 (confirmed by grep). Test TC-PAR-02-09
+      (par02_ac5 test) exists in par02_partition_catalog_test.zig. rework5 recorded 4/4 PASS.
+      HOWEVER: rework5 was run against HEAD + uncommitted working tree changes that include
+      the resetFuturePartitionStateForMaintenanceRun helper function. Without this helper
+      committed, TC-PAR-02-09 fails with SQLSTATE 42809 on any non-first run (confirmed by
+      rework4 failure). The AC5 implementation itself IS committed; the test IDEMPOTENCY
+      is not. This is a BLOCKER for release: the test evidence is not reproducible from the
+      committed branch state alone.
+    verdict: PARTIAL (AC1-AC4 PASS; AC5 evidence conditional on uncommitted test infrastructure)
+
+  par_03:
+    title: Partition-scoped retention and archival
+    ac1: "PASS — carried from batch-3"
+    ac2: "PASS — carried from batch-3"
+    ac3: "PASS — carried from batch-3"
+    ac4: "PASS — carried from batch-3"
+    ac5: "PASS — carried from batch-3"
+    ac6: >
+      PASS — EXECUTION_PARTITION_DETACHED emitted at partition_retention.zig lines 254-265;
+      EXECUTION_PARTITION_DROPPED emitted at lines 500-511. Both are committed in commit
+      054c8b88. par03 4/4 tests passed in rework5, all committed code, no uncommitted dep.
+    verdict: PASS (all ACs met, tests confirmed)
+
+  par_05:
+    title: Online conversion to a partitioned event log
+    ac1: "PASS — carried from batch-4 (6/6 tests, independent re-run by RELEASE-VALIDATOR)"
+    ac2: "PASS — carried from batch-4"
+    ac3: "PASS — carried from batch-4"
+    ac4: "PASS — carried from batch-4"
+    ac5: "PASS — carried from batch-4"
+    trailing_ac_events_legacy_archival: >
+      CODE CONFIRMED, TEST NOT RUN IN THIS CYCLE.
+      archiveLegacyTable() is implemented in partition_retention.zig (lines 338+) and
+      invoked at line 145 for parent_table='events_legacy' rows. events_legacy is registered
+      in plat_partition_catalog by partition_conversion.zig (lines 519-542). Migration
+      1153_iss0686_archived_state.sql extends the CHECK constraint to accept 'ARCHIVED'.
+      Integration test tests/integration/iss0686_archived_state_test.zig (target
+      test-integration-iss0686) was NOT run in this validation cycle. Per tests/specs/PAR-05.md
+      this test IS the designated coverage for this AC. A fresh run of test-integration-iss0686
+      is required before this AC can be marked PASS.
+    verdict: PARTIAL (AC1-AC5 PASS; trailing AC code confirmed but test-integration-iss0686
+      not executed in this cycle)
+
+nfr_results:
+  applicable: false
+  rationale: >
+    PAR-02, PAR-03, PAR-05 have no NFR benchmark targets in tests/bench/bench.zig.
+    Timing thresholds embedded in PAR-04 (attach < 50ms) are exercised transitively and
+    do not apply to this batch. zig build bench not required for this release gate.
+
+blocking_issues: []
+
+rework1_resolution:
+  date: "2026-08-18T01:03:03Z"
+  blocker_1_resolution: >
+    RESOLVED — BACKEND-DEV committed src/scheduler/partition_maintenance.zig and
+    tests/integration/par02_partition_catalog_test.zig as commit d4214528 (pushed to
+    origin). TEST-RUNNER (rework8) verified test-integration-par02: 4/4 PASS and
+    zig build test: 1176/1240 PASS (64 skipped, 0 fail) against committed code.
+  blocker_2_resolution: >
+    RESOLVED — TEST-RUNNER (rework6) ran test-integration-iss0686 against committed
+    d4214528: 1/1 PASS. Clears the PAR-05 events_legacy archival AC gate.
+
+approved_requirements:
+  - PAR-02
+  - PAR-03
+  - PAR-05
+
+acceptance_criteria_final:
+  par_02:
+    ac1: "PASS — carried from batch-3"
+    ac2: "PASS — carried from batch-3"
+    ac3: "PASS — carried from batch-3"
+    ac4: "PASS — carried from batch-3"
+    ac5: >
+      PASS — EXECUTION_PARTITION_CREATED confirmed at partition_maintenance.zig lines 330-353
+      (committed in d4214528). resetFuturePartitionStateForMaintenanceRun helper committed in
+      d4214528. test-integration-par02 4/4 PASS confirmed against committed code (rework8).
+    verdict: PASS (all 5 ACs met, tests confirmed from committed code)
+  par_03:
+    ac1: "PASS — carried from batch-3"
+    ac2: "PASS — carried from batch-3"
+    ac3: "PASS — carried from batch-3"
+    ac4: "PASS — carried from batch-3"
+    ac5: "PASS — carried from batch-3"
+    ac6: >
+      PASS — EXECUTION_PARTITION_DETACHED at partition_retention.zig lines 242-265,
+      EXECUTION_PARTITION_DROPPED at lines 488-511, committed in 054c8b88.
+      test-integration-par03 4/4 PASS (rework5, rework2).
+    verdict: PASS (all 6 ACs met)
+  par_05:
+    ac1: "PASS — carried from batch-4"
+    ac2: "PASS — carried from batch-4"
+    ac3: "PASS — carried from batch-4"
+    ac4: "PASS — carried from batch-4"
+    ac5: "PASS — carried from batch-4"
+    trailing_ac_events_legacy_archival: >
+      PASS — archiveLegacyTable() implemented in partition_retention.zig (lines 145, 343+),
+      events_legacy registered in partition_conversion.zig (lines 519-542, commit 81205de9).
+      test-integration-iss0686 1/1 PASS confirmed against committed d4214528 (rework6).
+    verdict: PASS (all ACs including trailing events_legacy clause met)

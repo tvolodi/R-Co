@@ -12,11 +12,97 @@
 // BPM_TEST_DB_URL must be set; the test connects to a real PostgreSQL.
 const std = @import("std");
 const helpers = @import("helpers.zig");
+const portable_env = @import("env");
+const bpm = @import("bpm");
 
 fn randomSuffix(h: *helpers.TestHarness, allocator: std.mem.Allocator) ![]u8 {
     const id = try h.newUuidString(allocator);
     defer allocator.free(id);
     return std.fmt.allocPrint(allocator, "par02_{s}", .{id});
+}
+
+fn resetFuturePartitionStateForMaintenanceRun(allocator: std.mem.Allocator, pool: *bpm.pool.Pool) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
+    // Force a deterministic tenant schema before any cleanup. The stale rerun bug is
+    // schema-scoped: the physical remainder is sometimes left in tenant_default, not in
+    // whichever schema happens to be first in search_path. We clear both the logical job
+    // ledger and the actual inherited child tables here so the first maintenance cycle
+    // starts cleanly on a rerun.
+    conn.exec("SET search_path TO tenant_default,public", &.{}) catch {};
+    conn.exec("DELETE FROM plat_partition_maintenance_run_log WHERE run_date = CURRENT_DATE", &.{}) catch {};
+    conn.exec(
+        "DELETE FROM plat_partition_catalog WHERE parent_table IN ('events', 'events_ephemeral')",
+        &.{},
+    ) catch {};
+
+    // The platform-event idempotency table must also be cleared for the same
+    // partition-creation keys; otherwise a fresh rerun sees the exact same
+    // idempotency_key values and silently suppresses the new
+    // EXECUTION_PARTITION_CREATED row even though the partition is being
+    // recreated. The event rows themselves are cleaned here too so a count-based
+    // assertion starts from zero rather than a stale prior run's output.
+    conn.exec(
+        "DELETE FROM plat_event_idempotency WHERE idempotency_key LIKE 'EXECUTION_PARTITION_CREATED:%'",
+        &.{} ,
+    ) catch {};
+    conn.exec(
+        "DELETE FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+        &.{bpm.store.PLATFORM_INSTANCE_ID},
+    ) catch {};
+    conn.exec(
+        "DELETE FROM events_ephemeral WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+        &.{bpm.store.PLATFORM_INSTANCE_ID},
+    ) catch {};
+
+    // A rerun may still leave an inherited child table already attached to the
+    // parent even after the logical catalog rows are deleted. Query the live
+    // inheritance graph itself and clear any stale events* child relations present
+    // under tenant_default/public before the first maintenance cycle. This is the
+    // physical remainder that still raises SQLSTATE 42809 when a fresh job tries
+    // to attach events_2026_09.
+    var inherited_rows = try conn.query(
+        allocator,
+        "SELECT n.nspname AS parent_schema, parent.relname AS parent_table, child.relname AS table_name " ++
+            "FROM pg_inherits i " ++
+            "JOIN pg_class parent ON parent.oid = i.inhparent " ++
+            "JOIN pg_class child ON child.oid = i.inhrelid " ++
+            "JOIN pg_namespace n ON n.oid = parent.relnamespace " ++
+            "WHERE parent.relname IN ('events', 'events_ephemeral') " ++
+            "AND n.nspname IN ('tenant_default', 'public') " ++
+            "AND (child.relname LIKE 'events%' OR child.relname LIKE 'events_ephemeral%') " ++
+            "AND child.relkind IN ('r', 'p') " ++
+            "ORDER BY n.nspname, parent.relname, child.relname",
+        &.{},
+    );
+    defer inherited_rows.deinit();
+
+    for (inherited_rows.rows) |row| {
+        if (row.len < 3) continue;
+        const parent_schema = row[0] orelse continue;
+        const parent_table = row[1] orelse continue;
+        const table_name = row[2] orelse continue;
+
+        // Detach the stale child relation from the parent first in the valid PostgreSQL
+        // form. `DETACH PARTITION IF EXISTS` is rejected by the grammar here, so we use
+        // the plain detach statement and ignore failures on already-removed edges.
+        const detach_sql = try std.fmt.allocPrint(
+            allocator,
+            "ALTER TABLE \"{s}\".\"{s}\" DETACH PARTITION \"{s}\"",
+            .{ parent_schema, parent_table, table_name },
+        );
+        defer allocator.free(detach_sql);
+        conn.exec(detach_sql, &.{}) catch {};
+
+        const drop_sql = try std.fmt.allocPrint(
+            allocator,
+            "DROP TABLE IF EXISTS \"{s}\".\"{s}\" CASCADE",
+            .{ parent_schema, table_name },
+        );
+        defer allocator.free(drop_sql);
+        conn.exec(drop_sql, &.{}) catch {};
+    }
 }
 
 // TC (PAR-02): a second row for the same table_name violates
@@ -124,4 +210,116 @@ test "par02_partition_catalog: run_log_unique_per_date_enforces_idempotency" {
     // ON CONFLICT DO NOTHING absorbed the second insert silently — no error,
     // matching PAR-02 AC2's "raises no error", and RETURNING yields zero rows.
     try std.testing.expectEqual(@as(usize, 0), second.rows.len);
+}
+
+// TC-PAR-02-09 (PAR-02 AC5): ensurePartitionAttached emits EXECUTION_PARTITION_CREATED
+// in the events table (via Store.appendPlatform).
+//
+// Verifies that each new partition creation appends exactly one platform event and
+// that a subsequent call for already-ATTACHED partitions emits no additional events
+// (idempotency at the event-emission level).
+test "par02_ac5: ensurePartitionAttached emits EXECUTION_PARTITION_CREATED" {
+    const alloc = std.testing.allocator;
+    // Ensure migrations are applied.
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const env = portable_env.globalEnviron();
+    const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => return error.SkipZigTest,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    // Create pool, registry, store — same pattern as event_store_integration_test.zig.
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+    var pool = try bpm.pool.Pool.init(std.testing.io, alloc, bpm.pool.PoolConfig{
+        .url = url,
+        .pool_size = 3,
+    });
+    defer pool.deinit();
+    var registry = bpm.registry.Registry.init(alloc, &pool);
+    defer registry.deinit();
+    var store = bpm.store.Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    // Delete today's run-log row and clear any stale future partitions so the first
+    // maintenance cycle starts from a clean-enough state on rerun against bpm_test.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        conn.exec("DELETE FROM plat_partition_maintenance_run_log WHERE run_date = CURRENT_DATE", &.{}) catch {};
+    }
+    try resetFuturePartitionStateForMaintenanceRun(alloc, &pool);
+
+    // Count EXECUTION_PARTITION_CREATED events written by prior test runs.
+    const count_before: i64 = blk: {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var rows = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+            &.{bpm.store.PLATFORM_INSTANCE_ID},
+        );
+        defer rows.deinit();
+        if (rows.rows.len > 0 and rows.rows[0].len > 0) {
+            break :blk std.fmt.parseInt(i64, rows.rows[0][0] orelse "0", 10) catch 0;
+        }
+        break :blk 0;
+    };
+
+    // Run the daily maintenance cycle with a store so appendPlatform is called.
+    var scheduler = bpm.partition_maintenance.PartitionMaintenanceScheduler.initWithStore(
+        &pool,
+        bpm.partition_maintenance.PartitionMaintenanceConfig{},
+        &store,
+    );
+    const result = try scheduler.runMaintenanceCycle(alloc);
+    try std.testing.expect(result.ran);
+    try std.testing.expect(result.partitions_created > 0);
+
+    // Exactly one EXECUTION_PARTITION_CREATED event per partition created.
+    const count_after: i64 = blk: {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var rows = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+            &.{bpm.store.PLATFORM_INSTANCE_ID},
+        );
+        defer rows.deinit();
+        if (rows.rows.len > 0 and rows.rows[0].len > 0) {
+            break :blk std.fmt.parseInt(i64, rows.rows[0][0] orelse "0", 10) catch 0;
+        }
+        break :blk 0;
+    };
+    try std.testing.expectEqual(count_before + @as(i64, @intCast(result.partitions_created)), count_after);
+
+    // Idempotency: delete the run-log and re-run; all partitions are already ATTACHED
+    // so ensurePartitionAttached() returns false for each, emitting no new events.
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        conn.exec("DELETE FROM plat_partition_maintenance_run_log WHERE run_date = CURRENT_DATE", &.{}) catch {};
+    }
+    const result2 = try scheduler.runMaintenanceCycle(alloc);
+    try std.testing.expect(result2.ran);
+    try std.testing.expectEqual(@as(u32, 0), result2.partitions_created);
+
+    const count_idempotent: i64 = blk: {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        var rows = try conn.query(
+            alloc,
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1 AND event_type = 'EXECUTION_PARTITION_CREATED'",
+            &.{bpm.store.PLATFORM_INSTANCE_ID},
+        );
+        defer rows.deinit();
+        if (rows.rows.len > 0 and rows.rows[0].len > 0) {
+            break :blk std.fmt.parseInt(i64, rows.rows[0][0] orelse "0", 10) catch 0;
+        }
+        break :blk 0;
+    };
+    // No new events emitted on idempotent re-run.
+    try std.testing.expectEqual(count_after, count_idempotent);
 }

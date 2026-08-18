@@ -5,8 +5,8 @@
 //! relative path inside store.zig.
 pub const pool = @import("pool");
 pub const db_pool = pool;
-pub const registry = @import("event_store/registry.zig");
-pub const store = @import("event_store/store.zig");
+pub const registry = @import("event_store").registry_module; // single-owner: registry.zig is inside event_store_mod
+pub const store = @import("event_store");
 pub const definition = @import("definition/store.zig");
 pub const snapshot = @import("definition/snapshot.zig"); // PD-08
 pub const export_import = @import("definition/export_import.zig"); // PD-09

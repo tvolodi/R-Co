@@ -1,0 +1,30 @@
+{
+  "iss_id": "ISS-0718",
+  "id": "ISS-0718",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/821",
+  "github_issue_confirmed": true,
+  "github_issue_number": 821,
+  "title": "tests/integration/par02_partition_catalog_test.zig:177 uses hardcoded UUID (T010) instead of per-test generation",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "workflow_id": "ADHOC",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-0.5-issue-fixer",
+  "created_at": "2026-08-17T20:03:53Z",
+  "registered_at": "2026-08-17T20:03:53Z",
+  "registered_by": "ISSUE-FIXER (ADHOC-par02-03-05-release-20260817 step-0.5)",
+  "labels": [
+    "bug",
+    "test-isolation",
+    "t010"
+  ],
+  "scope": "tests/integration/par02_partition_catalog_test.zig only. The defect is in the PAR-02 test fixture, not the production PAR-02 code path.",
+  "symptom": "`zig build test-env-verify` fails the C5 test-isolation gate because tests/integration/par02_partition_catalog_test.zig uses a fixed UUID literal at line 177 instead of generating a per-test UUID. This is a test-fixture defect, not a production PAR-02 defect.",
+  "description": "The PAR-02 integration test fixture reuses a hardcoded UUID (`00000000-0000-0000-0000-0000000000ff`) as the instance_id in the events-table assertions. The fixed literal violates the T010 test-isolation rule and makes the fixture non-isolated across runs. The defect is in the PAR-02 test fixture itself, not in the production PAR-02 implementation.",
+  "root_cause": "The test fixture hardcodes a single UUID instead of generating a new UUID per test case. The repeated fixed value causes C5 isolation lint failures and conflates test results across runs.",
+  "acceptance_criteria": [
+    "Replace the hardcoded UUID in tests/integration/par02_partition_catalog_test.zig with a per-test-generated UUID",
+    "The file no longer violates T010 isolation rules",
+    "`python tools/lint_test_isolation.py tests/integration` and `zig build test-env-verify` pass C5 once the fixture is fixed"
+  ]
+}

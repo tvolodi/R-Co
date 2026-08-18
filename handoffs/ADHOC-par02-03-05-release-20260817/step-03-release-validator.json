@@ -1,0 +1,68 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-03-release-validator",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "step": "03",
+  "created_at": "2026-08-17T12:47:56Z",
+  "started_at": "2026-08-18T00:43:04Z",
+  "completed_at": "2026-08-18T00:50:41Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": [
+      "PAR-02",
+      "PAR-03",
+      "PAR-05"
+    ],
+    "stage": "16",
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "previous_blocking_issues": {
+      "PAR-02_AC5_ISS-0670": "RESOLVED — EXECUTION_PARTITION_CREATED now emitted by partition_maintenance.zig ensurePartitionAttached(); TC-PAR-02-09 test now implemented.",
+      "PAR-03_AC6_ISS-0670": "NOW FIXED in this run — EXECUTION_PARTITION_DETACHED/DROPPED now emitted by partition_retention.zig.",
+      "PAR-05_ISS-0686": "RESOLVED — archiveLegacyTable() integrated, events_legacy registered in plat_partition_catalog. PR #738 merged 81205de9."
+    },
+    "test_run": "ADHOC-par02-03-05-release-20260817 step-02",
+    "previous_test_runs": {
+      "PAR-02": "tests/reports/report-20260811-WF02-batch-3.yaml",
+      "PAR-03": "tests/reports/report-20260811-WF02-batch-3.yaml",
+      "PAR-05": "tests/reports/report-20260812-WF02-batch-4.yaml"
+    }
+  },
+  "task": {
+    "description": "Perform a release validation pass for PAR-02, PAR-03, and PAR-05.",
+    "acceptance_criteria": [
+      "All AC bullets for PAR-02 confirmed met",
+      "All AC bullets for PAR-03 confirmed met",
+      "All AC bullets for PAR-05 confirmed met",
+      "No MUST blocking issues remain open for any of the three requirements",
+      "Release decision file written to docs/status/release-stage16-par02-03-05-20260817.yaml"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Release BLOCKED for stage 16 PAR-02/PAR-03/PAR-05. PAR-03 AC6 fully confirmed (par03 4/4 PASS from committed code). PAR-02 AC5 blocked: rework5 evidence relied on uncommitted test infrastructure (resetFuturePartitionStateForMaintenanceRun) — without it TC-PAR-02-09 fails on rerun (SQLSTATE 42809, confirmed rework4). PAR-05 trailing AC blocked: test-integration-iss0686 not run in this cycle. Two blockers must be resolved before APPROVED can be issued.",
+    "artifacts_out": [
+      "docs/status/release-stage16-par02-03-05-20260817.yaml"
+    ],
+    "issues": [
+      {
+        "id": "BLOCKER-1",
+        "severity": "BLOCKER",
+        "requirement": "PAR-02",
+        "title": "resetFuturePartitionStateForMaintenanceRun helper uncommitted — TC-PAR-02-09 not reproducible from committed branch state",
+        "resolution": "BACKEND-DEV: commit tests/integration/par02_partition_catalog_test.zig + src/scheduler/partition_maintenance.zig. TEST-RUNNER re-runs test-integration-par02 from committed state only."
+      },
+      {
+        "id": "BLOCKER-2",
+        "severity": "BLOCKER",
+        "requirement": "PAR-05",
+        "title": "test-integration-iss0686 not run in this validation cycle",
+        "resolution": "TEST-RUNNER: run zig build test-integration-iss0686 --summary all after BLOCKER-1 resolved; confirm archived_state_accepted passes."
+      }
+    ],
+    "next_action": "Route BLOCKER-1 to BACKEND-DEV to commit uncommitted files; route BLOCKER-2 to TEST-RUNNER to run test-integration-iss0686. After both cleared, re-dispatch RELEASE-VALIDATOR for final APPROVED decision. PAR-03 is independently approvable."
+  }
+}

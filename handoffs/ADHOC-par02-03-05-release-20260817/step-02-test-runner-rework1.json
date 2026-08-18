@@ -1,0 +1,59 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner-rework1",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "02-rework1",
+  "created_at": "2026-08-17T13:22:26Z",
+  "started_at": "2026-08-17T13:22:26Z",
+  "completed_at": "2026-08-17T13:37:35Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02", "PAR-03"],
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "rework_reason": "build.zig was missing event_store import for partition_maintenance_mod — now fixed"
+  },
+  "task": {
+    "description": "Re-run integration tests for par02 and par03 after build.zig fix.\n\n1. zig build (must exit 0)\n2. zig build test (unit tests)\n3. par02 integration tests (including TC-PAR-02-09)\n4. par03 integration tests\n\nUpdate test report tests/reports/report-20260817-ADHOC-par02-03-05.yaml with the rework results.",
+    "acceptance_criteria": [
+      "All par02 integration tests pass (including TC-PAR-02-09)",
+      "All par03 integration tests pass",
+      "zig build test exits 0"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Build fix (commit 79335fc5) introduced a second Zig 0.16 single-owner module conflict. zig build exits 0. zig build test exits 1 (2 compile errors: bpm_src_test_root.zig and engine_test.zig). test-integration-par02 exits 1 (same compile error). test-integration-par03 exits 1 (same compile error). All 4 par02 tests and all 4 par03 tests blocked. New blocker issue: ISS-BPM-BUILD-SINGLEOWNER-02.",
+    "artifacts_out": [
+      "tests/reports/report-20260817-ADHOC-par02-03-05.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-BPM-BUILD-SINGLEOWNER-02",
+        "severity": "BLOCKER",
+        "title": "build.zig event_store_mod fix creates second single-owner module conflict in bpm_src_mod",
+        "introduced_by": "commit 79335fc5 — fix(build): wire event_store into partition_maintenance_mod",
+        "error": "src\\scheduler\\partition_maintenance.zig:1:1: error: file exists in modules 'bpm' and 'event_store'",
+        "root_cause": "bpm.zig (bpm_src_mod root) imports event_store/store.zig via relative path (line 9), making store.zig owned by bpm_src_mod. event_store_mod also has store.zig as its root. partition_maintenance_mod depends on event_store_mod (from the fix). bpm_src_mod depends on partition_maintenance_mod. Zig 0.16 single-owner rule rejects: store.zig belongs to both bpm_src_mod and event_store_mod.",
+        "affected_targets": [
+          "zig build test (bpm_src_test_root.zig, engine_test.zig)",
+          "zig build test-integration-par02",
+          "zig build test-integration-par03"
+        ],
+        "fix_required": {
+          "description": "Convert relative event_store imports in bpm_src_mod file tree to named module imports; add event_store_mod to bpm_src_mod .imports",
+          "files": [
+            "src/bpm.zig lines 8-9: @import(event_store/...) -> @import(event_store) named",
+            "src/simulation/types.zig line 2: @import(../event_store/store.zig) -> @import(event_store)",
+            "src/simulation/tenant_store.zig line 2: same",
+            "build.zig: add event_store_mod to bpm_src_mod .imports array"
+          ]
+        },
+        "next_action": "ORCH dispatch BACKEND-DEV for build.zig + source fix; re-dispatch TEST-RUNNER rework2"
+      }
+    ],
+    "next_action": "ORCH must dispatch BACKEND-DEV to fix ISS-BPM-BUILD-SINGLEOWNER-02 (single-owner conflict in bpm/event_store), then re-dispatch TEST-RUNNER as rework2"
+  }
+}

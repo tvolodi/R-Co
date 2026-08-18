@@ -1,0 +1,51 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-01-backend-dev-rework7",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "step": "01-rework7",
+  "created_at": "2026-08-17T21:10:31Z",
+  "started_at": "2026-08-17T21:10:31Z",
+  "status": "ESCALATED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02"],
+    "stage": "16",
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "test_run": "ADHOC-par02-03-05-release-20260817 step-02-rework4",
+    "blocking_sql": "ALTER TABLE events ATTACH PARTITION events_2026_09 FOR VALUES FROM ('2026-09-01 00:00:00') TO ('2026-10-01 00:00:00')",
+    "related_handoff_ids": [
+      "ADHOC-par02-03-05-release-20260817-02-test-runner-rework4",
+      "ADHOC-par02-03-05-release-20260817-01-backend-dev-rework5",
+      "ADHOC-par02-03-05-release-20260817-01-backend-dev-rework6"
+    ]
+  },
+  "task": {
+    "description": "Narrow the PAR-02 rerun fix to the exact inherited child relations still attached under tenant_default. The previous reset helper improved logical cleanup, but the scheduler still reaches events_2026_09 and hits SQLSTATE 42809. Inspect the live partition inheritance state before the first maintenance cycle, identify the exact stale child relations under tenant_default/events, and clear that physical attachment state deterministically in the test helper. Preserve the shared bpm.store.PLATFORM_INSTANCE_ID-based event assertion and the idempotency check, then rerun the explicit 5434 validation sequence: zig build test-env-verify, zig build test, zig build test-integration-par02, zig build test-integration-par03.",
+    "acceptance_criteria": [
+      "tests/integration/par02_partition_catalog_test.zig no longer fails on SQLSTATE 42809 when attaching events_2026_09",
+      "zig build test-env-verify passes with BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test",
+      "zig build test passes",
+      "zig build test-integration-par02 passes",
+      "zig build test-integration-par03 passes"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "The PAR-02 rerun reached the workflow max_rework ceiling without resolving the remaining attach-state blocker. The maintenance cycle still fails on the September partition path, so the run is escalated for human review instead of continuing a blind retry loop.",
+    "artifacts_out": [
+      "tests/integration/par02_partition_catalog_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "The inherited child-partition cleanup path was narrowed to the live tenant_default/public relation state, but the required validation sequence still fails on par02_ac5. The first maintenance cycle no longer hits SQLSTATE 42809; the remaining blocker is that the shared EXECUTION_PARTITION_CREATED event count stays at 0 instead of rising by the number of newly attached partitions, so the acceptance criteria remain unmet.",
+        "location": "tests/integration/par02_partition_catalog_test.zig"
+      }
+    ],
+    "next_action": "Escalate for human review / issue queue; no further automatic rework is allowed because the run has reached max_rework."
+  },
+  "completed_at": "2026-08-17T21:20:14Z"
+}

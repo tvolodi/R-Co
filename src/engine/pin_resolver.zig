@@ -14,7 +14,7 @@
 const std = @import("std");
 const db = @import("pool");
 const graph_mod = @import("graph");
-const registry_mod = @import("../event_store/registry.zig");
+const registry_mod = @import("event_store").registry_module; // single-owner: registry.zig is inside event_store_mod
 
 pub const Uuid = graph_mod.Uuid;
 

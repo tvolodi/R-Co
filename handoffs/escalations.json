@@ -123,6 +123,22 @@
       "reason": "rework_count=2 >= max_rework=2. Step 05 RETRY 2 FAIL: 8 advisory-lock SEs with lock_timeout=300s still firing under high-concurrency seed. Fix is known: change lock_timeout=300s to lock_timeout=0 (unbounded) in all 4 pg_advisory_lock brackets. GH-752 core fix (statement_timeout=0) is confirmed working on most seeds. Routing to ADHOC for final targeted fix.",
       "known_fix": "tests/integration/helpers.zig: change lock_timeout 300s -> 0 in all 4 advisory lock brackets",
       "resolution_path": "ADHOC-gh752-lockfix-20260813"
+    },
+    {
+      "escalation_id": "esc-adhoc-par02-20260817-step01-rework7",
+      "run_id": "ADHOC-par02-03-05-release-20260817",
+      "escalated_at": "2026-08-17T21:21:24Z",
+      "status": "ESCALATED",
+      "step": "01-rework7",
+      "agent": "BACKEND-DEV",
+      "reason": "rework_count exceeded the normal ceiling while chasing a PAR-02 rerunnable-test attach-state blocker. The latest rerun no longer fails on SQLSTATE 42809 but still returns zero EXECUTION_PARTITION_CREATED events, so the backend test reset is oscillating between over-clean and under-clean states and needs human review.",
+      "last_issues": [
+        {
+          "severity": "BLOCKER",
+          "description": "PAR-02 integration rerun still fails on the event-emission assertion after cleanup changes. The live maintenance cycle now reaches zero created partitions instead of proving the attach path, so the remaining test-state logic needs a fresh human-guided diagnosis.",
+          "affected_requirement": "PAR-02"
+        }
+      ]
     }
   ]
 }

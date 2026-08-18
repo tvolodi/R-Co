@@ -1,0 +1,46 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner-rework3",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "02-rework3",
+  "created_at": "2026-08-17T14:02:27Z",
+  "started_at": "2026-08-17T14:02:27Z",
+  "completed_at": "2026-08-17T19:59:09Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-02", "PAR-03"],
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "rework_reason": "OutOfMemory error propagation fixed in ensurePartitionAttached — commit 5075c7bc"
+  },
+  "task": {
+    "description": "Final test run: zig build + zig build test + par02/par03 integration tests. This is rework 3 — max rework.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "All par02 integration tests pass (including TC-PAR-02-09)",
+      "All par03 integration tests pass"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "The OutOfMemory fix is in place, but the final release gate is blocked by a pre-existing test-isolation violation: `zig build test-env-verify` fails on C5 with a hardcoded UUID in tests/integration/par02_partition_catalog_test.zig. The build itself still exits 0, but the infrastructure gate blocks execution of the unit and integration layers before they can be accepted.",
+    "artifacts_out": [
+      "tests/reports/report-20260817-ADHOC-par02-03-05.yaml"
+    ],
+    "issues": [
+      {
+        "id": "T010-PAR02-UUID-01",
+        "severity": "BLOCKER",
+        "title": "Hardcoded UUID violates test isolation in par02 integration suite",
+        "description": "zig build test-env-verify fails at C5 with [BLOCKER] T010 tests/integration/par02_partition_catalog_test.zig:177 — hardcoded UUID `00000000-0000-0000-0000-0000000000ff` — generate per-test UUIDs instead.",
+        "location": "tests/integration/par02_partition_catalog_test.zig:177",
+        "root_cause": "The test fixture reuses a fixed UUID across isolated test cases, which violates the repository's test isolation contract and blocks the environment gate before the final PAR-02/PAR-03 acceptance run can proceed.",
+        "fix_required": "Remove the hardcoded UUID and generate a unique UUID per test case (or per test harness instance) before rerunning test-env-verify and the final release suite."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV to fix the T010 UUID isolation violation in the par02 test fixture, then re-run the full release validation sequence."
+  }
+}

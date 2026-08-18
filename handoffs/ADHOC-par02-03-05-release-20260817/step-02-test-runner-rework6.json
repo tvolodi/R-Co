@@ -1,0 +1,33 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner-rework6",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "02-rework6",
+  "created_at": "2026-08-18T00:57:43Z",
+  "started_at": "2026-08-18T00:57:43Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": ["PAR-05"],
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "head_commit": "d4214528",
+    "blocker": "RELEASE-VALIDATOR BLOCKED-2: test-integration-iss0686 (PAR-05 events_legacy archival AC) was not run in rework5 cycle. Must run and pass before RELEASE-VALIDATOR can approve PAR-05."
+  },
+  "task": {
+    "description": "Run the PAR-05 iss0686 integration test to clear RELEASE-VALIDATOR BLOCKER-2.\n\nAll commands use BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test explicitly.\n\n1. Run: BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-iss0686 --summary all\n   If the target does not exist in build.zig, report that clearly (do not attempt to create it — this is a test gap, not a new build target to add).\n\n2. If the target exists and passes: report exact counts (N/N pass)\n3. If the target does not exist: report 'target not found in build.zig' and list any build targets whose name contains 'par05' or 'iss0686'\n\nAlso append a 'rework6' section to tests/reports/report-20260817-ADHOC-par02-03-05.yaml with the result.\n\nReturn PASS if the target exits 0 with all tests passing.\nReturn FAIL if it exits non-0 or the target doesn't exist.",
+    "acceptance_criteria": [
+      "zig build test-integration-iss0686 exits 0 with all tests passing, OR clearly reports the target does not exist",
+      "rework6 section appended to tests/reports/report-20260817-ADHOC-par02-03-05.yaml"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "test-integration-iss0686 exists in build.zig (line 3627) and passed: 1/1 tests passed, exit code 0. rework6 section appended to tests/reports/report-20260817-ADHOC-par02-03-05.yaml. RELEASE-VALIDATOR BLOCKER-2 cleared.",
+    "artifacts_out": ["tests/reports/report-20260817-ADHOC-par02-03-05.yaml"],
+    "issues": []
+  },
+  "completed_at": "2026-08-18T00:59:11Z"
+}
