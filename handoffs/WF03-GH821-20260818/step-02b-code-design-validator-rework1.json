@@ -1,0 +1,50 @@
+{
+  "handoff_id": "a535c767-f6bf-4a12-8a67-9fa008193122",
+  "run_id": "WF03-GH821-20260818",
+  "workflow_id": "WF-03",
+  "step": "2b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH821-20260818/step-02b-code-design-validator-rework1.json",
+  "created_at": "2026-08-18T11:13:48Z",
+  "started_at": "2026-08-18T11:13:48Z",
+  "completed_at": "2026-08-18T11:14:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "8a05a32a-d250-48fc-8803-a274e842beac",
+      "359c103f-18ba-4463-8a2f-e28e84870607"
+    ],
+    "artifacts_in": [
+      "src/design/WF03-GH821-fix-design.md",
+      "docs/issues/ISS-0718.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b Rework 1 — Re-validate the updated CODE-DESIGNER artefact for GH-821.\n\nThe previous FAIL was because the design did not explain the AC#1 divergence (AC#1 said per-test UUID, fix used all-zeros sentinel). CODE-DESIGNER has added an explicit AC#1 divergence section. Re-validate that:\n1. The design now explains why all-zeros sentinel satisfies AC#1 intent\n2. Design still contains no implementation code\n3. Verification criteria are clear for BACKEND-DEV\n4. All GH-821 acceptance criteria are covered",
+    "acceptance_criteria": [
+      "AC#1 divergence paragraph exists and is logically sound",
+      "Design contains no Zig/SQL/TS code",
+      "Verification criteria are explicit",
+      "PASS or FAIL with clear rationale"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "PASS — all validation checks satisfied after rework.\n\n1. AC#1 divergence section: PRESENT and logically sound. The section explains that (a) using a random UUID for a platform-level fixture would be semantically wrong because the engine treats any non-sentinel UUID as a real tenant identity, (b) the all-zeros sentinel is the canonical 'no tenant / platform-level' constant across the codebase, and (c) AC#1's intent (no opaque, test-specific UUID remains hardcoded) is met because the remaining value is a documented protocol constant with an explicit linter exemption.\n\n2. T010 intent satisfied: Section 'How this satisfies T010 intent' explains the linter exempts ALL_ZEROS_UUID as a well-known protocol constant rather than test-specific state. The file no longer encodes test-specific identity in the UUID field.\n\n3. No implementation code: No Zig function bodies, SQL DDL, or JSX present. UUID string literals shown are documentation evidence; shell commands shown are verification instructions for BACKEND-DEV.\n\n4. Verification commands: Two explicit commands with expected outcomes are specified — 'python tools/lint_test_isolation.py tests/integration' (exit 0, zero T010 violations) and 'zig build test-env-verify' (C5 gate passes).\n\n5. All GH-821 ACs covered: T010 fix via linter-exempt sentinel, linter pass command listed, C5 gate command listed, AC#1 divergence fully explained.\n\n6. lint_design_artefact.py: exits 0, no issues.\n\nNext action: Route to BACKEND-DEV (Step 3) for verification-only execution.",
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  }
+}

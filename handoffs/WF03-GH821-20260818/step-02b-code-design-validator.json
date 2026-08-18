@@ -1,0 +1,55 @@
+{
+  "handoff_id": "8a05a32a-d250-48fc-8803-a274e842beac",
+  "run_id": "WF03-GH821-20260818",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-GH821-20260818/step-02b-code-design-validator.json",
+  "created_at": "2026-08-18T11:06:58Z",
+  "started_at": "2026-08-18T11:06:58Z",
+  "completed_at": "2026-08-18T11:10:27Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "166adc3a-db97-4ec0-b360-a55bd843ccce"
+    ],
+    "artifacts_in": [
+      "src/design/WF03-GH821-fix-design.md",
+      "docs/issues/ISS-0718.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2b — Hard gate: validate CODE-DESIGNER artefact for GH-821 fix.\n\nValidate src/design/WF03-GH821-fix-design.md:\n1. The design must accurately describe the root cause (T010 hardcoded UUID)\n2. The design must confirm the fix is already applied and describe it precisely\n3. The design must contain NO implementation code (Zig, SQL, TypeScript)\n4. The design must specify clear verification criteria for BACKEND-DEV\n5. The design must not defer any acceptance criteria from the issue",
+    "acceptance_criteria": [
+      "Design accurately describes root cause and applied fix",
+      "Design contains no implementation code",
+      "Verification criteria are explicit and runnable",
+      "PASS or FAIL with clear rationale"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "FAIL — 1 MAJOR finding. Linter: OK (exit 0). Checks 1–4 pass: T010 root cause correctly described; commit bc9af23f confirmed (bad UUID absent from file, grep returns empty); no Zig/SQL/TS implementation code in design; verification commands (lint + C5 gate) are explicit and runnable. Check 5 FAILS: ISS-0718 AC#1 states 'Replace the hardcoded UUID with a per-test-generated UUID'; the applied fix instead substitutes the all-zeros sentinel (00000000-0000-0000-0000-000000000000), which is a different hardcoded constant, not a per-test-generated UUID. The design provides sound justification (platform-level test, T010 exemption for ALL_ZEROS_UUID), but never explicitly acknowledges that AC#1's literal wording was not followed and never explains why the sentinel constitutes a valid alternative. A reviewer checking GH-821 AC#1 will find the fix does not literally satisfy 'per-test-generated UUID' and may dispute closure. CODE-DESIGNER must add an explicit paragraph acknowledging the AC#1 discrepancy and justifying the sentinel as the correct alternative — or flag AC#1 as an open question with a resolution path.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "check": "coverage — AC#1 from GH-821",
+        "detail": "ISS-0718 AC#1 says 'per-test-generated UUID'; the design describes applying the all-zeros sentinel without acknowledging the divergence from AC#1 literal text or justifying why the sentinel satisfies AC#1's intent. Must be addressed before BACKEND-DEV can proceed."
+      }
+    ],
+    "git_evidence": {
+      "branch_name": null,
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  }
+}

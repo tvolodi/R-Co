@@ -4,6 +4,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-18
 
+### fix(test): GH-821/ISS-0718 — PAR-02 integration fixture UUID fix RESOLVED (WF03-GH821-20260818)
+
+- fix(test): replace hardcoded UUID literal with all-zeros no-tenant sentinel in par02 integration fixture; resolves T010 isolation gate failure (GH-821, ISS-0718)
+
 ### fix(qry): WF-03 bugs — QRY-01/02/03/04 TESTED (WF03-qry01-04-bugs-20260818)
 
 - **fix(qry): GH-823 — allowlist typed-column merge now works correctly.** The entity query compiler now correctly merges typed-column names with `filterable_jsonb_keys` entries; previously a typed column could bypass the allowlist check when a JSONB key of the same name existed, producing either a double-predicate or a silent miss. Fix in `src/api/routes/entity_query.zig`. Test TC-QRY-02-06 (typed-column vs JSONB-key shadowing).

@@ -1,0 +1,49 @@
+{
+  "handoff_id": "ff86e7a3-5555-4075-89f3-f4a4be82b40c",
+  "run_id": "WF03-GH821-20260818",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-GH821-20260818/step-03-backend-dev.json",
+  "created_at": "2026-08-18T11:16:13Z",
+  "started_at": "2026-08-18T11:16:13Z",
+  "completed_at": "2026-08-18T11:18:43Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a535c767-f6bf-4a12-8a67-9fa008193122"
+    ],
+    "artifacts_in": [
+      "src/design/WF03-GH821-fix-design.md",
+      "tests/integration/par02_partition_catalog_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 3 — Verification-only step for GH-821.\n\nThe fix for GH-821 (T010 UUID violation in par02_partition_catalog_test.zig:177) was already applied at commit bc9af23f on main. No code changes are required.\n\nYour task is to verify on the feature branch feature/WF03-GH821-20260818:\n1. Confirm the current content of tests/integration/par02_partition_catalog_test.zig line 177 uses the all-zeros sentinel (00000000-0000-0000-0000-000000000000)\n2. Run: python tools/lint_test_isolation.py tests/integration\n   - Expected: exit 0, 'OK'\n3. Run: zig build test-env-verify 2>&1 (if available, check for C5)\n   - If test-env-verify does not exist, run: zig build check and confirm exit 0\n4. If all checks pass: NO commits needed on the feature branch. Leave it as-is.\n5. Report results in result.summary.",
+    "acceptance_criteria": [
+      "python tools/lint_test_isolation.py tests/integration exits 0",
+      "zig build check exits 0 (or test-env-verify C5 is green)",
+      "No code changes were needed — confirm the fix is already in place",
+      "result.status = PASS if all checks green"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Verification-only step. Branch: feature/WF03-GH821-20260818.\n\n1. Line 177 content: comment text (line numbers shifted +88 after bc9af23f added new functions). The all-zeros sentinel '00000000-0000-0000-0000-000000000000' is confirmed present at line 235 via grep; no non-zero UUID exists in the file.\n2. python tools/lint_test_isolation.py tests/integration → exit 0: 'OK — 192 file(s) checked, no isolation issues. Suppressed 117 issue(s) from baseline.'\n3. zig build check → exit 0 (build_exit=0). Stderr INFO line from zig is a PowerShell NativeCommandError false positive; actual exit code is 0.\n4. No code changes were made. Feature branch is clean — no new commits beyond main.",
+    "artifacts_out": [],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-GH821-20260818",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": null,
+      "pr_url": null,
+      "pr_create_error": null
+    }
+  }
+}
