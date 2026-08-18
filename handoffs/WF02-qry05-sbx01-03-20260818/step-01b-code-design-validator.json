@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-qry05-sbx01-03-20260818-01b-code-design-validator",
+  "run_id": "WF02-qry05-sbx01-03-20260818",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-01b-code-design-validator.json",
+  "created_at": "2026-08-18T12:34:59Z",
+  "started_at": "2026-08-18T12:34:59Z",
+  "completed_at": "2026-08-18T12:38:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry05-sbx01-03-20260818",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "QRY-05",
+      "SBX-01",
+      "SBX-02",
+      "SBX-03"
+    ],
+    "design_file": "src/design/WF02-qry05-sbx01-03-20260818.md",
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818"
+  },
+  "task": {
+    "description": "Hard gate: validate the design artefact at src/design/WF02-qry05-sbx01-03-20260818.md.\n\nCheck against requirements QRY-05, SBX-01, SBX-02, SBX-03 from docs/requirements.yaml.\n\nValidation criteria:\n1. Every acceptance criterion from all 4 requirements is addressed in the design\n2. The design contains NO implementation code (only interfaces, types, signatures, DDL)\n3. The design is complete enough for BACKEND-DEV to implement without ambiguity\n4. All new DB tables, migrations, and Zig module paths are named\n5. All error codes referenced in requirements are covered\n6. Security invariants satisfied (tenant isolation, no cross-tenant reads)\n\nReturn PASS if all criteria met, FAIL with specific gaps if not."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/WF02-qry05-sbx01-03-20260818.md validated. All acceptance criteria for QRY-05, SBX-01, SBX-02, SBX-03 covered. lint_design_artefact.py exit 0, no issues. All 5 required error codes present: filter_field_not_allowlisted, orchestrator_role_required, conflicting_agent_roles, orchestrator_may_not_claim, implementer_role_required. Tenant isolation via SPT-03 search_path; migrations 1169/1170 scope tenant_only. Field grants scoped per tenant. No function bodies in design. SBX-02 hash ordering constraint explicitly documented. Migrations named: 1169_qry05_entity_field_grants.sql, 1170_sbx_task_specs_agent_sandboxes.sql.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

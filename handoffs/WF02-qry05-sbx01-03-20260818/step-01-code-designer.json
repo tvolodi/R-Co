@@ -1,0 +1,55 @@
+{
+  "handoff_id": "WF02-qry05-sbx01-03-20260818-01-code-designer",
+  "run_id": "WF02-qry05-sbx01-03-20260818",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-01-code-designer.json",
+  "created_at": "2026-08-18T12:26:26Z",
+  "started_at": "2026-08-18T12:26:26Z",
+  "completed_at": "2026-08-18T12:34:07Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry05-sbx01-03-20260818",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "QRY-05",
+      "SBX-01",
+      "SBX-02",
+      "SBX-03"
+    ],
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818",
+    "base_commit_sha": "e8a3608b35010d07bae3bb5fb544c9be5f410792",
+    "stage": "17",
+    "prior_art": [
+      "src/api/routes/entity_query.zig (QRY-01..04 implementation)",
+      "src/api/middleware/auth.zig (role/scope checking)",
+      "src/api/authorization.zig (authorization model)",
+      "docs/requirements.yaml (QRY-05, SBX-01, SBX-02, SBX-03 requirement bodies)"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for the 4 stage-17 requirements below. Write to src/design/WF02-qry05-sbx01-03-20260818.md on the feature branch.\n\n## Requirements\n\n### QRY-05: Server-side field stripping on query results\n- Fields the caller has no read grant for SHALL be removed from every item before serialisation\n- Stripped field is ABSENT (not null/empty/redacted)\n- Stripping happens on the server\n- Stripped field not usable as filter/sort unless caller has read grant\n- Builds on QRY-01 (entity query endpoint)\n\n### SBX-01: Orchestrator role gate on task-spec submission\n- `POST /api/v1/agent/task-specs` requires BOTH `agent.submit_task_spec` scope AND `tenant_orchestrator` realm role\n- Either alone \u2192 HTTP 403 `orchestrator_role_required`\n- Token with BOTH `tenant_orchestrator` AND `tenant_implementer` \u2192 HTTP 403 `conflicting_agent_roles`\n- Check in request handler (not gateway)\n- Appends `TaskSpecSubmissionRejected` audit event on rejection\n\n### SBX-02: Server-authoritative orchestrator principal\n- Handler sets `spec.orchestrator_principal` = verified token subject (server side)\n- Any client-supplied `orchestrator_principal` in body is DISCARDED silently\n- `spec_hash` (AGT-04) computed over canonical JSON with server-set principal\n- Appends `TaskSpecSubmitted` audit event with principal recorded\n\n### SBX-03: Orchestrator excluded from sandbox claim\n- Sandbox claim endpoint rejects `tenant_orchestrator` token \u2192 HTTP 403 `orchestrator_may_not_claim`\n- Requires `tenant_implementer` role; without it \u2192 HTTP 403 `implementer_role_required`\n- Orchestrator CAN call GET /api/v1/agent/sandboxes (read-only supervisory view of all tenant sandboxes)\n- Implementer GET /api/v1/agent/sandboxes restricted to their own sandboxes\n- Appends `SandboxClaimRejected` on rejection\n\n## Design requirements\n- Define the new fields/structs/types needed\n- Specify the exact Zig function signatures for new handler logic\n- Specify DB schema changes if any (migration file names)\n- Describe the data flow for each requirement\n- Cover all acceptance criteria\n- NO implementation code \u2014 interfaces and contracts only\n- Must be complete enough for BACKEND-DEV to implement without ambiguity",
+    "output_file": "src/design/WF02-qry05-sbx01-03-20260818.md"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for QRY-05, SBX-01, SBX-02, SBX-03 -- types: [E] (all novel/cross-cutting). Two migrations, four new modules, two existing modules extended.",
+    "artifacts_out": [
+      "src/design/WF02-qry05-sbx01-03-20260818.md",
+      "migrations/1169_qry05_entity_field_grants.sql",
+      "migrations/1170_sbx_task_specs_agent_sandboxes.sql"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "rng_seed uint64 values >= 2^63 cannot be represented as standard JSON integers; handler behaviour for such values is not covered by AGT-05 acceptance criteria. Flagged as open question for REQ-ANALYST."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

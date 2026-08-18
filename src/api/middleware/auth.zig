@@ -101,6 +101,12 @@ pub const Role = enum {
     }
 };
 
+/// Agent realm roles extracted from JWT realm_access.roles (SBX-01).
+pub const AgentRealmRole = enum {
+    tenant_orchestrator,
+    tenant_implementer,
+};
+
 pub const TenantContextSource = enum {
     token_claim,
     default_fallback,
@@ -180,6 +186,12 @@ pub const AuthContext = struct {
     /// Resolved tenant context for the request lifecycle.
     tenant_id: [36]u8 = DEFAULT_TENANT_ID.*,
     tenant_source: TenantContextSource = .default_fallback,
+    /// Agent realm roles from JWT realm_access.roles (SBX-01).
+    /// Empty slice for non-agent tokens. Caller owns; freed with same allocator.
+    agent_realm_roles: []const AgentRealmRole = &.{},
+    /// OAuth2 scopes from the JWT `scope` claim (space-split).
+    /// Empty slice when claim is absent. Caller owns.
+    token_scopes: []const []const u8 = &.{},
 };
 
 fn rolePriority(role: Role) u8 {
@@ -1136,6 +1148,75 @@ fn tryTenantRealmAuth(
     } };
 }
 
+const AgentClaims = struct {
+    roles: []AgentRealmRole,
+    scopes: [][]const u8,
+};
+
+/// Extract agent realm roles and OAuth2 scopes from a decoded JWT payload JSON.
+/// Returns allocated slices; caller must free both.
+fn extractAgentClaims(
+    allocator: std.mem.Allocator,
+    payload_json: []const u8,
+) AgentClaims {
+    const empty = AgentClaims{ .roles = &.{}, .scopes = &.{} };
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        payload_json,
+        .{ .allocate = .alloc_always },
+    ) catch return empty;
+    defer parsed.deinit();
+    if (parsed.value != .object) return empty;
+
+    var roles: std.ArrayList(AgentRealmRole) = .empty;
+    errdefer roles.deinit(allocator);
+    var scopes: std.ArrayList([]const u8) = .empty;
+    errdefer {
+        for (scopes.items) |s| allocator.free(s);
+        scopes.deinit(allocator);
+    }
+
+    // Parse realm_access.roles
+    if (parsed.value.object.get("realm_access")) |ra| {
+        if (ra == .object) {
+            if (ra.object.get("roles")) |rr| {
+                if (rr == .array) {
+                    for (rr.array.items) |item| {
+                        if (item == .string) {
+                            if (std.mem.eql(u8, item.string, "tenant_orchestrator")) {
+                                roles.append(allocator, .tenant_orchestrator) catch {};
+                            } else if (std.mem.eql(u8, item.string, "tenant_implementer")) {
+                                roles.append(allocator, .tenant_implementer) catch {};
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Parse scope claim (space-separated string)
+    if (parsed.value.object.get("scope")) |sc| {
+        if (sc == .string) {
+            var it = std.mem.splitScalar(u8, sc.string, ' ');
+            while (it.next()) |tok| {
+                if (tok.len > 0) {
+                    const copy = allocator.dupe(u8, tok) catch continue;
+                    scopes.append(allocator, copy) catch {
+                        allocator.free(copy);
+                    };
+                }
+            }
+        }
+    }
+
+    return AgentClaims{
+        .roles = roles.toOwnedSlice(allocator) catch &.{},
+        .scopes = scopes.toOwnedSlice(allocator) catch &.{},
+    };
+}
+
 /// Authenticate a single HTTP request.  Called by the HTTP server in the
 /// middleware chain BEFORE any route handler is dispatched.
 ///
@@ -1314,6 +1395,40 @@ pub fn authenticate(
             return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
         };
 
+        // SBX-01: extract agent realm roles + scopes; check for conflicting roles.
+        const payload_for_agent = decodeJwtPayload(allocator, raw_token) catch null;
+        defer if (payload_for_agent) |p| allocator.free(p);
+        const agent_claims: AgentClaims = if (payload_for_agent) |p|
+            extractAgentClaims(allocator, p)
+        else
+            AgentClaims{ .roles = &.{}, .scopes = &.{} };
+
+        // SBX-01 AC5: both orchestrator and implementer roles → HTTP 403
+        const has_orch = blk: {
+            for (agent_claims.roles) |r| {
+                if (r == .tenant_orchestrator) break :blk true;
+            }
+            break :blk false;
+        };
+        const has_impl = blk: {
+            for (agent_claims.roles) |r| {
+                if (r == .tenant_implementer) break :blk true;
+            }
+            break :blk false;
+        };
+        if (has_orch and has_impl) {
+            allocator.free(user_id);
+            allocator.free(token_id);
+            allocator.free(oidc_principal);
+            for (agent_claims.roles) |_| {} // roles is []AgentRealmRole, no strings to free
+            allocator.free(agent_claims.roles);
+            for (agent_claims.scopes) |s| allocator.free(s);
+            allocator.free(agent_claims.scopes);
+            const body = allocator.dupe(u8, "{\"detail\":\"conflicting_agent_roles\",\"status\":403}") catch
+                "{\"detail\":\"conflicting_agent_roles\",\"status\":403}";
+            return .{ .forbidden = .{ .status_code = 403, .body = body } };
+        }
+
         return .{ .authenticated = .{
             .user_id = user_id,
             .role = role,
@@ -1322,6 +1437,8 @@ pub fn authenticate(
             .principal = oidc_principal,
             .tenant_id = resolved_tenant.tenant_id,
             .tenant_source = resolved_tenant.source,
+            .agent_realm_roles = agent_claims.roles,
+            .token_scopes = agent_claims.scopes,
         } };
     }
 
@@ -1349,15 +1466,17 @@ pub fn authenticate(
                 allocator.free(user_id_boot);
                 return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
             };
-            return .{ .authenticated = .{
-                .user_id = user_id_boot,
-                .role = .PLATFORM_ADMIN,
-                .is_bootstrap = true,
-                .token_id = token_id_boot,
-                .principal = token_id_boot, // bootstrap: principal = "bootstrap" (ISS-403)
-                .tenant_id = resolved_tenant.tenant_id,
-                .tenant_source = resolved_tenant.source,
-            } };
+            return .{
+                .authenticated = .{
+                    .user_id = user_id_boot,
+                    .role = .PLATFORM_ADMIN,
+                    .is_bootstrap = true,
+                    .token_id = token_id_boot,
+                    .principal = token_id_boot, // bootstrap: principal = "bootstrap" (ISS-403)
+                    .tenant_id = resolved_tenant.tenant_id,
+                    .tenant_source = resolved_tenant.source,
+                },
+            };
         }
     }
 
@@ -1559,15 +1678,17 @@ pub fn authenticate(
     }
 
     // Step 10: Return authenticated.
-    return .{ .authenticated = .{
-        .user_id = user_id,
-        .role = role,
-        .is_bootstrap = false,
-        .token_id = token_id,
-        .principal = token_id, // local API token: principal = token_id UUID (ISS-403)
-        .tenant_id = resolved_tenant.tenant_id,
-        .tenant_source = resolved_tenant.source,
-    } };
+    return .{
+        .authenticated = .{
+            .user_id = user_id,
+            .role = role,
+            .is_bootstrap = false,
+            .token_id = token_id,
+            .principal = token_id, // local API token: principal = token_id UUID (ISS-403)
+            .tenant_id = resolved_tenant.tenant_id,
+            .tenant_source = resolved_tenant.source,
+        },
+    };
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

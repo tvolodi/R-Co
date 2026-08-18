@@ -17,6 +17,7 @@ const query_types = @import("../../entities/query/types.zig");
 const query_allowlist = @import("../../entities/query/allowlist.zig");
 const query_compiler = @import("../../entities/query/compiler.zig");
 const query_cursor = @import("../../entities/query/cursor.zig");
+const field_grants_mod = @import("../../entities/query/field_grants.zig");
 
 pub const HandlerResult = response_mod.HandlerResult;
 
@@ -79,6 +80,19 @@ pub fn handleEntityQuery(
     };
     defer query_allowlist.deinitAllowlist(allocator, &al);
 
+    // QRY-05: load field grants for the caller and narrow the allowlist.
+    var field_grants = field_grants_mod.loadFieldGrants(allocator, conn, auth.user_id, entity_key) catch {
+        const pd = errors_mod.problemServiceUnavailable("field_grants_load_failed");
+        return response_mod.problemResponse(allocator, pd);
+    };
+    defer field_grants_mod.deinitFieldGrantSet(allocator, &field_grants);
+
+    var narrow_al = query_allowlist.narrowAllowlist(allocator, al, field_grants.denied_fields) catch {
+        const pd = errors_mod.problemServiceUnavailable("out_of_memory");
+        return response_mod.problemResponse(allocator, pd);
+    };
+    defer query_allowlist.deinitAllowlist(allocator, &narrow_al);
+
     const table_name = std.fmt.allocPrint(allocator, "ent_{s}", .{entity_key}) catch {
         const pd = errors_mod.problemServiceUnavailable("out_of_memory");
         return response_mod.problemResponse(allocator, pd);
@@ -88,7 +102,7 @@ pub fn handleEntityQuery(
     var rejected_filter_field: ?[]const u8 = null;
     defer if (rejected_filter_field) |n| allocator.free(n);
 
-    const compiled = query_compiler.compile(allocator, table_name, al, req, tenant_id_slice, &rejected_filter_field) catch |err| {
+    const compiled = query_compiler.compile(allocator, table_name, narrow_al, req, tenant_id_slice, &rejected_filter_field) catch |err| {
         if (err == error.FilterFieldNotAllowlisted) {
             const body: []const u8 = if (rejected_filter_field) |fname|
                 std.fmt.allocPrint(
@@ -143,7 +157,7 @@ pub fn handleEntityQuery(
         ) catch null;
     }
 
-    const items_json = serialiseRows(allocator, rows.rows[0..result_count]) catch {
+    const items_json = serialiseRowsWithStripping(allocator, rows.rows[0..result_count], field_grants.denied_fields) catch {
         const pd = errors_mod.problemServiceUnavailable("serialization_failed");
         return response_mod.problemResponse(allocator, pd);
     };
@@ -421,6 +435,38 @@ fn serialiseRows(allocator: std.mem.Allocator, rows: [][]?[]u8) ![]u8 {
         if (row.len > 0) {
             if (row[0]) |json_col| {
                 out.appendSlice(allocator, json_col) catch return error.OutOfMemory;
+            } else {
+                out.appendSlice(allocator, "null") catch return error.OutOfMemory;
+            }
+        } else {
+            out.appendSlice(allocator, "null") catch return error.OutOfMemory;
+        }
+    }
+    out.append(allocator, ']') catch return error.OutOfMemory;
+    return out.toOwnedSlice(allocator);
+}
+
+fn serialiseRowsWithStripping(
+    allocator: std.mem.Allocator,
+    rows: [][]?[]u8,
+    denied_fields: []const []const u8,
+) error{ OutOfMemory, MalformedJson }![]u8 {
+    if (denied_fields.len == 0) {
+        return serialiseRows(allocator, rows) catch return error.OutOfMemory;
+    }
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
+    out.append(allocator, '[') catch return error.OutOfMemory;
+    for (rows, 0..) |row, i| {
+        if (i > 0) out.append(allocator, ',') catch return error.OutOfMemory;
+        if (row.len > 0) {
+            if (row[0]) |json_col| {
+                const stripped = field_grants_mod.stripDeniedFields(allocator, json_col, denied_fields) catch |err| switch (err) {
+                    error.OutOfMemory => return error.OutOfMemory,
+                    error.MalformedJson => return error.MalformedJson,
+                };
+                defer allocator.free(stripped);
+                out.appendSlice(allocator, stripped) catch return error.OutOfMemory;
             } else {
                 out.appendSlice(allocator, "null") catch return error.OutOfMemory;
             }
