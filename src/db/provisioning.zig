@@ -134,13 +134,16 @@ pub fn provisionTenantSchema(
     defer releaseAdvisoryLock(lock_conn, tenant_id_str) catch {};
 
     // Step 2: Idempotency check.
-    {
+    //
+    // If the schema is fully provisioned (migrations_applied_at IS NOT NULL),
+    // we still need to apply any new tenant-only migrations added after the
+    // last provisioning run. So we do NOT return early here anymore.
+    // Instead, we track whether schema creation is needed vs. just migration.
+    const schema_already_provisioned: bool = blk: {
         const result = lock_conn.query(
             allocator,
-            // Only skip if migrations have been applied (migrations_applied_at IS NOT NULL).
-            // A schema registered by a SQL migration (GBL-069 etc.) but never fully
-            // provisioned by Zig will have migrations_applied_at = NULL — in that case
-            // we must still run runForSchema to populate the tenant schema tables.
+            // Check if migrations have been applied previously.
+            // A schema registered but never fully provisioned has migrations_applied_at = NULL.
             "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND migrations_applied_at IS NOT NULL",
             &.{tenant_id_str},
         ) catch return ProvisionError.QueryFailed;
@@ -154,24 +157,26 @@ pub fn provisionTenantSchema(
             if (row.len > 0) {
                 if (row[0]) |count_str| {
                     const count = std.fmt.parseInt(u64, count_str, 10) catch 0;
-                    if (count > 0) {
-                        // Already provisioned with migrations applied — fast path, nothing to do.
-                        return;
-                    }
+                    break :blk count > 0;
                 }
             }
         }
-    }
+        break :blk false;
+    };
 
     // Step 3: Derive schema name (same logic as schemaNameForTenant in pool.zig).
     var schema_buf: [80]u8 = undefined;
     const schema_name = pool_mod.schemaNameForTenant(tenant_id_str, &schema_buf);
 
     // Step 4: Call SQL provisioning function to create schema + register row.
-    lock_conn.exec(
-        "SELECT public.bpm_provision_tenant_schema($1::uuid)",
-        &.{tenant_id_str},
-    ) catch return ProvisionError.SchemaCreationFailed;
+    // Skip when schema already exists — bpm_provision_tenant_schema is not idempotent
+    // on the schema creation side; running it again on an existing schema would error.
+    if (!schema_already_provisioned) {
+        lock_conn.exec(
+            "SELECT public.bpm_provision_tenant_schema($1::uuid)",
+            &.{tenant_id_str},
+        ) catch return ProvisionError.SchemaCreationFailed;
+    }
 
     // Step 5: Apply migrations inside the tenant schema.
     //
@@ -195,48 +200,35 @@ pub fn provisionTenantSchema(
 
     // Step 6a: ISS-0114 / GH-377 — authoritative promotion to SCHEMA storage_mode.
     //
-    // After bpm_provision_tenant_schema() succeeds and the migration runner
-    // has finished, INSERT/UPDATE a public.tenant row with storage_mode='SCHEMA'
-    // for this tenant. This guarantees the next pool.acquire() in this thread
-    // receives the SCHEMA routing branch without relying on the heuristic
-    // public.tenant_schemas fallback in applyRequestStorageRouting().
-    //
-    // REWORK 1 (2026-08-04): The original INSERT only populated (id, storage_mode)
-    // which violated C23502 NOT NULL on slug, display_name, status, tenant_type,
-    // created_at, updated_at. public.tenant has 7 NOT NULL columns total (see
-    // information_schema.columns). The patch populates ALL of them with stable
-    // defaults derived from the tenant_id (slug, display_name) or with the
-    // schema default values (status, tenant_type, created_at, updated_at).
-    //
-    // Idempotency: ON CONFLICT (id) DO UPDATE only fires when storage_mode is
-    // 'LEGACY_RLS' OR NULL, so re-running this for an already-SCHEMA tenant
-    // is a no-op. This matches the behaviour of migration 1135.
-    lock_conn.exec(
-        \\INSERT INTO public.tenant (
-        \\    id,
-        \\    slug,
-        \\    display_name,
-        \\    status,
-        \\    tenant_type,
-        \\    storage_mode,
-        \\    created_at,
-        \\    updated_at
-        \\) VALUES (
-        \\    $1::uuid,
-        \\    'tenant-' || replace($1::text, '-', ''),
-        \\    'Auto-provisioned tenant ' || substr($1::text, 1, 8),
-        \\    'ACTIVE',
-        \\    'production',
-        \\    'SCHEMA',
-        \\    NOW(),
-        \\    NOW()
-        \\)
-        \\ON CONFLICT (id) DO UPDATE
-        \\  SET storage_mode = 'SCHEMA',
-        \\      updated_at = NOW()
-        \\  WHERE public.tenant.storage_mode = 'LEGACY_RLS'
-        \\     OR public.tenant.storage_mode IS NULL
-    , &.{tenant_id_str}) catch return ProvisionError.SchemaPromotionFailed;
+    // Skip when schema was already provisioned (already promoted on first run).
+    if (!schema_already_provisioned) {
+        lock_conn.exec(
+            \\INSERT INTO public.tenant (
+            \\    id,
+            \\    slug,
+            \\    display_name,
+            \\    status,
+            \\    tenant_type,
+            \\    storage_mode,
+            \\    created_at,
+            \\    updated_at
+            \\) VALUES (
+            \\    $1::uuid,
+            \\    'tenant-' || replace($1::text, '-', ''),
+            \\    'Auto-provisioned tenant ' || substr($1::text, 1, 8),
+            \\    'ACTIVE',
+            \\    'production',
+            \\    'SCHEMA',
+            \\    NOW(),
+            \\    NOW()
+            \\)
+            \\ON CONFLICT (id) DO UPDATE
+            \\  SET storage_mode = 'SCHEMA',
+            \\      updated_at = NOW()
+            \\  WHERE public.tenant.storage_mode = 'LEGACY_RLS'
+            \\     OR public.tenant.storage_mode IS NULL
+        , &.{tenant_id_str}) catch return ProvisionError.SchemaPromotionFailed;
+    }
 
     // Step 6b: Prime the thread-local tenant_context so the very next
     // pool.acquire() in this thread sees storage_mode_resolved=true and

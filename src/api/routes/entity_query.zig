@@ -289,22 +289,28 @@ fn parseRequest(allocator: std.mem.Allocator, body_json: []const u8) ParseReques
                         else => return ParseRequestError.BadJson,
                     };
                     const value_raw = fobj.get("value") orelse return ParseRequestError.BadJson;
-                    const value_str: []const u8 = switch (value_raw) {
-                        .string => |s| s,
-                        .integer => |n| blk: {
-                            break :blk std.fmt.allocPrint(allocator, "{d}", .{n}) catch return ParseRequestError.OutOfMemory;
-                        },
-                        .float => |n| blk: {
-                            break :blk std.fmt.allocPrint(allocator, "{d}", .{n}) catch return ParseRequestError.OutOfMemory;
-                        },
-                        else => return ParseRequestError.BadJson,
-                    };
 
                     const op = query_types.filterOpFromString(op_str) orelse return ParseRequestError.UnknownOp;
                     const field_copy = allocator.dupe(u8, field_str) catch return ParseRequestError.OutOfMemory;
-                    const value_copy = allocator.dupe(u8, value_str) catch {
-                        allocator.free(field_copy);
-                        return ParseRequestError.OutOfMemory;
+                    // Allocate value_copy directly — no intermediate value_str to avoid leaking the
+                    // allocPrint result on the integer/float path before value_copy is created.
+                    const value_copy: []const u8 = switch (value_raw) {
+                        .string => |s| allocator.dupe(u8, s) catch {
+                            allocator.free(field_copy);
+                            return ParseRequestError.OutOfMemory;
+                        },
+                        .integer => |n| std.fmt.allocPrint(allocator, "{d}", .{n}) catch {
+                            allocator.free(field_copy);
+                            return ParseRequestError.OutOfMemory;
+                        },
+                        .float => |n| std.fmt.allocPrint(allocator, "{d}", .{n}) catch {
+                            allocator.free(field_copy);
+                            return ParseRequestError.OutOfMemory;
+                        },
+                        else => {
+                            allocator.free(field_copy);
+                            return ParseRequestError.BadJson;
+                        },
                     };
                     filters.append(allocator, .{ .field = field_copy, .op = op, .value = value_copy }) catch {
                         allocator.free(field_copy);
@@ -336,7 +342,9 @@ fn parseRequest(allocator: std.mem.Allocator, body_json: []const u8) ParseReques
                         .string => |s| s,
                         else => return ParseRequestError.BadJson,
                     };
-                    const dir_str = switch (sobj.get("dir") orelse return ParseRequestError.BadJson) {
+                    // Accept both "dir" (canonical) and "direction" (alternate key).
+                    const dir_val = sobj.get("dir") orelse sobj.get("direction") orelse return ParseRequestError.BadJson;
+                    const dir_str = switch (dir_val) {
                         .string => |s| s,
                         else => return ParseRequestError.BadJson,
                     };

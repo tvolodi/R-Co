@@ -159,13 +159,19 @@ pub fn handleSubmitTaskSpec(
         else => return badRequest400(allocator, "malformed_json"),
     };
 
-    // Extract rng_seed (AGT-05: must not be 0 or absent)
+    // Extract rng_seed (AGT-05: must not be 0 or absent).
+    // Large u64 values (> i64::MAX) are represented as .number_string by the JSON parser.
     const rng_seed: i64 = blk: {
         const rv = body_obj.get("rng_seed") orelse return badRequest400(allocator, "rng_seed_zero");
         switch (rv) {
             .integer => |n| {
                 if (n == 0) return badRequest400(allocator, "rng_seed_zero");
                 break :blk n;
+            },
+            .number_string => |s| {
+                const u = std.fmt.parseInt(u64, s, 10) catch return badRequest400(allocator, "rng_seed_zero");
+                if (u == 0) return badRequest400(allocator, "rng_seed_zero");
+                break :blk @bitCast(u);
             },
             else => return badRequest400(allocator, "rng_seed_zero"),
         }
