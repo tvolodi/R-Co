@@ -1,0 +1,45 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-0.5-issue-fixer",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "step": "0.5",
+  "created_at": "2026-08-17T20:01:59Z",
+  "started_at": null,
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "T010-PAR02-UUID-01",
+    "requirement_ids": [
+      "PAR-02"
+    ],
+    "source_file": "tests/integration/par02_partition_catalog_test.zig",
+    "line": 177,
+    "symptom": "zig build test-env-verify fails on C5 because the PAR-02 integration test uses a hardcoded UUID literal instead of per-test generation"
+  },
+  "task": {
+    "description": "File a GitHub issue for the new T010 hardcoded-UUID violation found in tests/integration/par02_partition_catalog_test.zig and confirm it is tracked outside the local handoff only.\n\nPlease inspect the file and the existing T010 issue history, then create a new GitHub issue with a concise title and description. The issue should record that the blocker is in the PAR-02 test fixture, not the production PAR-02 code path, and that it prevents `zig build test-env-verify` from passing C5.\n\nReturn PASS only after the issue is created and the handoff file is updated with the GitHub issue URL/number.",
+    "acceptance_criteria": [
+      "GitHub issue created for the T010 violation",
+      "Handoff updated with issue URL/number",
+      "Issue is not left only in docs/issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Confirmed the PAR-02 T010 blocker in the test fixture and created GitHub issue #821; the defect is in tests/integration/par02_partition_catalog_test.zig, not production PAR-02 code.",
+    "artifacts_out": [
+      "tests/integration/par02_partition_catalog_test.zig",
+      "docs/issues/ISS-0718.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "The PAR-02 integration fixture hardcodes the UUID at line 177, causing the C5 test-isolation gate to fail. This is a fixture defect, not production PAR-02 code."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (fix the PAR-02 test fixture by generating a per-test UUID)"
+  },
+  "completed_at": "2026-08-17T20:03:53Z"
+}

@@ -1,0 +1,54 @@
+{
+  "handoff_id": "ADHOC-par02-03-05-release-20260817-02-test-runner-rework2",
+  "run_id": "ADHOC-par02-03-05-release-20260817",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "step": "02-rework2",
+  "created_at": "2026-08-17T13:52:24Z",
+  "started_at": "2026-08-17T13:52:24Z",
+  "status": "COMPLETED",
+  "workflow_ref": "ADHOC",
+  "priority": "NORMAL",
+  "context": {
+    "requirement_ids": [
+      "PAR-02",
+      "PAR-03"
+    ],
+    "branch": "feature/ADHOC-par02-03-05-release-20260817",
+    "rework_reason": "Zig single-owner rule fixed \u2014 event_store imports consolidated across bpm.zig/main.zig/simulation, build.zig updated"
+  },
+  "task": {
+    "description": "Re-run all tests after single-owner fix. zig build + zig build test + par02/par03 integration tests.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "All par02 integration tests pass (including TC-PAR-02-09)",
+      "All par03 integration tests pass"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "zig build: PASS. zig build test: PASS (1160/1240 passed, 80 skipped). par03 integration: PASS (4/4). par02 integration: FAIL (compile error in partition_maintenance.zig:273 \u2014 OutOfMemory not in PartitionMaintenanceError error set). BACKEND-DEV fix required: 3 try calls must use catch return PartitionMaintenanceError.TransactionFailed pattern.",
+    "artifacts_out": [
+      "tests/reports/report-20260817-ADHOC-par02-03-05.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-PM-OOM-01",
+        "severity": "BLOCKER",
+        "requirement": "PAR-02",
+        "test_target": "test-integration-par02",
+        "title": "ensurePartitionAttached: OutOfMemory not in PartitionMaintenanceError causes compile error",
+        "file": "src/scheduler/partition_maintenance.zig",
+        "lines": [
+          273,
+          289,
+          291
+        ],
+        "description": "Three try calls in ensurePartitionAttached() propagate error.OutOfMemory: line 273 (std.fmt.allocPrint for partition_name), line 289 (formatTimestamptzLiteral for start_text), line 291 (formatTimestamptzLiteral for end_text). OutOfMemory is not in PartitionMaintenanceError. Fix: replace try X with X catch return PartitionMaintenanceError.TransactionFailed for all three lines \u2014 same pattern already used at line ~297 for create_sql."
+      }
+    ],
+    "next_action": "BACKEND-DEV must fix ISS-PM-OOM-01 in src/scheduler/partition_maintenance.zig (3 lines), then TEST-RUNNER rework3"
+  },
+  "completed_at": "2026-08-17T13:58:54Z"
+}

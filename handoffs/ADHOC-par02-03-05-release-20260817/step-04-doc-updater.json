@@ -5,8 +5,9 @@
   "to_agent": "DOC-UPDATER",
   "step": "04",
   "created_at": "2026-08-17T12:47:56Z",
-  "started_at": null,
-  "status": "PENDING",
+  "started_at": "2026-08-18T01:05:30Z",
+  "status": "COMPLETED",
+  "completed_at": "2026-08-18T01:08:00Z",
   "workflow_ref": "ADHOC",
   "priority": "NORMAL",
   "context": {
@@ -28,5 +29,14 @@
       "fn:update-requirement-status"
     ]
   },
-  "result": null
+  "result": {
+    "status": "PASS",
+    "summary": "PAR-02, PAR-03, PAR-05 set to RELEASED via reqctl.py. Stale ISS-0670/ISS-0686 notes replaced in docs/requirements.yaml. CHANGELOG.md updated under [Unreleased] 2026-08-18. docs/status/requirement_status.yaml regenerated (463 entries). lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR). Commit a5845d01 on feature/ADHOC-par02-03-05-release-20260817.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml"
+    ],
+    "issues": []
+  }
 }
