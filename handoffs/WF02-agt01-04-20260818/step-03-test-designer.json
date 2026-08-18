@@ -1,0 +1,45 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-03-test-designer",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T18:12:37Z",
+  "started_at": "2026-08-18T18:13:26Z",
+  "completed_at": "2026-08-18T18:31:43Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": [
+      "src/design/AGT-01-04-agent-artifacts.md",
+      "src/api/routes/agent_artifacts.zig",
+      "migrations/1171_agt01_03_agent_artifacts.sql"
+    ],
+    "security_notes": [
+      "SEC-AGT-02: include a test asserting byte-equality of cross-tenant vs not-found 404 response for agent_artifacts (probe indistinguishability)"
+    ]
+  },
+  "task": {
+    "description": "Write test specifications and integration test code for AGT-01, AGT-02, AGT-03, AGT-04.\n\nRead each requirement: python tools/reqctl.py show AGT-01 (and AGT-02, AGT-03, AGT-04).\nRead the design: src/design/AGT-01-04-agent-artifacts.md\nRead the implementation: src/api/routes/agent_artifacts.zig\nRead existing test patterns in tests/ and tests/specs/\n\nDeliver:\n1. Test spec: tests/specs/AGT-01-04.md covering all 24 ACs (6 per requirement)\n2. Integration test file in tests/ following existing naming patterns for the test suite\n\nTest coverage requirements (every AC must have at least one test):\n\nAGT-01:\n- TC-AGT-01-01: kind=test_report with valid payload \u2192 HTTP 201 (or 200 on re-hit) + kind column in DB row\n- TC-AGT-01-02: kind=patch_set with test_report payload \u2192 HTTP 422 artifact_payload_invalid with JSON pointer\n- TC-AGT-01-03: kind=benchmark (unknown) \u2192 HTTP 400 unknown_artifact_kind naming value + listing 4 accepted\n- TC-AGT-01-04: kind=design_artifact with unknown field in payload \u2192 HTTP 422 (closed schema rejects unknown members)\n- TC-AGT-01-05: GET /api/v1/agent/artifacts/schemas \u2192 200 with catalog of all 4 schemas versioned\n- TC-AGT-01-06: DB row query filtered by kind returns only matching rows\n\nAGT-02:\n- TC-AGT-02-01: production deployment + valid envelope \u2192 HTTP 403 wrong_environment\n- TC-AGT-02-02: production deployment + valid envelope (env check before schema validation, invalid payload still yields 403 not 422)\n- TC-AGT-02-03: request body with \"environment\":\"staging\" on production \u2192 discarded, returns 403\n- TC-AGT-02-04: staging deployment + valid envelope \u2192 HTTP 201, row in staging.agent_artifacts\n- TC-AGT-02-05: after rejection on production, ArtifactSubmissionRejected audit event written\n- TC-AGT-02-06 (SEC-AGT-02): cross-tenant artifact lookup and not-found return byte-identical responses\n\nAGT-03:\n- TC-AGT-03-01: no row exists \u2192 HTTP 201, xmax=0, new artifact_id\n- TC-AGT-03-02: same triple, same spec_hash resubmitted \u2192 HTTP 200, original artifact_id, touched_at advances, payload unchanged\n- TC-AGT-03-03: same triple, different spec_hash \u2192 HTTP 409 spec_hash_mismatch with both hashes\n- TC-AGT-03-04: simulated network retry (identical envelope, server already committed) \u2192 HTTP 200, exactly one DB row\n- TC-AGT-03-05: attempt_count < max stored for this task_spec_id \u2192 HTTP 409 attempt_count_regressed\n- TC-AGT-03-06: two concurrent submissions of same triple \u2192 exactly one HTTP 201, one HTTP 200 or 409\n\nAGT-04:\n- TC-AGT-04-01: two canonical forms of same doc (different key order) \u2192 same spec_hash\n- TC-AGT-04-02: number 1.0 vs 1 \u2192 RFC 8785 normalises to same hash\n- TC-AGT-04-03: update attempt on stored task_spec \u2192 HTTP 409 task_spec_immutable\n- TC-AGT-04-04: different doc (one field changed) \u2192 different spec_hash, different task_spec_id\n- TC-AGT-04-05: artifact submitted with spec_hash not in tenant's task_specs \u2192 HTTP 404 task_spec_not_found\n- TC-AGT-04-06: orchestrator_principal included in spec_hash (spec re-registered with different principal \u2192 different hash)\n\nAll tests must be isolated (own fixtures, no shared state). Follow the existing integration test pattern in tests/."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test spec (tests/specs/AGT-01-04.md) and integration test file (tests/integration/agt01_04_agent_artifacts_test.zig) written for AGT-01, AGT-02, AGT-03, AGT-04. 24 test cases across 4 requirements. Wired into tests/integration/main_test.zig. zig build check exits 0. lint_test_isolation.py exits 0 (no BLOCKER). lint_handoffs.py exits 0.",
+    "artifacts_out": [
+      "tests/specs/AGT-01-04.md",
+      "tests/integration/agt01_04_agent_artifacts_test.zig",
+      "tests/integration/main_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

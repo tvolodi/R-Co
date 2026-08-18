@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-03b-test-design-validator",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T18:32:18Z",
+  "started_at": "2026-08-18T18:32:50Z",
+  "completed_at": "2026-08-18T18:35:54Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": [
+      "tests/specs/AGT-01-04.md",
+      "tests/integration/agt01_04_agent_artifacts_test.zig",
+      "src/design/AGT-01-04-agent-artifacts.md"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate the test design for AGT-01..04. Verify: (1) every MUST requirement (AGT-01..04) has at least one integration test with no SkipZigTest, (2) all 24 ACs across 4 requirements have corresponding test cases in tests/specs/AGT-01-04.md and tests/integration/agt01_04_agent_artifacts_test.zig, (3) fixtures are isolated (no shared state between tests), (4) tests are self-sufficient (no out-of-band setup), (5) TC-AGT-02-06 tests byte-identical 404 for cross-tenant probe vs not-found (SEC-AGT-02 gap from security review), (6) TC-AGT-03-06 concurrent test is present and tests the race condition. Return PASS only if all criteria met; return FAIL with specific missing coverage IDs if not."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for AGT-01, AGT-02, AGT-03, AGT-04 validated. All 24 ACs have corresponding implemented test cases (6 × 4 requirements = 24 `test \"agt…\"` blocks). No SkipZigTest on any MUST block. Fixtures isolated via per-test fillRandom UUIDs with defer cleanup. Tests are self-sufficient: BPM_TEST_DB_URL absent → hard error.MissingTestDatabaseUrl (not skip); handlers called directly, no external HTTP server required. TC-AGT-02-06 asserts byte-identical 404 bodies with expectEqualStrings(r1.body, r2.body) and verifies error=task_spec_not_found. TC-AGT-03-06 uses std.Thread.spawn for real concurrent execution (two threads, t1.join()/t2.join()), not a serial two-call test. Test file imported in tests/integration/main_test.zig (line 233) and referenced in comptime block (line 342); wired into test-integration-main step which feeds test-integration umbrella.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

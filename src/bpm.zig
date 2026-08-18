@@ -143,6 +143,7 @@ pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities su
 pub const entity_query_routes = @import("api/routes/entity_query.zig"); // QRY-01..04
 pub const agent_task_specs_routes = @import("api/routes/agent_task_specs.zig"); // SBX-01/02
 pub const agent_sandboxes_routes = @import("api/routes/agent_sandboxes.zig"); // SBX-03
+pub const agent_artifacts_routes = @import("api/routes/agent_artifacts.zig"); // AGT-01..04
 pub const agent_auth_mod = @import("api/middleware/agent_auth.zig"); // SBX-01/02/03 gates
 pub const entity_field_grants = @import("entities/query/field_grants.zig"); // QRY-05
 pub const solution_pack_store = @import("solution/store.zig"); // SOL-01/02/03 solution pack

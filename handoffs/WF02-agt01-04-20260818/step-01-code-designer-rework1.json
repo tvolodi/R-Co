@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-01-code-designer-rework1",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "01-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T17:38:27Z",
+  "started_at": "2026-08-18T17:39:13Z",
+  "completed_at": "2026-08-18T17:42:31Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": [
+      "src/design/AGT-01-04-agent-artifacts.md"
+    ],
+    "rework_count": 1,
+    "max_rework": 2,
+    "validator_issues": [
+      {
+        "id": "CDV-AGT-01-04-001",
+        "severity": "MAJOR",
+        "rule": "E050",
+        "description": "API Response Shapes fenced Zig block at line ~273 exceeds 40 lines. Must be split into shorter blocks, one per logical group with a prose heading each."
+      },
+      {
+        "id": "CDV-AGT-01-04-002",
+        "severity": "MINOR",
+        "description": "Data Flow step [5] uses <= (less-than-or-equal) for attempt_count regression guard but should be < (strictly less-than). Fix: change <= to < in the data flow."
+      }
+    ]
+  },
+  "task": {
+    "description": "Fix the two issues found by CODE-DESIGN-VALIDATOR in src/design/AGT-01-04-agent-artifacts.md:\n\n1. CDV-AGT-01-04-001 (MAJOR, E050): The 'API Response Shapes' fenced Zig code block (~line 273) is too long (>40 lines). Split it into multiple shorter blocks, one per logical group (e.g. artifact response shapes, task spec response shapes, schema catalog shapes), each with its own prose heading.\n\n2. CDV-AGT-01-04-002 (MINOR): In Data Flow step [5], change '\u2264' to '<' for the attempt_count regression guard (submitted < stored max, not \u2264).\n\nDo not change anything else in the design."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed two validator issues in src/design/AGT-01-04-agent-artifacts.md. CDV-AGT-01-04-001: split the 57-line Error Response Types fenced block into two blocks (≤40 lines each) with prose headings — 'Base error type, artifact validation errors, and environment errors' (34 lines) and 'Idempotency and task spec errors' (21 lines). CDV-AGT-01-04-002: changed ≤ to < in Data Flow step [5] attempt_count regression guard.",
+    "artifacts_out": [
+      "src/design/AGT-01-04-agent-artifacts.md"
+    ],
+    "issues": []
+  },
+  "rework_count": 1,
+  "max_rework": 2
+}

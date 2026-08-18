@@ -1,0 +1,51 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-01b-code-design-validator",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T17:33:26Z",
+  "started_at": "2026-08-18T17:33:55Z",
+  "completed_at": "2026-08-18T17:36:32Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": [
+      "src/design/AGT-01-04-agent-artifacts.md"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate the design artefact at src/design/AGT-01-04-agent-artifacts.md against requirements AGT-01, AGT-02, AGT-03, AGT-04. Verify: (1) every acceptance criterion from all four requirements is covered by the design, (2) no implementation code (no function bodies), (3) all error codes / HTTP status codes from the ACs are present, (4) migration DDL for agent_artifacts and task_specs tables is present, (5) type definitions are sufficient for BACKEND-DEV to implement without ambiguity. Return PASS only if all criteria are met; return FAIL with specific gaps if not."
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Design artefact fails lint gate (MAJOR=1 E050: fenced Zig block at line 273 exceeds 40 lines). MINOR inconsistency: data-flow step 5 uses <= instead of < for attempt_count regression guard. All AGT-01..04 acceptance criteria are substantively covered; only structural issues block PASS.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "CDV-AGT-01-04-001",
+        "severity": "MAJOR",
+        "rule": "E050",
+        "location": "src/design/AGT-01-04-agent-artifacts.md:273",
+        "description": "Fenced Zig code block exceeds 40 lines. The API Response Shapes block (ArtifactCreatedResponse through TaskSpecExistsResponse) must be split into multiple shorter blocks, one per logical group, each with a prose heading."
+      },
+      {
+        "id": "CDV-AGT-01-04-002",
+        "severity": "MINOR",
+        "rule": "INCONSISTENCY",
+        "location": "src/design/AGT-01-04-agent-artifacts.md (Data Flow step [5])",
+        "description": "Step [5] of the POST /api/v1/agent/artifacts data flow writes submitted attempt_count <= MAX(stored) but the Attempt Count Regression Guard section correctly specifies strictly-less-than (<). The <= form would reject a valid fresh insert at attempt_count == MAX. Fix: change <= to < in the data flow step."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework (rework_count will be 1)."
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

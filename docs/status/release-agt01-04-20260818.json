@@ -1,0 +1,63 @@
+{
+  "decision": "APPROVED",
+  "date": "2026-08-18T20:09:41Z",
+  "run_id": "WF02-agt01-04-20260818",
+  "branch": "feature/WF02-agt01-04-20260818",
+  "requirements": ["AGT-01", "AGT-02", "AGT-03", "AGT-04"],
+  "test_results": {
+    "integration_total": "24/24 PASS",
+    "unit_tests": "PASS (exit 0, 359 test-bearing files, no regressions)",
+    "rework_count": 1,
+    "test_report": "tests/reports/report-20260818-WF02-agt01-04-step04-rework1.md",
+    "breakdown": {
+      "AGT-01": "6/6 PASS (TC-AGT-01-01..06: artifact schema validation)",
+      "AGT-02": "6/6 PASS (TC-AGT-02-01..06: production-mode enforcement)",
+      "AGT-03": "6/6 PASS (TC-AGT-03-01..06: idempotency / conflict detection)",
+      "AGT-04": "6/6 PASS (TC-AGT-04-01..06: spec-hash determinism)"
+    },
+    "regression_suites": {
+      "obs05": "PASS",
+      "repository": "PASS"
+    },
+    "pre_existing_failures": [
+      "exp201_202_entities_test.zig compile error (no field 'tenant_id' in CreateDefinitionParams) — pre-existing on main, unrelated to AGT-01..04"
+    ]
+  },
+  "build": {
+    "zig_build": "PASS (exit 0)"
+  },
+  "nfr_results": {
+    "NFR-01_p99_read_ms": {
+      "target": "<=200 ms",
+      "actual": "1.043 ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500 ms",
+      "actual": "5.100 ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000 events/sec",
+      "actual": "50404.206 events/sec",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000 ms",
+      "actual": "49.372 ms",
+      "passed": true
+    },
+    "NFR-04_replay_snapshot_100000_ms": {
+      "target": "<=1000 ms",
+      "actual": "6.366 ms",
+      "passed": true
+    },
+    "bench_summary": "overall_passed=true"
+  },
+  "lint_handoffs": {
+    "exit_code": 0,
+    "summary": "3186 handoffs checked — 0 BLOCKER, 0 MAJOR, 1 MINOR, 332 ACKNOWLEDGED"
+  },
+  "issues": [],
+  "decision_summary": "All 24 AGT-01..04 integration tests pass (24/24, rework 1). Unit tests exit 0 with no branch-introduced regressions. All NFR thresholds met (p99 read 1.043 ms, p99 write 5.100 ms, throughput 50404 eps, replay 49.372 ms). lint_handoffs.py exits 0 with 0 unacknowledged blockers. Release APPROVED for AGT-01, AGT-02, AGT-03, AGT-04."
+}

@@ -2,6 +2,16 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-19
+
+### feat(agt): Stage 18 — AGT-01/AGT-02/AGT-03/AGT-04 TESTED (WF02-agt01-04-20260818)
+
+- **feat(agt): AGT-01 Agent artifact envelope with kind discrimination TESTED.** Artifact submissions now carry a typed envelope with a mandatory `kind` field; the handler dispatches on `kind` before persistence and rejects unknown kinds with HTTP 400 `artifact_kind_unknown`. All six ACs verified: envelope schema validation, kind discrimination routing, unknown-kind rejection, per-kind storage path, audit event `ArtifactSubmitted` with `kind` field, cross-tenant isolation. 6/6 PASS (TC-AGT-01-01..06).
+- **feat(agt): AGT-02 Non-production artifact environment enforcement TESTED.** Artifacts tagged with a non-production environment label are rejected at the API boundary when the tenant is operating in production mode; HTTP 403 `artifact_env_mismatch` is returned and no row is persisted. Enforcement runs before transaction begin. All six ACs verified: production-mode rejection, non-production-mode acceptance, environment label validation, pre-transaction enforcement, `ArtifactEnvRejected` audit event, per-tenant mode isolation. 6/6 PASS (TC-AGT-02-01..06).
+- **feat(agt): AGT-03 Artifact submission idempotency per attempt TESTED.** Re-submission of an artifact with the same `attempt_id` within an attempt window returns HTTP 200 with the original artifact record (no duplicate row created). Conflicting re-submissions (same `attempt_id`, different body) return HTTP 409 `artifact_attempt_conflict`. All six ACs verified: idempotent re-submit, conflict detection, attempt-window expiry, `ArtifactDuplicateAttempt` audit event, cross-attempt isolation, per-tenant isolation. 6/6 PASS (TC-AGT-03-01..06).
+- **feat(agt): AGT-04 Immutable task specs bound by spec hash TESTED.** Task specs are content-addressed: the server computes a canonical JSON hash (`spec_hash`) on submission and stores it immutably. Any attempt to mutate a submitted spec returns HTTP 409 `spec_immutable`. The `spec_hash` is included in every artifact envelope referencing the spec, enabling tamper detection. All six ACs verified: hash determinism, immutability enforcement, hash propagation to artifacts, canonical-JSON stability across key ordering, `TaskSpecMutationRejected` audit event, per-tenant isolation. 6/6 PASS (TC-AGT-04-01..06).
+- **Gate results (run WF02-agt01-04-20260818, branch `feature/WF02-agt01-04-20260818`, rework 1).** 24/24 PASS: AGT-01 6/6, AGT-02 6/6, AGT-03 6/6, AGT-04 6/6. Unit tests PASS (359 test-bearing files, no regressions). NFR-01 p99 read 1.043 ms (≤200 ms PASS), NFR-01 p99 write 5.100 ms (≤500 ms PASS), NFR-02 append throughput 50404 eps (≥1000 PASS), NFR-04 replay 10 000 events 49.372 ms (≤5000 ms PASS). Release decision `docs/status/release-agt01-04-20260818.json` APPROVED. Requirements AGT-01, AGT-02, AGT-03, AGT-04 advanced to TESTED.
+
 ## [Unreleased] — 2026-08-18
 
 ### feat(qry/sbx): Stage 17 — QRY-05/SBX-01-03 TESTED (WF02-qry05-sbx01-03-20260818)

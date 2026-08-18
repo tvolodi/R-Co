@@ -4149,10 +4149,7 @@ fn buildExecutionErrorPayload(
         // error type code, the SUB_PROCESS node_id (affected_node), the
         // offending variable key (affected_field), and the failing constraint
         // + JSON pointer (folded into `reason` by the call site).
-        .SUB_PROCESS_MISSING_REQUIRED_INPUT,
-        .SUB_PROCESS_INPUT_SCHEMA_VIOLATION,
-        .SUB_PROCESS_MISSING_REQUIRED_OUTPUT,
-        .SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION => {
+        .SUB_PROCESS_MISSING_REQUIRED_INPUT, .SUB_PROCESS_INPUT_SCHEMA_VIOLATION, .SUB_PROCESS_MISSING_REQUIRED_OUTPUT, .SUB_PROCESS_OUTPUT_SCHEMA_VIOLATION => {
             if (args.affected_node) |node| {
                 const node_json = try strJson(allocator, node);
                 defer allocator.free(node_json);

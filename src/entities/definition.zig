@@ -192,7 +192,7 @@ pub fn getDefinitionByName(
         \\WHERE name = $1 AND status = 'ACTIVE'
         \\ORDER BY logical_shape_version DESC
         \\LIMIT 1
-    , &[_][]const u8{ name }) catch |err| switch (err) {
+    , &[_][]const u8{name}) catch |err| switch (err) {
         PoolError.ExhaustedPool => return EntityDefinitionError.PoolExhausted,
         else => return EntityDefinitionError.TransactionFailed,
     };
@@ -336,7 +336,7 @@ fn getNextShapeVersion(
         \\SELECT (COALESCE(MAX(logical_shape_version), 0) + 1)::text as next_ver
         \\FROM entity_definitions
         \\WHERE name = $1
-    , &[_][]const u8{ name }) catch return 1;
+    , &[_][]const u8{name}) catch return 1;
     if (row == null) return 1;
     defer freeRow(allocator, row.?);
     if (row.?[0] == null) return 1;

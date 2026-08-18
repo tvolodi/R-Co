@@ -2230,3 +2230,36 @@
 2026-08-18T15:02:08Z | COMPLETE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-05-release-validator | RELEASE-VALIDATOR | APPROVED: all NFRs pass, 23/23 tests, unit test regression-clean — routing to DOC-UPDATER Step 6
 2026-08-18T15:02:08Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | WF-02 Step 06: changelog + QRY-05/SBX-01-03 status TESTED
 2026-08-18T15:07:35Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-02 Step Final: squash-merge feature/WF02-qry05-sbx01-03-20260818 -> main
+2026-08-18T15:34:47Z | COMPLETE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-final-backend-dev | BACKEND-DEV | PASS: PR #829 squash-merged as 1facbc35 — QRY-05/SBX-01-03 RELEASED on main
+2026-08-18T15:34:47Z | DONE | WF02-qry05-sbx01-03-20260818 | --- | PIPELINE COMPLETE | QRY-05 RELEASED | SBX-01 RELEASED | SBX-02 RELEASED | SBX-03 RELEASED
+2026-08-18T15:34:47Z | GIT  | WF02-qry05-sbx01-03-20260818 | feature/WF02-qry05-sbx01-03-20260818 | 1facbc35 | PR: https://github.com/tvolodi/R-Co/pull/829
+2026-08-18T17:24:23Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-02 Step 00: git-setup for AGT-01..04 (stage 17)
+2026-08-18T17:26:55Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-00-backend-dev | BACKEND-DEV | PASS: branch feature/WF02-agt01-04-20260818 created at 07c2d5e6a1
+2026-08-18T17:26:55Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01-code-designer | ORCH -> CODE-DESIGNER | PENDING | WF-02 Step 01: design for AGT-01..04
+2026-08-18T17:31:46Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01-code-designer | CODE-DESIGNER | PASS: design artefact src/design/AGT-01-04-agent-artifacts.md produced
+2026-08-18T17:33:26Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | WF-02 Step 01b: hard gate on design for AGT-01..04
+2026-08-18T17:36:32Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01b-code-design-validator | CODE-DESIGN-VALIDATOR | FAIL: CDV-AGT-01-04-001 MAJOR (E050 block>40 lines) + CDV-AGT-01-04-002 MINOR (<= vs <)
+2026-08-18T17:38:27Z | REWORK | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01-code-designer-rework1 | ORCH -> CODE-DESIGNER | REWORK(1/2): CDV-AGT-01-04-001 (split code block >40 lines) + CDV-AGT-01-04-002 (fix <= to <)
+2026-08-18T17:42:31Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01-code-designer-rework1 | CODE-DESIGNER | PASS: code block split + <= fixed to <
+2026-08-18T17:43:31Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01b-code-design-validator-rework1 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | re-gate after rework1: verify 2 prior gaps resolved
+2026-08-18T17:47:20Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-01b-code-design-validator-rework1 | CODE-DESIGN-VALIDATOR | PASS: both rework1 fixes verified, all 24 ACs covered
+2026-08-18T17:48:05Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-02 Step 02a: implement AGT-01..04
+2026-08-18T18:04:31Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-02a-backend-dev | BACKEND-DEV | PASS: AGT-01..04 implemented, zig build exits 0
+2026-08-18T18:05:52Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-02c-security-reviewer | ORCH -> SECURITY-REVIEWER | PENDING | WF-02 Step 02c: security review of tenant data-path changes
+2026-08-18T18:10:39Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-02c-security-reviewer | SECURITY-REVIEWER | PASS: all invariants satisfied; 2 MINOR (SEC-AGT-01 kind-string JSON, SEC-AGT-02 probe-indistinguishability test gap)
+2026-08-18T18:12:37Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-03-test-designer | ORCH -> TEST-DESIGNER | PENDING | WF-02 Step 03: write tests for AGT-01..04
+2026-08-18T18:31:43Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-03-test-designer | TEST-DESIGNER | PASS: 24 tests across AGT-01..04, spec + integration file
+2026-08-18T18:32:18Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | WF-02 Step 03b: hard gate on test design
+2026-08-18T18:35:54Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-03b-test-design-validator | TEST-DESIGN-VALIDATOR | PASS: all 24 ACs covered, 7/7 criteria met
+2026-08-18T18:37:15Z | BENCH_ENV_CHECK | WF02-agt01-04-20260818 | --- | ORCH | CLEARED (test-env-verify 10/10 PASS) — dispatching TEST-RUNNER Step 04
+2026-08-18T18:37:15Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-04-test-runner | ORCH -> TEST-RUNNER | PENDING | WF-02 Step 04: run test-integration-agt01-04
+2026-08-18T19:43:52Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-04-test-runner | TEST-RUNNER | FAIL: 23/24 — TC-AGT-03-06 BLOCKER (thread ctx) + 4x mem leak MAJOR (wrongEnv403 path)
+2026-08-18T19:45:27Z | REWORK | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-02a-backend-dev-rework1 | ORCH -> BACKEND-DEV | REWORK(1/3): TC-AGT-03-06 thread ctx fix + wrongEnv403 allocPrint leak fix
+2026-08-18T19:48:01Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-02a-backend-dev-rework1 | BACKEND-DEV | PASS: thread ctx + mem leak fixed, commit 7d50e602
+2026-08-18T19:49:10Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING | rework1: rerun after 2 fixes applied
+2026-08-18T19:58:47Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-04-test-runner-rework1 | TEST-RUNNER | PASS: 24/24 PASS — AGT-01..04 green — routing to RELEASE-VALIDATOR Step 5
+2026-08-18T19:59:46Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING | WF-02 Step 05: release decision for AGT-01..04
+2026-08-18T20:09:41Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-05-release-validator | RELEASE-VALIDATOR | APPROVED: all NFRs pass, 24/24 tests, unit test regression-clean — routing to DOC-UPDATER Step 6
+2026-08-18T20:11:46Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | WF-02 Step 06: changelog + AGT-01/02/03/04 status TESTED
+2026-08-18T20:13:57Z | COMPLETE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-06-doc-updater | DOC-UPDATER | PASS: CHANGELOG updated, AGT-01/02/03/04 set TESTED
+2026-08-18T20:14:59Z | ROUTE | WF02-agt01-04-20260818 | WF02-agt01-04-20260818-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-02 Step Final: squash-merge feature/WF02-agt01-04-20260818 -> main

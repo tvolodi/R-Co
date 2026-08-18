@@ -1,0 +1,43 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-02a-backend-dev-rework1",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "02a-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T19:45:27Z",
+  "started_at": "2026-08-18T19:46:04Z",
+  "completed_at": "2026-08-18T19:48:01Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": [
+      "src/api/routes/agent_artifacts.zig",
+      "tests/integration/agt01_04_agent_artifacts_test.zig",
+      "tests/reports/report-20260818-WF02-agt01-04-step04.yaml"
+    ],
+    "rework_count": 1,
+    "max_rework": 3
+  },
+  "task": {
+    "description": "Fix two issues found by TEST-RUNNER in the AGT-01..04 implementation on branch feature/WF02-agt01-04-20260818:\n\n**Issue 1 (BLOCKER \u2014 test code): TC-AGT-03-06 thread context**\nIn tests/integration/agt01_04_agent_artifacts_test.zig, the `concurrentArtifactThread` function spawned by TC-AGT-03-06 does not call `api_tenant_context.set()` before making its request. The Zig threadlocal tenant context is empty in spawned threads, causing the pool to use `search_path=public`, which makes `task_specs` (a tenant-only table) not found (error 42P01) \u2192 503. Fix: in `concurrentArtifactThread`, call `api_tenant_context.set(tid)` (or equivalent) before the handler call, passing the same tenant_id as the parent thread.\n\n**Issue 2 (MAJOR \u2014 production code): Memory leak in wrongEnv403 path**\nIn src/api/routes/agent_artifacts.zig, the `handleArtifactSubmit` function allocates `after_state` (the ArtifactSubmissionRejected audit event body) with `allocPrint` but returns `wrongEnv403()` without freeing it. Fix: call `allocator.free(after_state)` before the `return wrongEnv403(...)` call, or restructure to avoid the allocation leak.\n\nRun `zig build` to confirm no compilation errors after the fix.\nCommit the fixes to feature/WF02-agt01-04-20260818."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed two issues: (1) added defer allocator.free(a) in the wrongEnv403 production path to free the ArtifactSubmissionRejected audit event body allocation; (2) added api_tenant_context.set(&ctx.auth.tenant_id) at the top of concurrentArtifactThread so spawned threads have correct search_path for tenant-only tables. zig build exits 0.",
+    "artifacts_out": [
+      "src/api/routes/agent_artifacts.zig",
+      "tests/integration/agt01_04_agent_artifacts_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

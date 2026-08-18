@@ -1,0 +1,67 @@
+{
+  "handoff_id": "WF02-agt01-04-20260818-04-test-runner",
+  "run_id": "WF02-agt01-04-20260818",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "status": "COMPLETED",
+  "created_at": "2026-08-18T18:37:15Z",
+  "started_at": "2026-08-18T18:37:47Z",
+  "completed_at": "2026-08-18T19:43:52Z",
+  "context": {
+    "workflow": "WF-02",
+    "branch": "feature/WF02-agt01-04-20260818",
+    "requirement_ids": [
+      "AGT-01",
+      "AGT-02",
+      "AGT-03",
+      "AGT-04"
+    ],
+    "artifacts_in": [
+      "tests/integration/agt01_04_agent_artifacts_test.zig",
+      "tests/specs/AGT-01-04.md"
+    ]
+  },
+  "task": {
+    "description": "Run the integration tests for AGT-01..04 on branch feature/WF02-agt01-04-20260818. Run the integration test suite targeting the new tests. Produce a structured test report at tests/reports/report-<date>-WF02-agt01-04-step04.md. All 24 tests (TC-AGT-01-01..06, TC-AGT-02-01..06, TC-AGT-03-01..06, TC-AGT-04-01..06) must pass. Also verify no regression in the existing test suite."
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "23/24 tests passed. 1 test failed (TC-AGT-03-06), 4 memory leaks in AGT-02 production-mode tests.",
+    "artifacts_out": [
+      "tests/reports/report-20260818-WF02-agt01-04-step04.yaml",
+      "tests/integration/agt01_04_test_root.zig",
+      "build.zig"
+    ],
+    "issues": [
+      {
+        "test_id": "TC-AGT-03-06",
+        "test_name": "agt03_06_concurrent_same_triple_one_201_one_200",
+        "requirement_id": "AGT-03",
+        "severity": "BLOCKER",
+        "error": "TC-AGT-03-06: unexpected status codes: 503 and 503",
+        "root_cause": "concurrentArtifactThread does not call api_tenant_context.set() — threadlocal tenant context is empty in spawned threads → pool sets search_path=public → task_specs not found (42P01) → svc503()",
+        "fix_owner": "TEST-DESIGNER",
+        "fix": "Add api_tenant_context.set(DEFAULT_TENANT_ID) at start of concurrentArtifactThread"
+      },
+      {
+        "test_ids": ["TC-AGT-02-01", "TC-AGT-02-02", "TC-AGT-02-03", "TC-AGT-02-05"],
+        "requirement_id": "AGT-02",
+        "severity": "MAJOR",
+        "error": "Memory leak: after_state (ArtifactSubmissionRejected audit body) allocated but never freed in handleArtifactSubmit production-mode path",
+        "root_cause": "src/api/routes/agent_artifacts.zig:188 — std.fmt.allocPrint result passed to writeAuditInTx but not freed before wrongEnv403() return",
+        "fix_owner": "BACKEND-DEV",
+        "fix": "Add defer allocator.free(after_state) after the audit write block in the production-mode early-return path"
+      }
+    ],
+    "side_effects": [
+      "Added pub const agent_artifacts_routes = @import('api/routes/agent_artifacts.zig') to src/bpm.zig (BACKEND-DEV omitted this export from the feature commit)",
+      "Created tests/integration/agt01_04_test_root.zig (isolated test root)",
+      "Added test-integration-agt01-04 build target to build.zig",
+      "Pre-existing exp201_202_entities_test.zig compilation failure (confirmed on main, not a regression from AGT work)"
+    ],
+    "next_action": "ORCH: spawn WF-03 to fix TC-AGT-03-06 (TEST-DESIGNER rework) and memory leaks (BACKEND-DEV rework), then redispatch TEST-RUNNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
