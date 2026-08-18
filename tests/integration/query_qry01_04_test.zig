@@ -152,6 +152,32 @@ fn cleanupEntity(conn: *bpm.pool.Conn, tenant_id: []const u8, entity_key: []cons
     ) catch {};
 }
 
+/// Register an entity whose definition_json declares one typed text column.
+/// Use this instead of registerEntity when the entity table has a typed column
+/// (not a JSONB payload column), so the allowlist loads it as typed_column kind.
+fn registerEntityWithTextField(
+    allocator: std.mem.Allocator,
+    conn: *bpm.pool.Conn,
+    tenant_id: []const u8,
+    entity_key: []const u8,
+    field_name: []const u8,
+) !void {
+    const def_json = try std.fmt.allocPrint(
+        allocator,
+        "{{\"fields\":[{{\"name\":\"{s}\",\"queried\":true,\"storage_type\":\"text\"}}]}}",
+        .{field_name},
+    );
+    defer allocator.free(def_json);
+    try conn.exec(
+        "INSERT INTO entity_definitions " ++
+            "(id, tenant_id, name, display_name, definition_json, content_hash, status, created_by) " ++
+            "VALUES (gen_random_uuid(), $1::uuid, $2, $2, $3::jsonb, '\\x01'::bytea, 'ACTIVE', " ++
+            "'00000000-0000-0000-0000-000000000099'::uuid) " ++
+            "ON CONFLICT (tenant_id, name, logical_shape_version) DO NOTHING",
+        &.{ tenant_id, entity_key, def_json },
+    );
+}
+
 /// Create the typed projection table for an entity key.
 /// extra_cols example: ", status TEXT" — must start with ", " if non-empty.
 fn createEntTable(
@@ -311,18 +337,11 @@ test "qry01_valid_eq_filter_returns_matching_rows" {
     const entity_key = try uniqueEntityKey(allocator, "qry01a");
     defer allocator.free(entity_key);
 
-    try registerEntity(allocator, conn, DEFAULT_TENANT_ID, entity_key);
+    try registerEntityWithTextField(allocator, conn, DEFAULT_TENANT_ID, entity_key, "status");
     defer cleanupEntity(conn, DEFAULT_TENANT_ID, entity_key);
 
     try createEntTable(allocator, conn, entity_key, ", status TEXT");
     defer dropEntTable(allocator, conn, entity_key);
-
-    // Add status to allowlist.
-    try conn.exec(
-        "INSERT INTO entity_filterable_keys (entity_key, key_name, storage_type, is_sortable) " ++
-            "VALUES ($1, 'status', 'text', true) ON CONFLICT DO NOTHING",
-        &.{entity_key},
-    );
     defer cleanupAllowlist(conn, entity_key);
 
     // Insert 3 rows: 1 active, 2 inactive.
@@ -402,17 +421,11 @@ test "qry01_filter_value_is_positional_param_not_interpolated" {
     const entity_key = try uniqueEntityKey(allocator, "qry01c");
     defer allocator.free(entity_key);
 
-    try registerEntity(allocator, conn, DEFAULT_TENANT_ID, entity_key);
+    try registerEntityWithTextField(allocator, conn, DEFAULT_TENANT_ID, entity_key, "status");
     defer cleanupEntity(conn, DEFAULT_TENANT_ID, entity_key);
 
     try createEntTable(allocator, conn, entity_key, ", status TEXT");
     defer dropEntTable(allocator, conn, entity_key);
-
-    try conn.exec(
-        "INSERT INTO entity_filterable_keys (entity_key, key_name, storage_type, is_sortable) " ++
-            "VALUES ($1, 'status', 'text', true) ON CONFLICT DO NOTHING",
-        &.{entity_key},
-    );
     defer cleanupAllowlist(conn, entity_key);
 
     // Insert rows with normal values — none with the injection string.
@@ -523,18 +536,12 @@ test "qry01_audit_event_recorded_without_filter_values" {
     const entity_key = try uniqueEntityKey(allocator, "qry01e");
     defer allocator.free(entity_key);
 
-    try registerEntity(allocator, conn, DEFAULT_TENANT_ID, entity_key);
+    try registerEntityWithTextField(allocator, conn, DEFAULT_TENANT_ID, entity_key, "status");
     defer cleanupEntity(conn, DEFAULT_TENANT_ID, entity_key);
     defer cleanupAudit(conn, entity_key);
 
     try createEntTable(allocator, conn, entity_key, ", status TEXT");
     defer dropEntTable(allocator, conn, entity_key);
-
-    try conn.exec(
-        "INSERT INTO entity_filterable_keys (entity_key, key_name, storage_type, is_sortable) " ++
-            "VALUES ($1, 'status', 'text', true) ON CONFLICT DO NOTHING",
-        &.{entity_key},
-    );
     defer cleanupAllowlist(conn, entity_key);
 
     const insert_row_sql = try std.fmt.allocPrint(

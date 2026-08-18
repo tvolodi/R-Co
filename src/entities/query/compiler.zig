@@ -20,6 +20,8 @@ pub const CompiledQuery = struct {
     param_count: usize,
     order_by_terms: []OrderByTerm,
     effective_page_size: u16,
+    // Owns the decoded cursor memory so params can safely reference tuple values.
+    cursor_storage: ?cursor_mod.QueryCursor,
 };
 
 pub const CompileError = error{
@@ -191,6 +193,9 @@ pub fn compile(
         };
     }
 
+    var cursor_storage: ?cursor_mod.QueryCursor = null;
+    errdefer if (cursor_storage) |cs| cs.deinit();
+
     if (request.cursor) |cursor_str| {
         var fp_input: std.ArrayList(cursor_mod.SortTerm) = .empty;
         defer fp_input.deinit(allocator);
@@ -205,7 +210,8 @@ pub fn compile(
             error.OutOfMemory => return CompileError.OutOfMemory,
             else => return CompileError.CursorMalformed,
         };
-        defer decoded.deinit();
+        // Transfer ownership to cursor_storage so decoded.tuple stays valid for compiled.params.
+        cursor_storage = decoded;
 
         const keyset = buildKeysetPredicate(allocator, order_terms.items, decoded.tuple, &pidx, &params) catch
             return CompileError.OutOfMemory;
@@ -241,12 +247,14 @@ pub fn compile(
         .param_count = pidx - 1,
         .order_by_terms = try order_terms.toOwnedSlice(allocator),
         .effective_page_size = page_size,
+        .cursor_storage = cursor_storage,
     };
 }
 
 pub fn deinitCompiledQuery(allocator: std.mem.Allocator, cq: *CompiledQuery) void {
     allocator.free(cq.sql);
     allocator.free(cq.params);
+    if (cq.cursor_storage) |cs| cs.deinit();
     for (cq.order_by_terms) |ot| allocator.free(ot.name);
     allocator.free(cq.order_by_terms);
 }

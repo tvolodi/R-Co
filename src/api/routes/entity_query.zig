@@ -93,14 +93,14 @@ pub fn handleEntityQuery(
             const body: []const u8 = if (rejected_filter_field) |fname|
                 std.fmt.allocPrint(
                     allocator,
-                    "{{\"error\":\"filter_field_not_allowlisted\",\"field\":\"{s}\"}}",
+                    "{{\"detail\":\"filter_field_not_allowlisted\",\"field\":\"{s}\"}}",
                     .{fname},
                 ) catch
-                    std.fmt.allocPrint(allocator, "{{\"error\":\"filter_field_not_allowlisted\"}}", .{}) catch
-                        "{\"error\":\"filter_field_not_allowlisted\"}"
+                    std.fmt.allocPrint(allocator, "{{\"detail\":\"filter_field_not_allowlisted\"}}", .{}) catch
+                        "{\"detail\":\"filter_field_not_allowlisted\"}"
             else
-                std.fmt.allocPrint(allocator, "{{\"error\":\"filter_field_not_allowlisted\"}}", .{}) catch
-                    "{\"error\":\"filter_field_not_allowlisted\"}";
+                std.fmt.allocPrint(allocator, "{{\"detail\":\"filter_field_not_allowlisted\"}}", .{}) catch
+                    "{\"detail\":\"filter_field_not_allowlisted\"}";
             return .{ .status_code = 400, .body = body };
         }
         const detail: []const u8 = switch (err) {
