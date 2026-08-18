@@ -2203,3 +2203,4 @@
 2026-08-18T10:20:28Z | ROUTE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-05-test-runner-rework3 | ORCH -> TEST-RUNNER | PENDING | rework3 (final): all fixes applied — 2c4ed368 entity_definitions per-tenant fix
 2026-08-18T10:27:24Z | COMPLETE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-05-test-runner-rework3 | TEST-RUNNER | PASS: 14/14 PASS — QRY-01..04 green — routing to DOC-UPDATER Step 7
 2026-08-18T10:27:24Z | ROUTE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-07-doc-updater | ORCH -> DOC-UPDATER | PENDING | WF-03 Step 7: changelog + QRY-01..04 status TESTED + close GH issues #823-#826
+2026-08-18T10:30:42Z | ROUTE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-03 Step Final: squash-merge feature/WF02-qry01-04-20260818 -> main
