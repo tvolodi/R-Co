@@ -107,6 +107,7 @@ pub const entity_field_grants = @import("entities/query/field_grants.zig"); // Q
 pub const agent_auth_middleware = @import("api/middleware/agent_auth.zig"); // SBX-01/02/03 agent role gates
 pub const agent_task_specs_routes = @import("api/routes/agent_task_specs.zig"); // SBX-01/02 POST /api/v1/agent/task-specs
 pub const agent_sandboxes_routes = @import("api/routes/agent_sandboxes.zig"); // SBX-03 agent sandbox routes
+pub const agent_artifacts_routes = @import("api/routes/agent_artifacts.zig"); // AGT-01..04 artifact submission pipeline
 pub const canonical_json_mod = @import("crypto/canonical_json.zig"); // RFC 8785 canonical JSON
 
 const placeholder_health_live = "{\"status\":\"live\"}";
@@ -1730,7 +1731,17 @@ fn serveRequest(
                 .token_id = user_id,
                 .principal = user_id,
             };
-            if (std.mem.eql(u8, seg4, "task-specs") and seg5.len == 0 and method == .POST) {
+            if (std.mem.eql(u8, seg4, "artifacts") and seg5.len == 0 and method == .POST) {
+                // AGT-01..04: POST /api/v1/agent/artifacts
+                const r = agent_artifacts_routes.handleArtifactSubmit(req_alloc, pool, actor_agent, body, production_mode);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (std.mem.eql(u8, seg4, "artifacts") and std.mem.eql(u8, seg5, "schemas") and method == .GET) {
+                // AGT-01: GET /api/v1/agent/artifacts/schemas
+                const r = agent_artifacts_routes.handleSchemaCatalog(req_alloc);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (std.mem.eql(u8, seg4, "task-specs") and seg5.len == 0 and method == .POST) {
                 const r = agent_task_specs_routes.handleSubmitTaskSpec(req_alloc, pool, actor_agent, body);
                 resp_status = r.status_code;
                 resp_body = r.body;
