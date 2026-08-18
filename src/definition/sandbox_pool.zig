@@ -16,6 +16,7 @@
 const std = @import("std");
 const pool_mod = @import("pool");
 const tenant_context_mod = @import("tenant_context");
+const audit_mod = @import("../obs/audit.zig");
 
 pub const SandboxPoolError = error{
     PoolExhausted,
@@ -263,6 +264,117 @@ pub const SandboxPool = struct {
                 }
             }
         }
+    }
+
+    /// SBX-06: Reclaim sandboxes idle for more than 60 minutes.
+    ///
+    /// Runs inside a single transaction per swept sandbox: SELECT...FOR UPDATE SKIP LOCKED,
+    /// UPDATE to released, writeAuditInTx (sandbox.reclaimed). Returns the count of
+    /// sandboxes reclaimed in this sweep. Errors for individual rows are silently skipped.
+    pub fn reclaimIdleSandboxes(
+        self: *SandboxPool,
+        allocator: std.mem.Allocator,
+        io: std.Io,
+    ) pool_mod.PoolError!u32 {
+        _ = io;
+
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        defer arena.deinit();
+        const aa = arena.allocator();
+
+        const conn = self.pool.acquire() catch |err| switch (err) {
+            pool_mod.PoolError.ExhaustedPool => return pool_mod.PoolError.ExhaustedPool,
+            else => return pool_mod.PoolError.QueryFailed,
+        };
+        defer self.pool.release(conn);
+
+        // Collect idle claimed sandboxes (non-locking read).
+        var idle_rows = conn.query(
+            aa,
+            \\SELECT sandbox_id::text, owner_principal, task_spec_id::text
+            \\FROM agent_sandboxes
+            \\WHERE status = 'claimed'
+            \\  AND last_active_at < NOW() - INTERVAL '60 minutes'
+            \\LIMIT 50
+        ,
+            &[_][]const u8{},
+        ) catch return pool_mod.PoolError.QueryFailed;
+        defer idle_rows.deinit();
+
+        var reclaimed: u32 = 0;
+        for (idle_rows.rows) |row| {
+            const sandbox_id = row[0] orelse continue;
+            const prior_principal = row[1] orelse continue;
+            const task_spec_id = row[2];
+
+            const conn2 = self.pool.acquire() catch continue;
+            defer self.pool.release(conn2);
+
+            conn2.begin() catch continue;
+
+            // Re-lock the row with FOR UPDATE SKIP LOCKED to prevent double-reclaim.
+            const lock_row = conn2.queryRow(
+                aa,
+                \\SELECT sandbox_id::text
+                \\FROM agent_sandboxes
+                \\WHERE sandbox_id = $1::uuid
+                \\  AND status = 'claimed'
+                \\  AND last_active_at < NOW() - INTERVAL '60 minutes'
+                \\FOR UPDATE SKIP LOCKED
+            ,
+                &[_][]const u8{sandbox_id},
+            ) catch {
+                conn2.rollback() catch {};
+                continue;
+            };
+            if (lock_row == null) {
+                conn2.rollback() catch {};
+                continue;
+            }
+            if (lock_row) |r| {
+                for (r) |col| if (col) |c| aa.free(c);
+                aa.free(r);
+            }
+
+            conn2.exec(
+                \\UPDATE agent_sandboxes
+                \\SET status = 'released',
+                \\    owner_principal = NULL,
+                \\    task_spec_id = NULL,
+                \\    claimed_at = NULL,
+                \\    last_active_at = NULL,
+                \\    updated_at = NOW()
+                \\WHERE sandbox_id = $1::uuid
+            ,
+                &[_][]const u8{sandbox_id},
+            ) catch {
+                conn2.rollback() catch {};
+                continue;
+            };
+
+            const ts_id_str: []const u8 = task_spec_id orelse "";
+            const after = std.fmt.allocPrint(
+                aa,
+                "{{\"prior_principal\":\"{s}\",\"sandbox_id\":\"{s}\",\"task_spec_id\":\"{s}\"}}",
+                .{ prior_principal, sandbox_id, ts_id_str },
+            ) catch null;
+            if (after) |a| {
+                const audit_id = audit_mod.writeAuditInTx(
+                    aa, conn2, "", prior_principal,
+                    "sandbox.reclaimed", "agent_sandbox", sandbox_id,
+                    null, a, null, null,
+                ) catch null;
+                if (audit_id) |id| aa.free(id);
+            }
+
+            conn2.commit() catch {
+                conn2.rollback() catch {};
+                continue;
+            };
+            reclaimed += 1;
+        }
+
+        return reclaimed;
     }
 };
 

@@ -1758,6 +1758,10 @@ fn serveRequest(
                 const r = agent_sandboxes_routes.handleClaimSandbox(req_alloc, pool, actor_agent, seg5, body);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else if (std.mem.eql(u8, seg4, "sandboxes") and seg5.len > 0 and std.mem.eql(u8, seg6, "claim") and method == .DELETE) {
+                const r = agent_sandboxes_routes.handleReleaseSandbox(req_alloc, pool, actor_agent, seg5);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

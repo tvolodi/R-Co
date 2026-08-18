@@ -1,4 +1,4 @@
-//! SBX-03 — Agent sandbox list and claim handlers.
+//! SBX-03/04/05/06 — Agent sandbox list, claim, and release handlers.
 
 const std = @import("std");
 const db = @import("pool");
@@ -6,6 +6,7 @@ const auth_mod = @import("../../api/middleware/auth.zig");
 const agent_auth = @import("../../api/middleware/agent_auth.zig");
 const audit_mod = @import("../../obs/audit.zig");
 const trace_context = @import("../../api/trace_context.zig");
+const sandbox_access = @import("sandbox_access.zig");
 
 pub const HandlerResult = auth_mod.HandlerResult;
 
@@ -179,7 +180,7 @@ pub fn handleListSandboxes(
     return .{ .status_code = 200, .body = body };
 }
 
-/// POST /api/v1/agent/sandboxes/{sandbox_id}/claim
+/// POST /api/v1/agent/sandboxes/{sandbox_id}/claim  (SBX-03/04)
 pub fn handleClaimSandbox(
     allocator: std.mem.Allocator,
     pool: *db.Pool,
@@ -187,11 +188,10 @@ pub fn handleClaimSandbox(
     sandbox_id: []const u8,
     body_json: []const u8,
 ) HandlerResult {
-    _ = body_json;
     const tenant_id_slice: []const u8 = auth.tenant_id[0..];
     const trace_id = trace_context.get();
 
-    // SBX-03: gate
+    // SBX-03: role gate — orchestrator and non-implementer write claim_rejected audit.
     switch (agent_auth.requireImplementerClaim(allocator, auth)) {
         .forbidden => |hr| {
             const conn = pool.acquire() catch return hr;
@@ -205,22 +205,14 @@ pub fn handleClaimSandbox(
                 "forbidden";
             const after = std.fmt.allocPrint(
                 allocator,
-                "{{\"principal\":\"{s}\",\"sandbox_id\":\"{s}\",\"rejection_code\":\"{s}\"}}",
-                .{ auth.user_id, sandbox_id, rejection_code },
+                "{{\"principal\":\"{s}\",\"sandbox_id\":\"{s}\",\"rejection_code\":\"{s}\",\"tenant_id\":\"{s}\"}}",
+                .{ auth.user_id, sandbox_id, rejection_code, tenant_id_slice },
             ) catch null;
             if (after) |a| {
                 const audit_id = audit_mod.writeAuditInTx(
-                    allocator,
-                    conn,
-                    tenant_id_slice,
-                    auth.user_id,
-                    "sandbox.claim_rejected",
-                    "agent_sandbox",
-                    sandbox_id,
-                    null,
-                    a,
-                    trace_id,
-                    null,
+                    allocator, conn, tenant_id_slice, auth.user_id,
+                    "sandbox.claim_rejected", "agent_sandbox", sandbox_id,
+                    null, a, trace_id, null,
                 ) catch null;
                 if (audit_id) |id| allocator.free(id);
                 allocator.free(a);
@@ -230,29 +222,245 @@ pub fn handleClaimSandbox(
         .pass => {},
     }
 
+    // SBX-04: parse task_spec_id from request body.
+    const task_spec_id: []const u8 = blk: {
+        const parsed = std.json.parseFromSlice(
+            std.json.Value,
+            allocator,
+            body_json,
+            .{ .allocate = .alloc_always },
+        ) catch break :blk "";
+        defer parsed.deinit();
+        if (parsed.value != .object) break :blk "";
+        const obj = parsed.value.object;
+        const field = obj.get("task_spec_id") orelse break :blk "";
+        if (field != .string) break :blk "";
+        break :blk allocator.dupe(u8, field.string) catch "";
+    };
+    defer if (task_spec_id.len > 0) allocator.free(task_spec_id);
+
+    if (task_spec_id.len == 0) {
+        return .{ .status_code = 400, .body = "{\"detail\":\"task_spec_id_required\",\"status\":400}" };
+    }
+
     const conn = pool.acquire() catch return .{
         .status_code = 503,
         .body = "{\"detail\":\"pool_exhausted\",\"status\":503}",
     };
     defer pool.release(conn);
 
-    // UPDATE agent_sandboxes SET status='claimed', owner_principal=$1, claimed_at=NOW()
-    // WHERE sandbox_id=$2 AND status='unclaimed'
-    // ON CONFLICT (owner_principal, task_spec_id) → 409 sandbox_already_claimed
-    // (body must NOT name current owner — no SELECT before UPDATE)
-    conn.exec(
+    // SBX-04: atomic UPDATE + audit inside one transaction.
+    conn.begin() catch return .{
+        .status_code = 503,
+        .body = "{\"detail\":\"db_error\",\"status\":503}",
+    };
+
+    const claim_row = conn.queryRow(
+        allocator,
         \\UPDATE agent_sandboxes
         \\SET status = 'claimed',
         \\    owner_principal = $1,
+        \\    task_spec_id = $3::uuid,
         \\    claimed_at = NOW(),
+        \\    last_active_at = NOW(),
         \\    updated_at = NOW()
         \\WHERE sandbox_id = $2::uuid AND status = 'unclaimed'
-    ,
-        &.{ auth.user_id, sandbox_id },
-    ) catch {
-        // Unique constraint violation (ux_sandbox_owner) or other DB error
-        return conflict409(allocator, "sandbox_already_claimed");
+        \\RETURNING sandbox_id::text
+    , &.{ auth.user_id, sandbox_id, task_spec_id }) catch blk: {
+        // Capture SQLSTATE before ROLLBACK clears the error state.
+        var sqlstate_buf: [5]u8 = undefined;
+        const is_unique_violation: bool = if (conn.lastSqlState()) |s| blk2: {
+            if (s.len == 5) @memcpy(&sqlstate_buf, s[0..5]);
+            break :blk2 s.len == 5 and std.mem.eql(u8, s[0..5], "23505");
+        } else false;
+        conn.rollback() catch {};
+        if (is_unique_violation) {
+            // SBX-04: ux_sandbox_owner partial index — same task_spec_id already claimed.
+            sandbox_access.writeSentinelAudit(
+                allocator, conn, tenant_id_slice, auth.user_id, sandbox_id, "sandbox_already_claimed",
+            );
+            return conflict409(allocator, "sandbox_already_claimed");
+        }
+
+        break :blk null;
+    };
+
+    if (claim_row == null) {
+        // 0 rows updated — sandbox not found, not unclaimed, or wrong tenant (or generic error).
+        conn.rollback() catch {};
+
+        // SBX-05: probe rate check before emitting sentinel.
+        switch (@as(sandbox_access.ProbeRateResult, sandbox_access.checkProbeRate(allocator, conn, auth.user_id) catch .{ .allowed = {} })) {
+            .exceeded => |retry_after| {
+                sandbox_access.writeSentinelAudit(
+                    allocator, conn, tenant_id_slice, auth.user_id, sandbox_id, "probe_rate_exceeded",
+                );
+                const body429 = std.fmt.allocPrint(
+                    allocator,
+                    "{{\"detail\":\"probe_rate_exceeded\",\"status\":429}}",
+                    .{},
+                ) catch "{\"detail\":\"probe_rate_exceeded\",\"status\":429}";
+                _ = retry_after;
+                return .{ .status_code = 429, .body = body429 };
+            },
+            .allowed => {},
+        }
+        sandbox_access.writeSentinelAudit(
+            allocator, conn, tenant_id_slice, auth.user_id, sandbox_id, "sandbox_not_accessible",
+        );
+        return .{ .status_code = 403, .body = "{\"detail\":\"sandbox_not_accessible\",\"status\":403}" };
+    }
+
+    // 1 row updated — write sandbox.claimed audit and commit.
+    if (claim_row) |r| {
+        defer {
+            for (r) |col| if (col) |c| allocator.free(c);
+            allocator.free(r);
+        }
+    }
+
+    const after = std.fmt.allocPrint(
+        allocator,
+        "{{\"principal\":\"{s}\",\"sandbox_id\":\"{s}\",\"task_spec_id\":\"{s}\"}}",
+        .{ auth.user_id, sandbox_id, task_spec_id },
+    ) catch null;
+    if (after) |a| {
+        defer allocator.free(a);
+        const audit_id = audit_mod.writeAuditInTx(
+            allocator, conn, tenant_id_slice, auth.user_id,
+            "sandbox.claimed", "agent_sandbox", sandbox_id,
+            null, a, trace_id, null,
+        ) catch null;
+        if (audit_id) |id| allocator.free(id);
+    }
+
+    conn.commit() catch return .{
+        .status_code = 503,
+        .body = "{\"detail\":\"db_error\",\"status\":503}",
     };
 
     return .{ .status_code = 201, .body = "{}" };
+}
+
+/// DELETE /api/v1/agent/sandboxes/{sandbox_id}/claim  (SBX-06)
+pub fn handleReleaseSandbox(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    auth: auth_mod.AuthContext,
+    sandbox_id: []const u8,
+) HandlerResult {
+    const tenant_id_slice: []const u8 = auth.tenant_id[0..];
+    const trace_id = trace_context.get();
+
+    // SBX-06: orchestrators and non-implementers receive the sentinel (not a role-specific error).
+    const has_implementer = blk: {
+        for (auth.agent_realm_roles) |r| {
+            if (r == .tenant_implementer) break :blk true;
+        }
+        break :blk false;
+    };
+    if (!has_implementer) {
+        const conn = pool.acquire() catch return .{
+            .status_code = 503,
+            .body = "{\"detail\":\"pool_exhausted\",\"status\":503}",
+        };
+        defer pool.release(conn);
+        sandbox_access.writeSentinelAudit(
+            allocator, conn, tenant_id_slice, auth.user_id, sandbox_id, "sandbox_not_accessible",
+        );
+        return .{ .status_code = 403, .body = "{\"detail\":\"sandbox_not_accessible\",\"status\":403}" };
+    }
+
+    const conn = pool.acquire() catch return .{
+        .status_code = 503,
+        .body = "{\"detail\":\"pool_exhausted\",\"status\":503}",
+    };
+    defer pool.release(conn);
+
+    // SBX-05: probe rate check before emitting any sentinel.
+    const probe: sandbox_access.ProbeRateResult = sandbox_access.checkProbeRate(allocator, conn, auth.user_id) catch .{ .allowed = {} };
+
+    // SBX-05: validate principal binding (tenant predicate via search_path).
+    const access = sandbox_access.checkPrincipalBound(allocator, conn, sandbox_id, auth.user_id) catch {
+        return .{ .status_code = 503, .body = "{\"detail\":\"db_error\",\"status\":503}" };
+    };
+
+    switch (access) {
+        .inaccessible => {
+            switch (probe) {
+                .exceeded => |retry_after| {
+                    sandbox_access.writeSentinelAudit(
+                        allocator, conn, tenant_id_slice, auth.user_id, sandbox_id, "probe_rate_exceeded",
+                    );
+                    const body429 = std.fmt.allocPrint(
+                        allocator,
+                        "{{\"detail\":\"probe_rate_exceeded\",\"status\":429}}",
+                        .{},
+                    ) catch "{\"detail\":\"probe_rate_exceeded\",\"status\":429}";
+                    _ = retry_after;
+                    return .{ .status_code = 429, .body = body429 };
+                },
+                .allowed => {},
+            }
+            sandbox_access.writeSentinelAudit(
+                allocator, conn, tenant_id_slice, auth.user_id, sandbox_id, "sandbox_not_accessible",
+            );
+            return .{ .status_code = 403, .body = "{\"detail\":\"sandbox_not_accessible\",\"status\":403}" };
+        },
+        .ok => |sbx| {
+            defer {
+                allocator.free(sbx.sandbox_id);
+                allocator.free(sbx.status);
+                if (sbx.owner_principal) |p| allocator.free(p);
+                if (sbx.task_spec_id) |t| allocator.free(t);
+                if (sbx.claimed_at) |c| allocator.free(c);
+            }
+
+            const task_spec_for_audit: []const u8 = sbx.task_spec_id orelse "";
+
+            // SBX-06: atomic release UPDATE + sandbox.released audit.
+            conn.begin() catch return .{
+                .status_code = 503,
+                .body = "{\"detail\":\"db_error\",\"status\":503}",
+            };
+
+            conn.exec(
+                \\UPDATE agent_sandboxes
+                \\SET status = 'released',
+                \\    owner_principal = NULL,
+                \\    task_spec_id = NULL,
+                \\    claimed_at = NULL,
+                \\    last_active_at = NULL,
+                \\    updated_at = NOW()
+                \\WHERE sandbox_id = $1::uuid
+                \\  AND status = 'claimed'
+                \\  AND owner_principal = $2
+            , &.{ sandbox_id, auth.user_id }) catch {
+                conn.rollback() catch {};
+                return .{ .status_code = 503, .body = "{\"detail\":\"db_error\",\"status\":503}" };
+            };
+
+            const after = std.fmt.allocPrint(
+                allocator,
+                "{{\"principal\":\"{s}\",\"sandbox_id\":\"{s}\",\"task_spec_id\":\"{s}\"}}",
+                .{ auth.user_id, sandbox_id, task_spec_for_audit },
+            ) catch null;
+            if (after) |a| {
+                defer allocator.free(a);
+                const audit_id = audit_mod.writeAuditInTx(
+                    allocator, conn, tenant_id_slice, auth.user_id,
+                    "sandbox.released", "agent_sandbox", sandbox_id,
+                    null, a, trace_id, null,
+                ) catch null;
+                if (audit_id) |id| allocator.free(id);
+            }
+
+            conn.commit() catch return .{
+                .status_code = 503,
+                .body = "{\"detail\":\"db_error\",\"status\":503}",
+            };
+
+            return .{ .status_code = 204, .body = "" };
+        },
+    }
 }
