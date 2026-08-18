@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-18T15:33:21Z'
+generated_at: '2026-08-18T20:13:42Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -10784,7 +10784,7 @@ requirements:
     title: Agent artifact envelope with kind discrimination
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** SIM-01, promoting agent run output from a simulation artifact to a first-class stored envelope.
 
@@ -10802,14 +10802,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:38Z'
+    last_updated: '2026-08-18T20:13:39Z'
     workflow: PW-11
   AGT-02:
     id: AGT-02
     title: Non-production artifact environment enforcement
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** ENV-01, confining agent artifacts to non-production environments.
 
@@ -10827,14 +10827,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:39Z'
+    last_updated: '2026-08-18T20:13:40Z'
     workflow: PW-11
   AGT-03:
     id: AGT-03
     title: Artifact submission idempotency per attempt
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** AGT-01, making artifact submission safe to retry.
 
@@ -10852,14 +10852,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:40Z'
+    last_updated: '2026-08-18T20:13:41Z'
     workflow: PW-11
   AGT-04:
     id: AGT-04
     title: Immutable task specs bound by spec hash
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** PD-08, applying content-addressed immutability to agent task specs.
 
@@ -10877,7 +10877,7 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:09:41Z'
+    last_updated: '2026-08-18T20:13:42Z'
     workflow: PW-11
   AGT-05:
     id: AGT-05

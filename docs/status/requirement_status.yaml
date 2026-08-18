@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-18T01:13:09Z'
+last_updated: '2026-08-18T20:13:47Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4367,22 +4367,22 @@ requirements:
     released_at: '2026-05-29T12:51:00Z'
     release_run: WF02-stage10-repo-20260528
   AGT-01:
-    status: DRAFT
+    status: TESTED
     stage: '17'
     priority: MUST
     title: Agent artifact envelope with kind discrimination
   AGT-02:
-    status: DRAFT
+    status: TESTED
     stage: '17'
     priority: MUST
     title: Non-production artifact environment enforcement
   AGT-03:
-    status: DRAFT
+    status: TESTED
     stage: '17'
     priority: MUST
     title: Artifact submission idempotency per attempt
   AGT-04:
-    status: DRAFT
+    status: TESTED
     stage: '17'
     priority: MUST
     title: Immutable task specs bound by spec hash
@@ -4990,30 +4990,43 @@ requirements:
     released_at: '2026-08-14T03:12:28Z'
     note: Released via WF02-prm-batch1-20260814
   QRY-01:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Structured entity query surface
+    released_at: '2026-08-18T10:38:38Z'
   QRY-02:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Declared filterable field allowlist
+    released_at: '2026-08-18T10:38:39Z'
   QRY-03:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Keyset pagination with a bounded page size
+    released_at: '2026-08-18T10:38:40Z'
   QRY-04:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Empty envelope for unauthorised entity types
+    released_at: '2026-08-18T10:38:41Z'
   QRY-05:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Server-side field stripping on query results
+    implemented_in:
+    - src/entities/query/field_grants.zig
+    - src/entities/query/allowlist.zig
+    - src/api/routes/entity_query.zig
+    - migrations/1169_qry05_entity_field_grants.sql
+    - tests/integration/qry05_field_stripping_test.zig
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
+    released_at: '2026-08-18T15:33:18Z'
   RND-UI-01:
     status: RELEASED
     stage: F8
@@ -5072,20 +5085,43 @@ requirements:
     note: 'Released via WF02-pw13-pw16-batch19-20260813 (Batch 19). RELEASE-VALIDATOR APPROVED: type-check
       0, lint 0, 110/110 unit tests, build 0.'
   SBX-01:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Orchestrator role gate on task-spec submission
+    implemented_in:
+    - src/api/middleware/agent_auth.zig
+    - src/api/routes/agent_task_specs.zig
+    - migrations/1170_sbx_task_specs_agent_sandboxes.sql
+    - tests/integration/sbx01_02_03_agent_role_gates_test.zig
+    - tests/specs/SBX-01-03.md
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
+    released_at: '2026-08-18T15:33:19Z'
   SBX-02:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Server-authoritative orchestrator principal
+    implemented_in:
+    - src/crypto/canonical_json.zig
+    - src/api/routes/agent_task_specs.zig
+    - tests/integration/sbx01_02_03_agent_role_gates_test.zig
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
+    released_at: '2026-08-18T15:33:20Z'
   SBX-03:
-    status: DRAFT
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Orchestrator excluded from sandbox claim
+    implemented_in:
+    - src/api/routes/agent_sandboxes.zig
+    - migrations/1170_sbx_task_specs_agent_sandboxes.sql
+    - tests/integration/sbx01_02_03_agent_role_gates_test.zig
+    test_run: tests/reports/WF02-qry05-sbx01-03-20260818-test-report-rework1.yaml
+    tested_at: '2026-08-18'
+    released_at: '2026-08-18T15:33:21Z'
   SBX-04:
     status: DRAFT
     stage: '17'
