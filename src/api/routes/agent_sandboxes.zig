@@ -249,6 +249,24 @@ pub fn handleClaimSandbox(
     };
     defer pool.release(conn);
 
+    // SBX-04/INV-2: verify task_spec_id exists for this tenant before claiming.
+    const spec_row = conn.queryRow(
+        allocator,
+        \\SELECT 1 FROM task_specs
+        \\WHERE tenant_id = current_setting('app.current_tenant_id')::uuid
+        \\AND task_spec_id = $1::uuid
+    , &.{task_spec_id}) catch return .{
+        .status_code = 503,
+        .body = "{\"detail\":\"db_error\",\"status\":503}",
+    };
+    if (spec_row == null) {
+        return .{ .status_code = 404, .body = "{\"detail\":\"task_spec_not_found\",\"status\":404}" };
+    }
+    if (spec_row) |r| {
+        for (r) |col| if (col) |c| allocator.free(c);
+        allocator.free(r);
+    }
+
     // SBX-04: atomic UPDATE + audit inside one transaction.
     conn.begin() catch return .{
         .status_code = 503,
