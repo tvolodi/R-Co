@@ -8,8 +8,8 @@
   "file": "handoffs/WF03-qry01-04-bugs-20260818/step-03-backend-dev-rework2.json",
   "created_at": "2026-08-18T09:44:04Z",
   "started_at": "2026-08-18T09:45:04Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-18T10:07:57Z",
+  "status": "COMPLETED",
   "priority": "BLOCKER",
   "context": {
     "run_id": "WF03-qry01-04-bugs-20260818",
@@ -39,7 +39,17 @@
   "task": {
     "description": "Fix 3 remaining bugs after commits 3ced4800 + c0459571.\n\n## Fix 1: ISS-QRY-PAYLOAD-COL-01 (QRY-01 ×3 fails)\n\nFirst, read tests/integration/query_qry01_04_test.zig to understand how the entity test tables are created. Specifically:\n- How does the test create entity types with typed columns?\n- Does it create a payload JSONB column for mixed-type entities?\n\nThe entity_filterable_keys table stores jsonb_key allowlist entries. When loadAllowlist returns jsonb_key entries, the SQL compiler emits: payload ->> '<key>'. If the entity table doesn't have a payload column, this fails.\n\nTwo valid approaches:\n(a) Test fixtures need to add payload JSONB column to entity tables that have jsonb_key allowlist entries\n(b) If tests are using purely typed-column entities with no JSONB payload, then the test should NOT insert rows into entity_filterable_keys (since those are jsonb_key entries). Fix the test setup instead.\n\nRead the test code carefully to determine which approach is correct.\n\n## Fix 2: ISS-QRY-DETAIL-FIELD-01 (QRY-02 ×1 fails)\n\nRead tests/integration/query_qry01_04_test.zig near qry02_non_allowlisted_field_returns_400.\nFind what the test parses from the error body (parseDetail or similar).\nRead src/api/routes/entity_query.zig to find the 400 response format.\nFix the response body to match what the test expects (likely needs a 'detail' field or specific JSON structure).\n\n## Fix 3: ISS-QRY-CURSOR-ENCODING-01 (QRY-03 ×1 fails)\n\nsqlstate=22021 means the cursor contains bytes PostgreSQL can't store/process in its encoding.\nRead src/entities/query/cursor.zig — find the base64url encoding of the fingerprint.\nBase64url uses A-Z, a-z, 0-9, -, _. These are all ASCII and safe. But maybe the VALUES portion of the cursor (after the fingerprint) contains the actual row values, which could have non-ASCII characters or special PostgreSQL characters.\nRead how the cursor value is stored/compared in the SQL query — is it used as a literal SQL value or as a positional parameter? If it's a positional parameter it should be safe. If it's interpolated, fix to use positional param.\n\n## After fixes:\n1. zig build (exit 0)\n2. git add -A; git commit -m 'fix(QRY): payload col test fixture + detail field + cursor ASCII safety'"
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed 3 bugs; commit db2bd848. Fix1(ISS-QRY-PAYLOAD-COL-01): added registerEntityWithTextField helper to test file; qry01a/qry01c/qry01e now declare 'status' as typed_column in entity_definitions.definition_json.fields instead of entity_filterable_keys, so allowlist loads it as typed_column kind and compiler emits \"status\" column reference instead of payload->>'status'. Fix2(ISS-QRY-DETAIL-FIELD-01): changed FilterFieldNotAllowlisted response body key from 'error' to 'detail' in entity_query.zig to match RFC 9457 problem format expected by parseDetail(). Fix3(ISS-QRY-CURSOR-ENCODING-01): removed defer decoded.deinit() from inside the cursor if-block; instead store decoded QueryCursor in CompiledQuery.cursor_storage field and free it in deinitCompiledQuery, ensuring decoded.tuple values remain valid when conn.query() executes them as positional params.",
+    "artifacts_out": [
+      "src/api/routes/entity_query.zig",
+      "src/entities/query/compiler.zig",
+      "tests/integration/query_qry01_04_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER for integration test re-run"
+  },
   "max_rework": 3,
   "rework_count": 2
 }
