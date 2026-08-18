@@ -160,7 +160,7 @@ fn checkEntityRegistered(
 ) !bool {
     const row = try conn.queryRow(
         allocator,
-        "SELECT 1 FROM public.entity_definitions WHERE tenant_id = $1::uuid AND name = $2 AND status = 'ACTIVE' LIMIT 1",
+        "SELECT 1 FROM entity_definitions WHERE tenant_id = $1::uuid AND name = $2 AND status = 'ACTIVE' LIMIT 1",
         &.{ tenant_id, entity_key },
     );
     if (row) |r| {

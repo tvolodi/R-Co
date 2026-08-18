@@ -46,10 +46,20 @@ fn sortDirStr(dir: types.SortDir) []const u8 {
     return switch (dir) { .asc => "asc", .desc => "desc" };
 }
 
-fn columnExpr(allocator: std.mem.Allocator, field: allowlist.AllowlistedField) error{OutOfMemory}![]u8 {
+fn columnExpr(
+    allocator: std.mem.Allocator,
+    field: allowlist.AllowlistedField,
+    params: *std.ArrayList([]const u8),
+    pidx: *usize,
+) error{OutOfMemory}![]u8 {
     return switch (field.kind) {
         .typed_column => std.fmt.allocPrint(allocator, "\"{s}\"", .{field.name}),
-        .jsonb_key => std.fmt.allocPrint(allocator, "payload ->> '{s}'", .{field.name}),
+        .jsonb_key => blk: {
+            try params.append(allocator, field.name);
+            const idx = pidx.*;
+            pidx.* += 1;
+            break :blk std.fmt.allocPrint(allocator, "payload ->> ${d}", .{idx});
+        },
     };
 }
 
@@ -92,7 +102,7 @@ pub fn compile(
         if ((f.op == .lt or f.op == .lte or f.op == .gt or f.op == .gte) and
             af.storage_type == .boolean) return CompileError.OperatorNotValidForType;
 
-        const col_expr = columnExpr(allocator, af) catch return CompileError.OutOfMemory;
+        const col_expr = columnExpr(allocator, af, &params, &pidx) catch return CompileError.OutOfMemory;
         defer allocator.free(col_expr);
 
         const clause: []u8 = switch (f.op) {
@@ -127,7 +137,7 @@ pub fn compile(
         const af = al.find(s.field) orelse return CompileError.SortFieldNotAllowlisted;
         if (!af.is_sortable) return CompileError.SortFieldNotAllowlisted;
 
-        const col_expr = columnExpr(allocator, af) catch return CompileError.OutOfMemory;
+        const col_expr = columnExpr(allocator, af, &params, &pidx) catch return CompileError.OutOfMemory;
         defer allocator.free(col_expr);
 
         const part = std.fmt.allocPrint(allocator, "{s} {s}", .{ col_expr, sortDirToSql(s.dir) }) catch
