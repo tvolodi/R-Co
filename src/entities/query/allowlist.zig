@@ -62,7 +62,6 @@ pub fn loadAllowlist(
     tenant_id: []const u8,
     entity_key: []const u8,
 ) AllowlistError!EntityAllowlist {
-    _ = tenant_id; // kept in signature for API compatibility; search_path set by caller
     var fields: std.ArrayList(AllowlistedField) = .empty;
     errdefer {
         for (fields.items) |f| allocator.free(f.name);
@@ -83,12 +82,12 @@ pub fn loadAllowlist(
         };
     }
 
-    // Step 2: typed columns from entity_definitions.definition_json (global registry — no tenant_id, GBL-123).
+    // Step 2: typed columns from entity_definitions.definition_json (per-tenant schema via search_path — GBL-137).
     const def_row = conn.queryRow(
         allocator,
-        "SELECT definition_json FROM public.entity_definitions" ++
-            " WHERE name = $1 AND status = 'ACTIVE' LIMIT 1",
-        &.{entity_key},
+        "SELECT definition_json FROM entity_definitions" ++
+            " WHERE name = $1 AND tenant_id = $2::uuid AND status = 'ACTIVE' LIMIT 1",
+        &.{ entity_key, tenant_id },
     ) catch return AllowlistError.DbError;
     if (def_row) |row| {
         defer {
