@@ -1,0 +1,27 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-03-backend-dev-rework1",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "03-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-03-backend-dev-rework1.json",
+  "created_at": "2026-08-18T09:34:32Z",
+  "started_at": "2026-08-18T09:35:10Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "BLOCKER",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "workflow": "WF-03",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "regression_from": "3ced4800",
+    "root_cause": "allowlist.zig:88-90 queries public.entity_definitions WHERE tenant_id=$1::uuid AND name=$2 AND status='ACTIVE'. But entity_definitions is a global registry — tenant_id was removed by migration GBL-123. This causes sqlstate=42703 undefined_column on all loadAllowlist calls → HTTP 503 for 10 tests."
+  },
+  "task": {
+    "description": "Fix regression in src/entities/query/allowlist.zig from commit 3ced4800:\n\n1. First, verify the actual schema of public.entity_definitions:\n   docker exec r-co-db_test-1 psql -U bpm -d bpm_test -c 'SELECT column_name FROM information_schema.columns WHERE table_name=\\'entity_definitions\\' AND table_schema=\\'public\\' ORDER BY ordinal_position;'\n\n2. Fix the entity_definitions query in loadAllowlist:\n   - Remove tenant_id predicate (the column does not exist)\n   - Use only: WHERE name = $entity_key AND status = 'ACTIVE' (or equivalent based on actual schema)\n   - The tenant parameter (first arg) is still needed for entity_filterable_keys tenant scoping via search_path — keep it in the function signature but only use it for that purpose\n   - Also check: does entity_definitions still have 'status' and 'name' columns? Adjust query to match actual schema.\n\n3. zig build (exit 0)\n\n4. git add -A; git commit -m 'fix(QRY): remove tenant_id from entity_definitions query (GBL-123 global registry)'"
+  },
+  "result": null,
+  "max_rework": 3,
+  "rework_count": 1
+}
