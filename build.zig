@@ -4521,6 +4521,36 @@ pub fn build(b: *std.Build) void {
     test_integration_qry01_04_step.dependOn(&run_query_qry01_04_solo_tests.step);
     test_integration_others_step.dependOn(&run_query_qry01_04_solo_tests.step);
 
+    // Stage 17 / WF02-qry05-sbx01-03-20260818 — QRY-05, SBX-01, SBX-02, SBX-03.
+    // Dual-wired: imported into test_integration_others_step AND given its own
+    // scoped step for rapid isolated verification.
+    const qry05_sbx_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/qry05_field_stripping_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_qry05_solo_tests = addIntegrationRun(b, qry05_sbx_solo_tests, migrations_dir, clean_test_db);
+
+    const sbx01_03_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/sbx01_02_03_agent_role_gates_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sbx01_03_solo_tests = addIntegrationRun(b, sbx01_03_solo_tests, migrations_dir, clean_test_db);
+
+    const test_integration_qry05_sbx_step = b.step("test-integration-qry05-sbx", "Run QRY-05 field stripping and SBX-01..03 agent role gate integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_qry05_sbx_step.dependOn(&clean_test_db.step);
+    test_integration_qry05_sbx_step.dependOn(&run_qry05_solo_tests.step);
+    test_integration_qry05_sbx_step.dependOn(&run_sbx01_03_solo_tests.step);
+    test_integration_others_step.dependOn(&run_qry05_solo_tests.step);
+    test_integration_others_step.dependOn(&run_sbx01_03_solo_tests.step);
+
     // ---------------------------------------------------------------------------
     // ISS-0696 / GH-760: serial-public barrier — five test binaries that write to
     // shared tenant_default / public.tenant tables without per-run schema isolation.

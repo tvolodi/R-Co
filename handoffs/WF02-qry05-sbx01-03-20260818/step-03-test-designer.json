@@ -1,0 +1,53 @@
+{
+  "handoff_id": "WF02-qry05-sbx01-03-20260818-03-test-designer",
+  "run_id": "WF02-qry05-sbx01-03-20260818",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-03-test-designer.json",
+  "created_at": "2026-08-18T13:29:50Z",
+  "started_at": "2026-08-18T13:29:50Z",
+  "completed_at": "2026-08-18T13:42:24Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry05-sbx01-03-20260818",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "QRY-05",
+      "SBX-01",
+      "SBX-02",
+      "SBX-03"
+    ],
+    "design_file": "src/design/WF02-qry05-sbx01-03-20260818.md",
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818",
+    "commit_sha": "e197a78a",
+    "security_minor": "SEC-MINOR-01: no audit event for conflicting_agent_roles path \u2014 include test that verifies the audit event is absent (current behaviour) as known-gap documentation test"
+  },
+  "task": {
+    "description": "Write integration tests for QRY-05, SBX-01, SBX-02, SBX-03 on branch feature/WF02-qry05-sbx01-03-20260818.\n\nCreate test files:\n- tests/integration/qry05_field_stripping_test.zig\n- tests/integration/sbx01_02_03_agent_role_gates_test.zig\n\nTest coverage required:\n\n## QRY-05 tests:\n1. Caller WITHOUT read grant on `unit_cost_eur`: field ABSENT from response items\n2. Caller WITH read grant: field present in all items, same row set\n3. Caller without grant filters on `unit_cost_eur`: HTTP 400 `filter_field_not_allowlisted`\n4. Caller without grant sorts on `unit_cost_eur`: HTTP 400 `filter_field_not_allowlisted`\n5. Stripping leaves `record_id` even if all other fields stripped\n6. Cross-tenant: field grant for tenant A does NOT affect tenant B results\n\n## SBX-01 tests:\n1. Token with scope but no orchestrator role \u2192 HTTP 403 `orchestrator_role_required`\n2. Token with orchestrator role but no scope \u2192 HTTP 403 `orchestrator_role_required`\n3. Token with BOTH scope AND role \u2192 task spec accepted and persisted\n4. Token with both orchestrator AND implementer realm roles \u2192 HTTP 403 `conflicting_agent_roles` (verify audit event ABSENT per SEC-MINOR-01)\n5. Correct audit event `TaskSpecSubmissionRejected` with missing_credential on rejection\n\n## SBX-02 tests:\n1. Body without orchestrator_principal: persisted spec has `orchestrator_principal = token_subject`\n2. Body WITH orchestrator_principal='orch-b', token subject='orch-a': persisted has 'orch-a', 'orch-b' discarded\n3. Two orchestrators same body \u2192 different spec_hash values (different principals)\n4. Audit entry `TaskSpecSubmitted` has correct principal\n\n## SBX-03 tests:\n1. Orchestrator token calls claim endpoint \u2192 HTTP 403 `orchestrator_may_not_claim`\n2. Non-agent token calls claim endpoint \u2192 HTTP 403 `implementer_role_required`\n3. Implementer token claims \u2192 201, sandbox bound to implementer principal\n4. Orchestrator calls GET sandboxes \u2192 gets all tenant sandboxes (multi-owner)\n5. Implementer calls GET sandboxes \u2192 gets only own sandboxes\n6. Audit event `SandboxClaimRejected` on orchestrator claim attempt\n\nAlso write specs to tests/specs/QRY-05.md and tests/specs/SBX-01-03.md.\n\nWire new tests into build.zig as test-integration-qry05-sbx.\n\nReturn PASS when specs and test files exist and zig build check exits 0."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and integration tests for QRY-05 (field stripping, 6 tests) and SBX-01/SBX-02/SBX-03 (agent role gates, 15 tests). All MUST acceptance criteria covered. Wired as zig build test-integration-qry05-sbx in build.zig. zig build check exits 0. lint_test_isolation.py exits 0. lint_handoffs.py exits 0.",
+    "artifacts_out": [
+      "tests/specs/QRY-05.md",
+      "tests/specs/SBX-01-03.md",
+      "tests/integration/qry05_field_stripping_test.zig",
+      "tests/integration/sbx01_02_03_agent_role_gates_test.zig",
+      "src/bpm.zig",
+      "build.zig"
+    ],
+    "issues": [
+      {
+        "id": "SEC-MINOR-01",
+        "severity": "MINOR",
+        "description": "conflicting_agent_roles is enforced by authenticate() before any handler is invoked. No TaskSpecSubmissionRejected or conflicting_agent_roles audit entry is written in this path because the handler is never reached. TC-SBX-01-04 documents this known gap as a handler-bypass test. Full coverage of the audit-absent path requires auth middleware tests (oidc suite)."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}
