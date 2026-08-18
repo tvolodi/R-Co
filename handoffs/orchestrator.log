@@ -2200,3 +2200,6 @@
 2026-08-18T09:44:04Z | REWORK | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-03-backend-dev-rework2 | ORCH -> BACKEND-DEV | REWORK(2/3): 3 new bugs: payload col + detail field + cursor ASCII
 2026-08-18T10:09:29Z | ROUTE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-05-test-runner-rework2 | ORCH -> TEST-RUNNER | PENDING | rework2: rerun after payload-col + detail-field + cursor-uaf fixes db2bd848
 2026-08-18T10:15:02Z | REWORK | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-03-backend-dev-rework3 | ORCH -> BACKEND-DEV | REWORK(3/3): typed_column eq filter returns 400 instead of 200 — lookup bug in compiler
+2026-08-18T10:20:28Z | ROUTE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-05-test-runner-rework3 | ORCH -> TEST-RUNNER | PENDING | rework3 (final): all fixes applied — 2c4ed368 entity_definitions per-tenant fix
+2026-08-18T10:27:24Z | COMPLETE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-05-test-runner-rework3 | TEST-RUNNER | PASS: 14/14 PASS — QRY-01..04 green — routing to DOC-UPDATER Step 7
+2026-08-18T10:27:24Z | ROUTE | WF03-qry01-04-bugs-20260818 | WF03-qry01-04-bugs-20260818-07-doc-updater | ORCH -> DOC-UPDATER | PENDING | WF-03 Step 7: changelog + QRY-01..04 status TESTED + close GH issues #823-#826

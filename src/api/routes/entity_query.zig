@@ -97,7 +97,7 @@ pub fn handleEntityQuery(
                     .{fname},
                 ) catch
                     std.fmt.allocPrint(allocator, "{{\"detail\":\"filter_field_not_allowlisted\"}}", .{}) catch
-                        "{\"detail\":\"filter_field_not_allowlisted\"}"
+                    "{\"detail\":\"filter_field_not_allowlisted\"}"
             else
                 std.fmt.allocPrint(allocator, "{{\"detail\":\"filter_field_not_allowlisted\"}}", .{}) catch
                     "{\"detail\":\"filter_field_not_allowlisted\"}";
@@ -150,6 +150,9 @@ pub fn handleEntityQuery(
     defer allocator.free(items_json);
 
     appendQueryAudit(allocator, conn, auth.user_id, tenant_id_slice, entity_key, req, @intCast(result_count), effective_page_size, req.cursor != null);
+
+    // Return static EMPTY_ENVELOPE to avoid heap-allocating the trivially-empty body.
+    if (result_count == 0 and next_cursor_str == null) return emptyEnvelope();
 
     const cursor_json: []const u8 = if (next_cursor_str) |c|
         std.fmt.allocPrint(allocator, "\"{s}\"", .{c}) catch "null"
