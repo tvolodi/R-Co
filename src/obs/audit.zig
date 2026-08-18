@@ -418,7 +418,22 @@ pub fn writeAuditInTx(
         // Use simple PRNG seeding from timestamp for audit_id uniqueness.
         // Uniqueness within a tenant is guaranteed by the PK constraint
         // plus transaction serialisation (only one audit write per tx).
-        const ts = std.time.microTimestamp();
+        // ISS-0153: std.time.microTimestamp() was removed in Zig 0.16.
+        // Use OS-specific primitives (same pattern as instances.zig).
+        const ts: i64 = blk: {
+            const builtin = @import("builtin");
+            if (builtin.os.tag == .windows) {
+                const windows = std.os.windows;
+                const ft: i64 = windows.ntdll.RtlGetSystemTimePrecise();
+                const unix_100ns: i64 = ft - 116_444_736_000_000_000;
+                break :blk @divTrunc(unix_100ns, 10);
+            } else {
+                const posix = std.posix;
+                var ts_spec: posix.timespec = undefined;
+                _ = posix.system.clock_gettime(.REALTIME, &ts_spec);
+                break :blk ts_spec.sec * 1_000_000 + @divTrunc(ts_spec.nsec, 1000);
+            }
+        };
         const ts_bytes: [8]u8 = @bitCast(@as(u64, @intCast(ts)));
         @memcpy(buf[0..8], &ts_bytes);
         @memcpy(buf[8..16], &ts_bytes); // duplicate for 16 bytes
