@@ -191,6 +191,7 @@ pub fn handleArtifactSubmit(
             .{auth.user_id},
         ) catch null;
         if (after_state) |a| {
+            defer allocator.free(a);
             const audit_id = audit_mod.writeAuditInTx(
                 allocator,
                 conn,
