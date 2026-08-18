@@ -6,21 +6,47 @@
   "step": "final",
   "created_at": "2026-08-17T12:47:56Z",
   "started_at": "2026-08-18T01:08:28Z",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "workflow_ref": "ADHOC",
   "priority": "NORMAL",
   "context": {
     "branch": "feature/ADHOC-par02-03-05-release-20260817",
-    "requirement_ids": ["PAR-02", "PAR-03", "PAR-05"]
+    "requirement_ids": [
+      "PAR-02",
+      "PAR-03",
+      "PAR-05"
+    ]
   },
   "task": {
     "description": "Execute fn:git-merge for ADHOC-par02-03-05-release-20260817.\n\nCreate PR from feature/ADHOC-par02-03-05-release-20260817 to main, squash-merge, delete branch.",
-    "functions_to_call": ["fn:git-merge"],
+    "functions_to_call": [
+      "fn:git-merge"
+    ],
     "acceptance_criteria": [
       "PR created and squash-merged to main",
       "Branch deleted",
       "Local repo on main with clean working tree"
     ]
   },
-  "result": null
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-merge complete — PR #822 squash-merged to main (bc9af23f); feature branch deleted (remote + local); GH-711 and GH-733 already closed; PAR-02/03/05 linked to PR #822 in requirements.yaml; lint_handoffs exit 0 (0 BLOCKER, 0 MAJOR, 1 MINOR pre-existing)",
+    "artifacts_out": [
+      "https://github.com/tvolodi/R-Co/pull/822",
+      "docs/requirements.yaml (PAR-02/03/05 implemented-in: PR #822)",
+      "docs/status/requirement_status.yaml (regenerated)"
+    ],
+    "issues": [
+      {
+        "severity": "INFO",
+        "description": "GH-711 (ISS-0670) and GH-733 (ISS-0686) were already closed before Step Final — no action needed."
+      },
+      {
+        "severity": "INFO",
+        "description": "lint_handoffs: 1 MINOR H010 pre-existing (53 old handoffs absent from registry) — not introduced by this run."
+      }
+    ],
+    "next_action": "DONE — PAR-02/PAR-03/PAR-05 RELEASED on main at bc9af23f"
+  },
+  "completed_at": "2026-08-18T01:12:24Z"
 }

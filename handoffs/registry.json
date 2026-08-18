@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "created_at": null,
-  "last_updated": "2026-08-18T00:50:41Z",
+  "last_updated": "2026-08-18T01:12:24Z",
   "entries": [
     {
       "handoff_id": "ADHOC-par02-03-05-release-20260817-03-release-validator",
@@ -131,9 +131,9 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-17T12:47:56Z",
-      "completed_at": null,
-      "status": "PENDING",
-      "result_status": null
+      "completed_at": "2026-08-18T01:12:24Z",
+      "status": "COMPLETED",
+      "result_status": "PASS"
     },
     {
       "handoff_id": "WF02-obp-ddl-20260817-06-doc-updater",
@@ -17929,7 +17929,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-01T14:47:43Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Step 00 (git-setup) for TC-OIDC-22-01 bootstrap constraint query failure"
+      "stage": "WF-03 Issue Resolving \u2014 Step 00 (git-setup) for TC-OIDC-22-01 bootstrap constraint query failure"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-05-issue-fixer",
@@ -17940,7 +17940,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-01T14:50:50Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 0.5/1 — Issue registry + root-cause diagnosis for ISS-0126"
+      "stage": "WF-03 Step 0.5/1 \u2014 Issue registry + root-cause diagnosis for ISS-0126"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-02",
@@ -17951,7 +17951,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-08-01T14:52:30Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2 — Code design for ISS-0126 fix"
+      "stage": "WF-03 Step 2 \u2014 Code design for ISS-0126 fix"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-02b",
@@ -17962,7 +17962,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-01T14:56:10Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2b — Validate design for ISS-0126 fix"
+      "stage": "WF-03 Step 2b \u2014 Validate design for ISS-0126 fix"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-03",
@@ -17973,7 +17973,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-01T15:01:00Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 3 — Apply fix per design for ISS-0126"
+      "stage": "WF-03 Step 3 \u2014 Apply fix per design for ISS-0126"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-05",
@@ -17984,7 +17984,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-01T15:33:16Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 5 — Verify TC-OIDC-22-01 passes; no OIDC regression"
+      "stage": "WF-03 Step 5 \u2014 Verify TC-OIDC-22-01 passes; no OIDC regression"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-07",
@@ -17995,7 +17995,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-01T15:58:18Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 7 — DOC-UPDATER"
+      "stage": "WF-03 Step 7 \u2014 DOC-UPDATER"
     },
     {
       "handoff_id": "wf03-gh392-20260801-step-final",
@@ -18006,7 +18006,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-01T16:02:08Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step Final — git-merge"
+      "stage": "WF-03 Step Final \u2014 git-merge"
     },
     {
       "handoff_id": "WF03-gh391-step00",
@@ -22518,7 +22518,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-08T11:53:14Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Step 2"
+      "stage": "WF-03 Issue Resolving \u2014 Step 2"
     },
     {
       "handoff_id": "f337069c-d08b-49a1-9087-5e86f0a94887",
@@ -23447,7 +23447,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T03:43:28Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 0.5 — ISS-0131 registry lookup"
+      "stage": "WF-03 Step 0.5 \u2014 ISS-0131 registry lookup"
     },
     {
       "handoff_id": "d512febe-8308-45ff-a59a-72dc2133d74d",
@@ -23458,7 +23458,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T03:43:28Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 1 — root cause diagnosis"
+      "stage": "WF-03 Step 1 \u2014 root cause diagnosis"
     },
     {
       "handoff_id": "190b154e-6cba-4874-9314-57fc6ff02d27",
@@ -23480,7 +23480,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-09T03:48:25Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 5 — integration test verification"
+      "stage": "WF-03 Step 5 \u2014 integration test verification"
     },
     {
       "handoff_id": "b95272cd-523a-4386-842e-ed1c0235c909",
@@ -23600,7 +23600,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T04:33:37Z",
       "status": "COMPLETED",
-      "stage": "Step 3 — implement fix"
+      "stage": "Step 3 \u2014 implement fix"
     },
     {
       "handoff_id": "d8ad27ea-5fd3-40dc-90f0-ca5e85cf9963",
@@ -23679,7 +23679,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-08-09T05:21:43Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2 — fix design"
+      "stage": "WF-03 Step 2 \u2014 fix design"
     },
     {
       "handoff_id": "8095a21a-7946-4de5-b3b7-c91d65390f60",
@@ -23723,7 +23723,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-09T05:41:40Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 7 — documentation"
+      "stage": "WF-03 Step 7 \u2014 documentation"
     },
     {
       "handoff_id": "5ff58680-b488-4300-9377-0f3c46451f4b",
@@ -23822,7 +23822,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-09T06:16:57Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Step 7"
+      "stage": "WF-03 Issue Resolving \u2014 Step 7"
     },
     {
       "handoff_id": "1379ca6c-241e-48cd-8514-5920213a3926",
@@ -24097,7 +24097,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T08:38:16Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "03591c24-48e8-4928-8d86-10a293e1d3eb",
@@ -24108,7 +24108,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T09:55:00Z",
       "status": "COMPLETED",
-      "stage": "Step 0.5 — registry lookup"
+      "stage": "Step 0.5 \u2014 registry lookup"
     },
     {
       "handoff_id": "1690cd9d-ae29-41e4-8e1c-d2083b5d3d26",
@@ -24119,7 +24119,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T09:55:00Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "d671b493-d65b-4228-a86a-e17c4f65c18e",
@@ -24130,7 +24130,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T09:55:00Z",
       "status": "COMPLETED",
-      "stage": "Step 1 — root cause diagnosis"
+      "stage": "Step 1 \u2014 root cause diagnosis"
     },
     {
       "handoff_id": "10472669-e0a5-40b8-8bee-4b60269cfb93",
@@ -24141,7 +24141,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-08-09T09:58:00Z",
       "status": "COMPLETED",
-      "stage": "Step 2 — fix design"
+      "stage": "Step 2 \u2014 fix design"
     },
     {
       "handoff_id": "d7f54c2e-ac72-42ce-b20f-bf923544d462",
@@ -24152,7 +24152,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-08-09T10:02:00Z",
       "status": "COMPLETED",
-      "stage": "Step 2b — design validation"
+      "stage": "Step 2b \u2014 design validation"
     },
     {
       "handoff_id": "f2712ca7-9939-4004-a582-770bfdd23c9f",
@@ -24163,7 +24163,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T10:02:00Z",
       "status": "COMPLETED",
-      "stage": "Step 3 — implement fix"
+      "stage": "Step 3 \u2014 implement fix"
     },
     {
       "handoff_id": "1214a791-6b2e-4a5f-9a3d-000000000000",
@@ -24262,7 +24262,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-09T10:06:00Z",
       "status": "COMPLETED",
-      "stage": "Step 5 — test verification"
+      "stage": "Step 5 \u2014 test verification"
     },
     {
       "handoff_id": "ff965720-c39d-441e-840b-a7898f81367c",
@@ -24273,7 +24273,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-08-09T10:09:54Z",
       "status": "COMPLETED",
-      "stage": "Step 7 — changelog/issue update"
+      "stage": "Step 7 \u2014 changelog/issue update"
     },
     {
       "handoff_id": "5f6ff84d-ac87-4232-9df6-9145c5e64389",
@@ -24284,7 +24284,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T10:14:00Z",
       "status": "COMPLETED",
-      "stage": "Step Final — git-merge"
+      "stage": "Step Final \u2014 git-merge"
     },
     {
       "handoff_id": "2c0e27e1-0000-0000-0000-000000000000",
@@ -24515,7 +24515,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T12:07:36Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "55ba6715-5b18-45e3-b155-d38a1cd640cf",
@@ -24526,7 +24526,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T12:09:28Z",
       "status": "COMPLETED",
-      "stage": "Step 1 — diagnosis"
+      "stage": "Step 1 \u2014 diagnosis"
     },
     {
       "handoff_id": "b4ca8005-80ae-483d-b4a9-1be352298931",
@@ -24537,7 +24537,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-09T12:09:28Z",
       "status": "COMPLETED",
-      "stage": "Step 0.5 — registry lookup"
+      "stage": "Step 0.5 \u2014 registry lookup"
     },
     {
       "handoff_id": "c0ddc0e0-667b-403d-8917-3d68a759782d",
@@ -24757,7 +24757,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-09T13:03:46Z",
       "status": "COMPLETED",
-      "stage": "Step 00 — git-setup"
+      "stage": "Step 00 \u2014 git-setup"
     },
     {
       "handoff_id": "10ecd97f-1749-452d-a58f-5ad72781da0f",
@@ -30989,7 +30989,7 @@
       "completed_at": "2026-08-13T20:05:28Z",
       "status": "COMPLETED",
       "result_status": "FAIL",
-      "summary": "FAIL — content-complete (1:1 AC mapping, no impl code, full file inventory, concrete selectors, six canonical surfaces, axe color-contrast enabled, no-mock contract explicit, OQs handled) but lint_design_artefact.py flags E010 MAJOR: missing 'error taxonomy'/'errors'/'error cases' section heading. Single MAJOR = FAIL per workflow contract. Rework: add explicit error taxonomy section enumerating runtime error modes per requirement."
+      "summary": "FAIL \u2014 content-complete (1:1 AC mapping, no impl code, full file inventory, concrete selectors, six canonical surfaces, axe color-contrast enabled, no-mock contract explicit, OQs handled) but lint_design_artefact.py flags E010 MAJOR: missing 'error taxonomy'/'errors'/'error cases' section heading. Single MAJOR = FAIL per workflow contract. Rework: add explicit error taxonomy section enumerating runtime error modes per requirement."
     },
     {
       "handoff_id": "WF02-pw13-pw16-batch19-20260813/step-01-code-designer-rework1",
@@ -31022,7 +31022,7 @@
       "started_at": "2026-08-13T20:13:00Z",
       "completed_at": "2026-08-13T20:13:08Z",
       "result_status": "PASS",
-      "summary": "Re-validation PASS after rework — §12 Error taxonomy (21 runtime failure modes) added; all 9 validation criteria PASS; lint_design_artefact exits 0; lint_handoffs exits 0. Next step FRONTEND-DEV Step 02b."
+      "summary": "Re-validation PASS after rework \u2014 \u00a712 Error taxonomy (21 runtime failure modes) added; all 9 validation criteria PASS; lint_design_artefact exits 0; lint_handoffs exits 0. Next step FRONTEND-DEV Step 02b."
     },
     {
       "handoff_id": "WF02-pw13-pw16-batch19-20260813/step-02b-frontend-dev",
@@ -31036,7 +31036,7 @@
       "completed_at": "2026-08-13T20:27:00Z",
       "status": "COMPLETED",
       "result_status": "PASS",
-      "summary": "RND-UI-05/06 + GRD-UI-06/07 implemented per design §5; 9 new unit test files; 4 E2E specs; pnpm tsc/lint/build/test all exit 0; 129/129 tests pass."
+      "summary": "RND-UI-05/06 + GRD-UI-06/07 implemented per design \u00a75; 9 new unit test files; 4 E2E specs; pnpm tsc/lint/build/test all exit 0; 129/129 tests pass."
     },
     {
       "run_id": "WF02-pw13-pw16-batch19-20260813",
@@ -31048,7 +31048,7 @@
       "started_at": "2026-08-13T20:35:00Z",
       "completed_at": "2026-08-13T20:36:53Z",
       "result_status": "PASS",
-      "summary": "Test-design validation PASS for RND-UI-05/06 + GRD-UI-06/07. All 10 hard-gate items PASS: 23 MUST ACs covered (5+6+6+6), 21 §12 error modes covered (6+5+5+5), no deferred tests, no mocks (one comment match in no-mock header), fixtures isolated, tests self-sufficient, E2E specs use real getKeycloakToken + real REST endpoints, lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 MINOR pre-existing on registry.json). All 12 TEST-DESIGNER artefacts exist (4 spec files + 4 §12 unit regression files + 4 E2E source files). Next step: TEST-RUNNER (Step 04)."
+      "summary": "Test-design validation PASS for RND-UI-05/06 + GRD-UI-06/07. All 10 hard-gate items PASS: 23 MUST ACs covered (5+6+6+6), 21 \u00a712 error modes covered (6+5+5+5), no deferred tests, no mocks (one comment match in no-mock header), fixtures isolated, tests self-sufficient, E2E specs use real getKeycloakToken + real REST endpoints, lint_handoffs.py exits 0 (0 BLOCKER, 0 MAJOR, 1 MINOR pre-existing on registry.json). All 12 TEST-DESIGNER artefacts exist (4 spec files + 4 \u00a712 unit regression files + 4 E2E source files). Next step: TEST-RUNNER (Step 04)."
     },
     {
       "handoff_id": "WF02-pw13-pw16-batch19-20260813/step-02b-frontend-dev-rework1",
@@ -31589,7 +31589,7 @@
       "created_at": "2026-08-15T20:34:24Z",
       "started_at": "2026-08-15T20:34:24Z",
       "file": "handoffs/WF03-GH785-20260815/step-00-backend-dev.json",
-      "triggered_by": "WF-03 Step 00 — git setup for GH-785 verification run",
+      "triggered_by": "WF-03 Step 00 \u2014 git setup for GH-785 verification run",
       "completed_at": "2026-08-15T20:35:14Z",
       "result": "PASS"
     },
@@ -31604,7 +31604,7 @@
       "created_at": "2026-08-15T20:35:45Z",
       "started_at": "2026-08-15T20:35:45Z",
       "file": "handoffs/WF03-GH785-20260815/step-05-issue-fixer.json",
-      "triggered_by": "WF03-GH785-20260815-00-backend-dev (PASS) — Step 00 → Step 0.5",
+      "triggered_by": "WF03-GH785-20260815-00-backend-dev (PASS) \u2014 Step 00 \u2192 Step 0.5",
       "completed_at": "2026-08-15T20:38:20Z",
       "result_status": "PASS",
       "result_summary": "Reopened ISS-0703 for the WF-03 verification run on GH-785: the fix is on main via commits 51170eed and 47d4c7c9, but the unchecked acceptance criterion ('TEST-RUNNER retry 6 - full PLC integration suite green') keeps GH-785 OPEN. Per WF-03 Step 0.5 protocol this is a recurrence of an existing tracked issue, so no new ISS file was created. ISS-0703 and the issue index were updated to REOPENED with a new handoff_history entry recording run_id=WF03-GH785-20260815. GH-785 received a brief verification-run comment; its body was left untouched. Changes committed as daac4133 on branch feature/WF03-GH785-20260815 and pushed to origin.",
@@ -31627,7 +31627,7 @@
       "created_at": "2026-08-15T20:39:14Z",
       "started_at": "2026-08-15T20:39:14Z",
       "file": "handoffs/WF03-GH785-20260815/step-1-issue-fixer.json",
-      "triggered_by": "WF03-GH785-20260815-05-issue-fixer (PASS) — Step 0.5 → Step 1"
+      "triggered_by": "WF03-GH785-20260815-05-issue-fixer (PASS) \u2014 Step 0.5 \u2192 Step 1"
     },
     {
       "handoff_id": "WF03-GH785-20260815-2-code-designer",
@@ -31640,7 +31640,7 @@
       "created_at": "2026-08-15T20:40:18Z",
       "started_at": "2026-08-15T20:40:18Z",
       "file": "handoffs/WF03-GH785-20260815/step-2-code-designer.json",
-      "triggered_by": "WF03-GH785-20260815-1-issue-fixer (PASS) — Step 1 → Step 2",
+      "triggered_by": "WF03-GH785-20260815-1-issue-fixer (PASS) \u2014 Step 1 \u2192 Step 2",
       "completed_at": "2026-08-15T20:42:53Z",
       "result_status": "PASS"
     },
@@ -31655,7 +31655,7 @@
       "created_at": "2026-08-15T20:45:11Z",
       "started_at": "2026-08-15T20:45:11Z",
       "file": "handoffs/WF03-GH785-20260815/step-2b-code-design-validator.json",
-      "triggered_by": "WF03-GH785-20260815-2-code-designer (PASS) — Step 2 → Step 2b (hard gate)",
+      "triggered_by": "WF03-GH785-20260815-2-code-designer (PASS) \u2014 Step 2 \u2192 Step 2b (hard gate)",
       "completed_at": "2026-08-15T20:45:45Z"
     },
     {
@@ -31669,7 +31669,7 @@
       "created_at": "2026-08-15T20:46:39Z",
       "started_at": "2026-08-15T20:46:39Z",
       "file": "handoffs/WF03-GH785-20260815/step-3-backend-dev.json",
-      "triggered_by": "WF03-GH785-20260815-2b-code-design-validator (PASS, hard gate cleared) — Step 2b → Step 3"
+      "triggered_by": "WF03-GH785-20260815-2b-code-design-validator (PASS, hard gate cleared) \u2014 Step 2b \u2192 Step 3"
     },
     {
       "handoff_id": "WF03-GH785-20260815-3-backend-dev",
@@ -31697,7 +31697,7 @@
       "created_at": "2026-08-15T20:49:12Z",
       "started_at": "2026-08-15T20:49:12Z",
       "file": "handoffs/WF03-GH785-20260815/step-5-test-runner.json",
-      "triggered_by": "WF03-GH785-20260815-3-backend-dev (PASS) — Step 3 → Step 5 (skipping Step 4/4b per pure regression fix rule)",
+      "triggered_by": "WF03-GH785-20260815-3-backend-dev (PASS) \u2014 Step 3 \u2192 Step 5 (skipping Step 4/4b per pure regression fix rule)",
       "completed_at": "2026-08-15T21:03:33Z"
     },
     {
@@ -31711,7 +31711,7 @@
       "created_at": "2026-08-15T21:05:37Z",
       "started_at": "2026-08-15T21:05:37Z",
       "file": "handoffs/WF03-GH785-20260815/step-7-doc-updater.json",
-      "triggered_by": "WF03-GH785-20260815-5-test-runner (PASS) — Step 5 → Step 7 (skipping Step 6: severity was MAJOR not BLOCKER) | COMPLETED by DOC-UPDATER step-7",
+      "triggered_by": "WF03-GH785-20260815-5-test-runner (PASS) \u2014 Step 5 \u2192 Step 7 (skipping Step 6: severity was MAJOR not BLOCKER) | COMPLETED by DOC-UPDATER step-7",
       "completed_at": "2026-08-15T21:11:11Z"
     },
     {
@@ -31725,7 +31725,7 @@
       "created_at": "2026-08-15T21:13:40Z",
       "started_at": "2026-08-15T21:13:40Z",
       "file": "handoffs/WF03-GH785-20260815/step-final-backend-dev.json",
-      "triggered_by": "WF03-GH785-20260815-7-doc-updater (PASS) — Step 7 → Step Final",
+      "triggered_by": "WF03-GH785-20260815-7-doc-updater (PASS) \u2014 Step 7 \u2192 Step Final",
       "completed_at": "2026-08-15T21:23:01Z"
     },
     {

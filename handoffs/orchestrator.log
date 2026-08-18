@@ -2133,3 +2133,4 @@
 2026-08-18T01:00:28Z | ROUTE | ADHOC-par02-03-05-release-20260817 | ADHOC-par02-03-05-release-20260817-03-release-validator-rework1 | ORCH -> RELEASE-VALIDATOR | PENDING | re-gate after BLOCKER-1 (commit d4214528) + BLOCKER-2 (iss0686 1/1) resolved
 2026-08-18T01:05:30Z | ROUTE | ADHOC-par02-03-05-release-20260817 | ADHOC-par02-03-05-release-20260817-04-doc-updater | ORCH -> DOC-UPDATER | PENDING | RELEASE-VALIDATOR APPROVED — mark PAR-02/PAR-03/PAR-05 RELEASED in requirements.yaml + CHANGELOG
 2026-08-18T01:08:28Z | ROUTE | ADHOC-par02-03-05-release-20260817 | ADHOC-par02-03-05-release-20260817-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | Step Final: squash-merge feature branch to main + close GH-711 + GH-733 + release.py
+2026-08-18T01:12:24Z | ROUTE | ADHOC-par02-03-05-release-20260817 | ADHOC-par02-03-05-release-20260817-final-backend-dev | BACKEND-DEV -> DONE | COMPLETED | PR #822 squash-merged (bc9af23f); PAR-02/PAR-03/PAR-05 RELEASED; lint exit 0

@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-18T01:07:10Z'
+last_updated: '2026-08-18T01:13:09Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4769,8 +4769,7 @@ requirements:
     priority: MUST
     title: Proactive future partition creation
     implemented_in:
-    - src/scheduler/partition_maintenance.zig
-    - migrations/1148_par02_partition_catalog.sql
+    - https://github.com/tvolodi/R-Co/pull/822
     test_spec: tests/specs/PAR-02.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
@@ -4783,8 +4782,7 @@ requirements:
     priority: MUST
     title: Partition-scoped retention and archival
     implemented_in:
-    - src/scheduler/partition_retention.zig
-    - migrations/1149_par03_retention_class.sql
+    - https://github.com/tvolodi/R-Co/pull/822
     test_spec: tests/specs/PAR-03.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
@@ -4810,9 +4808,7 @@ requirements:
     priority: MUST
     title: Online conversion to a partitioned event log
     implemented_in:
-    - src/db/partition_conversion.zig
-    - src/scheduler/partition_maintenance.zig
-    - src/scheduler/partition_retention.zig
+    - https://github.com/tvolodi/R-Co/pull/822
     released_at: '2026-08-18T01:06:29Z'
     note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0686 RESOLVED (GH-733 closed). archiveLegacyTable()
       integrated.

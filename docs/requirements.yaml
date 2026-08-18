@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-18T01:06:29Z'
+generated_at: '2026-08-18T01:11:28Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12162,13 +12162,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-18T01:06:21Z'
+    last_updated: '2026-08-18T01:11:22Z'
     workflow: PW-06
     note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0670 RESOLVED (GH-711 closed). AC5/AC6
       event emissions implemented and tested.
     implemented_in:
-    - src/scheduler/partition_maintenance.zig
-    - migrations/1148_par02_partition_catalog.sql
+    - https://github.com/tvolodi/R-Co/pull/822
     test_spec: tests/specs/PAR-02.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
@@ -12196,13 +12195,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-18T01:06:25Z'
+    last_updated: '2026-08-18T01:11:27Z'
     workflow: PW-06
     note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0670 RESOLVED (GH-711 closed). AC5/AC6
       event emissions implemented and tested.
     implemented_in:
-    - src/scheduler/partition_retention.zig
-    - migrations/1149_par03_retention_class.sql
+    - https://github.com/tvolodi/R-Co/pull/822
     test_spec: tests/specs/PAR-03.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
@@ -12258,14 +12256,12 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-18T01:06:29Z'
+    last_updated: '2026-08-18T01:11:28Z'
     workflow: PW-06
     note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0686 RESOLVED (GH-733 closed). archiveLegacyTable()
       integrated.
     implemented_in:
-    - src/db/partition_conversion.zig
-    - src/scheduler/partition_maintenance.zig
-    - src/scheduler/partition_retention.zig
+    - https://github.com/tvolodi/R-Co/pull/822
     released_at: '2026-08-18T01:06:29Z'
   PAR-06:
     id: PAR-06
