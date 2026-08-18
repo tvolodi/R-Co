@@ -39,11 +39,17 @@ const MAX_PAGE_SIZE: u16 = 200;
 const MAX_SORT_FIELDS: usize = 2;
 
 fn sortDirToSql(dir: types.SortDir) []const u8 {
-    return switch (dir) { .asc => "ASC", .desc => "DESC" };
+    return switch (dir) {
+        .asc => "ASC",
+        .desc => "DESC",
+    };
 }
 
 fn sortDirStr(dir: types.SortDir) []const u8 {
-    return switch (dir) { .asc => "asc", .desc => "desc" };
+    return switch (dir) {
+        .asc => "asc",
+        .desc => "desc",
+    };
 }
 
 fn columnExpr(
@@ -92,7 +98,10 @@ pub fn compile(
 
     {
         const w = allocator.dupe(u8, "\"tenant_id\" = $1::uuid") catch return CompileError.OutOfMemory;
-        where_parts.append(allocator, w) catch { allocator.free(w); return CompileError.OutOfMemory; };
+        where_parts.append(allocator, w) catch {
+            allocator.free(w);
+            return CompileError.OutOfMemory;
+        };
     }
 
     for (request.filters) |f| {
@@ -116,8 +125,14 @@ pub fn compile(
             .contains => std.fmt.allocPrint(allocator, "{s} ILIKE '%' || ${d} || '%'", .{ col_expr, pidx }),
         } catch return CompileError.OutOfMemory;
 
-        params.append(allocator, f.value) catch { allocator.free(clause); return CompileError.OutOfMemory; };
-        where_parts.append(allocator, clause) catch { allocator.free(clause); return CompileError.OutOfMemory; };
+        params.append(allocator, f.value) catch {
+            allocator.free(clause);
+            return CompileError.OutOfMemory;
+        };
+        where_parts.append(allocator, clause) catch {
+            allocator.free(clause);
+            return CompileError.OutOfMemory;
+        };
         pidx += 1;
     }
 
@@ -142,7 +157,10 @@ pub fn compile(
 
         const part = std.fmt.allocPrint(allocator, "{s} {s}", .{ col_expr, sortDirToSql(s.dir) }) catch
             return CompileError.OutOfMemory;
-        order_sql_parts.append(allocator, part) catch { allocator.free(part); return CompileError.OutOfMemory; };
+        order_sql_parts.append(allocator, part) catch {
+            allocator.free(part);
+            return CompileError.OutOfMemory;
+        };
 
         const name_copy = allocator.dupe(u8, s.field) catch return CompileError.OutOfMemory;
         order_terms.append(allocator, .{ .name = name_copy, .dir = sortDirStr(s.dir) }) catch {
@@ -155,7 +173,10 @@ pub fn compile(
     {
         const part = std.fmt.allocPrint(allocator, "\"record_id\" {s}", .{sortDirToSql(tiebreak_dir)}) catch
             return CompileError.OutOfMemory;
-        order_sql_parts.append(allocator, part) catch { allocator.free(part); return CompileError.OutOfMemory; };
+        order_sql_parts.append(allocator, part) catch {
+            allocator.free(part);
+            return CompileError.OutOfMemory;
+        };
     }
     {
         const name_copy = allocator.dupe(u8, "record_id") catch return CompileError.OutOfMemory;
@@ -183,7 +204,10 @@ pub fn compile(
 
         const keyset = buildKeysetPredicate(allocator, order_terms.items, decoded.tuple, &pidx, &params) catch
             return CompileError.OutOfMemory;
-        where_parts.append(allocator, keyset) catch { allocator.free(keyset); return CompileError.OutOfMemory; };
+        where_parts.append(allocator, keyset) catch {
+            allocator.free(keyset);
+            return CompileError.OutOfMemory;
+        };
     }
 
     var sql: std.ArrayList(u8) = .empty;
