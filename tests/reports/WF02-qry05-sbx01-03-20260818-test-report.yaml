@@ -1,0 +1,237 @@
+---
+run_id: WF02-qry05-sbx01-03-20260818
+report_type: integration
+generated_at: "2026-08-18T14:16:46Z"
+branch: feature/WF02-qry05-sbx01-03-20260818
+requirement_ids: [QRY-05, SBX-01, SBX-02, SBX-03]
+test_command: "zig build test-integration-qry05-sbx --summary all"
+
+env:
+  BPM_TEST_DB_URL: "postgres://bpm:bpm@localhost:5434/bpm_test"
+  db_test_status: healthy
+  env_verify_exit: 0
+  env_verify_checks_passed: 10
+
+infra_issues_encountered:
+  - id: INFRA-01
+    severity: BLOCKER
+    description: >
+      tenant_only migrations 1169_qry05_entity_field_grants.sql and
+      1170_sbx_task_specs_agent_sandboxes.sql were recorded in
+      schema_migrations(schema_name='public') as placeholders by migrate.zig,
+      but their DDL was never applied to tenant_default because
+      provisionTenantSchema() short-circuits via migrations_applied_at IS NOT NULL
+      idempotency check for the pre-existing default tenant schema.
+      Tables entity_field_restrictions, user_entity_grants, task_specs,
+      agent_sandboxes did not exist in tenant_default prior to this run.
+    resolution: >
+      Applied the DDL manually to tenant_default via docker-compose exec psql
+      and recorded (tenant_default, 1169) and (tenant_default, 1170) in
+      schema_migrations. Tests could then reach the application layer.
+    filed_as: requires BACKEND-DEV fix — provisionTenantSchema must re-run
+      runForSchema for schemas already provisioned when new tenant_only
+      migrations are added.
+
+  - id: INFRA-02
+    severity: MEDIUM
+    description: >
+      sbx01_02_03_agent_role_gates_test.zig:352, 371, 390 — Zig type mismatch:
+      functions returning !?[]u8 used bare allocator.dupe() (returns ![]u8)
+      without try, causing 3 compile errors. Fixed by adding try to each
+      allocator.dupe() call in getStoredPrincipal, getSandboxOwner,
+      getSandboxStatus.
+    resolution: Fixed in place in the test file (one-character fix per site).
+
+summary:
+  total_tests: 23
+  passed: 14
+  failed: 9
+  leaked: 1
+  overall_status: FAIL
+
+binaries:
+  - binary: qry05_field_stripping_test
+    total: 6
+    passed: 5
+    failed: 1
+    leaked: 1
+    tests:
+      - id: qry05_01_ungranted_caller_field_absent_from_items
+        status: PASS
+      - id: qry05_02_granted_caller_field_present_in_items
+        status: PASS
+      - id: qry05_03_ungranted_filter_on_restricted_field_returns_400
+        status: PASS_WITH_LEAK
+        notes: >
+          Assertion passed (handler returned 400 as expected) but
+          entity_query.zig:295 parseRequest allocPrint leaks 1 allocation:
+          a numeric-field value string allocated during request parsing is
+          not freed when parseRequest returns an error. Production code bug.
+      - id: qry05_04_ungranted_sort_on_restricted_field_returns_400
+        status: FAIL
+        error: >
+          Assertion failure: std.mem.indexOf(u8, detail, "allowlisted") != null
+          returned false. The handler returned 400 (correct status code) but
+          the error detail JSON does not contain the expected substring
+          "allowlisted". The field-restriction error message format in the
+          sort path differs from the test expectation.
+        root_cause: BACKEND-DEV — entity_query sort-restriction response body
+          does not include the literal "allowlisted" token that the test
+          spec requires (tests/specs/QRY-05.md).
+        severity: MAJOR
+      - id: qry05_05
+        status: PASS
+      - id: qry05_06
+        status: PASS
+
+  - binary: sbx01_02_03_agent_role_gates_test
+    total: 17
+    passed: 9
+    failed: 8
+    tests:
+      - id: sbx01_01_scope_only_no_role_returns_403
+        status: PASS
+      - id: sbx01_02_orchestrator_role_accepted
+        status: PASS
+      - id: sbx01_03_both_credentials_task_spec_accepted
+        status: PASS
+      - id: sbx01_04_conflicting_roles_no_conflicting_audit_known_gap_sec_minor_01
+        status: FAIL
+        error: >
+          sqlstate=P0001 on cleanup: DELETE FROM audit_entries WHERE
+          actor_id = $1::uuid raises an exception (PostgreSQL RAISE EXCEPTION
+          from a trigger or RLS policy). The test's audit cleanup helper
+          cleanupAuditByActor fails because audit_entries has a protection
+          mechanism that prevents direct deletion. The assertion
+          testing.expect(result.status_code == 201 or result.status_code == 409)
+          was never reached.
+        root_cause: BACKEND-DEV — audit_entries table has a trigger or RLS
+          policy (P0001) that rejects unconditional DELETE. Test cleanup
+          must use a privileged/admin connection or the trigger must be
+          bypassed for test teardown.
+        severity: MAJOR
+      - id: sbx01_05_rejected_submission_writes_rejection_audit
+        status: FAIL
+        error: >
+          sqlstate=42703: column "event_name" does not exist in audit_entries.
+          The test queries SELECT COUNT(*)::text FROM audit_entries WHERE
+          actor_id = $1::uuid AND event_name = $2 but the audit_entries table
+          does not have an event_name column. Also P0001 on cleanup DELETE.
+        root_cause: BACKEND-DEV — audit_entries schema does not include
+          event_name column. Either the migration is incomplete or the test
+          references a column name that was renamed in the schema.
+        severity: MAJOR
+      - id: sbx02_01_no_principal_in_body_server_sets_token_subject
+        status: FAIL
+        error: >
+          expected status_code 201, found 400. The task-spec submission
+          endpoint returns 400 Bad Request when the request body omits
+          orchestrator_principal (expecting the server to fill it from the
+          token subject). Also P0001 on audit cleanup.
+        root_cause: BACKEND-DEV — handleSubmitTaskSpec does not extract
+          orchestrator_principal from the auth token when absent from the
+          body, or validates the body before applying this substitution.
+        severity: CRITICAL
+      - id: sbx02_02_body_principal_discarded
+        status: FAIL
+        error: >
+          expected status_code 201, found 400. The task-spec endpoint returns
+          400 when the body contains a different orchestrator_principal than
+          the token subject (expecting the server to discard the body value
+          and use the token principal).
+        root_cause: BACKEND-DEV — same as sbx02_01; server-side principal
+          enforcement (SBX-02 requirement) not implemented or broken.
+        severity: CRITICAL
+      - id: sbx02_03_two_orchestrators_same_body_different_spec_hash
+        status: FAIL
+        error: "expected 201, found 400"
+        root_cause: BACKEND-DEV — same as sbx02_01.
+        severity: CRITICAL
+      - id: sbx02_04_task_spec_submitted_audit_has_correct_principal
+        status: FAIL
+        error: "expected 201, found 400"
+        root_cause: BACKEND-DEV — same as sbx02_01; additionally audit
+          column event_name missing (42703 would surface if 201 path worked).
+        severity: CRITICAL
+      - id: sbx02_05_hash_based_on_token_principal_not_body_principal
+        status: FAIL
+        error: "expected 201, found 400"
+        root_cause: BACKEND-DEV — same as sbx02_01.
+        severity: CRITICAL
+      - id: sbx03_01
+        status: PASS
+      - id: sbx03_02
+        status: PASS
+      - id: sbx03_03
+        status: PASS
+      - id: sbx03_04
+        status: PASS
+      - id: sbx03_05
+        status: PASS
+      - id: sbx03_06_rejected_orchestrator_cannot_claim
+        status: FAIL
+        error: >
+          Test failed. Likely cascades from the audit_entries P0001 cleanup
+          error and/or the 400 responses from sbx02 path. Exact assertion
+          not captured in this run — investigate after sbx02 root cause is fixed.
+        root_cause: Likely BACKEND-DEV — same audit/handler issues.
+        severity: MAJOR
+
+issues:
+  - id: ISS-WF02-QRY05-01
+    severity: MAJOR
+    requirement: QRY-05
+    test: qry05_04_ungranted_sort_on_restricted_field_returns_400
+    description: >
+      entity_query.zig sort-restriction path returns 400 with an error detail
+      body that does not contain the required "allowlisted" token. Tests/specs/
+      QRY-05.md §TC-QRY-05-04 requires that detail includes "allowlisted" to
+      distinguish a field-restriction 400 from a generic validation 400.
+    fix_owner: BACKEND-DEV
+
+  - id: ISS-WF02-QRY05-02
+    severity: MINOR
+    requirement: QRY-05
+    test: qry05_03_ungranted_filter_on_restricted_field_returns_400
+    description: >
+      entity_query.zig:295 parseRequest allocPrint for numeric-filter values
+      leaks the allocated string when it returns ParseRequestError. The string
+      is never freed. Not a logical failure (400 is returned correctly) but
+      violates memory-safety invariant.
+    fix_owner: BACKEND-DEV
+
+  - id: ISS-WF02-SBX-01
+    severity: CRITICAL
+    requirement: SBX-02
+    tests: [sbx02_01, sbx02_02, sbx02_03, sbx02_04, sbx02_05]
+    description: >
+      handleSubmitTaskSpec returns HTTP 400 for all SBX-02 test cases. The
+      SBX-02 requirement mandates that the server ignores any
+      orchestrator_principal in the request body and uses the token subject
+      (auth.principal) as the authoritative principal. The handler appears to
+      reject requests that include or omit orchestrator_principal in the body,
+      suggesting the SBX-02 server-side enforcement logic is incomplete or
+      not wired to the route.
+    fix_owner: BACKEND-DEV
+
+  - id: ISS-WF02-SBX-02
+    severity: MAJOR
+    requirement: SBX-01
+    tests: [sbx01_04, sbx01_05, sbx02_04, sbx03_06]
+    description: >
+      Two problems in audit_entries usage:
+      (1) sqlstate=P0001 — a database trigger or RLS RAISE EXCEPTION fires on
+          DELETE FROM audit_entries WHERE actor_id = $1::uuid, preventing test
+          cleanup from running. This cascades: tests that call cleanupAuditByActor
+          fail in defer, aborting the test even if the main assertion passed.
+      (2) sqlstate=42703 — column "event_name" does not exist in audit_entries.
+          The test expects an event_name column to count specific audit event types.
+          Either the migration is missing this column or the column was renamed
+          (e.g. to "event_type" or "action").
+    fix_owner: BACKEND-DEV
+
+next_action: >
+  ORCH must spawn WF-03 for ISSUE-FIXER with the four issues above.
+  Priority order: ISS-WF02-SBX-01 (CRITICAL, blocks 5 tests), ISS-WF02-SBX-02
+  (MAJOR, blocks 4 tests), ISS-WF02-QRY05-01 (MAJOR, 1 test), ISS-WF02-QRY05-02
+  (MINOR, 0 test failures — leak only).

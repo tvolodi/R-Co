@@ -103,6 +103,11 @@ pub const entity_query_allowlist = @import("entities/query/allowlist.zig"); // Q
 pub const entity_query_compiler = @import("entities/query/compiler.zig"); // QRY-01..03 SQL compiler
 pub const entity_query_cursor = @import("entities/query/cursor.zig"); // QRY-03 keyset cursor
 pub const entity_query_routes = @import("api/routes/entity_query.zig"); // QRY-01..04 POST /api/v1/entities/{key}/query
+pub const entity_field_grants = @import("entities/query/field_grants.zig"); // QRY-05 field grant loader
+pub const agent_auth_middleware = @import("api/middleware/agent_auth.zig"); // SBX-01/02/03 agent role gates
+pub const agent_task_specs_routes = @import("api/routes/agent_task_specs.zig"); // SBX-01/02 POST /api/v1/agent/task-specs
+pub const agent_sandboxes_routes = @import("api/routes/agent_sandboxes.zig"); // SBX-03 agent sandbox routes
+pub const canonical_json_mod = @import("crypto/canonical_json.zig"); // RFC 8785 canonical JSON
 
 const placeholder_health_live = "{\"status\":\"live\"}";
 const placeholder_health_ready = "{\"status\":\"ready\",\"api\":\"placeholder\"}";
@@ -1709,6 +1714,39 @@ fn serveRequest(
                     resp_status = 405;
                     resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
                 }
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "agent")) {
+            // ── /api/v1/agent — SBX-01/02/03 ─────────────────────────────────
+            // POST /api/v1/agent/task-specs       → handleSubmitTaskSpec (SBX-01/02)
+            // GET  /api/v1/agent/sandboxes         → handleListSandboxes (SBX-03)
+            // POST /api/v1/agent/sandboxes/:id/claim → handleClaimSandbox (SBX-03)
+            const actor_agent = authenticated_ctx orelse api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .AGENT_RUNNER,
+                .is_bootstrap = false,
+                .token_id = user_id,
+                .principal = user_id,
+            };
+            if (std.mem.eql(u8, seg4, "task-specs") and seg5.len == 0 and method == .POST) {
+                const r = agent_task_specs_routes.handleSubmitTaskSpec(req_alloc, pool, actor_agent, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (std.mem.eql(u8, seg4, "sandboxes") and seg5.len == 0 and method == .GET) {
+                const cursor = QS.get(query_str, "cursor");
+                const page_size_opt: ?u16 = if (QS.get(query_str, "page_size")) |ps|
+                    std.fmt.parseInt(u16, ps, 10) catch null
+                else
+                    null;
+                const r = agent_sandboxes_routes.handleListSandboxes(req_alloc, pool, actor_agent, cursor, page_size_opt);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (std.mem.eql(u8, seg4, "sandboxes") and seg5.len > 0 and std.mem.eql(u8, seg6, "claim") and method == .POST) {
+                const r = agent_sandboxes_routes.handleClaimSandbox(req_alloc, pool, actor_agent, seg5, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

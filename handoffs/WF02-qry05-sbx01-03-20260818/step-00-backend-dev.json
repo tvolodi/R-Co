@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-qry05-sbx01-03-20260818-00-backend-dev",
+  "run_id": "WF02-qry05-sbx01-03-20260818",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-00-backend-dev.json",
+  "created_at": "2026-08-18T12:23:31Z",
+  "started_at": "2026-08-18T12:24:41Z",
+  "completed_at": "2026-08-18T12:25:41Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry05-sbx01-03-20260818",
+    "workflow": "WF-02",
+    "requirement_ids": ["QRY-05", "SBX-01", "SBX-02", "SBX-03"],
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818",
+    "stage": "17"
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md.\n\nBranch name: feature/WF02-qry05-sbx01-03-20260818\n\nSteps:\n1. Ensure working tree is on main and clean (git status)\n2. git fetch origin\n3. git checkout main && git pull origin main\n4. git checkout -b feature/WF02-qry05-sbx01-03-20260818\n5. Record base_commit_sha (git rev-parse HEAD)\n6. git push -u origin feature/WF02-qry05-sbx01-03-20260818\n\nReturn PASS with branch_name, base_commit_sha, and push_status=ok.",
+    "fn": "fn:git-setup",
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Feature branch feature/WF02-qry05-sbx01-03-20260818 created from main and pushed to origin.",
+    "artifacts_out": ["branch: feature/WF02-qry05-sbx01-03-20260818"],
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818",
+    "base_commit_sha": "e8a3608b35010d07bae3bb5fb544c9be5f410792",
+    "push_status": "ok",
+    "issues": [],
+    "next_action": "ORCH routes to next step per active workflow"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

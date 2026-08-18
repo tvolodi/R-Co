@@ -2209,3 +2209,24 @@
 2026-08-18T10:55:41Z | ROUTE | WF03-GH821-20260818 | 46d1c2ff-84c5-4cef-bc7f-d82b0f4abe03 | ORCH -> BACKEND-DEV | PENDING | WF-03 Step 00: git-setup for GH-821 par02 UUID fixture fix
 2026-08-18T10:58:36Z | COMPLETE | WF03-GH821-20260818 | 46d1c2ff-84c5-4cef-bc7f-d82b0f4abe03 | BACKEND-DEV | PASS: branch feature/WF03-GH821-20260818 created at db440b10
 2026-08-18T10:58:36Z | ROUTE | WF03-GH821-20260818 | f84b7710-f849-4fe9-a656-b1ad4a1580e8 | ORCH -> ISSUE-FIXER | PENDING | WF-03 Step 0.5: registry lookup + ISS file for GH-821
+2026-08-18T11:28:59Z | COMPLETE | WF03-GH821-20260818 | 36bbe74d-c7be-4822-82dc-20225c892f26 | BACKEND-DEV | PASS: PR #828 squash-merged as e8a3608b — GH-821 closed, ISS-0718 RESOLVED
+2026-08-18T11:28:59Z | DONE | WF03-GH821-20260818 | --- | PIPELINE COMPLETE | GH-821 RESOLVED (T010 UUID fix verified)
+2026-08-18T11:28:59Z | GIT  | WF03-GH821-20260818 | feature/WF03-GH821-20260818 | e8a3608b | PR: https://github.com/tvolodi/R-Co/pull/828
+2026-08-18T12:23:31Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-00-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-02 Step 00: git-setup for QRY-05 + SBX-01..03 (stage 17)
+2026-08-18T12:26:26Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-01-code-designer | ORCH -> CODE-DESIGNER | PENDING | WF-02 Step 01: design for QRY-05 + SBX-01..03
+2026-08-18T12:34:59Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-01b-code-design-validator | ORCH -> CODE-DESIGN-VALIDATOR | PENDING | WF-02 Step 01b: hard gate on design for QRY-05 + SBX-01..03
+2026-08-18T12:54:03Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-02a-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-02 Step 02a: implement QRY-05 + SBX-01..03
+2026-08-18T13:24:28Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-02c-security-reviewer | ORCH -> SECURITY-REVIEWER | PENDING | WF-02 Step 02c: security review of tenant data-path changes
+2026-08-18T13:29:50Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-03-test-designer | ORCH -> TEST-DESIGNER | PENDING | WF-02 Step 03: write tests for QRY-05 + SBX-01..03
+2026-08-18T13:43:08Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-03b-test-design-validator | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | WF-02 Step 03b: hard gate on test design
+2026-08-18T13:50:41Z | REWORK | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-03-test-designer-rework1 | ORCH -> TEST-DESIGNER | REWORK(1/2): BLOCKER TDV-SBX01-AC4 (missing TC-SBX-01-06) + MAJOR TDV-QRY05-TC06-SCOPE (single-tenant) + MAJOR TDV-SBX02-AC3 (missing spec_hash_mismatch)
+2026-08-18T14:03:00Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-03b-test-design-validator-rework1 | ORCH -> TEST-DESIGN-VALIDATOR | PENDING | re-gate after rework1: verify 3 prior gaps resolved
+2026-08-18T14:05:31Z | BENCH_ENV_CHECK | WF02-qry05-sbx01-03-20260818 | --- | ORCH | CLEARED (test-env-verify 10/10 PASS) — dispatching TEST-RUNNER Step 04
+2026-08-18T14:05:31Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-04-test-runner | ORCH -> TEST-RUNNER | PENDING | WF-02 Step 04: run test-integration-qry05-sbx
+2026-08-18T14:21:38Z | REWORK | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-02a-backend-dev-rework1 | ORCH -> BACKEND-DEV | REWORK(1/3): ISS-WF02-SBX-01 (token-principal not wired) + ISS-WF02-SBX-02 (audit column) + ISS-WF02-QRY05-01 (response detail) + INFRA-01 (provisionSchema idempotency)
+2026-08-18T14:39:11Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-04-test-runner-rework1 | ORCH -> TEST-RUNNER | PENDING | rework1: rerun after 5 fixes applied
+2026-08-18T14:45:45Z | COMPLETE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-04-test-runner-rework1 | TEST-RUNNER | PASS: 23/23 PASS — QRY-05, SBX-01..03 green — routing to RELEASE-VALIDATOR Step 5
+2026-08-18T14:45:45Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-05-release-validator | ORCH -> RELEASE-VALIDATOR | PENDING | WF-02 Step 05: release decision for QRY-05 + SBX-01..03
+2026-08-18T15:02:08Z | COMPLETE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-05-release-validator | RELEASE-VALIDATOR | APPROVED: all NFRs pass, 23/23 tests, unit test regression-clean — routing to DOC-UPDATER Step 6
+2026-08-18T15:02:08Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-06-doc-updater | ORCH -> DOC-UPDATER | PENDING | WF-02 Step 06: changelog + QRY-05/SBX-01-03 status TESTED
+2026-08-18T15:07:35Z | ROUTE | WF02-qry05-sbx01-03-20260818 | WF02-qry05-sbx01-03-20260818-final-backend-dev | ORCH -> BACKEND-DEV | PENDING | WF-02 Step Final: squash-merge feature/WF02-qry05-sbx01-03-20260818 -> main

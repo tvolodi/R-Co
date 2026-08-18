@@ -1,0 +1,67 @@
+{
+  "handoff_id": "WF02-qry05-sbx01-03-20260818-03b-test-design-validator",
+  "run_id": "WF02-qry05-sbx01-03-20260818",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-03b-test-design-validator.json",
+  "created_at": "2026-08-18T13:43:08Z",
+  "started_at": "2026-08-18T13:43:08Z",
+  "completed_at": "2026-08-18T13:47:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry05-sbx01-03-20260818",
+    "workflow": "WF-02",
+    "requirement_ids": ["QRY-05", "SBX-01", "SBX-02", "SBX-03"],
+    "test_files": [
+      "tests/specs/QRY-05.md",
+      "tests/specs/SBX-01-03.md",
+      "tests/integration/qry05_field_stripping_test.zig",
+      "tests/integration/sbx01_02_03_agent_role_gates_test.zig"
+    ],
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818"
+  },
+  "task": {
+    "description": "Hard gate: validate the test design for QRY-05, SBX-01, SBX-02, SBX-03.\n\nCheck:\n1. Every MUST acceptance criterion has at least one runnable integration test\n2. No SkipZigTest on any MUST-coverage test without a counterpart\n3. Tests are self-contained (own fixtures, clean up)\n4. Tests are wired into build.zig as test-integration-qry05-sbx\n5. Test isolation respected (no shared mutable state between tests)\n6. Known gap (SEC-MINOR-01 conflicting_agent_roles no audit) is documented as a known-gap test\n\nReturn PASS if all criteria met, FAIL with specific gaps."
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "QRY-05 (6/6 tests) and SBX-01-03 (15/15 tests) are largely well-designed: no SkipZigTest, BPM_TEST_DB_URL required with clear error, per-test UUIDs, deferred cleanup, parameterised SQL, build.zig wired as test-integration-qry05-sbx, SEC-MINOR-01 gap documented as known-gap test (TC-SBX-01-04). FAIL on 1 BLOCKER + 2 MAJOR issues below.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "TDV-SBX01-AC4",
+        "severity": "BLOCKER",
+        "requirement": "SBX-01",
+        "acceptance_criterion": "AC4",
+        "description": "SBX-01 AC4 has no integration test. AC4 requires: GIVEN a caller bypasses the gateway and calls the service port directly with an implementer token (tenant_implementer role, no scope), WHEN handleSubmitTaskSpec executes, THEN HTTP 403 orchestrator_role_required is returned. The implAuth() helper is defined in sbx01_02_03_agent_role_gates_test.zig but is never used with handleSubmitTaskSpec — only with handleClaimSandbox (SBX-03 tests). TC-SBX-01-01 (scope-only) and TC-SBX-01-02 (orchestrator-role-only) do not cover this scenario because neither uses the implementer role credential. TEST-DESIGNER must add a TC-SBX-01-06 test: implAuth + handleSubmitTaskSpec → 403 orchestrator_role_required."
+      },
+      {
+        "id": "TDV-QRY05-TC06-SCOPE",
+        "severity": "MAJOR",
+        "requirement": "QRY-05",
+        "acceptance_criterion": "TC-QRY-05-06",
+        "description": "TC-QRY-05-06 spec title is 'Cross-tenant isolation' and the preconditions describe two distinct tenants (tenant A, tenant B), each with its own entity row. The implementation uses DEFAULT_TENANT_ID for both callers and tests two different users within the same tenant. The tenantAuth() helper is defined but unused in TC-06. Actual two-tenant isolation (same entity_key registered under two different tenant_ids, query issued with different tenant contexts) is not demonstrated. While no QRY-05 AC in requirements.yaml names cross-tenant explicitly, the spec case count is reported as 6 with TC-06 counted; if TC-06 is retired or renamed to 'user-grant isolation', the cross-tenant scenario remains unverified. TEST-DESIGNER should either rename TC-06 to reflect its true scope or add a genuinely two-tenant test using tenantAuth()."
+      },
+      {
+        "id": "TDV-SBX02-AC3",
+        "severity": "MAJOR",
+        "requirement": "SBX-02",
+        "acceptance_criterion": "AC3",
+        "description": "SBX-02 AC3 requires: GIVEN the same submission, WHEN spec_hash is computed over the server-authoritative principal (orch-a), THEN a client that pre-computed its hash over orch-b receives HTTP 409 spec_hash_mismatch on artifact submission. No test covers this 409 path. TC-SBX-02-03 verifies that two orchestrators with the same body produce different hashes, which indirectly confirms the hash is principal-bound, but it does not exercise the spec_hash_mismatch rejection. TEST-DESIGNER must add a test that submits a spec carrying a hash pre-computed over the wrong principal and asserts HTTP 409 spec_hash_mismatch; or, if the artifact-submission endpoint is out of scope for this handoff, document which test file will cover AC3 and gate TEST-RUNNER on that file being present."
+      },
+      {
+        "id": "TDV-SBX02-AC6",
+        "severity": "MINOR",
+        "requirement": "SBX-02",
+        "acceptance_criterion": "AC6",
+        "description": "SBX-02 AC6 states: 'The force-set runs before canonicalisation, so no code path hashes a client-supplied principal.' This is an implementation invariant. No test explicitly asserts it; it is only indirectly covered by TC-SBX-02-02 (discarded body principal) and TC-SBX-02-03 (hash differs per orchestrator). Consider adding a comment in TC-SBX-02-02 or a dedicated assertion that confirms the stored spec_hash matches a hash computed over the server-set principal, not the body value."
+      }
+    ],
+    "next_action": "Route FAIL back to TEST-DESIGNER for rework (rework_count will become 1 of max 1). Required: add TC-SBX-01-06 (implAuth on handleSubmitTaskSpec), resolve TC-QRY-05-06 cross-tenant scope ambiguity, and address SBX-02 AC3 coverage."
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

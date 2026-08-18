@@ -1,0 +1,69 @@
+{
+  "handoff_id": "WF02-qry05-sbx01-03-20260818-04-test-runner",
+  "run_id": "WF02-qry05-sbx01-03-20260818",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-04-test-runner.json",
+  "created_at": "2026-08-18T14:05:31Z",
+  "started_at": "2026-08-18T14:05:31Z",
+  "completed_at": "2026-08-18T14:16:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry05-sbx01-03-20260818",
+    "workflow": "WF-02",
+    "requirement_ids": ["QRY-05", "SBX-01", "SBX-02", "SBX-03"],
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818",
+    "bench_env_cleared": true
+  },
+  "task": {
+    "description": "Run tests for QRY-05 and SBX-01..03 on branch feature/WF02-qry05-sbx01-03-20260818.\n\n1. git checkout feature/WF02-qry05-sbx01-03-20260818 && git pull\n2. zig build migrate\n3. zig build test-integration-qry05-sbx\n4. Write structured report to tests/reports/WF02-qry05-sbx01-03-20260818-test-report.yaml\n5. git push (push the report)\n\nExpect 22 tests total (6 QRY-05 + 16 SBX). All must PASS. Report PASS if all pass, FAIL with details if any fail.",
+    "test_step": "test-integration-qry05-sbx",
+    "requirement_ids": ["QRY-05", "SBX-01", "SBX-02", "SBX-03"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "14/23 tests pass, 9 fail. QRY-05: 5/6 pass (1 FAIL: sort restriction response missing 'allowlisted' token; 1 PASS_WITH_LEAK: parseRequest numeric-filter path leaks 1 alloc). SBX: 9/17 pass, 8 FAIL — root causes: (1) CRITICAL: handleSubmitTaskSpec returns 400 for all SBX-02 scenarios (token-principal enforcement not implemented/wired); (2) MAJOR: audit_entries has P0001 trigger blocking test cleanup DELETE and missing event_name column (42703). Infrastructure fixes applied: tenant_only migration DDL manually applied to tenant_default (provisionTenantSchema idempotency gap); sbx test Zig type errors (missing try on allocator.dupe) fixed in test file.",
+    "artifacts_out": ["tests/reports/WF02-qry05-sbx01-03-20260818-test-report.yaml"],
+    "issues": [
+      {
+        "id": "ISS-WF02-SBX-01",
+        "severity": "CRITICAL",
+        "requirement": "SBX-02",
+        "tests": ["sbx02_01", "sbx02_02", "sbx02_03", "sbx02_04", "sbx02_05"],
+        "description": "handleSubmitTaskSpec returns HTTP 400 for all SBX-02 test cases. Token-subject principal enforcement (server ignores body orchestrator_principal, uses auth.principal) not implemented or not wired to route."
+      },
+      {
+        "id": "ISS-WF02-SBX-02",
+        "severity": "MAJOR",
+        "requirement": "SBX-01",
+        "tests": ["sbx01_04", "sbx01_05", "sbx02_04", "sbx03_06"],
+        "description": "audit_entries: (1) sqlstate=P0001 trigger/RLS RAISE on DELETE blocks test cleanup; (2) sqlstate=42703 column event_name does not exist."
+      },
+      {
+        "id": "ISS-WF02-QRY05-01",
+        "severity": "MAJOR",
+        "requirement": "QRY-05",
+        "tests": ["qry05_04"],
+        "description": "entity_query sort-restriction 400 response body does not contain required 'allowlisted' token. Test spec requires it to distinguish field-restriction 400 from generic validation 400."
+      },
+      {
+        "id": "ISS-WF02-QRY05-02",
+        "severity": "MINOR",
+        "requirement": "QRY-05",
+        "tests": ["qry05_03"],
+        "description": "entity_query.zig:295 parseRequest allocPrint for numeric filter values leaks 1 allocation when returning ParseRequestError. Test assertion passes but DebugAllocator reports leak."
+      },
+      {
+        "id": "INFRA-01",
+        "severity": "BLOCKER",
+        "description": "tenant_only migrations 1169/1170 not applied to tenant_default — provisionTenantSchema idempotency short-circuit. Mitigated by manual DDL apply for this run. BACKEND-DEV must fix provisionTenantSchema to re-run runForSchema when new tenant_only migrations exist."
+      }
+    ],
+    "next_action": "ORCH: spawn WF-03 for ISSUE-FIXER for ISS-WF02-SBX-01 (CRITICAL), ISS-WF02-SBX-02 (MAJOR), ISS-WF02-QRY05-01 (MAJOR), ISS-WF02-QRY05-02 (MINOR), INFRA-01. Do NOT route to RELEASE-VALIDATOR."
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

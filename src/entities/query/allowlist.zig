@@ -215,3 +215,60 @@ pub fn deinitAllowlist(allocator: std.mem.Allocator, al: *EntityAllowlist) void 
     for (al.fields) |f| allocator.free(f.name);
     allocator.free(al.fields);
 }
+
+/// Build a narrowed copy of `al` that excludes any field in `denied_field_names`.
+/// Used by QRY-05 to restrict filter/sort surface to caller-visible fields only.
+pub fn narrowAllowlist(
+    allocator: std.mem.Allocator,
+    al: EntityAllowlist,
+    denied_field_names: []const []const u8,
+) error{OutOfMemory}!EntityAllowlist {
+    if (denied_field_names.len == 0) {
+        // Copy the field slice without deep-copying names; caller will deinit with deinitAllowlist.
+        var fields: std.ArrayList(AllowlistedField) = .empty;
+        errdefer {
+            for (fields.items) |f| allocator.free(f.name);
+            fields.deinit(allocator);
+        }
+        for (al.fields) |f| {
+            const name_copy = allocator.dupe(u8, f.name) catch return error.OutOfMemory;
+            fields.append(allocator, .{
+                .name = name_copy,
+                .kind = f.kind,
+                .storage_type = f.storage_type,
+                .is_sortable = f.is_sortable,
+            }) catch {
+                allocator.free(name_copy);
+                return error.OutOfMemory;
+            };
+        }
+        return EntityAllowlist{ .fields = try fields.toOwnedSlice(allocator) };
+    }
+
+    var fields: std.ArrayList(AllowlistedField) = .empty;
+    errdefer {
+        for (fields.items) |f| allocator.free(f.name);
+        fields.deinit(allocator);
+    }
+    for (al.fields) |f| {
+        var is_denied = false;
+        for (denied_field_names) |denied| {
+            if (std.mem.eql(u8, f.name, denied)) {
+                is_denied = true;
+                break;
+            }
+        }
+        if (is_denied) continue;
+        const name_copy = allocator.dupe(u8, f.name) catch return error.OutOfMemory;
+        fields.append(allocator, .{
+            .name = name_copy,
+            .kind = f.kind,
+            .storage_type = f.storage_type,
+            .is_sortable = f.is_sortable,
+        }) catch {
+            allocator.free(name_copy);
+            return error.OutOfMemory;
+        };
+    }
+    return EntityAllowlist{ .fields = try fields.toOwnedSlice(allocator) };
+}

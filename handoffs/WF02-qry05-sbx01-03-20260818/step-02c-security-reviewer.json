@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF02-qry05-sbx01-03-20260818-02c-security-reviewer",
+  "run_id": "WF02-qry05-sbx01-03-20260818",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-qry05-sbx01-03-20260818/step-02c-security-reviewer.json",
+  "created_at": "2026-08-18T13:24:28Z",
+  "started_at": "2026-08-18T13:24:28Z",
+  "completed_at": "2026-08-18T13:28:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry05-sbx01-03-20260818",
+    "workflow": "WF-02",
+    "requirement_ids": ["QRY-05", "SBX-01", "SBX-02", "SBX-03"],
+    "design_file": "src/design/WF02-qry05-sbx01-03-20260818.md",
+    "branch_name": "feature/WF02-qry05-sbx01-03-20260818",
+    "commit_sha": "e197a78a",
+    "scope_note": "Tenant data paths touched: entity_field_grants (per-tenant field access), agent auth context (role extraction from OIDC tokens), sandbox claim/list (per-tenant sandbox isolation)"
+  },
+  "task": {
+    "description": "Hard gate security review for changes on branch feature/WF02-qry05-sbx01-03-20260818 (commit e197a78a).\n\nReview all changed files against the numbered security invariants in docs/agents/instructions/security-invariants.md.\n\nKey areas to check:\n1. QRY-05 field stripping: verify stripped fields are ABSENT (not null), verify no cross-tenant grant leakage, verify tenant schema scoping of field_grants queries\n2. SBX-01 role gate: verify both credentials required, verify conflicting-roles check fires BEFORE handler, verify audit events on all rejection paths\n3. SBX-02 principal: verify client-supplied orchestrator_principal is DISCARDED before canonicalisation, verify no code path hashes a client-supplied principal\n4. SBX-03 sandbox: verify orchestrator cannot claim/execute sandboxes, verify implementer list is owner-scoped, verify no sandbox owner enumeration\n5. Auth extension: verify AgentRealmRole extraction does not allow privilege escalation via token crafting\n\nReturn PASS if all invariants satisfied. Return FAIL with specific findings if not."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All eight security invariants reviewed against the branch diff (commit e197a78a). No BLOCKER findings. One MINOR audit-coverage gap recorded. INV-1 through INV-8 assessed individually below.",
+    "invariant_assessments": {
+      "INV-1": "PASS. Both migrations carry '-- scope: tenant_only'. loadFieldGrants and all sandbox/task-spec queries run on a pool connection already bound to the tenant schema via search_path. No business table created in public.",
+      "INV-2": "PASS. stripDeniedFields removes denied keys from the JSON object entirely (key is skipped in the iterator, never assigned null). narrowAllowlist removes denied fields from the filter/sort surface before compile(). The SPA never receives an unauthorised field.",
+      "INV-3": "N/A. No Lua or Wasm host-API functions were added or changed.",
+      "INV-4": "PASS. No secret material or credential strings appear in any new struct, audit payload, or response body. orchestrator_principal in audit records is auth.user_id (OIDC subject), not a secret.",
+      "INV-5": "PASS. handleClaimSandbox issues a blind UPDATE (no prior SELECT); both 'sandbox not found' and 'sandbox already claimed by another implementer' paths return HTTP 201 with identical body {}. Cross-tenant sandboxes are invisible via schema isolation. Orchestrator full-list access is by explicit design (supervisory read).",
+      "INV-6": "PASS. All three new data-access paths (field_grants query, sandbox list/claim, task-spec insert) are assessed in this handoff.",
+      "INV-7": "PASS. All SQL in field_grants.zig, agent_sandboxes.zig, and agent_task_specs.zig uses $N parameterised placeholders. No std.fmt.allocPrint interpolation into SQL text found.",
+      "INV-8": "PASS. No 'catch unreachable' on external I/O or tenant-controlled data paths. The single 'orelse unreachable' in canonical_json.zig (obj.get(key) after iterating obj.keys()) is provably safe."
+    },
+    "issues": [
+      {
+        "id": "SEC-MINOR-01",
+        "severity": "MINOR",
+        "location": "src/api/middleware/auth.zig — conflicting-roles rejection block",
+        "description": "The conflicting_agent_roles path (SBX-01 AC5) returns HTTP 403 directly from authenticate() without writing an audit event. The task_spec.submission_rejected audit is written in the route handler, which is never reached for conflicting-roles tokens. This is an observability gap for a potentially adversarial token presentation. No data is exposed and the gate fires correctly; the gap is audit coverage only.",
+        "recommendation": "Write a tenant-scoped audit event (e.g. 'agent_auth.conflicting_roles_rejected') in the auth middleware before returning .forbidden, consistent with the rejection-path audit discipline applied in agent_task_specs.zig and agent_sandboxes.zig."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}
