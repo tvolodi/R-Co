@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-17T12:07:39Z'
+generated_at: '2026-08-18T01:06:29Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12147,7 +12147,7 @@ requirements:
     title: Proactive future partition creation
     stage: '16'
     priority: MUST
-    status: TESTED
+    status: RELEASED
     body: |-
       > The scheduler SHALL run `plat_partition_maintenance` daily at 00:15 UTC in every tenant schema and SHALL keep `lead_months` future monthly partitions attached at all times, default 2. Partition creation SHALL be idempotent: creating a partition that already exists and is attached is a no-op. No append SHALL ever be the operation that creates a partition.
 
@@ -12162,24 +12162,23 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-11T18:38:46Z'
+    last_updated: '2026-08-18T01:06:21Z'
     workflow: PW-06
-    note: AC1/AC2/AC3/AC4 met; AC5 (EXECUTION_PARTITION_CREATED event emission) NOT MET -- zero call sites
-      in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR). Held at TESTED, not RELEASED,
-      until AC5 is implemented -- see docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's
-      full reasoning.
+    note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0670 RESOLVED (GH-711 closed). AC5/AC6
+      event emissions implemented and tested.
     implemented_in:
     - src/scheduler/partition_maintenance.zig
     - migrations/1148_par02_partition_catalog.sql
     test_spec: tests/specs/PAR-02.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
+    released_at: '2026-08-18T01:06:21Z'
   PAR-03:
     id: PAR-03
     title: Partition-scoped retention and archival
     stage: '16'
     priority: MUST
-    status: TESTED
+    status: RELEASED
     body: |-
       > **Extends:** ADP-11, giving the deletion prohibition a physical retention mechanism.
 
@@ -12197,18 +12196,17 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-11T18:38:47Z'
+    last_updated: '2026-08-18T01:06:25Z'
     workflow: PW-06
-    note: AC1-AC5 met; AC6 (EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED event emission)
-      NOT MET -- zero call sites in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR),
-      same umbrella issue as PAR-02 AC5. Held at TESTED, not RELEASED, until AC6 is implemented -- see
-      docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's full reasoning.
+    note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0670 RESOLVED (GH-711 closed). AC5/AC6
+      event emissions implemented and tested.
     implemented_in:
     - src/scheduler/partition_retention.zig
     - migrations/1149_par03_retention_class.sql
     test_spec: tests/specs/PAR-03.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
+    released_at: '2026-08-18T01:06:25Z'
   PAR-04:
     id: PAR-04
     title: Partition constraints declared before attach
@@ -12244,7 +12242,7 @@ requirements:
     title: Online conversion to a partitioned event log
     stage: '16'
     priority: MUST
-    status: TESTED
+    status: RELEASED
     body: |-
       > The one-time conversion of an existing `events` table into a partitioned parent SHALL run online. A new parent is created alongside, historical rows are backfilled in `created_at` windows of one calendar month with one transaction per window and `ON CONFLICT (event_id, created_at) DO NOTHING`, and the tables are exchanged by a rename swap inside a single transaction. `plat_event_idempotency` SHALL be created and populated before the swap, so global `idempotency_key` uniqueness is never absent.
 
@@ -12260,19 +12258,15 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-12T06:32:35Z'
+    last_updated: '2026-08-18T01:06:29Z'
     workflow: PW-06
-    note: 'AC1-AC5 met (online conversion pipeline: parent creation, resumable per-month backfill with
-      idempotent ON CONFLICT DO NOTHING, transactional swap, reconcileOrRollback() with inverse-rename
-      on mismatch -- all independently re-run 6/6 passing). Trailing AC sentence (events_legacy retained
-      read-only for one archive_after_months cycle then attached to events_archive, never emptied row
-      by row) NOT MET -- PartitionConverter has no code path handing events_legacy to PartitionRetention.runArchivalAging()
-      (PAR-03). Tracked as ISS-0686 / GH-733 (OPEN, MAJOR). Held at TESTED, not RELEASED, until archival
-      integration is implemented -- see docs/status/release-stage16-WF02-batch-4-20260811.yaml for RELEASE-VALIDATOR''s
-      full reasoning.'
+    note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0686 RESOLVED (GH-733 closed). archiveLegacyTable()
+      integrated.
     implemented_in:
     - src/db/partition_conversion.zig
     - src/scheduler/partition_maintenance.zig
+    - src/scheduler/partition_retention.zig
+    released_at: '2026-08-18T01:06:29Z'
   PAR-06:
     id: PAR-06
     title: Time-bounded instance reconstruction queries

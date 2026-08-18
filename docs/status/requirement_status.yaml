@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-17T12:07:44Z'
+last_updated: '2026-08-18T01:07:10Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4764,7 +4764,7 @@ requirements:
     release_run: WF02-batch-3-20260811
     release_decision: docs/status/release-stage16-WF02-batch-3-20260811.yaml
   PAR-02:
-    status: TESTED
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Proactive future partition creation
@@ -4774,12 +4774,11 @@ requirements:
     test_spec: tests/specs/PAR-02.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
-    note: AC1/AC2/AC3/AC4 met; AC5 (EXECUTION_PARTITION_CREATED event emission) NOT MET -- zero call sites
-      in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR). Held at TESTED, not RELEASED,
-      until AC5 is implemented -- see docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's
-      full reasoning.
+    released_at: '2026-08-18T01:06:21Z'
+    note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0670 RESOLVED (GH-711 closed). AC5/AC6
+      event emissions implemented and tested.
   PAR-03:
-    status: TESTED
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Partition-scoped retention and archival
@@ -4789,10 +4788,9 @@ requirements:
     test_spec: tests/specs/PAR-03.md
     test_run: tests/reports/report-20260811-WF02-batch-3.yaml
     tested_at: '2026-08-11T18:24:52Z'
-    note: AC1-AC5 met; AC6 (EXECUTION_PARTITION_DETACHED / EXECUTION_PARTITION_DROPPED event emission)
-      NOT MET -- zero call sites in src/, confirmed by grep. Tracked as ISS-0670 / GH-711 (OPEN, MAJOR),
-      same umbrella issue as PAR-02 AC5. Held at TESTED, not RELEASED, until AC6 is implemented -- see
-      docs/status/release-stage16-WF02-batch-3-20260811.yaml for RELEASE-VALIDATOR's full reasoning.
+    released_at: '2026-08-18T01:06:25Z'
+    note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0670 RESOLVED (GH-711 closed). AC5/AC6
+      event emissions implemented and tested.
   PAR-04:
     status: RELEASED
     stage: '16'
@@ -4807,21 +4805,17 @@ requirements:
     release_run: WF02-batch-3-20260811
     release_decision: docs/status/release-stage16-WF02-batch-3-20260811.yaml
   PAR-05:
-    status: TESTED
+    status: RELEASED
     stage: '16'
     priority: MUST
     title: Online conversion to a partitioned event log
     implemented_in:
     - src/db/partition_conversion.zig
     - src/scheduler/partition_maintenance.zig
-    note: 'AC1-AC5 met (online conversion pipeline: parent creation, resumable per-month backfill with
-      idempotent ON CONFLICT DO NOTHING, transactional swap, reconcileOrRollback() with inverse-rename
-      on mismatch -- all independently re-run 6/6 passing). Trailing AC sentence (events_legacy retained
-      read-only for one archive_after_months cycle then attached to events_archive, never emptied row
-      by row) NOT MET -- PartitionConverter has no code path handing events_legacy to PartitionRetention.runArchivalAging()
-      (PAR-03). Tracked as ISS-0686 / GH-733 (OPEN, MAJOR). Held at TESTED, not RELEASED, until archival
-      integration is implemented -- see docs/status/release-stage16-WF02-batch-4-20260811.yaml for RELEASE-VALIDATOR''s
-      full reasoning.'
+    - src/scheduler/partition_retention.zig
+    released_at: '2026-08-18T01:06:29Z'
+    note: All ACs met as of ADHOC-par02-03-05-release-20260817. ISS-0686 RESOLVED (GH-733 closed). archiveLegacyTable()
+      integrated.
   PAR-06:
     status: RELEASED
     stage: '16'

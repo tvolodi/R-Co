@@ -2,6 +2,15 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-18
+
+### feat(par): Stage 16 — PAR-02/PAR-03/PAR-05 RELEASED (ADHOC-par02-03-05-release-20260817)
+
+- **feat(par): PAR-02 Proactive future partition creation RELEASED.** All ACs now met including AC5 (`EXECUTION_PARTITION_CREATED` event emitted by `ensurePartitionAttached()` in `src/scheduler/partition_maintenance.zig` lines 330–353). TC-PAR-02-09 asserts event emission in `tests/integration/par02_partition_catalog_test.zig` (4/4 pass). ISS-0670/GH-711 resolved.
+- **feat(par): PAR-03 Partition-scoped retention and archival RELEASED.** AC6 implemented: `EXECUTION_PARTITION_DETACHED` and `EXECUTION_PARTITION_DROPPED` events emitted by `partition_retention.zig` on detach and drop respectively. par03 integration suite 4/4 pass. ISS-0670/GH-711 resolved (same umbrella as PAR-02 AC5).
+- **feat(par): PAR-05 Online conversion to a partitioned event log RELEASED.** Trailing AC (events_legacy retained read-only for one `archive_after_months` cycle then attached to `events_archive`, never emptied row by row) now met: `archiveLegacyTable()` integrated in `partition_retention.zig`. test-integration-iss0686 1/1 pass. ISS-0686/GH-733 resolved.
+- **Gate results (run ADHOC-par02-03-05-release-20260817, branch `feature/ADHOC-par02-03-05-release-20260817`, HEAD `d4214528`).** par02 4/4; par03 4/4; test-integration-iss0686 1/1; unit 1176/1240 (0 fail, 64 pre-existing skips); test-env-verify HEALTHY 10/10. Release decision `docs/status/release-stage16-par02-03-05-20260817.yaml` APPROVED. Requirements PAR-02, PAR-03, PAR-05 advanced to RELEASED.
+
 ## [Unreleased] — 2026-08-17
 
 ### feat(obp/ddl): Stage 16 — OBP-01/02/03 DDL-03 RELEASED (WF02-obp-ddl-20260817)
