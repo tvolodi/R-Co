@@ -244,9 +244,11 @@ pub const PartitionMaintenanceScheduler = struct {
             .healthy;
 
         // Step 4: record the observed count on today's run-log row.
+        const future_count_text = intToStr(allocator, future_count) catch return PartitionMaintenanceError.TransactionFailed;
+        defer allocator.free(future_count_text);
         conn.exec(
             "UPDATE plat_partition_maintenance_run_log SET future_partition_count = $1 WHERE run_date = CURRENT_DATE",
-            &.{intToStr(allocator, future_count) catch return PartitionMaintenanceError.TransactionFailed},
+            &.{future_count_text},
         ) catch |err| switch (err) {
             db.PoolError.ExhaustedPool => return PartitionMaintenanceError.PoolExhausted,
             else => return PartitionMaintenanceError.TransactionFailed,
