@@ -1,0 +1,41 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-07-doc-updater",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-07-doc-updater.json",
+  "created_at": "2026-08-18T10:27:24Z",
+  "started_at": "2026-08-18T10:28:17Z",
+  "completed_at": "2026-08-18T10:30:18Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "workflow": "WF-03",
+    "parent_run": "WF02-qry01-04-20260818",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "test_result": "PASS: 14/14",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "github_issues_closed": ["#823", "#824", "#825", "#826"],
+    "fix_commits": [
+      "3ced4800: allowlist typed-column merge + error field name + cursor encoding + test audit col",
+      "c0459571: entity_definitions tenant_id regression fix",
+      "db2bd848: payload col fixture + detail field + cursor UAF fix",
+      "2c4ed368: entity_definitions per-tenant schema (remove public. qualifier)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 7 — Update changelog and requirement status after QRY-01..04 implementation passing all tests.\n\n1. Update CHANGELOG.md — add entry for WF03-qry01-04-bugs-20260818 (bugs fixed during WF-02 QRY-01..04 implementation):\n   - List all 4 GitHub issues fixed: #823 (allowlist typed-column merge), #824 (error field name), #825 (cursor encoding), #826 (test audit column)\n   - Note additional inline fixes: entity_definitions schema + payload col fixture + cursor UAF + per-tenant entity_definitions query\n\n2. Update docs/requirements.yaml — use reqctl.py to update requirement status:\n   - QRY-01: TESTED (or IMPLEMENTED if already at that stage)\n   - QRY-02: TESTED\n   - QRY-03: TESTED\n   - QRY-04: TESTED\n   Check current status first: python tools/reqctl.py show QRY-01 (etc.)\n\n3. Close GitHub issues: gh issue close 823 --comment 'Fixed in feature/WF02-qry01-04-20260818'; similarly for #824, #825, #826\n\n4. Run python tools/lint_handoffs.py and confirm exit 0\n\n5. git add -A; git commit -m 'docs(WF03): changelog + status update for QRY-01..04 (WF03-qry01-04-bugs-20260818)'"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "QRY-01..04 already at TESTED (no transition needed). CHANGELOG.md updated with WF03-qry01-04-bugs-20260818 entry. GitHub issues #823, #824, #825, #826 closed. lint_handoffs.py exit 0. Commit b5683452 on feature/WF02-qry01-04-20260818.",
+    "artifacts_out": ["CHANGELOG.md"],
+    "issues": [],
+    "next_action": "BACKEND-DEV Step Final handles PR merge and branch deletion"
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

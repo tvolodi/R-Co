@@ -1,0 +1,31 @@
+{
+  "id": "ISS-QRY-ALLOWLIST-KIND-01",
+  "title": "QRY: allowlist.zig hardcodes .kind=.jsonb_key for all entity_filterable_keys rows",
+  "severity": "CRITICAL",
+  "status": "OPEN",
+  "category": "A",
+  "affected_areas": [
+    "src/entities/query/allowlist.zig"
+  ],
+  "requirements": [
+    "QRY-01",
+    "QRY-02"
+  ],
+  "failing_tests": [
+    "qry01_valid_eq_filter_returns_matching_rows",
+    "qry01_filter_value_is_positional_param_not_interpolated",
+    "qry01_audit_event_recorded_without_filter_values"
+  ],
+  "symptom": "In allowlist.zig:124, all rows loaded from entity_filterable_keys are assigned .kind=.jsonb_key. The design (qry-01-04-entity-query.md) specifies that typed columns from entity_definitions.definition_json.fields (where queried=true) should be merged and have .kind=.typed_column. The missing merge means typed-column entities emit payload ->> $2 SQL against tables without a payload column, causing sqlstate=42703 and HTTP 503.",
+  "root_cause": "Missing merge of typed-column definitions from entity_definitions.definition_json.fields into the allowlist; all entries default to .kind=.jsonb_key regardless of whether the field maps to a real column.",
+  "acceptance_criteria": [
+    "allowlist.zig reads entity_definitions.definition_json.fields where queried=true and assigns .kind=.typed_column for those fields",
+    "All 3 QRY-01 tests pass with no sqlstate=42703 errors",
+    "QRY-02 tests continue to pass"
+  ],
+  "discovered_by": "TEST-RUNNER WF03-qry01-04-bugs-20260818 rework3",
+  "filed_at": "2026-08-18T08:45:41Z",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/823",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "diagnosis": "CONFIRMED (Category A). src/entities/query/allowlist.zig loadAllowlist never queries entity_definitions.definition_json.fields. All entity_filterable_keys rows are assigned .kind=.jsonb_key. The typed-column merge step is entirely absent. Additionally tenant_id is silently discarded (_ = tenant_id;) so the SQL filters only by entity_key without tenant scoping. Effect: typed-column entities emit payload ->> dollar-N SQL against tables without a payload column causing sqlstate=42703 and HTTP 503."
+}

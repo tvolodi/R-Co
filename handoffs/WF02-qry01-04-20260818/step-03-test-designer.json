@@ -1,0 +1,67 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-03-test-designer",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-03-test-designer.json",
+  "created_at": "2026-08-18T06:52:40Z",
+  "started_at": "2026-08-18T06:52:55Z",
+  "completed_at": "2026-08-18T07:08:19Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "src/design/qry-01-04-entity-query.md",
+      "docs/requirements.yaml (entries: QRY-01, QRY-02, QRY-03, QRY-04)",
+      "src/entities/query/",
+      "src/api/routes/entity_query.zig",
+      "migrations/1168_qry_filterable_keys.sql"
+    ]
+  },
+  "task": {
+    "description": "Write test specs and integration test code for QRY-01, QRY-02, QRY-03, and QRY-04. Every MUST acceptance criterion must have a corresponding integration test. Output: (1) tests/specs/QRY-01.md, tests/specs/QRY-02.md, tests/specs/QRY-03.md, tests/specs/QRY-04.md; (2) tests/integration/query_qry01_04_test.zig with integration tests hitting POST /api/v1/entities/{entity_key}/query. Tests must cover: SQL injection defence (filter value as param, not interpolated), operator rejection for unknown ops, field rejection for non-allowlisted fields, keyset cursor encode/decode, page_size cap enforcement, emptyEnvelope identical for deny and unknown entity_key (byte-for-byte comparison), EntityQueryExecuted audit event recorded, no filter values in audit log, tenant isolation (cross-tenant probe returns emptyEnvelope). Wire the new test file into build.zig and tests/integration/main_test.zig.",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "output_specs": [
+      "tests/specs/QRY-01.md",
+      "tests/specs/QRY-02.md",
+      "tests/specs/QRY-03.md",
+      "tests/specs/QRY-04.md"
+    ],
+    "output_test_file": "tests/integration/query_qry01_04_test.zig"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Produced 4 test spec files (tests/specs/QRY-01..04.md) covering all MUST acceptance criteria. Produced tests/integration/query_qry01_04_test.zig with 14 distinct test blocks: qry01_valid_eq_filter_returns_matching_rows, qry01_unknown_op_returns_400_operator_not_recognised, qry01_filter_value_is_positional_param_not_interpolated, qry01_read_only_no_dml, qry01_audit_event_recorded_without_filter_values, qry02_non_allowlisted_field_returns_400, qry02_sort_non_allowlisted_field_returns_400, qry03_default_page_size_is_50, qry03_page_size_exceeds_max_returns_400, qry03_cursor_pagination_returns_next_page, qry03_cursor_sort_mismatch_returns_400, qry04_denied_entity_returns_empty_envelope, qry04_unknown_entity_returns_same_empty_envelope, qry04_cross_tenant_probe_returns_empty_envelope. All tests call handleEntityQuery directly against a real PostgreSQL DB. Wired into build.zig (test-integration-qry01-04 step + test_integration_others_step umbrella) and tests/integration/main_test.zig. Exposed entity_query_routes via src/bpm.zig. zig build check passes (check_fmt_scope: PASSED). Committed as 76d6702b on feature/WF02-qry01-04-20260818.",
+    "artifacts_out": [
+      "tests/specs/QRY-01.md",
+      "tests/specs/QRY-02.md",
+      "tests/specs/QRY-03.md",
+      "tests/specs/QRY-04.md",
+      "tests/integration/query_qry01_04_test.zig",
+      "src/bpm.zig (entity_query_routes added)",
+      "build.zig (test-integration-qry01-04 step + umbrella wiring)",
+      "tests/integration/main_test.zig (query_qry01_04_integration import added)"
+    ],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

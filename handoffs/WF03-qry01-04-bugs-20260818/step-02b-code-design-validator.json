@@ -1,0 +1,56 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-02b-code-design-validator",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-02b-code-design-validator.json",
+  "created_at": "2026-08-18T09:03:00Z",
+  "started_at": "2026-08-18T09:03:15Z",
+  "completed_at": "2026-08-18T09:07:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "workflow": "WF-03",
+    "design_artefact": "src/design/fix-ISS-QRY-bugs-20260818.md",
+    "issues": ["#823", "#824", "#825", "#826"],
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "task": {
+    "description": "WF-03 Step 2b — Validate fix design at src/design/fix-ISS-QRY-bugs-20260818.md.\n\nVerify:\n1. The design covers all 4 issue root causes confirmed by ISSUE-FIXER\n2. The design contains NO Zig implementation code (only interfaces, types, SQL shapes, data-flow)\n3. Issue 1 (#823): typed-column merge from entity_definitions is specified with enough precision for BACKEND-DEV to implement\n4. Issue 1 (#823): tenant isolation via search_path is specified; tenant_id parameter removed from entity_filterable_keys query (per SPT-03)\n5. Issue 2 (#824): rejected_filter_field out-parameter or equivalent mechanism specified; error body format specified\n6. Issue 3 (#825): cursor format is unambiguous; encode and decode are deterministic; empty sort case handled\n7. Issue 4 (#826): test column name fix is specified\n8. No acceptance criteria from QRY-01..04 are left uncovered by the fix\n\nReturn PASS if all checks pass. Return FAIL with specific gaps if not."
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Fix design for #823/#824/#825/#826 is technically correct on all 8 content checks but fails the mandatory lint gate with 2 MAJOR structural defects. Route back to CODE-DESIGNER for rework.",
+    "lint_exit_code": 1,
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "code": "E010",
+        "check": "lint_design_artefact.py structural requirement",
+        "detail": "Missing required section for 'purpose'. The artefact opens with a list of per-issue sections but omits a top-level 'Module purpose' paragraph (or equivalent heading matching 'module purpose' | 'purpose') that states the overall intent of the fix in one clear paragraph. Required by Type E completeness rules."
+      },
+      {
+        "severity": "MAJOR",
+        "code": "E010",
+        "check": "lint_design_artefact.py structural requirement",
+        "detail": "Missing required section for 'errors'. Each issue section names its error cases inline but the artefact lacks a unified 'Error taxonomy' section (heading matching 'error taxonomy' | 'errors' | 'error cases'). The parent design (qry-01-04-entity-query.md) has one; the fix artefact must include one covering the new/changed error paths introduced or affected by the four fixes."
+      }
+    ],
+    "content_check_results": {
+      "check_1_all_root_causes_covered": "PASS — #823 allowlist merge, #824 out-param, #825 cursor b64url, #826 column rename all addressed with confirmed root causes.",
+      "check_2_no_zig_implementation_code": "PASS — Only function signatures and algorithm pseudo-code blocks present; no function bodies (no { ... } with statement sequences). No SQL DDL.",
+      "check_3_typed_column_merge_precision": "PASS — Query 2 SQL shape with params, JSONB field extraction (queried=true, name/storage_type), storage_type enum mapping with default, is_sortable=true assignment, and merge priority rule are all specified.",
+      "check_4_search_path_tenant_isolation": "PASS — SPT-03 pattern explicitly named; confirmed against actual migration 1168_qry_filterable_keys.sql (scope: tenant_only, no tenant_id column); Query 1 SQL uses only $1=entity_key; tenant_id used in Query 2 against entity_definitions with $1::uuid predicate.",
+      "check_5_rejected_filter_field_outparam": "PASS — *?[]const u8 out-parameter specified; null init; dupe-on-mismatch with OOM fallback (omit field key); handler declare/defer-free pattern; both JSON body shapes specified.",
+      "check_6_cursor_format_unambiguous": "PASS — New format QE:<ts>:<b64url_fp>:<vals> eliminates colon ambiguity; encode and decode algorithms are deterministic; no-sort default case (record_id:asc → cmVjb3JkX2lkOmFzYw) explicitly demonstrated; wire-format breaking change documented with correct client behaviour.",
+      "check_7_test_column_fix": "PASS — Two replacements at lines 560 and 985 of query_qry01_04_test.zig; created_at → timestamp on audit_entries ORDER BY.",
+      "check_8_acceptance_criteria_coverage": "PASS — QRY-01 ACs (injection prevention, parameterization, audit, read-only) unchanged. QRY-02 AC requiring field name in filter_field_not_allowlisted error fixed by #824. QRY-02 AC requiring typed-column merge fixed by #823. QRY-03 cursor ACs restored by #825. QRY-04 empty-envelope path untouched."
+    },
+    "next_action": "Route back to CODE-DESIGNER (rework cycle 1/2). Add: (1) a top-level 'Module purpose' section; (2) a unified 'Error taxonomy' section covering the new/changed error paths for all four fixes. All content checks pass — rework is structural only."
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

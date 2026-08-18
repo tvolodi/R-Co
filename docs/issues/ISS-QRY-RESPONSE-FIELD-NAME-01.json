@@ -1,0 +1,28 @@
+{
+  "id": "ISS-QRY-RESPONSE-FIELD-NAME-01",
+  "title": "QRY: filter_field_not_allowlisted error response omits rejected field name",
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "A",
+  "affected_areas": [
+    "src/entities/query/compiler.zig",
+    "src/api/routes/entity_query.zig"
+  ],
+  "requirements": [
+    "QRY-02"
+  ],
+  "failing_tests": [
+    "qry02_non_allowlisted_field_returns_400"
+  ],
+  "symptom": "When a filter field is not allowlisted, the HTTP 400 response body contains error code filter_field_not_allowlisted but omits the name of the rejected field. QRY-02 AC requires the rejected field name to appear in the error detail.",
+  "root_cause": "The error response construction for filter_field_not_allowlisted does not include the field name in the detail payload.",
+  "acceptance_criteria": [
+    "HTTP 400 response for a non-allowlisted filter field includes the rejected field name in the error detail",
+    "qry02_non_allowlisted_field_returns_400 passes"
+  ],
+  "discovered_by": "TEST-RUNNER WF03-qry01-04-bugs-20260818 rework3",
+  "filed_at": "2026-08-18T08:45:41Z",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/824",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "diagnosis": "CONFIRMED (Category A). CompileError.FilterFieldNotAllowlisted is a bare Zig error with no attached context. The handler in src/api/routes/entity_query.zig maps it to the static string filter_field_not_allowlisted with no rejected field name. Test checks result.body contains internal_note which fails because the field name is lost at the error boundary."
+}

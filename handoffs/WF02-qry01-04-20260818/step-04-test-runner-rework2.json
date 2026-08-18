@@ -1,0 +1,72 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-04-test-runner-rework2",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "04-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-04-test-runner-rework2.json",
+  "created_at": "2026-08-18T07:59:06Z",
+  "started_at": "2026-08-18T07:59:32Z",
+  "completed_at": "2026-08-18T08:16:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "bench_env_cleared": true,
+    "infra_restore": "PASS (step-04b-backend-dev-infra) — all 10 test-env-verify checks passed after power restore",
+    "prior_failures": [
+      "rework1: infra down (power interruption) — C1/C3/C4/C6 fail — services now healthy",
+      "original: compile error parseNextCursor try — fixed c5ea34c7"
+    ]
+  },
+  "task": {
+    "description": "Execute zig build test-integration-qry01-04 (all services healthy, bench env CLEARED). Report all 14 test results. Write report to tests/reports/WF02-qry01-04-20260818-test-report.yaml.",
+    "test_step": "test-integration-qry01-04",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "14 tests run (3 pass, 11 fail; 3 leaks). Root cause: entity_filterable_keys table missing from bpm_test (sqlstate=42P01). All QRY-01/02/03 tests fail with 503 instead of expected 200/400. All QRY-04 tests pass assertions but leak 32 bytes each via appendDenyAudit catch path. Exit code: 1.",
+    "artifacts_out": ["tests/reports/WF02-qry01-04-20260818-test-report.yaml"],
+    "issues": [
+      {
+        "id": "ISS-QRY-MISSING-TABLE-01",
+        "severity": "BLOCKER",
+        "requirement_ids": ["QRY-01", "QRY-02", "QRY-03"],
+        "affected_tests": [
+          "qry01_valid_eq_filter_returns_matching_rows",
+          "qry01_filter_value_is_positional_param_not_interpolated",
+          "qry01_read_only_no_dml",
+          "qry01_audit_event_recorded_without_filter_values",
+          "qry02_non_allowlisted_field_returns_400",
+          "qry02_sort_non_allowlisted_field_returns_400",
+          "qry03_default_page_size_is_50",
+          "qry03_page_size_exceeds_max_returns_400",
+          "qry03_cursor_pagination_returns_next_page",
+          "qry03_cursor_sort_mismatch_returns_400"
+        ],
+        "description": "entity_filterable_keys table does not exist in bpm_test (sqlstate=42P01). Handler returns 503 instead of expected status. Need migration or schema fix for this table.",
+        "root_cause": "Missing table entity_filterable_keys in bpm_test schema. Migration not applied or table DDL not yet authored."
+      },
+      {
+        "id": "ISS-QRY-AUDIT-LEAK-01",
+        "severity": "MINOR",
+        "requirement_ids": ["QRY-04"],
+        "affected_tests": [
+          "qry04_denied_entity_returns_empty_envelope",
+          "qry04_unknown_entity_returns_same_empty_envelope",
+          "qry04_cross_tenant_probe_returns_empty_envelope"
+        ],
+        "description": "appendDenyAudit in entity_query.zig:430 calls writeAuditInTx with catch {}; which swallows errors. auditIdToHex (audit.zig:491) allocates 32 bytes that are never freed on the catch path. Each call leaks 1 allocation.",
+        "root_cause": "catch {}; in appendDenyAudit discards error but ownership of 32-byte buffer from auditIdToHex is lost."
+      }
+    ],
+    "next_action": "ORCH must spawn WF-03 ISSUE-FIXER handoffs for ISS-QRY-MISSING-TABLE-01 (BLOCKER) and ISS-QRY-AUDIT-LEAK-01 (MINOR). TEST-RUNNER cannot be redispatched until entity_filterable_keys migration is authored and applied."
+  },
+  "max_rework": 3,
+  "rework_count": 2
+}

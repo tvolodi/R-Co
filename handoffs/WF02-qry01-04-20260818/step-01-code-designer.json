@@ -1,0 +1,55 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-01-code-designer",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-01-code-designer.json",
+  "created_at": "2026-08-18T05:32:02Z",
+  "started_at": "2026-08-18T05:32:20Z",
+  "completed_at": "2026-08-18T05:36:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "base_commit_sha": "c8bb2b21e2aca6f5e46affb9e0f6b56acb7c115d",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "docs/requirements.yaml (entries: QRY-01, QRY-02, QRY-03, QRY-04)",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "src/",
+      "migrations/"
+    ]
+  },
+  "task": {
+    "description": "Produce a code design artefact for QRY-01 (Structured entity query surface), QRY-02 (Declared filterable field allowlist), QRY-03 (Keyset pagination with a bounded page size), and QRY-04 (Empty envelope for unauthorised entity types). All four requirements are stage 17 / PW-10 (Entity record query). Read each requirement body in full from docs/requirements.yaml before designing. The design must: (1) define the Zig types and HTTP handler signatures for POST /api/v1/entities/{entity_key}/query; (2) specify the filter/sort/pagination DSL data model; (3) define the allowlist mechanism for QRY-02; (4) define the keyset cursor scheme for QRY-03; (5) define the empty-envelope contract for QRY-04; (6) define audit event EntityQueryExecuted. No implementation code \u2014 interfaces, types, and data-flow only. Output: src/design/qry-01-04-entity-query.md.",
+    "output_file": "src/design/qry-01-04-entity-query.md",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for entity query surface (QRY-01..QRY-04) \u2014 Type E. Covers: HTTP handler, FilterNode/SortNode DSL types, query compiler with positional-parameter binding, field allowlist table and resolution logic, keyset cursor with sort-fingerprint, empty-envelope contract for unauthorised/unknown entity types, EntityQueryExecuted/EntityQueryDenied audit events, tenant isolation, and SQL injection defence.",
+    "artifacts_out": [
+      "src/design/qry-01-04-entity-query.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

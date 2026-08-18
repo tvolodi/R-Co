@@ -1,0 +1,45 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-02-code-designer",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-02-code-designer.json",
+  "created_at": "2026-08-18T08:54:19Z",
+  "started_at": "2026-08-18T08:55:03Z",
+  "completed_at": "2026-08-18T09:01:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "workflow": "WF-03",
+    "existing_design": "src/design/qry-01-04-entity-query.md",
+    "github_issues": {
+      "ISS-QRY-ALLOWLIST-KIND-01": "#823",
+      "ISS-QRY-RESPONSE-FIELD-NAME-01": "#824",
+      "ISS-QRY-CURSOR-PARSE-01": "#825",
+      "ISS-QRY-AUDIT-SCHEMA-01": "#826"
+    },
+    "confirmed_root_causes": {
+      "ISS-QRY-ALLOWLIST-KIND-01": "src/entities/query/allowlist.zig loadAllowlist only reads entity_filterable_keys and assigns .kind=.jsonb_key. Missing: second query against entity_definitions.definition_json.fields (queried=true) for .kind=.typed_column. Also: tenant_id silently discarded (_ = tenant_id) — query lacks tenant scoping = cross-tenant leak.",
+      "ISS-QRY-RESPONSE-FIELD-NAME-01": "src/entities/query/compiler.zig FilterFieldNotAllowlisted is bare error with no payload. Handler loses field name at error boundary.",
+      "ISS-QRY-CURSOR-PARSE-01": "src/entities/query/cursor.zig uses ':' as both outer separator AND within fingerprint values. decodeCursor indexOf(':') finds first ':' inside fingerprint and truncates. For no-sort case default fingerprint 'record_id:asc' splits wrong.",
+      "ISS-QRY-AUDIT-SCHEMA-01": "Test bug — tests/integration/query_qry01_04_test.zig lines 560 and 985 use ORDER BY created_at DESC but audit_entries column is timestamp. One-line fix in test."
+    }
+  },
+  "task": {
+    "description": "WF-03 Step 2 — Produce fix design artefact for 4 QRY bugs. Write to src/design/fix-ISS-QRY-bugs-20260818.md.\n\nThe design MUST specify (no implementation code — interfaces and data-flow only):\n\n## Issue 1: ISS-QRY-ALLOWLIST-KIND-01 (src/entities/query/allowlist.zig)\n- loadAllowlist must make TWO queries:\n  a) SELECT from entity_filterable_keys WHERE tenant_id=$1 AND entity_key=$2 → AllowlistedField{.kind=.jsonb_key, ...}\n  b) Read entity_definitions.definition_json.fields array for same tenant_id+entity_key; for each field where queried=true → AllowlistedField{.kind=.typed_column, .name=field.name}\n- Merge: typed_column entries shadow same-name jsonb_key entries (design §AllowlistedField)\n- tenant_id MUST be used as a positional parameter in both queries (not discarded)\n- Specify the exact new function signature for loadAllowlist (should already accept tenant_id, entity_key)\n- Specify the SQL for both queries (no inline strings allowed — design only specifies the SQL shape)\n\n## Issue 2: ISS-QRY-RESPONSE-FIELD-NAME-01 (src/entities/query/compiler.zig + entity_query.zig route)\n- FilterFieldNotAllowlisted must carry the rejected field name as a payload\n- The error-to-HTTP-response path must include the field name in the JSON body: {\"error\": \"filter_field_not_allowlisted\", \"field\": \"<name>\"}\n- Specify the tagged union or struct change to CompileError to carry the name\n\n## Issue 3: ISS-QRY-CURSOR-PARSE-01 (src/entities/query/cursor.zig)\n- The cursor must use a separator that cannot appear in fingerprint values\n- Options: (a) use '|' as outer separator; (b) base64-encode the fingerprint portion; (c) use a different delimiter scheme\n- Specify the new cursor format unambiguously so encode and decode are deterministic\n- Must handle empty sort spec (no-sort default: fingerprint = \"record_id:asc\" by default)\n\n## Issue 4: ISS-QRY-AUDIT-SCHEMA-01 (tests/integration/query_qry01_04_test.zig)\n- One-line test fix: ORDER BY created_at → ORDER BY timestamp at lines ~560 and ~985\n- Specify exact column name to use\n\nThe design file must not contain Zig implementation code. It should be precise enough for BACKEND-DEV to implement all 4 fixes without ambiguity."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fix design for 4 QRY bugs: allowlist tenant scoping + typed-column merge (#823), FilterFieldNotAllowlisted payload via out-param (#824), cursor fingerprint base64url-encode to eliminate colon ambiguity (#825), test ORDER BY column name (#826).",
+    "artifacts_out": [
+      "src/design/fix-ISS-QRY-bugs-20260818.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

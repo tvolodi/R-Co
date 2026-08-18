@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-04c-backend-dev-migfix",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "04c-migfix",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-qry01-04-20260818/step-04c-backend-dev-migfix.json",
+  "created_at": "2026-08-18T08:25:04Z",
+  "started_at": "2026-08-18T08:26:10Z",
+  "completed_at": "2026-08-18T08:29:47Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "test_db": "postgres://bpm:bpm@localhost:5434/bpm_test",
+    "issues": [
+      {
+        "id": "ISS-QRY-MISSING-TABLE-01",
+        "severity": "BLOCKER",
+        "description": "entity_filterable_keys table not in bpm_test tenant_default schema. Migration 1168 was recorded in public.schema_migrations for schema_name='public' (tenant_only no-op) but never applied to tenant_default. ORCH manually ran CREATE TABLE IF NOT EXISTS in tenant_default (table now exists, but index is missing and schema_migrations ledger is NOT updated for schema_name='tenant_default')."
+      },
+      {
+        "id": "ISS-QRY-AUDIT-LEAK-01",
+        "severity": "MINOR",
+        "description": "appendDenyAudit in src/entity_query.zig uses catch {}; which swallows errors and leaks the 32-byte auditIdToHex buffer. 3 QRY-04 tests report 1 leak each."
+      }
+    ]
+  },
+  "task": {
+    "description": "Fix two issues from TEST-RUNNER rework2 then run test-env-verify.\n\n## Fix 1: Complete migration 1168 for bpm_test\n\n1. Run: $env:BPM_DB_URL='postgres://bpm:bpm@localhost:5434/bpm_test'; zig build migrate\n   This will call provisionTenantSchema -> runForSchema('tenant_default') which will:\n   - Find 1168 pending for schema_name='tenant_default' (table already exists via IF NOT EXISTS, creates index, records ledger)\n2. Verify: docker exec r-co-db_test-1 psql -U bpm -d bpm_test -c \"SELECT schema_name, version FROM public.schema_migrations WHERE version='1168_qry_filterable_keys.sql';\"\n   Expected: rows for BOTH 'public' AND 'tenant_default'\n3. Verify: docker exec r-co-db_test-1 psql -U bpm -d bpm_test -c \"SELECT tablename FROM pg_tables WHERE tablename='entity_filterable_keys';\"\n   Expected: tenant_default row present\n\nIf zig build migrate fails or the tenant_default ledger row is still missing, apply manually:\n   docker exec r-co-db_test-1 psql -U bpm -d bpm_test -c \"SET search_path TO tenant_default,public; CREATE INDEX IF NOT EXISTS idx_efk_entity_key ON entity_filterable_keys (entity_key); INSERT INTO public.schema_migrations (schema_name, version) VALUES ('tenant_default', '1168_qry_filterable_keys.sql') ON CONFLICT DO NOTHING;\"\n\n## Fix 2: Memory leak in appendDenyAudit\n\nIn src/entity_query.zig, find the appendDenyAudit function (around line 430).\nThe function calls writeAuditInTx and uses 'catch {};' which swallows errors and leaks the 32-byte buffer allocated by auditIdToHex in audit.zig.\n\nFix: Replace 'catch {};' with proper error handling — either:\n  (a) 'catch |err| { std.log.warn(\"appendDenyAudit: {}\", .{err}); }' — log and continue (preferred: deny audit failure should NOT fail the response)\n  (b) OR ensure the buffer is freed in the catch path\n\nThe fix must pass 'zig build' (exit 0) with no compile errors.\n\n## Verification\n\n1. zig build (exit 0)\n2. zig build test-env-verify (exit 0, all checks PASS)\n3. git add -A; git commit -m 'fix(QRY): apply migration 1168 to bpm_test + fix appendDenyAudit leak'\n\nReturn PASS only when both zig build and test-env-verify exit 0."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed both issues from TEST-RUNNER rework2. (1) Migration 1168 tenant_default: zig build migrate skipped 1168 (table existed via ORCH manual CREATE). Applied fallback: created idx_efk_entity_key index and inserted tenant_default ledger row. Verified public+tenant_default both present in schema_migrations. (2) appendDenyAudit memory leak: replaced '_ = ...writeAuditInTx(...) catch {}' with pattern that captures returned audit_id and frees it; error path logs warning. Same fix applied to appendQueryAudit (identical bug). zig build exits 0. zig build test-env-verify: 10/10 PASS.",
+    "artifacts_out": [
+      "src/api/routes/entity_query.zig"
+    ],
+    "issues": [
+      {
+        "id": "ISS-QRY-AUDIT-LEAK-01-ALSO-APPENDQUERYAUDIT",
+        "severity": "MINOR",
+        "description": "appendQueryAudit had the identical _ = writeAuditInTx(...) catch {} leak pattern. Fixed alongside appendDenyAudit in same file."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER for re-run of QRY test suite"
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

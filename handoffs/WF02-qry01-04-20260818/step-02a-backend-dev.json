@@ -1,0 +1,68 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-02a-backend-dev",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-qry01-04-20260818/step-02a-backend-dev.json",
+  "created_at": "2026-08-18T06:14:26Z",
+  "started_at": "2026-08-18T06:14:40Z",
+  "completed_at": "2026-08-18T06:33:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "base_commit_sha": "c8bb2b21e2aca6f5e46affb9e0f6b56acb7c115d",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "src/design/qry-01-04-entity-query.md",
+      "docs/requirements.yaml (entries: QRY-01, QRY-02, QRY-03, QRY-04)",
+      "src/",
+      "migrations/"
+    ]
+  },
+  "task": {
+    "description": "Implement QRY-01, QRY-02, QRY-03, QRY-04 per the design artefact src/design/qry-01-04-entity-query.md on branch feature/WF02-qry01-04-20260818. Implement: (1) POST /api/v1/entities/{entity_key}/query handler in Zig; (2) FilterOp enum with eq/neq/lt/lte/gt/gte/in/contains ops; (3) FilterNode and SortNode types; (4) EntityQueryRequest and EntityQueryResponse types (with page_size: u16); (5) EntityAllowlist / loadAllowlist using entity_definitions table; (6) Query compiler that emits parameterised SQL (no string concatenation \u2014 all values positional, column refs from allowlist only); (7) Keyset cursor (opaque, base64url, sort-fingerprint validation); (8) emptyEnvelope constant {items:[],next_cursor:null,page_size:50} used for deny AND unknown entity_key paths; (9) EntityQueryExecuted audit event (entity_key, filter field names, row count \u2014 no filter values); (10) Migration 1152_qry_filterable_keys.sql for the allowlist table. Wire the new handler into the router. Run zig build to verify compilation. Commit to the feature branch.",
+    "design_file": "src/design/qry-01-04-entity-query.md",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "critical_security_requirements": [
+      "All filter values MUST be positional parameters ($1, $2, ...) \u2014 NO string concatenation",
+      "Operator/field names MUST come from the closed enum/allowlist only \u2014 never from client text",
+      "emptyEnvelope MUST be returned for both unauthorized and unknown entity_key (probe-safe)",
+      "Every compiled query MUST include WHERE tenant_id = $N",
+      "search_path MUST be set to caller's tenant schema before query execution"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented QRY-01..04: (1) migration 1168_qry_filterable_keys.sql creates entity_filterable_keys per-tenant table (scope: tenant_only); (2) src/entities/query/types.zig defines FilterOp, SortDir, FilterNode, SortNode, EntityQueryRequest, EntityQueryResponse; (3) src/entities/query/allowlist.zig implements loadAllowlist/deinitAllowlist with built-in typed columns plus JSONB key rows; (4) src/entities/query/compiler.zig builds fully-parameterised SQL with all values as positional params, column refs from allowlist only, keyset cursor predicate; (5) src/entities/query/cursor.zig implements encodeCursor/decodeCursor/buildFingerprint using QE: prefix, 24h expiry, pipe-separated tuple; (6) src/api/routes/entity_query.zig implements handleEntityQuery with entity_key validation, entity registration check, emptyEnvelope for deny/unknown (QRY-04), allowlist load, compile, execute, next-cursor, audit; (7) POST /api/v1/entities/:entity_key/query wired in main.zig; (8) pre-existing obs/audit.zig build error (std.time.microTimestamp removed in Zig 0.16) fixed. zig build exits 0. Committed as 951e44a1.",
+    "artifacts_out": [
+      "migrations/1168_qry_filterable_keys.sql",
+      "src/entities/query/types.zig",
+      "src/entities/query/allowlist.zig",
+      "src/entities/query/compiler.zig",
+      "src/entities/query/cursor.zig",
+      "src/api/routes/entity_query.zig",
+      "src/main.zig",
+      "src/obs/audit.zig"
+    ],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

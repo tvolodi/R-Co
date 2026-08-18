@@ -1,0 +1,49 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-01b-code-design-validator-rework2",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "01b-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-qry01-04-20260818/step-01b-code-design-validator-rework2.json",
+  "created_at": "2026-08-18T06:08:25Z",
+  "started_at": "2026-08-18T06:08:40Z",
+  "completed_at": "2026-08-18T06:13:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "src/design/qry-01-04-entity-query.md",
+      "docs/requirements.yaml (entries: QRY-01, QRY-02, QRY-03, QRY-04)"
+    ],
+    "previous_result": "FAIL(rework1) — QRY-04 AC3 emptyEnvelope page_size fix applied in rework2"
+  },
+  "task": {
+    "description": "Final re-validation of src/design/qry-01-04-entity-query.md after rework2. Verify: (1) lint_design_artefact.py exits 0. (2) emptyEnvelope now emits page_size:50 covering QRY-04 AC3. (3) All other ACs still covered. (4) No implementation code. (5) SQL injection and tenant isolation explicit. If PASS, set QRY-01..QRY-04 to DESIGN-REVIEWED via reqctl.py.",
+    "design_file": "src/design/qry-01-04-entity-query.md",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Final re-validation of src/design/qry-01-04-entity-query.md (rework2). All checks pass. (1) lint_design_artefact.py: exit 0, no BLOCKER/MAJOR. (2) QRY-01 (6 ACs): POST endpoint, closed FilterOp/SortDir enums, positional-parameter binding, read-only tx, EntityQueryExecuted audit with field names but not values — all covered. (3) QRY-02 (6 ACs): jsonb_key resolves to payload ->> expr with cast, filter_field_not_allowlisted 400, same allowlist for sort, operator_not_valid_for_type, dynamic allowlist reload, typed-column-shadows-jsonb with declaration-time rejection — all covered. (4) QRY-03 (7 ACs): page_size_exceeds_max 400 with max:200, default 50 echoed as page_size:u16 in EntityQueryResponse, record_id appended to ORDER BY, page_size+1 trick with cursor encode/null, cursor_sort_mismatch 400, cursor_malformed 400, value-based cursor (no row offset) — all covered. (5) QRY-04 (6 ACs): emptyEnvelope returns constant {items:[],next_cursor:null,page_size:50} — page_size:50 fixes rework1 FAIL; byte-identical across deny/unknown/granted+zero-rows satisfying AC3 indistinguishability (required because QRY-03 always echoes page_size); authorisation checked before QRY-02 allowlist path (AC4); ent_ table never touched on deny/unknown (AC5); EntityQueryDeniedPayload audit logged (AC6). SQL injection defence: 3 explicit layers (enum-to-literal mapping, allowlist column resolution, positional $N binding). Tenant isolation: search_path set to tenant schema, defence-in-depth WHERE tenant_id=$1, entity_key scoped to caller tenant via entity_definitions lookup. No implementation code — Zig blocks are type/signature-only with no function bodies; SQL DDL in migration section is schema documentation (lint passes, no BLOCKER). MINOR: reqctl tool-vs-spec drift — DESIGN-REVIEWED absent from VALID_STATUSES; IN_PROGRESS used as closest legal substitute (same pattern as WF02-batch-7).",
+    "artifacts_out": [
+      "src/design/qry-01-04-entity-query.md",
+      "docs/requirements.yaml (QRY-01, QRY-02, QRY-03, QRY-04 status set to IN_PROGRESS via reqctl)"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "reqctl tool-vs-spec drift: tools/reqctl.py VALID_STATUSES does not include DESIGN-REVIEWED (per AGENT_SYSTEM.md status lifecycle: DRAFT->VALIDATED->DESIGNED->DESIGN-REVIEWED->IMPLEMENTED). Valid set is DRAFT/VALIDATED/PENDING/IN_PROGRESS/IMPLEMENTED/TESTED/RELEASED/UNTRACKED/INFORMATIONAL/DEPRECATED. IN_PROGRESS used as closest legal substitute (signals design reviewed, implementation now authorised). Same drift was noted and accepted in WF02-batch-7 step-01b. Recommend adding DESIGNED and DESIGN-REVIEWED to reqctl.py VALID_STATUSES."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2) — PASS gate cleared"
+  },
+  "max_rework": 3,
+  "rework_count": 2
+}

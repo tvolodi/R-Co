@@ -227,6 +227,8 @@ const pin01_rework1_tenant_scope_integration = @import("pin01_service_catalog_te
 // Stage 16 — Semantic validation (VLD-01, VLD-02, VLD-03)
 const vld_unit_integration = @import("validation_vld_unit_test.zig");
 const vld_http_integration = @import("validation_vld_http_test.zig");
+// Stage 17 / WF02-qry01-04-20260818 — QRY-01..04 entity query endpoint
+const query_qry01_04_integration = @import("query_qry01_04_test.zig");
 
 comptime {
     _ = std;
@@ -334,6 +336,7 @@ comptime {
     _ = pin01_rework1_tenant_scope_integration;
     _ = vld_unit_integration;
     _ = vld_http_integration;
+    _ = query_qry01_04_integration;
 }
 
 test "integration placeholder" {

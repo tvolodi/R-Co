@@ -4504,6 +4504,23 @@ pub fn build(b: *std.Build) void {
     test_integration_mig06_step.dependOn(&clean_test_db.step);
     test_integration_mig06_step.dependOn(&run_mig06_solo_tests.step);
 
+    // Stage 17 / WF02-qry01-04-20260818 — QRY-01..04 entity query endpoint.
+    // Dual-wired: imported into main_test.zig (umbrella test-integration) AND
+    // given its own scoped step for rapid isolated verification.
+    const query_qry01_04_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/query_qry01_04_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_query_qry01_04_solo_tests = addIntegrationRun(b, query_qry01_04_solo_tests, migrations_dir, clean_test_db);
+    const test_integration_qry01_04_step = b.step("test-integration-qry01-04", "Run QRY-01..04 entity query endpoint integration tests in isolation (requires BPM_TEST_DB_URL)");
+    test_integration_qry01_04_step.dependOn(&clean_test_db.step);
+    test_integration_qry01_04_step.dependOn(&run_query_qry01_04_solo_tests.step);
+    test_integration_others_step.dependOn(&run_query_qry01_04_solo_tests.step);
+
     // ---------------------------------------------------------------------------
     // ISS-0696 / GH-760: serial-public barrier — five test binaries that write to
     // shared tenant_default / public.tenant tables without per-run schema isolation.

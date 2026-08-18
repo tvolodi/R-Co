@@ -1,0 +1,37 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-03-backend-dev-rework3",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "03-rework3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-03-backend-dev-rework3.json",
+  "created_at": "2026-08-18T10:15:02Z",
+  "started_at": "2026-08-18T10:15:57Z",
+  "completed_at": "2026-08-18T10:19:24Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "test_report": "tests/reports/WF03-qry01-04-bugs-20260818-test-report-rework2.yaml",
+    "failures": [
+      "qry01_valid_eq_filter_returns_matching_rows: expected 200, got 400",
+      "qry01_filter_value_is_positional_param_not_interpolated: expected 200, got 400",
+      "qry01_audit_event_recorded_without_filter_values: expected 200, got 400"
+    ],
+    "symptom": "Typed-column eq filter returns 400 (filter_field_not_allowlisted or similar). After db2bd848 fixed entity tables to use typed_column kind, the compiler now receives typed_column entries from loadAllowlist but still rejects valid eq filters as not allowlisted."
+  },
+  "task": {
+    "description": "Diagnose and fix: why do typed_column allowlist entries cause HTTP 400 for valid eq filters?\n\n1. Read tests/integration/query_qry01_04_test.zig — find qry01_valid_eq_filter_returns_matching_rows test setup:\n   - What filter field name does the test send? (e.g., {\"field\": \"status\", \"op\": \"eq\", \"value\": \"active\"})\n   - How does the test register the entity type (registerEntityWithTextField)?\n   - Does it call entity_definitions with 'status' in definition_json.fields where queried=true?\n\n2. Read src/entities/query/allowlist.zig loadAllowlist:\n   - After db2bd848, what does the typed_column query look like?\n   - Does it parse entity_definitions.definition_json correctly?\n   - Are the typed_column entries actually being returned with the right field name?\n\n3. Read src/entities/query/compiler.zig:\n   - How does it look up the filter field in the allowlist?\n   - Does it differentiate between typed_column and jsonb_key kinds?\n   - Is there a case where typed_column kind causes FilterFieldNotAllowlisted?\n\n4. Fix whatever is causing valid typed_column eq filters to return 400.\n\n5. zig build (exit 0)\n\n6. git add -A; git commit -m 'fix(QRY): typed-column eq filter allowlist lookup'"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause: allowlist.zig Step 2 hard-coded 'public.entity_definitions' but after migrations GBL-134 + GBL-137, entity_definitions is PER_TENANT (canonical home = tenant schema). The test's registerEntityWithTextField inserts via the tenant-schema connection (search_path = tenant_default), so the row lands in tenant_default.entity_definitions, not public.entity_definitions. loadAllowlist queried the stray public copy which had no row, so definition_json was never parsed, the 'status' typed_column was never added to the allowlist, and al.find('status') returned null → FilterFieldNotAllowlisted → HTTP 400. Fix: removed 'public.' schema qualifier and added 'AND tenant_id = $2::uuid' so the query resolves via search_path to the correct tenant-schema table, consistent with checkEntityRegistered and entity_filterable_keys queries. Also removed the now-incorrect '_ = tenant_id' suppression. Commit: 2c4ed368 on feature/WF02-qry01-04-20260818. zig build exits 0.",
+    "artifacts_out": ["src/entities/query/allowlist.zig"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER to re-execute QRY-01 integration tests"
+  },
+  "max_rework": 3,
+  "rework_count": 3
+}

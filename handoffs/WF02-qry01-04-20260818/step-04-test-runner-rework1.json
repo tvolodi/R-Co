@@ -1,0 +1,61 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-04-test-runner-rework1",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "04-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-04-test-runner-rework1.json",
+  "created_at": "2026-08-18T07:37:50Z",
+  "started_at": "2026-08-18T07:38:05Z",
+  "completed_at": "2026-08-18T07:55:19Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "bench_env_cleared": true,
+    "previous_result": "FAIL — compilation error line 230 fixed by BACKEND-DEV (c5ea34c7)"
+  },
+  "task": {
+    "description": "Re-execute zig build test-integration-qry01-04 after the parseNextCursor try-propagation fix (commit c5ea34c7). Report all 14 test results. Write report to tests/reports/.",
+    "test_step": "test-integration-qry01-04",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Test infrastructure unhealthy — bench env pre-check failed (exit 1). db_test container is in 'starting' state, migration against test DB failed, pg_locks query returned OperationalError. Tests were NOT executed. ORCH must dispatch ADHOC BACKEND-DEV handoff to run: docker compose up -d db_test --wait, then resolve C3 migration failure, before redispatching TEST-RUNNER.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "BLOCKER-01",
+        "severity": "BLOCKER",
+        "check": "C1",
+        "description": "db_test container unhealthy: r-co-db_test-1 health status is 'starting'. Remedy: docker compose up -d db_test --wait"
+      },
+      {
+        "id": "BLOCKER-02",
+        "severity": "BLOCKER",
+        "check": "C3",
+        "description": "zig build migrate failed against test database (postgres://bpm:***@localhost:5434/bpm_test). Migration error: run exe migrate failure. Remedy: resolve the migration failure."
+      },
+      {
+        "id": "BLOCKER-03",
+        "severity": "BLOCKER",
+        "check": "C4",
+        "description": "Cleanup pre-step failed because test DB is unreachable. Remedy: fix C1 first, then run python tools/clean_test_db.py"
+      },
+      {
+        "id": "BLOCKER-04",
+        "severity": "BLOCKER",
+        "check": "C6",
+        "description": "Cannot query pg_locks: OperationalError — test DB connection refused. Remedy: docker compose up -d db_test --wait"
+      }
+    ],
+    "next_action": "ORCH must create ADHOC BACKEND-DEV handoff to start db_test (docker compose up -d db_test --wait) and resolve C3 migration failure, then redispatch TEST-RUNNER (rework2)"
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}

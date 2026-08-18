@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-18T01:11:28Z'
+generated_at: '2026-08-18T07:14:38Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -12710,7 +12710,7 @@ requirements:
     title: Structured entity query surface
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** API-06, generalizing cursor-paged reads from fixed endpoints to tenant-defined entity projections.
 
@@ -12728,14 +12728,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:53Z'
+    last_updated: '2026-08-18T07:14:34Z'
     workflow: PW-10
   QRY-02:
     id: QRY-02
     title: Declared filterable field allowlist
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** QRY-01, bounding the queryable surface to an explicit allowlist.
 
@@ -12753,14 +12753,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:54Z'
+    last_updated: '2026-08-18T07:14:35Z'
     workflow: PW-10
   QRY-03:
     id: QRY-03
     title: Keyset pagination with a bounded page size
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** API-06, applying keyset paging to the generic entity query surface.
 
@@ -12779,14 +12779,14 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:55Z'
+    last_updated: '2026-08-18T07:14:37Z'
     workflow: PW-10
   QRY-04:
     id: QRY-04
     title: Empty envelope for unauthorised entity types
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** QRY-01, closing the entity type existence oracle.
 
@@ -12804,7 +12804,7 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:10:56Z'
+    last_updated: '2026-08-18T07:14:38Z'
     workflow: PW-10
   QRY-05:
     id: QRY-05

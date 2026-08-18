@@ -139,6 +139,41 @@
           "affected_requirement": "PAR-02"
         }
       ]
+    },
+    {
+      "handoff_id": "WF02-qry01-04-20260818-04-test-runner-rework3",
+      "run_id": "WF02-qry01-04-20260818",
+      "workflow_id": "WF-02",
+      "agent": "TEST-RUNNER",
+      "reason": "Max rework (3) exceeded at Step 04 for WF02-qry01-04-20260818. 6/14 tests still failing.",
+      "timestamp": "2026-08-18T08:41:58Z",
+      "action": "Spawning WF-03 batch for all 4 issues — ISSUE-FIXER + BACKEND-DEV + TEST-DESIGNER-check + TEST-RUNNER",
+      "last_issues": [
+        {
+          "id": "ISS-QRY-ALLOWLIST-KIND-01",
+          "severity": "CRITICAL",
+          "description": "allowlist.zig:124 hardcodes .kind = .jsonb_key for all entity_filterable_keys rows — emits payload ->> $2 against typed-column tables (no payload column) — sqlstate=42703, HTTP 503",
+          "requirement_ids": ["QRY-01"]
+        },
+        {
+          "id": "ISS-QRY-RESPONSE-FIELD-NAME-01",
+          "severity": "MAJOR",
+          "description": "HTTP 400 filter_field_not_allowlisted body omits rejected field name — QRY-02 AC requires field name in error body",
+          "requirement_ids": ["QRY-02"]
+        },
+        {
+          "id": "ISS-QRY-CURSOR-PARSE-01",
+          "severity": "MAJOR",
+          "description": "Cursor from first page rejected (400) by second page request — sort-fingerprint doesn't round-trip for default no-sort case",
+          "requirement_ids": ["QRY-03"]
+        },
+        {
+          "id": "ISS-QRY-AUDIT-SCHEMA-01",
+          "severity": "MAJOR",
+          "description": "Test uses audit_entries.created_at but schema has timestamp column — sqlstate=42703 in qry04 cross-tenant test",
+          "requirement_ids": ["QRY-04"]
+        }
+      ]
     }
   ]
 }

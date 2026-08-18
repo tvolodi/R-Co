@@ -1,0 +1,78 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-04-test-runner-rework3",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "04-rework3",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-04-test-runner-rework3.json",
+  "created_at": "2026-08-18T08:30:53Z",
+  "started_at": "2026-08-18T08:31:42Z",
+  "completed_at": "2026-08-18T08:39:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "bench_env_cleared": true,
+    "fixes_applied": [
+      "ISS-QRY-MISSING-TABLE-01: migration 1168 ledger recorded for tenant_default, idx_efk_entity_key created",
+      "ISS-QRY-AUDIT-LEAK-01: appendDenyAudit + appendQueryAudit catch path now logs and frees audit_id correctly"
+    ],
+    "prior_failures": [
+      "rework2: entity_filterable_keys missing (fixed), appendDenyAudit leak (fixed)",
+      "rework1: infra down (power interruption) — resolved",
+      "original: compile error parseNextCursor try — fixed c5ea34c7"
+    ]
+  },
+  "task": {
+    "description": "Final TEST-RUNNER run. Execute zig build test-integration-qry01-04. All 14 tests should pass. Write report to tests/reports/WF02-qry01-04-20260818-test-report-rework3.yaml.",
+    "test_step": "test-integration-qry01-04",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "8/14 tests pass, 6 fail. 4 distinct root causes: (1) ISS-QRY-ALLOWLIST-KIND-01 CRITICAL — allowlist.zig always assigns .kind=.jsonb_key for entity_filterable_keys rows, emitting 'payload ->> $2' SQL against tables with typed columns (no payload column) — sqlstate=42703, HTTP 503 on 3 QRY-01 tests; (2) ISS-QRY-RESPONSE-FIELD-NAME-01 MAJOR — filter rejection 400 body omits rejected field name — 1 QRY-02 test; (3) ISS-QRY-CURSOR-PARSE-01 MAJOR — cursor from first page rejected as invalid by second page request — 1 QRY-03 test; (4) ISS-QRY-AUDIT-SCHEMA-01 MAJOR — test references audit_entries.created_at but schema has 'timestamp' column — sqlstate=42703 — 1 QRY-04 test. rework_count=3 equals max_rework=3; escalation required.",
+    "artifacts_out": ["tests/reports/WF02-qry01-04-20260818-test-report-rework3.yaml"],
+    "issues": [
+      {
+        "id": "ISS-QRY-ALLOWLIST-KIND-01",
+        "severity": "CRITICAL",
+        "requirement": "QRY-01",
+        "file": "src/entities/query/allowlist.zig",
+        "line": 124,
+        "description": "loadAllowlist() hardcodes .kind = .jsonb_key for all entity_filterable_keys rows; should distinguish typed_column vs jsonb_key. Generates 'payload ->> $2 = $3' SQL against tables that have typed status TEXT column, not a payload JSONB column. sqlstate=42703, HTTP 503.",
+        "failing_tests": ["qry01_valid_eq_filter_returns_matching_rows", "qry01_filter_value_is_positional_param_not_interpolated", "qry01_audit_event_recorded_without_filter_values"]
+      },
+      {
+        "id": "ISS-QRY-RESPONSE-FIELD-NAME-01",
+        "severity": "MAJOR",
+        "requirement": "QRY-02",
+        "file": "src/api/routes/entity_query.zig",
+        "description": "HTTP 400 filter_field_not_allowlisted response body does not include the rejected field name. Test expects response body to contain 'internal_note'.",
+        "failing_tests": ["qry02_non_allowlisted_field_returns_400"]
+      },
+      {
+        "id": "ISS-QRY-CURSOR-PARSE-01",
+        "severity": "MAJOR",
+        "requirement": "QRY-03",
+        "file": "src/entities/query/cursor.zig",
+        "description": "Cursor returned from first page is rejected (HTTP 400) on second page request. Likely sort-fingerprint does not round-trip for default no-sort case.",
+        "failing_tests": ["qry03_cursor_pagination_returns_next_page"]
+      },
+      {
+        "id": "ISS-QRY-AUDIT-SCHEMA-01",
+        "severity": "MAJOR",
+        "requirement": "QRY-04",
+        "files": ["tests/integration/query_qry01_04_test.zig", "migrations/"],
+        "description": "Test queries audit_entries with 'ORDER BY created_at DESC' but schema has column 'timestamp' not 'created_at'. sqlstate=42703. Actual audit_entries columns: audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state, tenant_id, pipeline_run_id, chain_hash, prev_chain_hash, payload_full, trace_id.",
+        "failing_tests": ["qry04_cross_tenant_probe_returns_empty_envelope"]
+      }
+    ],
+    "next_action": "ORCH must spawn WF-03 for each issue. All 4 issues require BACKEND-DEV fixes. rework_count=max_rework=3 — this handoff chain is exhausted; a new WF-02 run will be needed after fixes are merged."
+  },
+  "max_rework": 3,
+  "rework_count": 3
+}

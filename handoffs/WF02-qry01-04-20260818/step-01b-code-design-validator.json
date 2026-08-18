@@ -1,0 +1,93 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-01b-code-design-validator",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-qry01-04-20260818/step-01b-code-design-validator.json",
+  "created_at": "2026-08-18T05:38:08Z",
+  "started_at": "2026-08-18T05:38:20Z",
+  "completed_at": "2026-08-18T05:43:02Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "src/design/qry-01-04-entity-query.md",
+      "docs/requirements.yaml (entries: QRY-01, QRY-02, QRY-03, QRY-04)"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artefact src/design/qry-01-04-entity-query.md against QRY-01, QRY-02, QRY-03, and QRY-04. Check: (1) Every acceptance criterion in each requirement body is covered by at least one design element. (2) No implementation code in the design (only types, interfaces, data-flow). (3) Design is complete enough for BACKEND-DEV to implement without ambiguity. (4) SQL injection defence is explicitly specified (positional params only, no string concatenation). (5) Tenant isolation is specified (tenant_id in all queries). If PASS, set requirement statuses to DESIGN-REVIEWED in docs/requirements.yaml via reqctl.py.",
+    "design_file": "src/design/qry-01-04-entity-query.md",
+    "requirement_ids": [
+      "QRY-01",
+      "QRY-02",
+      "QRY-03",
+      "QRY-04"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "lint_design_artefact.py exits 1 with MAJOR=5 (E050 x5: code blocks >40 lines at lines 40, 102, 161, 226, 324). Also: QRY-03 AC2 uncovered \u2014 EntityQueryResponse has no page_size field but AC requires the response to echo effective page_size. Route back to CODE-DESIGNER for rework.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "source": "lint_design_artefact.py",
+        "rule": "E050",
+        "location": "src/design/qry-01-04-entity-query.md:40",
+        "detail": "Fenced code block (types.zig structs) exceeds 40 lines. Condense to key signatures only."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "lint_design_artefact.py",
+        "rule": "E050",
+        "location": "src/design/qry-01-04-entity-query.md:102",
+        "detail": "Fenced code block (allowlist.zig types) exceeds 40 lines. Condense."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "lint_design_artefact.py",
+        "rule": "E050",
+        "location": "src/design/qry-01-04-entity-query.md:161",
+        "detail": "Fenced code block (compiler.zig: CompiledQuery, CompileError, compile signature) exceeds 40 lines. Condense."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "lint_design_artefact.py",
+        "rule": "E050",
+        "location": "src/design/qry-01-04-entity-query.md:226",
+        "detail": "Fenced code block (cursor.zig types and functions) exceeds 40 lines. Condense."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "lint_design_artefact.py",
+        "rule": "E050",
+        "location": "src/design/qry-01-04-entity-query.md:324",
+        "detail": "ASCII data-flow diagram exceeds 40 lines. Replace with compact Mermaid flowchart (<=40 lines)."
+      },
+      {
+        "severity": "MAJOR",
+        "source": "coverage-check",
+        "rule": "QRY-03-AC2",
+        "location": "src/design/qry-01-04-entity-query.md (EntityQueryResponse)",
+        "detail": "QRY-03 AC2 not covered: response must echo effective page_size. EntityQueryResponse struct only has items and next_cursor. Add page_size field."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework (rework_count 0->1, max 3)"
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}

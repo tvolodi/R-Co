@@ -1,0 +1,68 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-05-test-runner-rework1",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "05-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-05-test-runner-rework1.json",
+  "created_at": "2026-08-18T09:38:38Z",
+  "started_at": "2026-08-18T09:39:05Z",
+  "completed_at": "2026-08-18T09:41:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "workflow": "WF-03",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "bench_env_cleared": true,
+    "fix_commits": ["3ced4800 (4 QRY fixes)", "c0459571 (entity_definitions tenant_id regression fix)"],
+    "prior_failure": "entity_definitions tenant_id predicate removed (GBL-123 global registry)"
+  },
+  "task": {
+    "description": "Re-run zig build test-integration-qry01-04 after entity_definitions regression fix (c0459571). Expect 14/14 PASS. Write report to tests/reports/WF03-qry01-04-bugs-20260818-test-report-rework1.yaml.",
+    "test_step": "test-integration-qry01-04",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "9 pass, 5 fail of 14 total. 3 QRY-01 tests fail with sqlstate=42703 (payload column missing from dynamically-provisioned entity tables); 1 QRY-02 test fails with MissingDetail (400 response body lacks 'detail' key); 1 QRY-03 test fails with sqlstate=22021 (cursor value encoding error). c0459571 entity_definitions fix did not fully resolve the failures.",
+    "artifacts_out": ["tests/reports/WF03-qry01-04-bugs-20260818-test-report-rework1.yaml"],
+    "issues": [
+      {
+        "test_id": "qry01_valid_eq_filter_returns_matching_rows",
+        "severity": "BLOCKER",
+        "requirement_id": "QRY-01",
+        "description": "sqlstate=42703: 'payload' column missing in dynamically-provisioned entity table ent_qry01a_ba2b0e84. Server returns 503 instead of 200."
+      },
+      {
+        "test_id": "qry01_filter_value_is_positional_param_not_interpolated",
+        "severity": "BLOCKER",
+        "requirement_id": "QRY-01",
+        "description": "sqlstate=42703: 'payload' column missing in entity table ent_qry01c_0bf9f98e. Server returns 503 instead of 200."
+      },
+      {
+        "test_id": "qry01_audit_event_recorded_without_filter_values",
+        "severity": "BLOCKER",
+        "requirement_id": "QRY-01",
+        "description": "sqlstate=42703: 'payload' column missing in entity table ent_qry01e_be2b2239. Server returns 503 instead of 200."
+      },
+      {
+        "test_id": "qry02_non_allowlisted_field_returns_400",
+        "severity": "BLOCKER",
+        "requirement_id": "QRY-02",
+        "description": "MissingDetail: 400 response body does not contain required 'detail' field. Error envelope format mismatch."
+      },
+      {
+        "test_id": "qry03_cursor_pagination_returns_next_page",
+        "severity": "BLOCKER",
+        "requirement_id": "QRY-03",
+        "description": "sqlstate=22021: cursor value passed as $2 contains bytes invalid in server encoding. Server returns 503 instead of 200."
+      }
+    ],
+    "next_action": "ORCH must spawn rework2 BACKEND-DEV handoff to fix: (1) entity table DDL missing payload column after c0459571, (2) QRY-02 400 error envelope missing detail field, (3) QRY-03 cursor serialisation encoding bug."
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}

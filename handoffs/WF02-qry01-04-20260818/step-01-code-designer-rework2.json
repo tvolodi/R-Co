@@ -1,0 +1,40 @@
+{
+  "handoff_id": "WF02-qry01-04-20260818-01-code-designer-rework2",
+  "run_id": "WF02-qry01-04-20260818",
+  "workflow_id": "WF-02",
+  "step": "01-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-qry01-04-20260818/step-01-code-designer-rework2.json",
+  "created_at": "2026-08-18T06:06:27Z",
+  "started_at": "2026-08-18T06:06:40Z",
+  "completed_at": "2026-08-18T06:07:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-qry01-04-20260818",
+    "workflow": "WF-02",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "stage": "17",
+    "platform_workflow": "PW-10",
+    "artifacts_in": [
+      "src/design/qry-01-04-entity-query.md",
+      "handoffs/WF02-qry01-04-20260818/step-01b-code-design-validator-rework1.json"
+    ],
+    "rework_reason": "CODE-DESIGN-VALIDATOR FAIL (rework 2/3). QRY-04 AC3 gap: emptyEnvelope() returns {items:[],next_cursor:null} with NO page_size field. A granted caller receiving zero results gets EntityQueryResponse which now includes page_size:50, making the two shapes structurally distinguishable. Required fix: use Option A — emptyEnvelope() must always emit page_size:50 (the default constant) so all three cases (denied, unknown entity_key, zero results) return exactly the same JSON shape. Document that deny responses do not reflect non-default requested page_size values."
+  },
+  "task": {
+    "description": "Fix QRY-04 AC3 in src/design/qry-01-04-entity-query.md: emptyEnvelope() must emit page_size:50 (the default constant) to make it structurally identical to the zero-rows response path. This is Option A from the validator. Update the emptyEnvelope spec to show it returns {items:[],next_cursor:null,page_size:50}. Add prose documentation that deny responses always use the default page_size (50) and do not reflect any non-default requested value (to maintain probe-safety). Verify lint_design_artefact.py exits 0 before completing.",
+    "output_file": "src/design/qry-01-04-entity-query.md",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed QRY-04 AC3: emptyEnvelope() spec updated to emit {\"items\":[],\"next_cursor\":null,\"page_size\":50}. Added probe-safety prose to the QRY-04 authorisation section documenting that deny and unknown-entity responses always use page_size:50 (the default constant) and never reflect a non-default requested value, making all three cases (deny, unknown entity_key, granted+zero-rows) structurally indistinguishable. lint_design_artefact.py exits 0.",
+    "artifacts_out": ["src/design/qry-01-04-entity-query.md"],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 2
+}

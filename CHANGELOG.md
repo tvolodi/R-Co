@@ -4,6 +4,15 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-18
 
+### fix(qry): WF-03 bugs — QRY-01/02/03/04 TESTED (WF03-qry01-04-bugs-20260818)
+
+- **fix(qry): GH-823 — allowlist typed-column merge now works correctly.** The entity query compiler now correctly merges typed-column names with `filterable_jsonb_keys` entries; previously a typed column could bypass the allowlist check when a JSONB key of the same name existed, producing either a double-predicate or a silent miss. Fix in `src/api/routes/entity_query.zig`. Test TC-QRY-02-06 (typed-column vs JSONB-key shadowing).
+- **fix(qry): GH-824 — error field name corrected.** HTTP 400 responses for allowlist violations now emit `"field"` (not `"column"`) matching the VLD-03 Problem Details schema. Fix in `src/api/routes/entity_query.zig`.
+- **fix(qry): GH-825 — cursor encoding/decoding fixed.** Base64url cursor encoding no longer emits standard Base64 padding; decoding validates the strict base64url alphabet and rejects malformed cursors with HTTP 400 `cursor_malformed`. Fix in `src/query/cursor.zig`. Test TC-QRY-03-06.
+- **fix(qry): GH-826 — test audit column reference corrected.** Integration test fixture referenced `audit_col` instead of the canonical `audit_entry` column in `entity_definitions`; updated to match the migration-defined schema. Fix in `tests/integration/qry01_04_entity_query_test.zig`.
+- **Additional inline fixes (entity_definitions schema and cursor UAF).** `entity_definitions` query now uses per-tenant schema prefix (removes `public.` qualifier that broke fresh-provisioned schemas). Cursor decode freed its allocation before the query ran (UAF); fixed to defer free until after query completion. Payload column fixture corrected; HTTP 422 detail field populated. Commits: `3ced4800`, `c0459571`, `db2bd848`, `2c4ed368`.
+- **Gate results (run WF03-qry01-04-bugs-20260818, branch `feature/WF02-qry01-04-20260818`).** 14/14 PASS (QRY-01 5/5, QRY-02 3/3, QRY-03 4/4, QRY-04 2/2). GitHub issues #823, #824, #825, #826 closed. Requirements QRY-01, QRY-02, QRY-03, QRY-04 at TESTED.
+
 ### feat(par): Stage 16 — PAR-02/PAR-03/PAR-05 RELEASED (ADHOC-par02-03-05-release-20260817)
 
 - **feat(par): PAR-02 Proactive future partition creation RELEASED.** All ACs now met including AC5 (`EXECUTION_PARTITION_CREATED` event emitted by `ensurePartitionAttached()` in `src/scheduler/partition_maintenance.zig` lines 330–353). TC-PAR-02-09 asserts event emission in `tests/integration/par02_partition_catalog_test.zig` (4/4 pass). ISS-0670/GH-711 resolved.

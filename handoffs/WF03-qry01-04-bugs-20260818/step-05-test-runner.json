@@ -1,0 +1,53 @@
+{
+  "handoff_id": "WF03-qry01-04-bugs-20260818-05-test-runner",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-qry01-04-bugs-20260818/step-05-test-runner.json",
+  "created_at": "2026-08-18T09:25:46Z",
+  "started_at": "2026-08-18T09:26:34Z",
+  "completed_at": "2026-08-18T09:32:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF03-qry01-04-bugs-20260818",
+    "workflow": "WF-03",
+    "branch_name": "feature/WF02-qry01-04-20260818",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"],
+    "bench_env_cleared": true,
+    "fix_commit": "3ced4800",
+    "fixes_applied": [
+      "#823: loadAllowlist now merges typed columns from entity_definitions + tenant_id used",
+      "#824: FilterFieldNotAllowlisted carries field name in error response body",
+      "#825: Cursor fingerprint base64url-encoded to eliminate colon ambiguity",
+      "#826: Test audit query uses correct column name (timestamp not created_at)"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 5 — Execute zig build test-integration-qry01-04. All 14 tests should now pass. Write report to tests/reports/WF03-qry01-04-bugs-20260818-test-report.yaml.",
+    "test_step": "test-integration-qry01-04",
+    "requirement_ids": ["QRY-01", "QRY-02", "QRY-03", "QRY-04"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "4/14 tests passed (10 failed). All 10 failures share one root cause: sqlstate=42703 (undefined_column) on public.entity_definitions.tenant_id. Fix commit 3ced4800 (#823) left a WHERE tenant_id = $1::uuid clause in src/entities/query/allowlist.zig:88-90 against the global-registry table public.entity_definitions, which has no tenant_id column (removed by migration GBL-123). Handler catches DbError and returns HTTP 503 instead of expected 200/400 for all tests that reach loadAllowlist. Passing tests: qry01_unknown_op (operator check fires before allowlist), qry04_denied, qry04_unknown, qry04_cross_tenant (all return emptyEnvelope before allowlist). Requires new WF-03 fix: remove or correct the tenant_id predicate in allowlist.zig.",
+    "artifacts_out": [
+      "tests/reports/WF03-qry01-04-bugs-20260818-test-report.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-NEW-allowlist-tenant-id-col",
+        "severity": "BLOCKER",
+        "title": "allowlist.zig loadAllowlist queries tenant_id on public.entity_definitions which has no such column (regression from commit 3ced4800 #823)",
+        "file": "src/entities/query/allowlist.zig",
+        "lines": "88-90",
+        "description": "public.entity_definitions has no tenant_id column (removed by migration GBL-123). WHERE tenant_id = $1::uuid causes sqlstate=42703 for every call that reaches loadAllowlist. 10/14 QRY-01..04 tests fail with HTTP 503. Fix: remove tenant_id predicate (global registry uses name + status = ACTIVE) or route query to per-tenant shadow table (GBL-137)."
+      }
+    ],
+    "next_action": "ORCH must spawn new WF-03 for ISS-NEW-allowlist-tenant-id-col to fix src/entities/query/allowlist.zig and re-run test-integration-qry01-04"
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

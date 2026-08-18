@@ -1,0 +1,27 @@
+{
+  "id": "ISS-QRY-CURSOR-PARSE-01",
+  "title": "QRY: pagination cursor rejected on second page for default no-sort case",
+  "severity": "MAJOR",
+  "status": "OPEN",
+  "category": "A",
+  "affected_areas": [
+    "src/entities/query/cursor.zig"
+  ],
+  "requirements": [
+    "QRY-03"
+  ],
+  "failing_tests": [
+    "qry03_cursor_pagination_returns_next_page"
+  ],
+  "symptom": "The cursor returned from the first page is rejected with HTTP 400 when submitted in the second page request.",
+  "root_cause": "Sort-fingerprint in the cursor does not round-trip for the default no-sort case (empty sort spec).",
+  "acceptance_criteria": [
+    "A cursor issued for the default (no-sort) case is accepted by the next page request",
+    "qry03_cursor_pagination_returns_next_page passes end-to-end"
+  ],
+  "discovered_by": "TEST-RUNNER WF03-qry01-04-bugs-20260818 rework3",
+  "filed_at": "2026-08-18T08:45:41Z",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/825",
+  "run_id": "WF03-qry01-04-bugs-20260818",
+  "diagnosis": "CONFIRMED (Category A). Cursor wire format QE:<ts>:<fingerprint>:<vals> uses colon as field separator. buildFingerprint in cursor.zig produces values containing colons e.g. record_id:asc. decodeCursor uses std.mem.indexOf(u8, rest_after_ts, colon) which finds the FIRST colon in rest_after_ts \u2014 that colon is inside the fingerprint string itself not after it. For no-sort case: fingerprint=record_id:asc, cursor raw=QE:<ts>:record_id:asc:<val>, parser extracts fp_raw=record_id, expected fingerprint.value=record_id:asc -> mismatch -> CursorSortMismatch -> HTTP 400. Fix: change buildFingerprint to use = between name and dir so fingerprint contains no colon."
+}

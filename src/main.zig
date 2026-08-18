@@ -98,6 +98,11 @@ pub const process_module_catalog_repo = @import("repository/process_module_catal
 pub const process_modules_routes = @import("api/routes/process_modules.zig"); // PLC-01 HTTP handlers
 pub const solution_pack_store = @import("solution/store.zig"); // SOL-01/02/03
 pub const solution_pack_routes = @import("api/routes/solution_packs.zig"); // SOL-01/02 HTTP handlers
+pub const entity_query_types = @import("entities/query/types.zig"); // QRY-01..04 entity query DSL types
+pub const entity_query_allowlist = @import("entities/query/allowlist.zig"); // QRY-02 allowlist loader
+pub const entity_query_compiler = @import("entities/query/compiler.zig"); // QRY-01..03 SQL compiler
+pub const entity_query_cursor = @import("entities/query/cursor.zig"); // QRY-03 keyset cursor
+pub const entity_query_routes = @import("api/routes/entity_query.zig"); // QRY-01..04 POST /api/v1/entities/{key}/query
 
 const placeholder_health_live = "{\"status\":\"live\"}";
 const placeholder_health_ready = "{\"status\":\"ready\",\"api\":\"placeholder\"}";
@@ -1631,7 +1636,20 @@ fn serveRequest(
         } else if (std.mem.eql(u8, resource, "entities")) {
             // ── /api/v1/entities/:type — EXP-202 ─────────────────────────────
             if (seg4.len > 0) {
-                if (seg5.len == 0) {
+                if (std.mem.eql(u8, seg5, "query") and method == .POST) {
+                    // POST /api/v1/entities/:entity_key/query — QRY-01..04
+                    const actor = authenticated_ctx orelse api_auth.AuthContext{
+                        .user_id = user_id,
+                        .role = .TASK_WORKER,
+                        .is_bootstrap = false,
+                        .token_id = user_id,
+                        .principal = user_id,
+                    };
+                    const r = entity_query_routes.handleEntityQuery(req_alloc, pool, actor, seg4, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                    resp_content_type = r.content_type;
+                } else if (seg5.len == 0) {
                     // POST /api/v1/entities/:type  or  GET /api/v1/entities/:type
                     if (method == .POST) {
                         const r = entity_routes.handleCreateRecord(req_alloc, pool, ev_store, seg4, body, user_id, user_id);
