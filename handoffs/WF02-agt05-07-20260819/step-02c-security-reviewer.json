@@ -1,0 +1,63 @@
+{
+  "handoff_id": "WF02-agt05-07-20260819-02c-security-reviewer",
+  "run_id": "WF02-agt05-07-20260819",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-agt05-07-20260819/step-02c-security-reviewer.json",
+  "created_at": "2026-08-19T01:59:50Z",
+  "started_at": "2026-08-19T01:59:50Z",
+  "completed_at": "2026-08-19T02:02:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-agt05-07-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["AGT-05", "AGT-06", "AGT-07"],
+    "branch_name": "feature/WF02-agt05-07-20260819",
+    "artifacts_in": [
+      "src/api/routes/agent_task_specs.zig",
+      "src/api/routes/agent_artifacts.zig",
+      "src/scheduler/artifact_retention.zig",
+      "migrations/1173_agt06_artifact_retention.sql",
+      "src/main.zig"
+    ]
+  },
+  "task": {
+    "description": "Review implementation of AGT-05, AGT-06, AGT-07 on branch feature/WF02-agt05-07-20260819 against security invariants in docs/agents/instructions/security-invariants.md.\n\nKey invariants to check:\n- Tenant data isolation: all artifact queries and scheduler sweeps include tenant scope (search_path or explicit predicate)\n- SQL parameterisation: no string interpolation into queries\n- No catch unreachable on realistic failures\n- Field authorisation: no fields taken from request body without validation (artifact verify endpoint — who can call it?)\n- Probe indistinguishability: deprecated field error (AGT-07) should not leak artifact existence\n\nRun: git diff origin/main...feature/WF02-agt05-07-20260819 -- src/ migrations/\n\nReturn PASS or FAIL with specific invariant violations.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Security review of AGT-05/06/07 on branch feature/WF02-agt05-07-20260819. All eight invariants assessed. No BLOCKER violations found.",
+    "violations": [],
+    "invariant_assessment": {
+      "INV-1": "PASS — Migration 1173 creates tables under staging schema only (no public business tables). handleArtifactVerify scopes both UPDATE and fallback SELECT with tenant_id=$2::uuid; cross-tenant artifact_id is indistinguishable from non-existent (returns 404). Retention sweeps in artifact_retention.zig delete across all tenants — this is deliberate global maintenance on the shared staging schema, consistent with the pre-existing staging.* architecture (not per-tenant schemas). ADVISORY: retention sweeps carry implicit cross-tenant write authority; this is correct but should be documented as deliberate.",
+      "INV-2": "PASS — handleArtifactVerify is accessible to any tenant-authenticated agent (actor_agent). No unauthorized response fields. task_spec_version/process_definition_version are stored as opaque text; no security-sensitive field exposure. ADVISORY: no per-agent ownership check — any agent in the tenant can verify any artifact in the same tenant. This appears intentional given the tenant-scoped isolation model.",
+      "INV-3": "N/A — No new host API functions introduced in this diff.",
+      "INV-4": "N/A — No secret material in diff. No new serialised structs containing secrets.",
+      "INV-5": "PASS — The fallback exists_row query also filters by tenant_id=$2::uuid; a cross-tenant artifact_id returns null (404) identical to a non-existent artifact. Both cases return HTTP 404 with body shape {error:artifact_not_found,artifact_id:<caller-supplied>,status:404}. The echoed artifact_id is the caller's own input (not a server-retrieved value), so no existence information is leaked. AGT-07 deprecated-field check fires before any DB interaction — cannot leak artifact existence.",
+      "INV-6": "SATISFIED — This handoff is the proof of scoping for all new data-access paths in this change.",
+      "INV-7": "PASS — All new SQL uses $1/$2/$3 parameterized placeholders. TTL integer (days_str) is passed as a query parameter ($1::integer), not interpolated. grep for std.fmt.allocPrint with SQL keywords returned zero hits. No string interpolation into any query.",
+      "INV-8": "PASS — grep for 'catch unreachable' in diff returned zero hits. Error handling uses typed propagation (!u64), catch return svc503(), and explicit catch |err| with std.log.err logging."
+    },
+    "advisory_items": [
+      {
+        "severity": "MINOR",
+        "description": "artifact_id is echoed in artifactNotFound404 response body via std.fmt.allocPrint. JSON injection is prevented in practice because an invalid UUID causes a DB cast error (svc503) before reaching the 404 path, but there is no explicit UUID format validation at the top of handleArtifactVerify. Consider adding an early-reject guard for defense-in-depth."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Retention sweeps (runArtifactRetentionSweep1/Sweep2) delete across all tenants without per-tenant scoping. Correct and intentional for global staging cleanup, but this cross-tenant write authority is not documented at the call site."
+      }
+    ],
+    "artifacts_out": [
+      "handoffs/WF02-agt05-07-20260819/step-02c-security-reviewer.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (WF-02 Step 03)"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

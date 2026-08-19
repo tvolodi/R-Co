@@ -1,0 +1,50 @@
+{
+  "handoff_id": "WF02-agt05-07-20260819-03-test-designer",
+  "run_id": "WF02-agt05-07-20260819",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-agt05-07-20260819/step-03-test-designer.json",
+  "created_at": "2026-08-19T02:04:50Z",
+  "started_at": "2026-08-19T02:04:50Z",
+  "completed_at": "2026-08-19T02:12:06Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-agt05-07-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "AGT-05",
+      "AGT-06",
+      "AGT-07"
+    ],
+    "branch_name": "feature/WF02-agt05-07-20260819",
+    "artifacts_in": [
+      "src/design/agt05-07-design.md",
+      "docs/requirements.yaml (AGT-05, AGT-06, AGT-07 ACs)",
+      "src/api/routes/agent_task_specs.zig",
+      "src/api/routes/agent_artifacts.zig",
+      "src/scheduler/artifact_retention.zig",
+      "tests/integration/ (existing tests for reference)"
+    ]
+  },
+  "task": {
+    "description": "Produce test specifications and integration test code for AGT-05, AGT-06, AGT-07.\n\nTest spec files:\n- tests/specs/AGT-05.md\n- tests/specs/AGT-06.md\n- tests/specs/AGT-07.md\n\nIntegration test file: tests/integration/test_agt05_07.zig\n\nRequired test cases per AC:\n\n## AGT-05\n1. rng_seed = 0 \u2192 400 rng_seed_zero, no task_specs row written\n2. rng_seed absent from body \u2192 400 rng_seed_zero\n3. Two specs differing only in rng_seed (42 vs 43) \u2192 different spec_hash values, both rows persist\n4. Artifact submitted with spec_hash computed without rng_seed \u2192 409 spec_hash_mismatch\n5. rng_seed serialised as unsigned integer (stable across submitters)\n\n## AGT-06\n1. needs_review artifact older than 30 days \u2192 sweep 1 deletes it\n2. verified artifact older than 30 days \u2192 sweep 1 does NOT delete it\n3. verified artifact with un-collected pin, verified_at 400 days ago \u2192 sweep 2 does NOT delete (pin not collected)\n4. verified artifact with collected pin, verified_at 200 days ago \u2192 sweep 2 does NOT delete (< 365 days)\n5. verified artifact with collected pin, verified_at 366 days ago \u2192 sweep 2 deletes\n6. Verified transition \u2192 artifact_version_pins row written in same transaction\n7. Sweeps are idempotent (re-run does not error)\n\n## AGT-07\n1. Envelope with ignore_fields \u2192 400 deprecated_field:ignore_fields, no artifact row\n2. Envelope with both ignore_fields and non_deterministic_fields \u2192 400 deprecated_field:ignore_fields\n3. Envelope with ignore_fields = [] (empty array) \u2192 400 deprecated_field:ignore_fields\n4. Deprecated check runs before schema validation (supply an otherwise-invalid envelope with ignore_fields \u2192 still gets 400 deprecated, not 422)\n5. No agent_artifacts row exists after deprecated field rejection\n\nAll tests: isolated fixtures, no SkipZigTest on MUST tests, self-contained.\nWire test file in build.zig.\n\nReturn PASS with test spec paths and test file path.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and integration tests for AGT-05, AGT-06, AGT-07. 17 test cases (5+7+5) implemented in tests/integration/test_agt05_07.zig. All lint checks pass.",
+    "artifacts_out": [
+      "tests/specs/AGT-05.md",
+      "tests/specs/AGT-06.md",
+      "tests/specs/AGT-07.md",
+      "tests/integration/test_agt05_07.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

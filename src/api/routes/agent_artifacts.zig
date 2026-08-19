@@ -316,12 +316,13 @@ pub fn handleArtifactSubmit(
     const conn = pool.acquire() catch return svc503();
     defer pool.release(conn);
 
-    // [6] AGT-04: verify spec_hash exists in task_specs.
+    // [6] AGT-04/AGT-05: verify task_spec exists by task_spec_id; validate submitted spec_hash
+    //     matches what was stored (rng_seed is folded into the hash — a wrong hash returns 409).
     const spec_row = conn.queryRow(
         allocator,
-        \\SELECT task_spec_id::text FROM task_specs WHERE spec_hash = $1
+        \\SELECT RTRIM(spec_hash) FROM task_specs WHERE task_spec_id = $1::uuid
     ,
-        &.{spec_hash_str},
+        &.{task_spec_id_str},
     ) catch return svc503();
 
     if (spec_row == null) return taskSpecNotFound404(allocator, spec_hash_str);
@@ -332,7 +333,11 @@ pub fn handleArtifactSubmit(
             for (r) |col| if (col) |c| allocator.free(c);
             allocator.free(r);
         }
-        break :blk allocator.dupe(u8, r[0] orelse task_spec_id_str) catch return svc503();
+        const stored_hash: []const u8 = r[0] orelse "";
+        if (!std.mem.eql(u8, stored_hash, spec_hash_str)) {
+            return specHashMismatch409(allocator, stored_hash, spec_hash_str);
+        }
+        break :blk allocator.dupe(u8, task_spec_id_str) catch return svc503();
     };
     defer allocator.free(db_task_spec_id);
 
