@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-oidcf05-tdui01-20260819-06-doc-updater",
+  "run_id": "WF02-oidcf05-tdui01-20260819",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-oidcf05-tdui01-20260819/step-06-doc-updater.json",
+  "created_at": "2026-08-19T04:47:00Z",
+  "started_at": "2026-08-19T04:47:10Z",
+  "completed_at": "2026-08-19T04:51:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-oidcf05-tdui01-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["OIDC-F-05", "OIDC-F-06", "TD-UI-01", "TD-UI-02"],
+    "stage": "F1.7",
+    "branch_name": "feature/WF02-oidcf05-tdui01-20260819",
+    "release_decision": "docs/status/release-stage-f17-oidcf05-tdui01-20260819.yaml"
+  },
+  "task": {
+    "description": "Update documentation and requirement status for OIDC-F-05, OIDC-F-06, TD-UI-01, TD-UI-02.\n\n1. Update CHANGELOG.md: add entry for stage F1.7 batch (OIDC-F-05 tenant-config discovery endpoint + OIDC-F-06 dynamic OIDC config + TD-UI-01 tenant-scoped dashboard + TD-UI-02 tenant identity indicator)\n2. Set requirement status TESTED:\n   python tools/reqctl.py set-status OIDC-F-05 TESTED\n   python tools/reqctl.py set-status OIDC-F-06 TESTED\n   python tools/reqctl.py set-status TD-UI-01 TESTED\n   python tools/reqctl.py set-status TD-UI-02 TESTED\n3. Update implemented_in, test_run, tested_at in docs/requirements.yaml:\n   - OIDC-F-05: src/api/routes/tenant_config.zig, migrations/050_tenant_hostnames.sql\n   - OIDC-F-06: web/src/auth/tenantConfig.ts, web/src/auth/OidcManager.ts\n   - TD-UI-01: web/src/pages/TenantDashboardPage.tsx (or actual path from design doc)\n   - TD-UI-02: web/src/components/TenantHeader.tsx, web/src/components/AppShell.tsx (or actual paths)\n4. python tools/lint_handoffs.py (must exit 0)\n5. git add CHANGELOG.md docs/requirements.yaml && git commit -m 'docs(stage-f17): OIDC-F-05/F-06/TD-UI-01/02 TESTED' && git push",
+    "fn": "fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated OIDC-F-05, OIDC-F-06, TD-UI-01, TD-UI-02 to TESTED. CHANGELOG.md entry added for stage F1.7 batch. docs/requirements.yaml implemented_in, test_run, tested_at populated for all four requirements. docs/status/requirement_status.yaml regenerated (463 entries). lint_handoffs.py exit 0 (0 BLOCKER, 0 MAJOR).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml"
+    ],
+    "issues": []
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

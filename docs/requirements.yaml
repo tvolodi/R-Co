@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-19T03:01:52Z'
+generated_at: '2026-08-19T04:49:14Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -6369,7 +6369,7 @@ requirements:
     title: Tenant-config discovery endpoint
     stage: null
     priority: MUST
-    status: UNTRACKED
+    status: TESTED
     body: |-
       > The backend MUST expose a public endpoint `GET /api/tenant-config?host={hostname}` that returns `{ "oidc_authority": string, "client_id": string }` for the tenant whose registered hostname matches the `host` query parameter. The `oidc_authority` is derived from the tenant's Keycloak realm binding (per OIDC-12). If no tenant is bound to the given hostname, the endpoint MUST return the default tenant config (`bpm-default` realm). The endpoint requires no authentication and its response is cacheable (no sensitive data). This requires a `hostname` column or join table linking a tenant to its registered hostname(s).
 
@@ -6383,12 +6383,18 @@ requirements:
     body_source: frontend-doc
     alt_sources: []
     type: requirement
+    implemented_in:
+    - src/api/routes/tenant_config.zig
+    - migrations/050_tenant_hostnames.sql
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
+    last_updated: '2026-08-19T04:49:11Z'
   OIDC-F-06:
     id: OIDC-F-06
     title: Dynamic OIDC config from hostname
     stage: null
     priority: MUST
-    status: UNTRACKED
+    status: TESTED
     body: |-
       > On app startup, before rendering `LoginPage`, the frontend MUST read `window.location.hostname`, call `GET /api/tenant-config?host={hostname}`, and use the returned `oidc_authority` and `client_id` to initialize `OidcManager` instead of the static `VITE_OIDC_AUTHORITY` / `VITE_OIDC_CLIENT_ID` env var values. The call MUST be made exactly once per session and the result MUST be cached (module-level singleton or Zustand store). `VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` remain as compile-time fallbacks used if the API call fails or returns no usable value. If the `/api/tenant-config` call fails (network error or non-200 response), the app MUST fall back to the env var values silently — login MUST still be possible. A loading spinner is acceptable while the config fetch is in flight; a blank screen is not.
 
@@ -6416,6 +6422,12 @@ requirements:
     body_source: frontend-doc
     alt_sources: []
     type: requirement
+    implemented_in:
+    - web/src/auth/tenantConfig.ts
+    - web/src/auth/OidcManager.ts
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
+    last_updated: '2026-08-19T04:49:12Z'
   ONB-UI-01:
     id: ONB-UI-01
     title: Register Tenant entry point
@@ -9044,7 +9056,7 @@ requirements:
     title: Tenant-scoped landing page
     stage: null
     priority: MUST
-    status: UNTRACKED
+    status: TESTED
     body: |-
       > After completing OIDC login via a tenant realm (e.g. `bpm-swiftroute`), the frontend MUST redirect the authenticated user to a tenant dashboard page. This page MUST display the tenant's `display_name` as a visible heading or hero element (readable in a Playwright screenshot without additional interaction). All data presented on this page — recent process definitions, active instances, pending tasks — MUST be fetched using the authenticated user's token, which is scoped to their tenant, so only that tenant's data is returned. The page MUST NOT render any cross-tenant data, admin-only data, or platform-level global views unless the user also holds PLATFORM_ADMIN role.
 
@@ -9058,12 +9070,22 @@ requirements:
     body_source: frontend-doc
     alt_sources: []
     type: requirement
+    implemented_in:
+    - web/src/pages/dashboard/TenantDashboardPage.tsx
+    - web/src/router.tsx
+    - web/src/auth/AuthProvider.tsx
+    - web/src/auth/tokenUtils.ts
+    - web/src/types/api.ts
+    - web/src/auth/useTenantContext.ts
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
+    last_updated: '2026-08-19T04:49:13Z'
   TD-UI-02:
     id: TD-UI-02
     title: Tenant identity indicator
     stage: null
     priority: MUST
-    status: UNTRACKED
+    status: TESTED
     body: |-
       > The authenticated application shell MUST display the tenant's `display_name` in the global navigation bar or header, visible on every route that requires authentication. The tenant name MUST appear alongside the user's own `display_name` (per SH-04). It MUST NOT be shown on the login screen, the `/auth/callback` route, or any other unauthenticated route. On logout (SH-04), the tenant name MUST be cleared from the header and MUST NOT persist after the session is destroyed.
 
@@ -9077,6 +9099,13 @@ requirements:
     body_source: frontend-doc
     alt_sources: []
     type: requirement
+    implemented_in:
+    - web/src/components/layout/TenantHeader.tsx
+    - web/src/components/layout/AppShell.tsx
+    - web/src/auth/useTenantContext.ts
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
+    last_updated: '2026-08-19T04:49:14Z'
   TD-UI-03:
     id: TD-UI-03
     title: Tenant realm routing
