@@ -1,0 +1,51 @@
+{
+  "handoff_id": "WF02-agt05-07-20260819-02a-backend-dev",
+  "run_id": "WF02-agt05-07-20260819",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-agt05-07-20260819/step-02a-backend-dev.json",
+  "created_at": "2026-08-19T01:47:00Z",
+  "started_at": "2026-08-19T01:47:00Z",
+  "completed_at": "2026-08-19T01:57:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-agt05-07-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["AGT-05", "AGT-06", "AGT-07"],
+    "branch_name": "feature/WF02-agt05-07-20260819",
+    "artifacts_in": [
+      "src/design/agt05-07-design.md",
+      "docs/requirements.yaml (AGT-05, AGT-06, AGT-07 entries)"
+    ]
+  },
+  "task": {
+    "description": "Implement AGT-05, AGT-06, AGT-07 on branch feature/WF02-agt05-07-20260819 per design artefact src/design/agt05-07-design.md.\n\n## AGT-05: Non-zero RNG seed enforcement\n\nFile: src/api/routes/agent_task_specs.zig\n\n1. After parsing the task spec body, check `rng_seed`. If absent or 0, return HTTP 400 with body {\"error\":\"rng_seed_zero\",\"status\":400}. This check must occur BEFORE the spec_hash is computed.\n2. Verify that rng_seed is already included in the canonical JSON used to compute spec_hash. If not, add it in consistent position.\n3. No DB schema changes needed (rng_seed column already exists).\n\n## AGT-06: Dual-sweep artifact retention\n\n1. Create migration migrations/1173_agt06_artifact_retention.sql:\n   - Add `status TEXT NOT NULL DEFAULT 'needs_review' CHECK (status IN ('needs_review', 'verified'))` to agent_artifacts if not present\n   - Add `verified_at TIMESTAMPTZ` to agent_artifacts if not present\n   - Create table artifact_version_pins:\n     (artifact_id UUID NOT NULL REFERENCES agent_artifacts(artifact_id),\n      task_spec_version TEXT NOT NULL,\n      process_definition_version TEXT NOT NULL,\n      pinned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n      collected_at TIMESTAMPTZ,\n      PRIMARY KEY (artifact_id))\n\n2. Create src/scheduler/artifact_retention.zig with:\n   - `runSweep1(conn)`: DELETE FROM agent_artifacts WHERE status='needs_review' AND created_at < NOW() - INTERVAL '30 days' (configurable via BPM_STAGING_REVIEW_TTL_DAYS env var)\n   - `runSweep2(conn)`: DELETE FROM agent_artifacts WHERE status='verified' AND verified_at < NOW() - INTERVAL '365 days' AND artifact_id IN (SELECT artifact_id FROM artifact_version_pins WHERE collected_at IS NOT NULL) (configurable via BPM_STAGING_VERIFIED_TTL_DAYS env var)\n   - `scheduleDailyAt0300(pool)`: register both sweeps to run daily at 03:00 UTC, sweep 1 before sweep 2\n\n3. In src/api/routes/agent_artifacts.zig: when an artifact transitions to 'verified', write an artifact_version_pins row in the SAME transaction with (artifact_id, task_spec_version, process_definition_version). If the agent_artifacts table doesn't have a verified transition yet, add a PATCH /agent/artifacts/{id}/verify endpoint or inline the transition in the existing submit flow — follow the design.\n\n4. Wire the scheduler in src/main.zig.\n\n## AGT-07: Deprecated envelope field rejection\n\nFile: src/api/routes/agent_artifacts.zig, handleArtifactSubmit\n\nAdd a check BEFORE kind/schema validation:\n- After parsing the JSON body, check if the root object contains key 'ignore_fields'\n- If present (regardless of value, including empty array): return HTTP 400 {\"error\":\"deprecated_field:ignore_fields\",\"replacement\":\"non_deterministic_fields\",\"status\":400}\n- Write no agent_artifacts row\n\n## Build and verify\n\n  zig build  # must exit 0\n  zig build test  # must pass\n  git add migrations/ src/\n  git commit -m 'feat(stage17): AGT-05/06/07 rng_seed enforcement, dual-sweep retention, deprecated envelope'\n  git push\n\nReturn PASS with commit_sha and files changed.",
+    "fn": "fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented AGT-05/06/07. AGT-05: rng_seed=0 guard already present in agent_task_specs.zig (design confirmed no code change needed). AGT-06: migration 1173_agt06_artifact_retention.sql adds status/verified_at columns + artifact_version_pins table; src/scheduler/artifact_retention.zig adds runArtifactRetentionSweep1/2 and ArtifactRetentionScheduler.runDailyLoop; agent_artifacts.zig gains handleArtifactVerify (PATCH /api/v1/agent/artifacts/{id}/verify) writing pin atomically; main.zig wired with import + route. AGT-07: deprecatedField400 helper + step [2.5] ignore_fields check in handleArtifactSubmit. zig build exits 0, zig build test exits 0, no error-set warnings. Committed 465ec50c, pushed to feature/WF02-agt05-07-20260819.",
+    "commit_sha": "465ec50c8ce982ae84e989b79f2ecd0a078caed4",
+    "files_changed": [
+      "migrations/1173_agt06_artifact_retention.sql",
+      "src/scheduler/artifact_retention.zig",
+      "src/api/routes/agent_artifacts.zig",
+      "src/main.zig",
+      "src/bpm.zig"
+    ],
+    "artifacts_out": [
+      "migrations/1173_agt06_artifact_retention.sql",
+      "src/scheduler/artifact_retention.zig",
+      "src/api/routes/agent_artifacts.zig",
+      "src/main.zig",
+      "src/bpm.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

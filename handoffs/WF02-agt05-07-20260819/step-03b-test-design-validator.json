@@ -1,0 +1,43 @@
+{
+  "handoff_id": "WF02-agt05-07-20260819-03b-test-design-validator",
+  "run_id": "WF02-agt05-07-20260819",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-agt05-07-20260819/step-03b-test-design-validator.json",
+  "created_at": "2026-08-19T02:12:42Z",
+  "started_at": "2026-08-19T02:12:42Z",
+  "completed_at": "2026-08-19T02:14:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-agt05-07-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["AGT-05", "AGT-06", "AGT-07"],
+    "branch_name": "feature/WF02-agt05-07-20260819",
+    "artifacts_in": [
+      "tests/specs/AGT-05.md",
+      "tests/specs/AGT-06.md",
+      "tests/specs/AGT-07.md",
+      "tests/integration/test_agt05_07.zig",
+      "docs/requirements.yaml (AGT-05, AGT-06, AGT-07 ACs)"
+    ]
+  },
+  "task": {
+    "description": "Validate test design for AGT-05, AGT-06, AGT-07.\n\nCheck:\n1. Every MUST AC covered by at least one test\n2. No SkipZigTest on MUST tests\n3. Fixtures isolated per test (per-test UUIDs, defer cleanup)\n4. Self-contained tests\n5. build.zig wires the test file\n6. AGT-06 sweep tests: backdated timestamps used (not real 30/365 day waits)\n7. AGT-07 deprecated check before schema validation confirmed\n\nReturn PASS or FAIL with specific gaps.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for AGT-05, AGT-06, AGT-07 validated. All 17 test cases (5+7+5) are fully implemented in tests/integration/test_agt05_07.zig with no gaps. Spec counts match test block counts. No SkipZigTest present. Fixtures use per-test random UUIDs via fillRandom, every test cleans up via defer. BPM_TEST_DB_URL absence fails with MissingTestDatabaseUrl (not silent skip). No HTTP server required — handlers called directly. All SQL uses parameterised queries. build.zig wires the file under step test-integration-agt05-07. AGT-06 time manipulation uses backdated SQL intervals (no real waits). AGT-07 TC-AGT07-04 confirms deprecated check fires before kind validation. AGT-07 is SHOULD priority (not MUST) and is fully covered anyway.",
+    "gaps": [],
+    "artifacts_out": [
+      "tests/integration/test_agt05_07.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

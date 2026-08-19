@@ -1,0 +1,102 @@
+stage: "17"
+date: "2026-08-19T02:55:55Z"
+decision: "APPROVED"
+run_id: "WF02-agt05-07-20260819"
+branch: "feature/WF02-agt05-07-20260819"
+requirements: [AGT-05, AGT-06, AGT-07]
+priority: MUST  # AGT-05 and AGT-06 are MUST; AGT-07 is SHOULD
+
+test_report:
+  file: "tests/reports/WF02-agt05-07-20260819-test-report.yaml"
+  summary: "17/17 AGT-05/06/07 integration tests PASS"
+  breakdown:
+    AGT-05: "5/5 PASS"
+    AGT-06: "7/7 PASS"
+    AGT-07: "5/5 PASS"
+  unit_tests: "PASS"
+  migration: "PASS (1 new: 1173_agt06_artifact_retention.sql, 162/162 total)"
+
+acceptance_criteria_coverage:
+  AGT-05:
+    - "TC-AGT05-01: zero rng_seed → 400 rng_seed_zero, no task_specs row"
+    - "TC-AGT05-02: absent rng_seed → 400 rng_seed_zero (no default substituted)"
+    - "TC-AGT05-03: seeds 42 vs 43 → different spec_hash values, both rows persist"
+    - "TC-AGT05-04: wrong spec_hash on submit → 409 spec_hash_mismatch"
+    - "TC-AGT05-05: rng_seed persisted as correct uint64 in task_specs"
+    - verdict: "ALL MUST ACs covered (canonical JSON serialization covered structurally by TC-AGT05-03/05)"
+
+  AGT-06:
+    - "TC-AGT06-01: needs_review artifact >30 days → sweep1 deletes"
+    - "TC-AGT06-02: verified artifact → sweep1 does NOT delete"
+    - "TC-AGT06-03: verified with un-collected pin → sweep2 retains"
+    - "TC-AGT06-04: verified with collected pin but <365 days → sweep2 retains"
+    - "TC-AGT06-05: verified with collected pin and >365 days → sweep2 deletes"
+    - "TC-AGT06-06: handleArtifactVerify writes version pin atomically"
+    - "TC-AGT06-07: dual-sweep idempotency — repeated sweeps do not re-delete"
+    - verdict: "ALL MUST ACs covered"
+
+  AGT-07:
+    - "TC-AGT07-01: ignore_fields → 400 deprecated_field:ignore_fields"
+    - "TC-AGT07-02: non-deprecated fields pass normally"
+    - "TC-AGT07-03: deprecated field + valid kind → 400 (field check precedes kind check)"
+    - "TC-AGT07-04: non_deterministic_fields (replacement) accepted"
+    - "TC-AGT07-05: error body contains replacement field name"
+    - verdict: "ALL SHOULD ACs covered"
+
+nfr_results:
+  NFR-01_p99_read_ms:
+    target: "<=200 ms"
+    actual: "2.867 ms"
+    passed: true
+  NFR-01_p99_write_ms:
+    target: "<=500 ms"
+    actual: "23.355 ms"
+    passed: true
+  NFR-02_append_throughput_eps:
+    target: ">=1000 events/sec"
+    actual: "2359.402 events/sec"
+    passed: true
+  NFR-04_replay_10000_ms:
+    target: "<=5000 ms"
+    actual: "44.280 ms"
+    passed: true
+  NFR-04_replay_snapshot_100000_ms:
+    target: "<=1000 ms"
+    actual: "5.381 ms"
+    passed: true
+  bench_summary: "overall_passed=true (run_id bench-1787107977076)"
+  bench_note: >
+    AGT-05/06/07 handlers touch task_specs (rng_seed column), agent_artifacts, and
+    artifact_version_pins. These are write paths with single-row operations. Bench
+    confirms no latency regression: p99 write 23.355 ms well within 500 ms NFR-01
+    threshold. All five NFR metrics pass.
+
+regression_check:
+  unit_tests: "PASS"
+  integration_agt05_07: "17/17 PASS"
+  pre_existing_failures:
+    - "exp201_202_entities_test.zig: 5 compile errors (no field 'tenant_id' in CreateDefinitionParams) — INHERITED, pre-existing"
+    - "repro_g758: DebugAllocator leak from TestHarness.init() — INHERITED, process-lifetime intentional"
+    - "sim01_04_simulation_mode_test TC-SIM-01-01: sqlstate=42703 DELETE FROM event_type_registry — INHERITED"
+    - "validation_vld_http_test int_vld_03_cross_tenant_404: MigrationFailed sqlstate=22021 — INHERITED"
+    - "obp03_outbox_overflow_test TC-OBP-03-AC6: instance_projections missing definition_id — INHERITED"
+    - "Multiple test binaries: test runner timeout (6 binaries) — INHERITED"
+  regression_introduced: false
+  verdict: "No regression introduced by AGT-05/06/07 changeset"
+
+blocking_issues: []
+
+approved_requirements:
+  - AGT-05
+  - AGT-06
+  - AGT-07
+
+decision_summary: >
+  All 17 AGT-05/06/07 integration tests pass (5 AGT-05, 7 AGT-06, 5 AGT-07). Unit
+  tests pass. Migration 1173_agt06_artifact_retention.sql applied cleanly (162/162
+  total). NFR bench passed all five thresholds (p99 read 2.867 ms / write 23.355 ms /
+  throughput 2359 eps / replay 44 ms / snapshot 5 ms). All MUST ACs for AGT-05 and
+  AGT-06 are covered by dedicated test cases. All SHOULD ACs for AGT-07 are covered.
+  Regression suite failures are all pre-existing inherited defects in unrelated test
+  files; no new regression introduced. Release APPROVED for stage 17: AGT-05, AGT-06,
+  AGT-07.

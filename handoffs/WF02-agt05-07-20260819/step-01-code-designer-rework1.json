@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-agt05-07-20260819-01-code-designer-rework1",
+  "run_id": "WF02-agt05-07-20260819",
+  "workflow_id": "WF-02",
+  "step": "01-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-agt05-07-20260819/step-01-code-designer-rework1.json",
+  "created_at": "2026-08-19T01:34:28Z",
+  "started_at": "2026-08-19T01:34:28Z",
+  "completed_at": "2026-08-19T01:35:26Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-agt05-07-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["AGT-05", "AGT-06", "AGT-07"],
+    "branch_name": "feature/WF02-agt05-07-20260819",
+    "artifacts_in": [
+      "src/design/agt05-07-design.md (needs rework)",
+      "handoffs/WF02-agt05-07-20260819/step-01b-code-design-validator.json (gap list)"
+    ]
+  },
+  "task": {
+    "description": "Rework design artefact src/design/agt05-07-design.md per CODE-DESIGN-VALIDATOR gaps:\n\nGAP-1 (MAJOR): The migration is named 1172_agt06_artifact_retention.sql but migration 1172 already exists (SBX-04/05/06). Update all three references in the design to use migration number 1173: → 1173_agt06_artifact_retention.sql\n\nGAP-2 (MINOR): In the AGT-05 section, add one sentence stating: 'AC4 is satisfied by the existing spec_hash guard in handleArtifactSubmit (AGT-04) — when an artifact is submitted with a spec_hash computed without rng_seed, the stored spec_hash (which includes rng_seed) differs, so the guard returns HTTP 409 spec_hash_mismatch.'\n\nGAP-3 (MINOR): In the AGT-05 section, add a note for AC5: 'AC5 (replay uses stored rng_seed) is a SIM-01 concern and out of scope for this implementation unit. task_specs.rng_seed persists the seed for replay; the replay module (SIM-01) is responsible for reading it.'\n\nNo other changes. Return PASS.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework complete: migration number updated 1172→1173 (3 references), AC4 traceability sentence added to AGT-05, AC5 SIM-01 scoping note added to AGT-05.",
+    "artifacts_out": [
+      "src/design/agt05-07-design.md"
+    ],
+    "issues": []
+  },
+  "max_rework": 2,
+  "rework_count": 1
+}

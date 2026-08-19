@@ -1,0 +1,40 @@
+{
+  "handoff_id": "WF02-agt05-07-20260819-01-code-designer",
+  "run_id": "WF02-agt05-07-20260819",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-agt05-07-20260819/step-01-code-designer.json",
+  "created_at": "2026-08-19T01:15:40Z",
+  "started_at": "2026-08-19T01:15:40Z",
+  "completed_at": "2026-08-19T01:18:38Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-agt05-07-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["AGT-05", "AGT-06", "AGT-07"],
+    "branch_name": "feature/WF02-agt05-07-20260819",
+    "artifacts_in": [
+      "docs/requirements.yaml (AGT-05, AGT-06, AGT-07 entries)",
+      "src/api/routes/agent_task_specs.zig (existing task spec submission handler)",
+      "src/api/routes/agent_artifacts.zig (existing artifact submission handler)",
+      "migrations/1170_sbx_task_specs_agent_sandboxes.sql (task_specs schema with rng_seed)",
+      "migrations/1171_agt01_03_agent_artifacts.sql (agent_artifacts schema)"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for AGT-05, AGT-06, AGT-07 (stage 17 — RNG seed identity, dual-sweep retention, deprecated envelope field rejection).\n\nRequirements summary:\n\nAGT-05: task_specs.rng_seed must be non-zero. A submission with rng_seed=0 or absent returns HTTP 400 rng_seed_zero. rng_seed is folded into the canonical JSON before spec_hash is computed, so two specs with different seeds have different hashes.\n\nAGT-06: Artifact retention is a dual sweep. Sweep 1: delete agent_artifacts WHERE status='needs_review' AND created_at < NOW() - STAGING_REVIEW_TTL_DAYS. Sweep 2: delete agent_artifacts WHERE status='verified' AND pin collected AND verified_at < NOW() - STAGING_VERIFIED_TTL_DAYS. On verified transition, write artifact_version_pins(artifact_id, task_spec_version, process_definition_version) in same transaction. Both sweeps run daily at 03:00 UTC.\n\nAGT-07: Reject deprecated envelope field 'ignore_fields' with HTTP 400 deprecated_field:ignore_fields. Check runs BEFORE payload schema validation. An envelope with both ignore_fields and non_deterministic_fields also returns 400.\n\nProduce design artefact at: src/design/agt05-07-design.md\n\nDesign must cover:\n1. AGT-05: Where in agent_task_specs.zig rng_seed=0 check is added; how rng_seed is included in canonical JSON for spec_hash computation; no DB schema changes needed (rng_seed column already exists in task_specs)\n2. AGT-06: New artifact_version_pins table (migration); dual-sweep Zig functions on a scheduler; STAGING_REVIEW_TTL_DAYS (default 30) and STAGING_VERIFIED_TTL_DAYS (default 365) config; verified transition logic in agent_artifacts.zig to write pin row in same transaction\n3. AGT-07: Where deprecated field check is added in agent_artifacts.zig (before schema validation); response format for deprecated_field error\n4. Migration file name for artifact_version_pins table\n5. Zig type signatures for new functions\n\nDesign must NOT contain implementation code — interfaces, types, data-flow only.\n\nReturn PASS with artifact path src/design/agt05-07-design.md.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for AGT-05/06/07 (Stage 17) — type E. AGT-05 already implemented in agent_task_specs.zig (rng_seed zero-check and spec_hash inclusion); design documents existing behaviour. AGT-06 specifies migration 1172 (status/verified_at columns on staging.agent_artifacts, new staging.artifact_version_pins table), writeArtifactVersionPin helper on verified transition, and two daily sweep functions in src/scheduler/artifact_retention.zig wired at 03:00 UTC. AGT-07 specifies deprecatedField400 helper and step [2.5] insertion before kind validation in handleArtifactSubmit.",
+    "artifacts_out": ["src/design/agt05-07-design.md"],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

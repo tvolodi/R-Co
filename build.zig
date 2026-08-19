@@ -2104,6 +2104,21 @@ pub fn build(b: *std.Build) void {
     test_integration_agt01_04_step.dependOn(&clean_test_db.step);
     test_integration_agt01_04_step.dependOn(&run_agt01_04_integration_tests.step);
 
+    // Stage 17 / WF02-agt05-07-20260819 — AGT-05, AGT-06, AGT-07.
+    const agt05_07_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/test_agt05_07.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_agt05_07_integration_tests = addIntegrationRun(b, agt05_07_integration_tests, migrations_dir, clean_test_db);
+    const test_integration_agt05_07_step = b.step("test-integration-agt05-07", "Run AGT-05/06/07 integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_agt05_07_step.dependOn(&clean_test_db.step);
+    test_integration_agt05_07_step.dependOn(&run_agt05_07_integration_tests.step);
+    // NOTE: wired into test_integration_others_step below (after declaration).
+
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/xc04_kernel_determinism_test.zig"),
@@ -4576,6 +4591,7 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_qry05_solo_tests.step);
     test_integration_others_step.dependOn(&run_sbx01_03_solo_tests.step);
     test_integration_others_step.dependOn(&run_sbx04_06_solo_tests.step);
+    test_integration_others_step.dependOn(&run_agt05_07_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // ISS-0696 / GH-760: serial-public barrier — five test binaries that write to

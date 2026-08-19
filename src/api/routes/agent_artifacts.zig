@@ -65,6 +65,29 @@ fn wrongEnv403() HandlerResult {
     return .{ .status_code = 403, .body = "{\"error\":\"wrong_environment\",\"status\":403}" };
 }
 
+// AGT-07: deprecated envelope field rejection.
+fn deprecatedField400(
+    allocator: std.mem.Allocator,
+    deprecated: []const u8,
+    replacement: []const u8,
+) HandlerResult {
+    const body = std.fmt.allocPrint(
+        allocator,
+        "{{\"error\":\"deprecated_field:{s}\",\"replacement\":\"{s}\",\"status\":400}}",
+        .{ deprecated, replacement },
+    ) catch "{\"error\":\"deprecated_field\",\"status\":400}";
+    return .{ .status_code = 400, .body = body };
+}
+
+fn artifactNotFound404(allocator: std.mem.Allocator, artifact_id: []const u8) HandlerResult {
+    const body = std.fmt.allocPrint(
+        allocator,
+        "{{\"error\":\"artifact_not_found\",\"artifact_id\":\"{s}\",\"status\":404}}",
+        .{artifact_id},
+    ) catch "{\"error\":\"artifact_not_found\",\"status\":404}";
+    return .{ .status_code = 404, .body = body };
+}
+
 fn taskSpecNotFound404(allocator: std.mem.Allocator, spec_hash: []const u8) HandlerResult {
     const body = std.fmt.allocPrint(
         allocator,
@@ -224,6 +247,11 @@ pub fn handleArtifactSubmit(
         else => return .{ .status_code = 400, .body = "{\"error\":\"malformed_json\",\"status\":400}" },
     };
 
+    // [2.5] AGT-07: reject deprecated envelope field names before kind validation.
+    if (root_obj.get("ignore_fields") != null) {
+        return deprecatedField400(allocator, "ignore_fields", "non_deterministic_fields");
+    }
+
     // [3] AGT-01: extract and validate `kind`.
     const kind: []const u8 = switch (root_obj.get("kind") orelse .null) {
         .string => |s| s,
@@ -288,12 +316,13 @@ pub fn handleArtifactSubmit(
     const conn = pool.acquire() catch return svc503();
     defer pool.release(conn);
 
-    // [6] AGT-04: verify spec_hash exists in task_specs.
+    // [6] AGT-04/AGT-05: verify task_spec exists by task_spec_id; validate submitted spec_hash
+    //     matches what was stored (rng_seed is folded into the hash — a wrong hash returns 409).
     const spec_row = conn.queryRow(
         allocator,
-        \\SELECT task_spec_id::text FROM task_specs WHERE spec_hash = $1
+        \\SELECT RTRIM(spec_hash) FROM task_specs WHERE task_spec_id = $1::uuid
     ,
-        &.{spec_hash_str},
+        &.{task_spec_id_str},
     ) catch return svc503();
 
     if (spec_row == null) return taskSpecNotFound404(allocator, spec_hash_str);
@@ -304,7 +333,11 @@ pub fn handleArtifactSubmit(
             for (r) |col| if (col) |c| allocator.free(c);
             allocator.free(r);
         }
-        break :blk allocator.dupe(u8, r[0] orelse task_spec_id_str) catch return svc503();
+        const stored_hash: []const u8 = r[0] orelse "";
+        if (!std.mem.eql(u8, stored_hash, spec_hash_str)) {
+            return specHashMismatch409(allocator, stored_hash, spec_hash_str);
+        }
+        break :blk allocator.dupe(u8, task_spec_id_str) catch return svc503();
     };
     defer allocator.free(db_task_spec_id);
 
@@ -409,4 +442,121 @@ pub fn handleArtifactSubmit(
         .{ r_art_id, kind, db_task_spec_id, attempt_count_val, spec_hash_str, r_created_at, r_touched_at },
     ) catch return svc503();
     return .{ .status_code = 201, .body = resp };
+}
+
+// ── PATCH /api/v1/agent/artifacts/{id}/verify ─────────────────────────────────
+
+/// Transition an artifact to the 'verified' state, writing an artifact_version_pins
+/// row in the same transaction (DB-03: both writes commit atomically or both roll back).
+///
+/// Request body: {"task_spec_version": "...", "process_definition_version": "..."}
+/// production_mode guard fires first (same as handleArtifactSubmit).
+pub fn handleArtifactVerify(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    auth: auth_mod.AuthContext,
+    artifact_id: []const u8,
+    body: []const u8,
+    production_mode: bool,
+) HandlerResult {
+    const tenant_id: []const u8 = auth.tenant_id[0..];
+
+    // [1] AGT-02: environment gate.
+    if (production_mode) return wrongEnv403();
+
+    // [2] Parse body.
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        body,
+        .{ .allocate = .alloc_always },
+    ) catch return .{ .status_code = 400, .body = "{\"error\":\"malformed_json\",\"status\":400}" };
+    defer parsed.deinit();
+
+    const root_obj = switch (parsed.value) {
+        .object => |o| o,
+        else => return .{ .status_code = 400, .body = "{\"error\":\"malformed_json\",\"status\":400}" },
+    };
+
+    const task_spec_version: []const u8 = switch (root_obj.get("task_spec_version") orelse .null) {
+        .string => |s| s,
+        else => return .{ .status_code = 400, .body = "{\"error\":\"missing_field_task_spec_version\",\"status\":400}" },
+    };
+    const process_definition_version: []const u8 = switch (root_obj.get("process_definition_version") orelse .null) {
+        .string => |s| s,
+        else => return .{ .status_code = 400, .body = "{\"error\":\"missing_field_process_definition_version\",\"status\":400}" },
+    };
+
+    const conn = pool.acquire() catch return svc503();
+    defer pool.release(conn);
+
+    // [3] Begin transaction — UPDATE + INSERT must commit atomically (DB-03).
+    conn.begin() catch return svc503();
+
+    // [4] UPDATE status to 'verified' only if the artifact belongs to this tenant
+    //     and is currently in 'needs_review'.
+    const update_row = conn.queryRow(
+        allocator,
+        \\UPDATE staging.agent_artifacts
+        \\SET status = 'verified', verified_at = NOW()
+        \\WHERE artifact_id = $1::uuid
+        \\  AND tenant_id = $2::uuid
+        \\  AND status = 'needs_review'
+        \\RETURNING artifact_id::text
+    ,
+        &.{ artifact_id, tenant_id },
+    ) catch {
+        conn.rollback() catch {};
+        return svc503();
+    };
+
+    if (update_row == null) {
+        conn.rollback() catch {};
+        // Check if artifact exists at all (for 404 vs 409 differentiation).
+        const exists_row = conn.queryRow(
+            allocator,
+            \\SELECT status FROM staging.agent_artifacts
+            \\WHERE artifact_id = $1::uuid AND tenant_id = $2::uuid
+        ,
+            &.{ artifact_id, tenant_id },
+        ) catch return svc503();
+        if (exists_row) |r| {
+            defer {
+                for (r) |col| if (col) |c| allocator.free(c);
+                allocator.free(r);
+            }
+            // Artifact exists but is not in needs_review (already verified or other state).
+            return .{ .status_code = 409, .body = "{\"error\":\"artifact_already_verified\",\"status\":409}" };
+        }
+        return artifactNotFound404(allocator, artifact_id);
+    }
+    {
+        const r = update_row.?;
+        for (r) |col| if (col) |c| allocator.free(c);
+        allocator.free(r);
+    }
+
+    // [5] INSERT artifact_version_pins in the same transaction.
+    conn.exec(
+        \\INSERT INTO staging.artifact_version_pins
+        \\    (artifact_id, task_spec_version, process_definition_version)
+        \\VALUES ($1::uuid, $2, $3)
+    ,
+        &.{ artifact_id, task_spec_version, process_definition_version },
+    ) catch {
+        conn.rollback() catch {};
+        return svc503();
+    };
+
+    conn.commit() catch {
+        conn.rollback() catch {};
+        return svc503();
+    };
+
+    const resp = std.fmt.allocPrint(
+        allocator,
+        "{{\"artifact_id\":\"{s}\",\"status\":\"verified\"}}",
+        .{artifact_id},
+    ) catch return svc503();
+    return .{ .status_code = 200, .body = resp };
 }

@@ -1,0 +1,61 @@
+{
+  "handoff_id": "WF02-agt05-07-20260819-01b-code-design-validator",
+  "run_id": "WF02-agt05-07-20260819",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-agt05-07-20260819/step-01b-code-design-validator.json",
+  "created_at": "2026-08-19T01:22:48Z",
+  "started_at": "2026-08-19T01:22:48Z",
+  "completed_at": "2026-08-19T01:25:27Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-agt05-07-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "AGT-05",
+      "AGT-06",
+      "AGT-07"
+    ],
+    "branch_name": "feature/WF02-agt05-07-20260819",
+    "artifacts_in": [
+      "src/design/agt05-07-design.md",
+      "docs/requirements.yaml (AGT-05, AGT-06, AGT-07 entries)"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artefact at src/design/agt05-07-design.md for AGT-05, AGT-06, AGT-07.\n\nCheck:\n1. Every acceptance criterion in AGT-05, AGT-06, AGT-07 is covered by the design\n2. No implementation code (interfaces/types/data-flow only)\n3. Complete enough for BACKEND-DEV and TEST-DESIGNER to proceed without ambiguity\n4. AGT-05: rng_seed=0 and absent cases both return 400; rng_seed in canonical JSON for hash\n5. AGT-06: migration spec OR actual migration file described; verified transition + pin write in same TX; dual sweep logic; idempotency\n6. AGT-07: deprecated check before schema validation; response format specified\n7. Migration file name follows naming convention\n\nReturn PASS or FAIL with specific gap list.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Design artefact src/design/agt05-07-design.md is well-structured and covers the majority of acceptance criteria, but contains one MAJOR gap: the AGT-06 migration is numbered 1172 which conflicts with the already-existing migrations/1172_sbx04_06_owner_binding.sql. The correct next number is 1173. Two MINOR gaps also identified. Routing back to CODE-DESIGNER for revision.",
+    "gaps": [
+      {
+        "severity": "MAJOR",
+        "req": "AGT-06",
+        "check": "Migration file name follows naming convention / no number conflict",
+        "detail": "Design specifies migrations/1172_agt06_artifact_retention.sql but migrations/1172_sbx04_06_owner_binding.sql already exists (SBX-04/05/06 owner binding). The correct file name is migrations/1173_agt06_artifact_retention.sql. Every reference in the design (Database Schema heading, Dependencies section, Requirement-to-Artefact Map) must be updated to 1173."
+      },
+      {
+        "severity": "MINOR",
+        "req": "AGT-05",
+        "check": "AC4 \u2014 spec_hash_mismatch on artifact submitted with rng_seed omitted from hash",
+        "detail": "AGT-05 AC4 requires that artifact submission returns HTTP 409 spec_hash_mismatch when the submitted spec_hash was computed without rng_seed in the canonical JSON. The design confirms rng_seed is in the canonical form (so hashes differ), but does not explicitly state that the existing spec_hash validation in agent_artifacts.zig will produce the 409 response. BACKEND-DEV can infer this, but a one-line note \"AC4 is satisfied by the existing spec_hash guard in handleArtifactSubmit (AGT-04)\" would complete the traceability chain."
+      },
+      {
+        "severity": "MINOR",
+        "req": "AGT-05",
+        "check": "AC5 \u2014 replay uses rng_seed from stored spec, not from environment",
+        "detail": "AGT-05 AC5 states the replay path must read rng_seed from the stored task_specs row rather than from the environment. The design confirms the column is persisted (migration 1170) but makes no design decision about the replay access pattern. The design should either (a) state this is handled by SIM-01 and is out of scope for this design, or (b) document which scheduler/replay module reads task_specs.rng_seed."
+      }
+    ],
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route back to CODE-DESIGNER (rework cycle 1 of 1): fix migration number to 1173 throughout, add AC4 traceability note, add AC5 scope note."
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}
