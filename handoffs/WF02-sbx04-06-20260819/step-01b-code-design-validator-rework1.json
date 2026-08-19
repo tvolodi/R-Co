@@ -1,0 +1,54 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-01b-code-design-validator-rework1",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "01b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-01b-code-design-validator-rework1.json",
+  "created_at": "2026-08-18T21:43:35Z",
+  "started_at": "2026-08-18T21:43:35Z",
+  "completed_at": "2026-08-18T21:46:55Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "SBX-04",
+      "SBX-05",
+      "SBX-06"
+    ],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "src/design/sbx04-06-design.md (reworked)",
+      "templates/specs/sbx04-06-migration.yaml (new)",
+      "docs/requirements.yaml (SBX-04, SBX-05, SBX-06 entries)",
+      "handoffs/WF02-sbx04-06-20260819/step-01b-code-design-validator.json (prior gap list)"
+    ]
+  },
+  "task": {
+    "description": "Re-validate the reworked design artefact at src/design/sbx04-06-design.md and new spec templates/specs/sbx04-06-migration.yaml for SBX-04, SBX-05, SBX-06.\n\nVerify that all three prior gaps are resolved:\n- GAP-01: §3 no longer contains inline SQL DDL — only a reference to the migration spec\n- GAP-02: templates/specs/sbx04-06-migration.yaml exists and contains the full migration spec\n- GAP-03: §9 error taxonomy has a Path column distinguishing claim-path vs release-path error codes\n\nAlso re-verify full criteria:\n1. All acceptance criteria in SBX-04, SBX-05, SBX-06 covered\n2. No implementation code (interfaces/types/data-flow only)\n3. Complete enough for BACKEND-DEV and TEST-DESIGNER to proceed\n4. SBX-05 byte-identical sentinel explicitly addressed\n\nReturn PASS if all criteria met, FAIL with remaining gaps.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation PASS. All three prior gaps resolved: GAP-01 (§3 contains no inline SQL DDL — references migration spec only), GAP-02 (templates/specs/sbx04-06-migration.yaml exists and is complete), GAP-03 (§9 error taxonomy has a Path column distinguishing CLAIM vs RELEASE paths). All acceptance criteria for SBX-04/05/06 are covered. SBX-05 byte-identical sentinel addressed in §6.2. Zig function signatures present in §10. Audit event types named in §4. lint_design_artefact.py exits 0 on both artefacts. codegen_migration.py --dry-run exits 0 and preview covers all acceptance criteria. One MINOR: Y010 on migration YAML (filename does not match known Lego spec suffix) — no BLOCKER/MAJOR.",
+    "gaps": [],
+    "artifacts_out": [
+      "src/design/sbx04-06-design.md (validated Type E)",
+      "templates/specs/sbx04-06-migration.yaml (validated Type C)"
+    ],
+    "issues": [
+      {
+        "id": "MINOR-01",
+        "severity": "MINOR",
+        "check": "Correctness — Type C YAML filename suffix",
+        "description": "lint_design_artefact.py Y010: templates/specs/sbx04-06-migration.yaml does not match a known Lego spec suffix and schema lint was skipped. The file is sbx04-06-migration.yaml; the linter expects a suffix like '*.migration.yaml' or '*.crud-endpoint.yaml'. This is a naming convention gap only; the file content is valid and codegen_migration.py --dry-run exits 0."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and/or FRONTEND-DEV (Step 2b)"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

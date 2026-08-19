@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-18T20:38:53Z'
+generated_at: '2026-08-19T00:22:04Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -13119,7 +13119,7 @@ requirements:
     title: Sandbox ownership binding at claim
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** SBX-03, binding a sandbox to exactly one implementing agent.
 
@@ -13137,14 +13137,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:09Z'
+    last_updated: '2026-08-19T00:21:54Z'
     workflow: PW-12
+    implemented_in:
+    - src/api/routes/agent_sandboxes.zig
+    - migrations/1172_sbx04_06_owner_binding.sql
+    test_run: tests/reports/WF02-sbx04-06-20260819-test-report-rework2.yaml
+    tested_at: '2026-08-19'
   SBX-05:
     id: SBX-05
     title: Single sentinel for inaccessible sandboxes
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** SBX-04, closing the sandbox existence oracle across tenants.
 
@@ -13162,14 +13167,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:10Z'
+    last_updated: '2026-08-19T00:21:59Z'
     workflow: PW-12
+    implemented_in:
+    - src/api/routes/sandbox_access.zig
+    - src/api/routes/agent_sandboxes.zig
+    test_run: tests/reports/WF02-sbx04-06-20260819-test-report-rework2.yaml
+    tested_at: '2026-08-19'
   SBX-06:
     id: SBX-06
     title: Sandbox release, reclaim, and claim audit
     stage: '17'
     priority: MUST
-    status: DRAFT
+    status: TESTED
     body: |-
       > **Extends:** SBX-04, defining release, reclaim, and the audit record for sandbox ownership.
 
@@ -13187,8 +13197,13 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-07T16:11:11Z'
+    last_updated: '2026-08-19T00:22:04Z'
     workflow: PW-12
+    implemented_in:
+    - src/definition/sandbox_pool.zig
+    - src/api/routes/agent_sandboxes.zig
+    test_run: tests/reports/WF02-sbx04-06-20260819-test-report-rework2.yaml
+    tested_at: '2026-08-19'
   VLD-01:
     id: VLD-01
     title: Typed environment from definition context

@@ -191,6 +191,12 @@ fn freeSandboxBody(allocator: std.mem.Allocator, result: agent_sandboxes.Handler
     const static_bodies = [_][]const u8{
         "{\"detail\":\"forbidden\",\"status\":403}",
         "{\"detail\":\"conflict\",\"status\":409}",
+        "{\"detail\":\"task_spec_id_required\",\"status\":400}",
+        "{\"detail\":\"task_spec_not_found\",\"status\":404}",
+        "{\"detail\":\"sandbox_not_accessible\",\"status\":403}",
+        "{\"detail\":\"pool_exhausted\",\"status\":503}",
+        "{\"detail\":\"db_error\",\"status\":503}",
+        "{\"detail\":\"out_of_memory\",\"status\":503}",
         "{}",
     };
     for (static_bodies) |sb| {
@@ -953,16 +959,31 @@ test "sbx03_03_implementer_claim_sandbox_201_bound" {
 
     const user_id = try generateTestUserId(allocator);
     defer allocator.free(user_id);
+    const orch_id = try generateTestUserId(allocator);
+    defer allocator.free(orch_id);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
+    defer cleanupTaskSpecByUser(conn, orch_id);
+
+    // SBX-04: task_spec_id is now mandatory — submit a task spec as orchestrator first.
+    const spec_body = try buildSpecBody(allocator, generateRngSeed());
+    defer allocator.free(spec_body);
+    const spec_result = agent_task_specs.handleSubmitTaskSpec(allocator, &pool, orchAuth(orch_id), spec_body);
+    defer freeBody(allocator, spec_result);
+    try testing.expectEqual(@as(u16, 201), spec_result.status_code);
+    const task_spec_id = try parseStringField(allocator, spec_result.body, "task_spec_id");
+    defer allocator.free(task_spec_id);
+
+    const claim_body = try std.fmt.allocPrint(allocator, "{{\"task_spec_id\":\"{s}\"}}", .{task_spec_id});
+    defer allocator.free(claim_body);
 
     const sandbox_id = try insertUnclamedSandbox(allocator, conn, DEFAULT_TENANT_ID);
     defer allocator.free(sandbox_id);
     defer cleanupSandbox(conn, sandbox_id);
 
     const auth = implAuth(user_id);
-    const result = agent_sandboxes.handleClaimSandbox(allocator, &pool, auth, sandbox_id, "{}");
+    const result = agent_sandboxes.handleClaimSandbox(allocator, &pool, auth, sandbox_id, claim_body);
     defer freeSandboxBody(allocator, result);
 
     try testing.expectEqual(@as(u16, 201), result.status_code);

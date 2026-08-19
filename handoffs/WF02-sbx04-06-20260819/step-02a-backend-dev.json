@@ -1,0 +1,51 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-02a-backend-dev",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-02a-backend-dev.json",
+  "created_at": "2026-08-18T21:48:50Z",
+  "started_at": "2026-08-18T21:48:50Z",
+  "completed_at": "2026-08-18T22:03:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "src/design/sbx04-06-design.md",
+      "templates/specs/sbx04-06-migration.yaml",
+      "docs/requirements.yaml (SBX-04, SBX-05, SBX-06 entries)"
+    ]
+  },
+  "task": {
+    "description": "Implement SBX-04, SBX-05, SBX-06 on branch feature/WF02-sbx04-06-20260819 per design artefact src/design/sbx04-06-design.md.\n\nAll implementation must follow the design strictly. Do not add features beyond what is designed.\n\n## 1. Migration\n\nGenerate migration from templates/specs/sbx04-06-migration.yaml:\n  python tools/codegen_migration.py templates/specs/sbx04-06-migration.yaml\nOr hand-write per the spec. Migration must:\n- Add `last_active_at TIMESTAMPTZ` column to `agent_sandboxes`\n- Drop old ownership constraint (if present)\n- Create partial unique index `ux_sandbox_owner` on `(task_spec_id) WHERE status = 'claimed'`\n- Create `sandbox_probe_counters` table for SBX-05 rate limiting\n- Use next available migration number (check migrations/ directory)\n\n## 2. Zig source changes\n\nImplement per §4–§10 of the design:\n\n### SBX-04: Sandbox ownership binding\n- `handleClaimSandbox` — bind (tenant_id, agent_principal, task_spec_id) under ux_sandbox_owner; concurrent-safe INSERT ... ON CONFLICT; return 201 on success, 409 `sandbox_already_claimed` on conflict (no owner name)\n- Update all existing sandbox operation handlers to call `checkPrincipalBound()` before executing\n\n### SBX-05: Single inaccessible sentinel\n- `checkPrincipalBound(conn, tenant_id, sandbox_id, principal)` — single query with tenant predicate; returns uniform error on not-found, wrong-tenant, or wrong-principal\n- `sendSentinel403()` — fixed body bytes, fixed header set, byte-identical for all three cases\n- `checkProbeRate(conn, tenant_id, principal)` — sliding-window counter in `sandbox_probe_counters`; 20/60s → 429 `probe_rate_exceeded`\n\n### SBX-06: Release, reclaim, audit\n- `handleReleaseSandbox` — DELETE /api/v1/agent/sandboxes/{id}/claim; only bound principal may release; others receive sentinel 403\n- `reclaimIdleSandboxes()` on SandboxPool — sweep for sandboxes idle 60+ min, FOR UPDATE SKIP LOCKED, clear binding, append SandboxReclaimed audit entry within same transaction\n- Audit entries for: sandbox.claimed, sandbox.claim_rejected, sandbox.released, sandbox.reclaimed — all carrying acting_principal, tenant_id, sandbox_id, task_spec_id\n\n## 3. Build and test\n\n  zig build  # must exit 0\n  zig build test  # unit tests must pass\n\n## 4. Commit\n\n  git add migrations/ src/\n  git commit -m 'feat(stage17): SBX-04/05/06 sandbox ownership, sentinel, release audit'\n  git push\n\nReturn PASS with commit_sha, files changed list, and any issues found.",
+    "fn": "fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented SBX-04/05/06: migration 1172 (last_active_at column, ux_sandbox_owner partial index, sandbox_probe_counters table), sandbox_access.zig (checkPrincipalBound, checkProbeRate, writeSentinelAudit), extended handleClaimSandbox with task_spec_id binding and audit, new handleReleaseSandbox handler, reclaimIdleSandboxes on SandboxPool, DELETE /sandboxes/{id}/claim route wired in main.zig. zig build and zig build test both exit 0.",
+    "commit_sha": "3f4c1739",
+    "files_changed": [
+      "migrations/1172_sbx04_06_owner_binding.sql",
+      "src/api/routes/sandbox_access.zig",
+      "src/api/routes/agent_sandboxes.zig",
+      "src/definition/sandbox_pool.zig",
+      "src/main.zig"
+    ],
+    "artifacts_out": [
+      "migrations/1172_sbx04_06_owner_binding.sql",
+      "src/api/routes/sandbox_access.zig",
+      "src/api/routes/agent_sandboxes.zig",
+      "src/definition/sandbox_pool.zig",
+      "src/main.zig"
+    ],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 0
+}

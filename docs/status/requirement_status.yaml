@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-18T20:13:47Z'
+last_updated: '2026-08-19T00:23:23Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -4367,25 +4367,29 @@ requirements:
     released_at: '2026-05-29T12:51:00Z'
     release_run: WF02-stage10-repo-20260528
   AGT-01:
-    status: TESTED
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Agent artifact envelope with kind discrimination
+    released_at: '2026-08-18T20:38:49Z'
   AGT-02:
-    status: TESTED
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Non-production artifact environment enforcement
+    released_at: '2026-08-18T20:38:50Z'
   AGT-03:
-    status: TESTED
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Artifact submission idempotency per attempt
+    released_at: '2026-08-18T20:38:52Z'
   AGT-04:
-    status: TESTED
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Immutable task specs bound by spec hash
+    released_at: '2026-08-18T20:38:53Z'
   AGT-05:
     status: DRAFT
     stage: '17'
@@ -5123,20 +5127,35 @@ requirements:
     tested_at: '2026-08-18'
     released_at: '2026-08-18T15:33:21Z'
   SBX-04:
-    status: DRAFT
+    status: TESTED
     stage: '17'
     priority: MUST
     title: Sandbox ownership binding at claim
+    implemented_in:
+    - src/api/routes/agent_sandboxes.zig
+    - migrations/1172_sbx04_06_owner_binding.sql
+    test_run: tests/reports/WF02-sbx04-06-20260819-test-report-rework2.yaml
+    tested_at: '2026-08-19'
   SBX-05:
-    status: DRAFT
+    status: TESTED
     stage: '17'
     priority: MUST
     title: Single sentinel for inaccessible sandboxes
+    implemented_in:
+    - src/api/routes/sandbox_access.zig
+    - src/api/routes/agent_sandboxes.zig
+    test_run: tests/reports/WF02-sbx04-06-20260819-test-report-rework2.yaml
+    tested_at: '2026-08-19'
   SBX-06:
-    status: DRAFT
+    status: TESTED
     stage: '17'
     priority: MUST
     title: Sandbox release, reclaim, and claim audit
+    implemented_in:
+    - src/definition/sandbox_pool.zig
+    - src/api/routes/agent_sandboxes.zig
+    test_run: tests/reports/WF02-sbx04-06-20260819-test-report-rework2.yaml
+    tested_at: '2026-08-19'
   VLD-01:
     status: RELEASED
     stage: '16'

@@ -1,0 +1,89 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-04-test-runner",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-04-test-runner.json",
+  "created_at": "2026-08-18T22:54:09Z",
+  "started_at": "2026-08-18T22:54:09Z",
+  "completed_at": "2026-08-18T23:02:36Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "SBX-04",
+      "SBX-05",
+      "SBX-06"
+    ],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "tests/integration/test_sbx04_06.zig",
+      "tests/specs/SBX-04.md",
+      "tests/specs/SBX-05.md",
+      "tests/specs/SBX-06.md"
+    ]
+  },
+  "task": {
+    "description": "Execute the test suite for SBX-04, SBX-05, SBX-06 on branch feature/WF02-sbx04-06-20260819.\n\nPre-flight:\n1. Confirm on branch feature/WF02-sbx04-06-20260819\n2. zig build migrate (apply migration 1172)\n3. zig build test (unit tests \u2014 must pass)\n\nIntegration tests:\n4. Run: zig build test-integration-qry05-sbx (or the target that includes test_sbx04_06.zig)\n   Expected: 17 tests pass\n\nFull regression:\n5. Run: zig build test-integration-others-step (or equivalent full integration suite)\n   Verify no regressions in existing tests\n\nWrite test report to: tests/reports/WF02-sbx04-06-20260819-test-report.yaml\n\nReturn PASS (all 17 SBX tests pass, no regressions) or FAIL with failing test names.",
+    "fn": "fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Integration tests FAIL. test_sbx04_06: 4 pass, 13 fail (sqlstate=42703 tenant_id missing from task_specs). sbx01_02_03: 16 pass, 1 crash regression (sbx03_03 gets 400 instead of 201 after handleClaimSandbox now requires task_spec_id). Unit tests PASS (317 pass, 5 skip). Migration 1172 already applied.",
+    "test_counts": {
+      "unit": {
+        "pass": 317,
+        "skip": 5,
+        "fail": 0
+      },
+      "integration_sbx04_06": {
+        "pass": 4,
+        "fail": 13
+      },
+      "integration_sbx01_02_03": {
+        "pass": 16,
+        "crash": 1
+      }
+    },
+    "failing_tests": [
+      "test_sbx04_06.test.sbx04_01_claim_unowned_sandbox_valid_spec_returns_201",
+      "test_sbx04_06.test.sbx04_02_claim_nonexistent_task_spec_returns_404",
+      "test_sbx04_06.test.sbx04_03_second_principal_claim_same_sandbox_returns_409_no_owner_disclosed",
+      "test_sbx04_06.test.sbx04_04_same_spec_second_sandbox_returns_409",
+      "test_sbx04_06.test.sbx04_05_non_owner_operation_returns_sentinel_403",
+      "test_sbx04_06.test.sbx04_06_concurrent_claim_exactly_one_wins",
+      "test_sbx04_06.test.sbx04_07_released_sandbox_reclaim_prior_owner_loses_access",
+      "test_sbx04_06.test.sbx05_03_wrong_principal_sentinel_byte_identical",
+      "test_sbx04_06.test.sbx05_05_unknown_uuid_returns_sentinel_not_409",
+      "test_sbx04_06.test.sbx06_01_non_owner_release_binding_unchanged",
+      "test_sbx04_06.test.sbx06_02_orchestrator_release_returns_sentinel_403",
+      "test_sbx04_06.test.sbx06_03_owner_release_204_and_audit",
+      "test_sbx04_06.test.sbx06_04_idle_sandbox_reclaimed_by_pool_manager",
+      "sbx01_02_03_agent_role_gates_test.test.sbx03_03_implementer_claim_sandbox_201_bound"
+    ],
+    "artifacts_out": [
+      "tests/reports/WF02-sbx04-06-20260819-test-report.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-SBX04-06-SCHEMA-1",
+        "severity": "BLOCKER",
+        "title": "task_specs table missing tenant_id column",
+        "description": "Migration 1170 creates task_specs without tenant_id. Migration 1172 does not add it. Handler (agent_sandboxes.zig:255) and test fixture insertTaskSpec both require tenant_id, causing sqlstate=42703 on all 13 tests that call insertTaskSpec or look up task_spec by tenant."
+      },
+      {
+        "id": "ISS-SBX04-06-REGR-1",
+        "severity": "BLOCKER",
+        "title": "sbx03_03 regression: handleClaimSandbox now requires task_spec_id",
+        "description": "SBX-04/05/06 handler change added mandatory task_spec_id validation (returns 400 when absent). Pre-existing test sbx03_03 calls claim without task_spec_id, expects 201, now gets 400 and segfaults in freeSandboxBody on the static string."
+      }
+    ],
+    "next_action": "Spawn WF-03 for BACKEND-DEV to fix: (1) add tenant_id to task_specs, (2) fix sbx03_03 regression. Then redispatch TEST-RUNNER."
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

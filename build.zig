@@ -4557,12 +4557,25 @@ pub fn build(b: *std.Build) void {
     });
     const run_sbx01_03_solo_tests = addIntegrationRun(b, sbx01_03_solo_tests, migrations_dir, clean_test_db);
 
-    const test_integration_qry05_sbx_step = b.step("test-integration-qry05-sbx", "Run QRY-05 field stripping and SBX-01..03 agent role gate integration tests (requires BPM_TEST_DB_URL)");
+    // Stage 17 / WF02-sbx04-06-20260819 — SBX-04, SBX-05, SBX-06.
+    const sbx04_06_solo_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/test_sbx04_06.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sbx04_06_solo_tests = addIntegrationRun(b, sbx04_06_solo_tests, migrations_dir, clean_test_db);
+
+    const test_integration_qry05_sbx_step = b.step("test-integration-qry05-sbx", "Run QRY-05 field stripping and SBX-01..06 agent role gate integration tests (requires BPM_TEST_DB_URL)");
     test_integration_qry05_sbx_step.dependOn(&clean_test_db.step);
     test_integration_qry05_sbx_step.dependOn(&run_qry05_solo_tests.step);
     test_integration_qry05_sbx_step.dependOn(&run_sbx01_03_solo_tests.step);
+    test_integration_qry05_sbx_step.dependOn(&run_sbx04_06_solo_tests.step);
     test_integration_others_step.dependOn(&run_qry05_solo_tests.step);
     test_integration_others_step.dependOn(&run_sbx01_03_solo_tests.step);
+    test_integration_others_step.dependOn(&run_sbx04_06_solo_tests.step);
 
     // ---------------------------------------------------------------------------
     // ISS-0696 / GH-760: serial-public barrier — five test binaries that write to

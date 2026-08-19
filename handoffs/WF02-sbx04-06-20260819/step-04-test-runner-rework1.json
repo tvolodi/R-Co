@@ -1,0 +1,68 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-04-test-runner-rework1",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "04-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-04-test-runner-rework1.json",
+  "created_at": "2026-08-18T23:12:15Z",
+  "started_at": "2026-08-18T23:12:15Z",
+  "completed_at": "2026-08-18T23:21:20Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "prior_test_report": "tests/reports/WF02-sbx04-06-20260819-test-report.yaml"
+  },
+  "task": {
+    "description": "Re-run integration tests after fixes in commit bcc0f902 (schema-1 query fix + sbx03_03 regression fix).\n\nExpected: 17/17 SBX-04/05/06 tests pass, sbx03_03 regression fixed, full suite regression-free.\n\n1. zig build migrate\n2. zig build test (unit — must pass)\n3. Run integration target covering test_sbx04_06.zig (17 expected tests)\n4. Run full integration suite to check no regressions\n\nWrite updated test report to: tests/reports/WF02-sbx04-06-20260819-test-report-rework1.yaml\n\nReturn PASS or FAIL.",
+    "fn": "fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Rework-1 partial improvement: sbx03_03 regression fixed (17/17 in sbx01_02_03 binary), sbx04_02 now passes. Still 12/17 failing in test_sbx04_06 binary. Root cause: insertTaskSpec helper at test_sbx04_06.zig:150 uses tenant_id column in INSERT but task_specs table has no tenant_id (per-tenant schema, isolation via search_path). Fix in bcc0f902 was incomplete — removed tenant_id from handler SELECT but not from test helper INSERT.",
+    "test_counts": {
+      "unit": { "pass": 1176, "skip": 5, "fail": 0 },
+      "integration_qry05_sbx": {
+        "qry05": { "pass": 6, "fail": 0 },
+        "sbx01_02_03": { "pass": 17, "fail": 0 },
+        "sbx04_06": { "pass": 5, "fail": 12 },
+        "total": { "pass": 28, "fail": 12 }
+      }
+    },
+    "failing_tests": [
+      "sbx04_01_claim_unowned_sandbox_valid_spec_returns_201",
+      "sbx04_03_second_principal_claim_same_sandbox_returns_409_no_owner_disclosed",
+      "sbx04_04_same_spec_second_sandbox_returns_409",
+      "sbx04_05_non_owner_operation_returns_sentinel_403",
+      "sbx04_06_concurrent_claim_exactly_one_wins",
+      "sbx04_07_released_sandbox_reclaim_prior_owner_loses_access",
+      "sbx05_03_wrong_principal_sentinel_byte_identical",
+      "sbx05_05_unknown_uuid_returns_sentinel_not_409",
+      "sbx06_01_non_owner_release_binding_unchanged",
+      "sbx06_02_orchestrator_release_returns_sentinel_403",
+      "sbx06_03_owner_release_204_and_audit",
+      "sbx06_04_idle_sandbox_reclaimed_by_pool_manager"
+    ],
+    "artifacts_out": [
+      "tests/reports/WF02-sbx04-06-20260819-test-report-rework1.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-SBX04-06-SCHEMA-1b",
+        "severity": "BLOCKER",
+        "title": "insertTaskSpec helper uses tenant_id column that does not exist in task_specs",
+        "description": "tests/integration/test_sbx04_06.zig insertTaskSpec() at line 150 uses tenant_id in INSERT. task_specs (migration 1170) is scope=tenant_only with no tenant_id column. Fix: change INSERT INTO task_specs (orchestrator_principal, spec_hash, spec_body, tenant_id) VALUES ($1, $2, $3, current_setting('app.current_tenant_id')::uuid) to INSERT INTO task_specs (orchestrator_principal, spec_hash, spec_body) VALUES ($1, $2, $3). Blocks 12 tests.",
+        "file": "tests/integration/test_sbx04_06.zig",
+        "line": 150
+      }
+    ],
+    "next_action": "ORCH must spawn ADHOC BACKEND-DEV to fix insertTaskSpec helper (remove tenant_id from INSERT), then redispatch TEST-RUNNER for rework-2."
+  },
+  "max_rework": 2,
+  "rework_count": 1
+}

@@ -1,0 +1,62 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-03b-test-design-validator",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-03b-test-design-validator.json",
+  "created_at": "2026-08-18T22:31:40Z",
+  "started_at": "2026-08-18T22:31:40Z",
+  "completed_at": "2026-08-18T22:35:18Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "SBX-04",
+      "SBX-05",
+      "SBX-06"
+    ],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "tests/specs/SBX-04.md",
+      "tests/specs/SBX-05.md",
+      "tests/specs/SBX-06.md",
+      "tests/integration/test_sbx04_06.zig",
+      "docs/requirements.yaml (SBX-04, SBX-05, SBX-06 acceptance criteria)"
+    ]
+  },
+  "task": {
+    "description": "Validate the test design produced by TEST-DESIGNER for SBX-04, SBX-05, SBX-06.\n\nCheck:\n1. Every MUST acceptance criterion in SBX-04, SBX-05, SBX-06 has at least one runnable integration test\n2. No SkipZigTest on MUST tests\n3. Fixtures are isolated per test (unique IDs, defer cleanup)\n4. Tests are self-contained (no shared mutable state between tests)\n5. build.zig wires the new test file into the integration test targets\n6. SBX-05 byte-identical response test is present (covers probe indistinguishability)\n7. SBX-06 idle reclaim test is present\n\nReturn PASS or FAIL with specific gaps.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "SBX-04 (7 tests) and SBX-06 (5 tests) pass all checks. SBX-05 has two MAJOR gaps: TC-SBX-05-02 (cross-tenant sentinel) is not implemented \u2014 the combined test sbx05_02_03_all_sentinel_cases_byte_identical exercises wrong-principal-same-tenant (TC-SBX-05-03) in place of the required cross-tenant fixture, leaving SBX-05 AC2 uncovered. Additionally the SBX-05 spec declares 5 test cases but only 4 test blocks exist. All other checks pass: no SkipZigTest, per-test UUID fixtures, defer cleanup, BPM_TEST_DB_URL error guard present, build.zig wired at line 4563, probe-rate-429 test present, idle-reclaim test present.",
+    "gaps": [
+      {
+        "id": "GAP-01",
+        "severity": "MAJOR",
+        "requirement": "SBX-05",
+        "ac": "AC2",
+        "spec_case": "TC-SBX-05-02",
+        "description": "sbx05_02_03_all_sentinel_cases_byte_identical does not set up a cross-tenant fixture. Case 1 exercises a nonexistent UUID (TC-SBX-05-01 scenario); Case 2 exercises wrong-principal-same-tenant (TC-SBX-05-03 scenario). SBX-05 AC2 requires a sandbox_id that physically exists in a second tenant, proving the tenant predicate suppresses it and produces the same byte-identical 403 sentinel. No second-tenant INSERT is present anywhere in the test file."
+      },
+      {
+        "id": "GAP-02",
+        "severity": "MAJOR",
+        "requirement": "SBX-05",
+        "ac": "AC2/AC3",
+        "spec_case": "TC-SBX-05-02",
+        "description": "SBX-05 spec declares 5 test cases; only 4 test blocks are implemented (sbx05_01, sbx05_02_03, sbx05_04, sbx05_05). TC-SBX-05-02 is not present as a distinct test block. Spec-to-implementation count: 17 spec cases vs 16 test blocks (7+4+5)."
+      }
+    ],
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route FAIL back to TEST-DESIGNER for rework (rework_count 0 of max 1). Gaps: add cross-tenant fixture for TC-SBX-05-02 and split sbx05_02_03 into two distinct test blocks."
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}
