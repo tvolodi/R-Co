@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-19T02:58:34Z'
+generated_at: '2026-08-19T03:01:52Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -10888,7 +10888,7 @@ requirements:
     title: Non-zero RNG seed folded into spec identity
     stage: '17'
     priority: MUST
-    status: TESTED
+    status: RELEASED
     body: |-
       > **Extends:** AGT-04, binding run determinism into spec identity.
 
@@ -10906,16 +10906,17 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-19T02:58:25Z'
+    last_updated: '2026-08-19T03:01:49Z'
     workflow: PW-11
     implemented_in:
     - src/api/routes/agent_task_specs.zig
+    released_at: '2026-08-19T03:01:49Z'
   AGT-06:
     id: AGT-06
     title: Dual-sweep artifact retention
     stage: '17'
     priority: MUST
-    status: TESTED
+    status: RELEASED
     body: |-
       > **Extends:** PIN-01, tying artifact retention to the version pair the artifact was produced against.
 
@@ -10934,18 +10935,19 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-19T02:58:30Z'
+    last_updated: '2026-08-19T03:01:50Z'
     workflow: PW-11
     implemented_in:
     - src/scheduler/artifact_retention.zig
     - src/api/routes/agent_artifacts.zig
     - migrations/1173_agt06_artifact_retention.sql
+    released_at: '2026-08-19T03:01:50Z'
   AGT-07:
     id: AGT-07
     title: Deprecated envelope field names rejected
     stage: '17'
     priority: SHOULD
-    status: TESTED
+    status: RELEASED
     body: |-
       > **Extends:** AGT-01, refusing silent compatibility shims on the envelope.
 
@@ -10963,10 +10965,11 @@ requirements:
     body_source: backlog-migration-20260807
     alt_sources: []
     type: requirement
-    last_updated: '2026-08-19T02:58:34Z'
+    last_updated: '2026-08-19T03:01:52Z'
     workflow: PW-11
     implemented_in:
     - src/api/routes/agent_artifacts.zig
+    released_at: '2026-08-19T03:01:52Z'
   CAC-UI-01:
     id: CAC-UI-01
     title: Tenant segment in every query key
