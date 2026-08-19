@@ -1,0 +1,43 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-02a-backend-dev-rework2",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "02a-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-02a-backend-dev-rework2.json",
+  "created_at": "2026-08-18T23:04:59Z",
+  "started_at": "2026-08-18T23:04:59Z",
+  "completed_at": "2026-08-18T23:11:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "src/api/routes/agent_sandboxes.zig (current — has V-01 fix with wrong query)",
+      "migrations/1170_sbx_task_specs_agent_sandboxes.sql (task_specs has no tenant_id column)",
+      "tests/reports/WF02-sbx04-06-20260819-test-report.yaml (FAIL evidence)",
+      "tests/integration/test_sbx04_06.zig",
+      "src/api/routes/sandbox_access.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix two BLOCKERs found by TEST-RUNNER in the SBX-04/05/06 implementation.\n\n## Fix 1: ISS-SBX04-06-SCHEMA-1 — task_spec_id pre-validation query has wrong column\n\nFile: src/api/routes/agent_sandboxes.zig\n\nThe added V-01 validation query uses:\n  SELECT 1 FROM task_specs WHERE tenant_id = current_setting(...)::uuid AND task_spec_id = $1::uuid\n\nBut task_specs (migration 1170, scope: tenant_only) does NOT have a `tenant_id` column — tenant isolation is provided by search_path already.\n\nFix: Change the validation query to:\n  SELECT 1 FROM task_specs WHERE task_spec_id = $1::uuid\n\n(Keep the parameterised placeholder. The search_path on the connection provides tenant isolation.)\n\n## Fix 2: ISS-SBX04-06-REGR-1 — regression in sbx03_03 test (double-free crash)\n\nFile: tests/integration/test_sbx04_06.zig (or the SBX-01/02/03 test file)\n\nThe pre-existing test sbx03_03_implementer_claim_sandbox_201_bound calls the claim endpoint without task_spec_id. SBX-04 made task_spec_id mandatory, so this test now gets 400 instead of 201, and the double-free crash suggests a memory error in the error path.\n\nFix:\na) Check src/api/routes/agent_sandboxes.zig for any defer-free of task_spec_id that may double-free when it's empty string (e.g., `defer if (task_spec_id.len > 0) allocator.free(task_spec_id)` combined with an empty allocation). Ensure the early-return 400 path doesn't leave a dangling free.\nb) Update the pre-existing sbx03_03 test to include a valid task_spec_id in the claim request body (INSERT a task_spec row first, use its task_spec_id). This brings the old test in line with the new SBX-04 contract.\n\nIf the existing test is in a different file (e.g., tests/integration/test_sbx01_03.zig), update it there.\n\nAfter both fixes:\n  zig build  # must exit 0\n  zig build test  # unit tests must pass\n  # Run the integration test target manually to verify\n  git add src/api/routes/agent_sandboxes.zig tests/\n  git commit -m 'fix(stage17): SBX-04 task_spec pre-validation query + sbx03_03 regression'\n  git push\n\nReturn PASS with commit_sha.",
+    "fn": "fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed ISS-SBX04-06-SCHEMA-1 (removed tenant_id predicate from task_spec pre-validation query; task_specs uses search_path isolation only) and ISS-SBX04-06-REGR-1 (sbx03_03 now inserts a task_spec via handleSubmitTaskSpec and passes its task_spec_id in the claim body; freeSandboxBody extended with missing static error strings to prevent invalid-free crash).",
+    "commit_sha": "bcc0f902",
+    "artifacts_out": [
+      "src/api/routes/agent_sandboxes.zig",
+      "tests/integration/sbx01_02_03_agent_role_gates_test.zig"
+    ],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 2
+}

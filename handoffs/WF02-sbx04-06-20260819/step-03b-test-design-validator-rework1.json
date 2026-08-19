@@ -1,0 +1,50 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-03b-test-design-validator-rework1",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "03b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-03b-test-design-validator-rework1.json",
+  "created_at": "2026-08-18T22:50:05Z",
+  "started_at": "2026-08-18T22:50:05Z",
+  "completed_at": "2026-08-18T22:52:21Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "tests/integration/test_sbx04_06.zig (reworked)",
+      "tests/specs/SBX-04.md",
+      "tests/specs/SBX-05.md (updated)",
+      "tests/specs/SBX-06.md",
+      "handoffs/WF02-sbx04-06-20260819/step-03b-test-design-validator.json (prior gap list)"
+    ]
+  },
+  "task": {
+    "description": "Re-validate the reworked test design for SBX-04, SBX-05, SBX-06.\n\nVerify prior gaps are resolved:\n- GAP-01: A genuine cross-tenant test (sbx05_02_cross_tenant_sentinel_byte_identical) is present using a second tenant schema\n- GAP-02: sbx05_02_03 is split into two distinct test blocks; total test blocks = 18 (or at least ≥ 17 spec cases)\n\nRe-check full criteria:\n1. Every MUST AC covered by at least one test\n2. No SkipZigTest on MUST tests\n3. Fixtures isolated per test\n4. Self-contained tests\n5. build.zig wired correctly\n6. SBX-05 byte-identical response tested including cross-tenant case\n7. SBX-06 idle reclaim and audit log tests present\n\nReturn PASS or FAIL.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Both prior gaps resolved. GAP-01: sbx05_02_cross_tenant_sentinel_byte_identical now genuinely provisions a second tenant schema via helpers.provisionTestTenantSchema, inserts a sandbox there (invisible to the first tenant via search_path isolation), and verifies the 403 response body is byte-identical to the nonexistent-UUID case — SBX-05 AC2/AC4 fully covered. GAP-02: SBX-05 now has 5 distinct test blocks (sbx05_01–05_05), matching all 5 spec cases. Total test count: 17 blocks (7+5+5) matching 17 spec cases (7+5+5). All other checks pass: no SkipZigTest in any test block, per-test UUID fixtures with defer cleanup throughout, BPM_TEST_DB_URL error guard present, handlers called directly (no HTTP server), build.zig wired at line 4563 into test-integration-qry05-sbx and test_integration_others_step, parameterized queries only, no hardcoded credentials.",
+    "gaps": [],
+    "artifacts_out": [
+      "tests/integration/test_sbx04_06.zig"
+    ],
+    "issues": [
+      {
+        "id": "MINOR-01",
+        "severity": "MINOR",
+        "requirement": "SBX-05",
+        "description": "In sbx05_02_cross_tenant_sentinel_byte_identical, conn2 is acquired then released explicitly (pool.release(conn2)) rather than via defer. If insertUnclaimedSandbox returns an error, conn2 is leaked until pool recycling. Data cleanup is unaffected (dropTestTenantSchema is deferred). Does not block TEST-RUNNER."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

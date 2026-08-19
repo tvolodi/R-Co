@@ -1,0 +1,38 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-02a-backend-dev-rework1",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "02a-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-02a-backend-dev-rework1.json",
+  "created_at": "2026-08-18T22:15:06Z",
+  "started_at": "2026-08-18T22:15:06Z",
+  "completed_at": "2026-08-18T22:18:17Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "src/design/sbx04-06-design.md (updated §5.2 with DB pre-validation step)",
+      "src/api/routes/agent_sandboxes.zig (current implementation — needs fix)",
+      "handoffs/WF02-sbx04-06-20260819/step-02c-security-reviewer.json (V-01 violation to fix)"
+    ]
+  },
+  "task": {
+    "description": "Fix security violation V-01 in src/api/routes/agent_sandboxes.zig handleClaimSandbox.\n\nAdd a DB pre-validation step for task_spec_id before the claim binding UPDATE:\n\n1. After parsing task_spec_id from body_json, add a tenant-scoped existence check:\n\n   SELECT 1 FROM task_specs\n   WHERE tenant_id = current_setting('app.current_tenant_id')::uuid\n   AND task_spec_id = $1::uuid\n\n   (Use a parameterised query with task_spec_id as the parameter)\n\n2. If 0 rows returned: return HTTP 404 with body {\"detail\":\"task_spec_not_found\",\"status\":404}\n   (Do NOT return the sandbox_not_accessible sentinel for this — it is a precondition failure)\n\n3. If 1 row: proceed with the existing claim binding UPDATE as currently implemented.\n\nNo other changes needed. The rest of handleClaimSandbox, handleReleaseSandbox, checkPrincipalBound, checkProbeRate, and reclaimIdleSandboxes are unchanged.\n\nAfter the fix:\n  zig build  # must exit 0\n  zig build test  # must exit 0\n  git add src/api/routes/agent_sandboxes.zig\n  git commit -m 'fix(stage17): SBX-04 validate task_spec_id exists before claim (INV-2)'\n  git push\n\nReturn PASS with commit_sha.",
+    "fn": "fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added tenant-scoped DB pre-validation for task_spec_id in handleClaimSandbox. SELECT 1 FROM task_specs with parameterised query; returns HTTP 404 task_spec_not_found when task spec absent. zig build and zig build test both exit 0.",
+    "commit_sha": "92edea9c",
+    "artifacts_out": ["src/api/routes/agent_sandboxes.zig"],
+    "issues": []
+  },
+  "max_rework": 3,
+  "rework_count": 1
+}

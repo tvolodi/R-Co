@@ -1,0 +1,96 @@
+stage: "17"
+date: "2026-08-19T00:08:15Z"
+decision: "APPROVED"
+run_id: "WF02-sbx04-06-20260819"
+branch: "feature/WF02-sbx04-06-20260819"
+requirements: [SBX-04, SBX-05, SBX-06]
+priority: MUST
+
+test_report:
+  file: "tests/reports/WF02-sbx04-06-20260819-test-report-rework2.yaml"
+  rework: 2
+  summary: "17/17 SBX PASS (40/40 full integration suite including qry05 + sbx01-03 regressions)"
+  breakdown:
+    SBX-04: "7/7 PASS"
+    SBX-05: "5/5 PASS"
+    SBX-06: "5/5 PASS"
+
+acceptance_criteria_coverage:
+  SBX-04:
+    - "sbx04_01: claim unowned sandbox with valid task_spec_id → 201, binding written"
+    - "sbx04_02: nonexistent task_spec_id → 404 task_spec_not_found"
+    - "sbx04_03: second principal claims same sandbox → 409 sandbox_already_claimed, no owner disclosed"
+    - "sbx04_04: same spec submitted for second sandbox → 409 sandbox_already_claimed (ux_sandbox_owner covers task spec)"
+    - "sbx04_05: non-owner operation → 403 sandbox_not_accessible sentinel"
+    - "sbx04_06: concurrent claim → exactly one binding admitted, loser gets 409"
+    - "sbx04_07: released sandbox → reclaim writes new binding; prior owner loses access"
+    - verdict: ALL MUST ACs covered
+
+  SBX-05:
+    - "sbx05_01: nonexistent sandbox_id → 403 sandbox_not_accessible"
+    - "sbx05_02: cross-tenant sandbox_id → response byte-identical to unknown-sandbox case"
+    - "sbx05_03: wrong-principal in same tenant → same HTTP 403 sandbox_not_accessible body+headers"
+    - "sbx05_04: 21st sequential probe → 429 probe_rate_exceeded (rate limit bucket fires at 21)"
+    - "sbx05_05: unknown UUID → sentinel 403, not 409 (no tenant cross-disclosure)"
+    - verdict: ALL MUST ACs covered
+
+  SBX-06:
+    - "sbx06_01: non-owner calls release → 403 sandbox_not_accessible; binding unchanged"
+    - "sbx06_02: orchestrator calls release → 403 sandbox_not_accessible; supervisory grants no release authority"
+    - "sbx06_03: owner calls release → 204, state becomes released, binding cleared, SandboxReleased appended"
+    - "sbx06_04: idle sandbox (61 min) → pool manager reclaims, SandboxReclaimed names prior owner, sandbox claimable again"
+    - "sbx06_05: 30 sentinel probes → 30 SandboxClaimRejected audit entries name principal and sandbox_id values"
+    - verdict: ALL MUST ACs covered
+
+regression_check:
+  qry05_tests: "PASS (6/6 — no regression)"
+  sbx01_02_03_tests: "PASS (17/17 — no regression)"
+  unit_tests: "PASS (1176/1176 unit, 128 DB-gated skips expected)"
+  pre_existing_hang: >
+    test-integration-others-internal binary 9d302bfffc477961948277d0d43d7c30 hangs on the
+    full test-integration target. Confirmed pre-existing on main (reported in
+    report-20260818-WF02-agt01-04-step04.yaml and WF02-qry05-sbx01-03 report). Not caused
+    by any change in this WF run (diff limited to src/api/routes/agent_sandboxes.zig and
+    tests/integration/test_sbx04_06.zig).
+
+nfr_results:
+  NFR-01_p99_read_ms:
+    target: "<=200 ms"
+    actual: "0.771 ms"
+    passed: true
+  NFR-01_p99_write_ms:
+    target: "<=500 ms"
+    actual: "20.911 ms"
+    passed: true
+  NFR-02_append_throughput_eps:
+    target: ">=1000 events/sec"
+    actual: "3585.897 events/sec"
+    passed: true
+  NFR-04_replay_10000_ms:
+    target: "<=5000 ms"
+    actual: "38.429 ms"
+    passed: true
+  NFR-04_replay_snapshot_100000_ms:
+    target: "<=1000 ms"
+    actual: "5.178 ms"
+    passed: true
+  bench_summary: "overall_passed=true (run_id bench-1787097906554)"
+  bench_note: >
+    Sandbox claim/release handlers are lightweight DB write paths (single row UPDATE +
+    audit INSERT). Bench confirms no latency regression: p99 write 20.911 ms remains
+    well within the 500 ms NFR-01 threshold. All five NFR metrics pass.
+
+blocking_issues: []
+
+approved_requirements:
+  - SBX-04
+  - SBX-05
+  - SBX-06
+
+decision_summary: >
+  All 17 SBX-04/05/06 integration tests pass (rework 2). Regression suite clean:
+  qry05 6/6, sbx01-03 17/17, unit 1176/1176. NFR bench passed all five thresholds
+  (p99 read 0.771 ms / write 20.911 ms / throughput 3585 eps / replay 38 ms /
+  snapshot 5 ms). The pre-existing hang in test-integration-others-internal is
+  unchanged and pre-dates this branch. Release APPROVED for stage 17: SBX-04,
+  SBX-05, SBX-06.

@@ -1,0 +1,115 @@
+schema_version: 1
+migration_number: 1172
+name: sbx04_06_owner_binding
+requirement_ids: [SBX-04, SBX-05, SBX-06]
+scope: tenant_only
+purpose: |
+  Three changes to support sandbox ownership binding, sentinel enforcement, and
+  idle-reclaim audit (SBX-04/05/06):
+
+  1. Add last_active_at TIMESTAMPTZ to agent_sandboxes — updated on every claimed-sandbox
+     operation and by the claim itself; used by the pool manager idle-reclaim sweep (60 min).
+
+  2. Replace the column-level UNIQUE (owner_principal, task_spec_id) constraint added by
+     migration 1170 with a partial unique index scoped to claimed rows. The original constraint
+     allowed two principals to each claim separate sandboxes for the same task_spec_id,
+     violating the "one task spec → one claimed sandbox" invariant in SBX-04.
+     The partial index (task_spec_id) WHERE status = 'claimed' enforces exactly one claimed row
+     per task_spec_id within the tenant schema. Unclaimed rows are excluded.
+
+  3. Add sandbox_probe_counters — a per-principal sliding-window counter table separate from
+     the global rate_limit_buckets. The sentinel threshold (20 per 60 s) must be independently
+     tunable and must not interfere with the global API rate limit.
+
+  All three changes apply to per-tenant schemas (SPT-03 provisioning). No tenant_id columns
+  are needed; tenant isolation is the schema search-path boundary.
+
+  Idempotency: ADD COLUMN IF NOT EXISTS, DROP CONSTRAINT IF EXISTS,
+  CREATE UNIQUE INDEX IF NOT EXISTS, CREATE TABLE IF NOT EXISTS, CREATE INDEX IF NOT EXISTS.
+
+tables:
+  - mode: alter
+    name: agent_sandboxes
+    add_columns:
+      - name: last_active_at
+        type: timestamptz
+        not_null: false
+    # BACKEND-DEV: after ADD COLUMN, backfill:
+    #   UPDATE agent_sandboxes
+    #     SET last_active_at = COALESCE(claimed_at, updated_at)
+    #     WHERE last_active_at IS NULL;
+    drop_constraints:
+      - name: ux_sandbox_owner
+    add_indexes:
+      - name: ux_sandbox_owner
+        columns: [task_spec_id]
+        unique: true
+        partial_where: "status = 'claimed'"
+        # Replaces the dropped constraint. Partial scope means unclaimed rows
+        # do not participate in the uniqueness check.
+
+  - mode: create
+    name: sandbox_probe_counters
+    columns:
+      - { name: principal,    type: text,   not_null: true }
+      - { name: window_start, type: bigint, not_null: true }
+      # Unix epoch seconds truncated to 60-s window: EXTRACT(EPOCH FROM NOW())::bigint / 60 * 60
+      - { name: count,        type: integer, not_null: true, default: "0" }
+    constraints:
+      - { kind: primary_key, name: pk_spc, columns: [principal, window_start] }
+    indexes:
+      - { name: idx_spc_window, columns: [window_start] }
+
+test_cases:
+  - name: last_active_at_column_exists
+    description: |
+      After migration, agent_sandboxes must have a last_active_at column of type timestamptz.
+    requirement_ref: SBX-04
+    arrange: ""
+    act: |
+      // CUSTOM: SELECT column_name, data_type FROM information_schema.columns
+      //   WHERE table_name = 'agent_sandboxes' AND column_name = 'last_active_at';
+    assertions: |
+      // CUSTOM: assert 1 row; assert data_type = 'timestamp with time zone'.
+
+  - name: partial_unique_index_enforces_one_claimed_per_task_spec
+    description: |
+      Two concurrent claims for the same task_spec_id must result in a unique-constraint
+      violation on the second. Two unclaimed rows with the same task_spec_id must be allowed.
+    requirement_ref: SBX-04
+    arrange: |
+      // CUSTOM: INSERT a sandbox row with status='unclaimed', task_spec_id='test-uuid'.
+      // CUSTOM: UPDATE the row to status='claimed', owner_principal='agent-a'.
+    act: |
+      // CUSTOM: INSERT a second sandbox row with status='unclaimed', task_spec_id='test-uuid'.
+      // CUSTOM: UPDATE the second row to status='claimed', owner_principal='agent-b'.
+    assertions: |
+      // CUSTOM: expect PostgreSQL error code 23505 (unique_violation) on the second UPDATE.
+
+  - name: probe_counters_insert_and_increment
+    description: |
+      INSERT with ON CONFLICT ... DO UPDATE must atomically increment count for the same
+      (principal, window_start) pair, and a subsequent SELECT must return the updated count.
+    requirement_ref: SBX-05
+    arrange: ""
+    act: |
+      // CUSTOM: INSERT INTO sandbox_probe_counters (principal, window_start, count)
+      //   VALUES ('test-principal', 0, 1)
+      //   ON CONFLICT (principal, window_start) DO UPDATE SET count = sandbox_probe_counters.count + 1
+      //   RETURNING count;
+      // CUSTOM: repeat the same INSERT ... ON CONFLICT statement.
+    assertions: |
+      // CUSTOM: assert first RETURNING count = 1; assert second RETURNING count = 2.
+
+  - name: old_constraint_dropped
+    description: |
+      The column-level constraint ux_sandbox_owner (UNIQUE owner_principal, task_spec_id)
+      from migration 1170 must not exist after this migration.
+    requirement_ref: SBX-04
+    arrange: ""
+    act: |
+      // CUSTOM: SELECT constraint_name FROM information_schema.table_constraints
+      //   WHERE table_name = 'agent_sandboxes' AND constraint_name = 'ux_sandbox_owner'
+      //   AND constraint_type = 'UNIQUE';
+    assertions: |
+      // CUSTOM: assert 0 rows (constraint dropped; replaced by partial index).

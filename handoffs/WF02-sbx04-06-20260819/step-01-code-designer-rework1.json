@@ -1,0 +1,39 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-01-code-designer-rework1",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "01-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-01-code-designer-rework1.json",
+  "created_at": "2026-08-18T21:40:52Z",
+  "started_at": "2026-08-18T21:40:52Z",
+  "completed_at": "2026-08-18T21:43:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "src/design/sbx04-06-design.md (existing — needs rework)",
+      "handoffs/WF02-sbx04-06-20260819/step-01b-code-design-validator.json (gap list)"
+    ]
+  },
+  "task": {
+    "description": "Rework design artefact src/design/sbx04-06-design.md per CODE-DESIGN-VALIDATOR gaps:\n\nGAP-01 (MAJOR): §3 of the Type E design contains executable SQL DDL (ALTER TABLE, CREATE UNIQUE INDEX, CREATE TABLE). Move all DDL to a new Type C migration spec file templates/specs/sbx04-06-migration.yaml. Replace §3 inline SQL with a reference to the spec file.\n\nGAP-02 (MAJOR): Create templates/specs/sbx04-06-migration.yaml (Type C migration parameter file) with the DDL content extracted from §3. This file must exist so BACKEND-DEV can use codegen_migration.py or follow it directly.\n\nGAP-03 (MINOR): In §9 error taxonomy table, add a 'Path' column (or split the rows) so it is clear that 'implementer_role_required' / 'orchestrator_may_not_claim' apply only to the CLAIM path, while RELEASE path always returns 'sandbox_not_accessible' for unauthorized callers (SBX-06 requirement).\n\nDo not make any other changes. When done, re-run fn:validate-completeness on the updated design and return PASS.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework of src/design/sbx04-06-design.md complete. GAP-01 resolved: §3 DDL removed, replaced with reference to Type C spec. GAP-02 resolved: templates/specs/sbx04-06-migration.yaml created with full table/column/constraint/index shape and 4 test cases. GAP-03 resolved: §9 error taxonomy table has Path column; CLAIM-only codes and RELEASE sentinel path are now unambiguous.",
+    "artifacts_out": [
+      "templates/specs/sbx04-06-migration.yaml",
+      "src/design/sbx04-06-design.md"
+    ],
+    "issues": []
+  },
+  "max_rework": 2,
+  "rework_count": 1
+}

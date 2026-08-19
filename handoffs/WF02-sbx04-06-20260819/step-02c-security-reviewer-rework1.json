@@ -1,0 +1,56 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-02c-security-reviewer-rework1",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "02c-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-02c-security-reviewer-rework1.json",
+  "created_at": "2026-08-18T22:19:00Z",
+  "started_at": "2026-08-18T22:19:00Z",
+  "completed_at": "2026-08-18T22:21:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "src/api/routes/agent_sandboxes.zig (updated — commit 92edea9c)",
+      "handoffs/WF02-sbx04-06-20260819/step-02c-security-reviewer.json (prior violation V-01)"
+    ]
+  },
+  "task": {
+    "description": "Re-review src/api/routes/agent_sandboxes.zig on branch feature/WF02-sbx04-06-20260819 after the V-01 fix (commit 92edea9c).\n\nVerify that V-01 is resolved:\n- handleClaimSandbox now performs a tenant-scoped SELECT on task_specs before binding the claim\n- The query uses parameterised placeholders ($1) for task_spec_id\n- 0 rows → HTTP 404 task_spec_not_found is returned\n\nRe-check all invariants from the prior review:\n- INV-1 tenant isolation: all queries include tenant_id predicate\n- INV-2 field authorisation: V-01 fix applied\n- INV-4 no secrets\n- INV-5 probe indistinguishability (SBX-05 sentinel)\n- INV-7 SQL parameterisation\n- INV-8 no catch unreachable on realistic failures\n\nRun: git diff origin/main...feature/WF02-sbx04-06-20260819 -- src/ migrations/\n\nReturn PASS or FAIL with specific remaining violations.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "V-01 is resolved. handleClaimSandbox now performs a tenant-scoped SELECT on task_specs (parameterised $1::uuid, tenant predicate via current_setting) before the claim UPDATE; 0 rows returns 404 task_spec_not_found. All six invariants re-checked against the full diff (agent_sandboxes.zig, sandbox_access.zig, sandbox_pool.zig, migration 1172). No remaining violations.",
+    "violations": [],
+    "artifacts_out": [
+      "src/api/routes/agent_sandboxes.zig",
+      "src/api/routes/sandbox_access.zig",
+      "src/definition/sandbox_pool.zig",
+      "migrations/1172_sbx04_06_owner_binding.sql"
+    ],
+    "issues": [
+      {
+        "id": "OBS-SBX-01",
+        "severity": "MINOR",
+        "description": "reclaimIdleSandboxes passes empty string for tenant_id to writeAuditInTx. The audit row lands in the correct tenant schema (conn2 search_path is set), but the audit payload JSON will have tenant_id: '' rather than the actual tenant UUID. Data quality defect only; no security isolation impact."
+      }
+    ],
+    "invariant_assessments": {
+      "INV-1": "PASS — migration 1172 has scope: tenant_only; all queries rely on search_path isolation; sandbox_probe_counters table is created within the tenant schema.",
+      "INV-2": "PASS — V-01 fix applied: task_spec_id validated against task_specs with tenant predicate before claim. Success responses return minimal payloads ({} or 204 empty); sentinel bodies contain no tenant business data beyond the caller-supplied sandbox_id.",
+      "INV-4": "PASS — no secret material in any response, audit payload, or new struct field. Audit payloads contain principal, sandbox_id, task_spec_id, rejection_code, tenant_id only.",
+      "INV-5": "PASS — both cross-tenant and nonexistent sandbox cases in handleClaimSandbox (0 rows from UPDATE) and handleReleaseSandbox (checkPrincipalBound inaccessible) return identical 403 sandbox_not_accessible with identical body shape. Probe rate limiting applied to both.",
+      "INV-7": "PASS — all SQL in new code uses $1/$2/... parameterised placeholders. std.fmt.allocPrint is used only for response/audit JSON construction and formatting a u64 number as a parameter value, never to build SQL text.",
+      "INV-8": "PASS — no catch unreachable in any new code path. All error paths use catch return, catch {}, catch null, catch continue, or fallback values."
+    }
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

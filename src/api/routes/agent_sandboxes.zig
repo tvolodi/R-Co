@@ -281,7 +281,7 @@ pub fn handleClaimSandbox(
         \\    claimed_at = NOW(),
         \\    last_active_at = NOW(),
         \\    updated_at = NOW()
-        \\WHERE sandbox_id = $2::uuid AND status = 'unclaimed'
+        \\WHERE sandbox_id = $2::uuid AND status IN ('unclaimed', 'released')
         \\RETURNING sandbox_id::text
     , &.{ auth.user_id, sandbox_id, task_spec_id }) catch blk: {
         // Capture SQLSTATE before ROLLBACK clears the error state.
@@ -303,8 +303,26 @@ pub fn handleClaimSandbox(
     };
 
     if (claim_row == null) {
-        // 0 rows updated — sandbox not found, not unclaimed, or wrong tenant (or generic error).
+        // 0 rows updated — sandbox not found, already claimed, released→race, or wrong tenant.
         conn.rollback() catch {};
+
+        // SBX-04: if the sandbox exists and is 'claimed', return 409 not the sentinel 403.
+        const sandbox_is_claimed = if (conn.queryRow(allocator,
+            "SELECT status FROM agent_sandboxes WHERE sandbox_id = $1::uuid",
+            &.{sandbox_id},
+        ) catch null) |row| claimed: {
+            defer {
+                for (row) |col| if (col) |c| allocator.free(c);
+                allocator.free(row);
+            }
+            break :claimed if (row[0]) |s| std.mem.eql(u8, s, "claimed") else false;
+        } else false;
+        if (sandbox_is_claimed) {
+            sandbox_access.writeSentinelAudit(
+                allocator, conn, tenant_id_slice, auth.user_id, sandbox_id, "sandbox_already_claimed",
+            );
+            return conflict409(allocator, "sandbox_already_claimed");
+        }
 
         // SBX-05: probe rate check before emitting sentinel.
         switch (@as(sandbox_access.ProbeRateResult, sandbox_access.checkProbeRate(allocator, conn, auth.user_id) catch .{ .allowed = {} })) {

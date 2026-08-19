@@ -1,0 +1,43 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-01-code-designer",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-01-code-designer.json",
+  "created_at": "2026-08-18T21:28:03Z",
+  "started_at": "2026-08-18T21:28:03Z",
+  "completed_at": "2026-08-18T21:33:54Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": [
+      "SBX-04",
+      "SBX-05",
+      "SBX-06"
+    ],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "docs/requirements.yaml (SBX-04, SBX-05, SBX-06 entries)",
+      "src/definition/store.zig (existing sandbox store \u2014 current context file)",
+      "src/sandbox/ (existing sandbox module)"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for SBX-04, SBX-05, SBX-06 (stage 17 \u2014 sandbox ownership binding, inaccessible-sandbox sentinel, and claim/release/reclaim audit).\n\nRequirements summary:\n- SBX-04: A claim binds the sandbox to triple (tenant_id, agent_principal, task_spec_id) under unique index ux_sandbox_owner. One sandbox \u2192 one owner, one task_spec \u2192 one sandbox. Cross-principal claim \u2192 HTTP 409 sandbox_already_claimed (no owner name disclosed). Operations inside claimed sandbox check bound agent_principal; mismatch \u2192 SBX-05 sentinel.\n- SBX-05: All inaccessible cases (nonexistent, wrong tenant, wrong principal) return HTTP 403 sandbox_not_accessible with byte-identical body/headers. Tenant predicate in same query as row load. Probe rate: 20 sentinels in 60s \u2192 HTTP 429 probe_rate_exceeded.\n- SBX-06: Only bound agent_principal may release; others get sandbox_not_accessible. Pool manager reclaims after 60 min idle. Audit entries for: Claimed, ClaimRejected, Released, Reclaimed \u2014 each carrying acting_principal, tenant_id, sandbox_id, task_spec_id.\n\nProduce design artefact at: src/design/sbx04-06-design.md\n\nDesign must cover:\n1. Database schema changes: new columns/indexes on `sandboxes` table for owner binding (agent_principal, task_spec_id, claimed_at columns; unique index ux_sandbox_owner on (tenant_id, task_spec_id))\n2. New audit event types: SandboxClaimed, SandboxClaimRejected, SandboxReleased, SandboxReclaimed\n3. API endpoint changes:\n   - PATCH /sandboxes/{id}/claim \u2014 bind ownership (SBX-04)\n   - DELETE /sandboxes/{id}/claim \u2014 release ownership (SBX-06)\n   - All existing sandbox operation endpoints \u2014 SBX-05 sentinel enforcement\n4. Probe rate-limiting logic for sandbox_not_accessible (SBX-05): sliding window counter per principal per tenant, 20 responses / 60 seconds \u2192 429\n5. Pool manager idle-reclaim logic: background sweep checking last_active_at, 60 min threshold (SBX-06)\n6. Zig type signatures for new functions (no implementation code)\n7. Migration file name (e.g. migrations/NNN_sandbox_ownership.sql)\n\nDesign must NOT contain implementation code \u2014 interfaces, types, data-flow only.\n\nCompliance note: SBX-05 byte-identical response bodies and same query shape for all sentinel cases is a hard security invariant (probe indistinguishability). Design must explicitly state how this is achieved.\n\nReturn PASS with artifact path src/design/sbx04-06-design.md.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for SBX-04/05/06 (stage 17 \u2014 sandbox ownership binding, inaccessible-sandbox sentinel, claim/release/reclaim audit). Types: C (migration 1172) + E (cross-cutting logic).",
+    "artifacts_out": [
+      "src/design/sbx04-06-design.md"
+    ],
+    "issues": []
+  },
+  "max_rework": 2,
+  "rework_count": 0
+}

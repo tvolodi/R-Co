@@ -1,0 +1,89 @@
+{
+  "handoff_id": "WF02-sbx04-06-20260819-02c-security-reviewer",
+  "run_id": "WF02-sbx04-06-20260819",
+  "workflow_id": "WF-02",
+  "step": "02c",
+  "from_agent": "ORCH",
+  "to_agent": "SECURITY-REVIEWER",
+  "file": "handoffs/WF02-sbx04-06-20260819/step-02c-security-reviewer.json",
+  "created_at": "2026-08-18T22:04:52Z",
+  "started_at": "2026-08-18T22:04:52Z",
+  "completed_at": "2026-08-18T22:08:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "run_id": "WF02-sbx04-06-20260819",
+    "workflow": "WF-02",
+    "requirement_ids": ["SBX-04", "SBX-05", "SBX-06"],
+    "branch_name": "feature/WF02-sbx04-06-20260819",
+    "artifacts_in": [
+      "src/design/sbx04-06-design.md",
+      "migrations/1172_sbx04_06_owner_binding.sql",
+      "src/api/routes/sandbox_access.zig",
+      "src/api/routes/agent_sandboxes.zig",
+      "src/definition/sandbox_pool.zig",
+      "src/main.zig"
+    ]
+  },
+  "task": {
+    "description": "Review BACKEND-DEV implementation of SBX-04, SBX-05, SBX-06 on branch feature/WF02-sbx04-06-20260819 against the numbered security invariants in docs/agents/instructions/security-invariants.md.\n\nKey invariants to check for this change set:\n- Tenant data isolation: all sandbox queries must include tenant_id predicate in the same statement that loads the row (not a two-step load-then-check)\n- Probe indistinguishability (SBX-05): cross-tenant, nonexistent, and wrong-principal cases must return byte-identical response body and headers — verify in checkPrincipalBound and sendSentinel403\n- Field authorisation: task_spec_id and agent_principal must be bound from the authenticated session, not from the request body\n- SQL parameterisation: all queries must use parameterised statements (no string interpolation)\n- No 'catch unreachable' on realistic failures (e.g., DB connection errors, index conflicts)\n\nRun: git diff origin/main...feature/WF02-sbx04-06-20260819 -- src/ migrations/\n\nReturn PASS or FAIL with specific invariant violations.",
+    "fn": "fn:validate-completeness fn:register-inner-report fn:complete-handoff"
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "1 BLOCKER violation found (INV-2: task_spec_id accepted from request body, not bound from authenticated session). 2 MINOR findings. Implementation otherwise correct for INV-1 schema isolation, INV-4 secrets, INV-7 SQL parameterisation, INV-8 no catch-unreachable. Probe indistinguishability (INV-5) logic is correct but lacks an integration test.",
+    "violations": [
+      {
+        "id": "V-01",
+        "severity": "BLOCKER",
+        "invariant": "INV-2",
+        "file": "src/api/routes/agent_sandboxes.zig",
+        "location": "handleClaimSandbox — task_spec_id parsing block (~line 235)",
+        "description": "task_spec_id is parsed from body_json (the HTTP request body) rather than being bound from the authenticated session context. The task.description for this handoff explicitly requires that task_spec_id be bound from the authenticated session, not the request body. As implemented, an authenticated implementer can supply any UUID as task_spec_id, potentially claiming a sandbox under a task spec they are not authorised to work on and colliding with the ux_sandbox_owner partial unique index (task_spec_id WHERE status='claimed') for arbitrary task specs. The fix is to read task_spec_id from auth.task_spec_id (or equivalent session-bound field in AuthContext) rather than from the JSON body; if no such field currently exists on AuthContext that is a prerequisite design change to route back to CODE-DESIGNER.",
+        "evidence": "Lines in diff: const task_spec_id: []const u8 = blk: { const parsed = std.json.parseFromSlice(..., body_json, ...) ... const field = obj.get(\"task_spec_id\") orelse break :blk \"\"; ... break :blk allocator.dupe(u8, field.string) catch \"\"; };"
+      },
+      {
+        "id": "V-02",
+        "severity": "MINOR",
+        "invariant": "INV-1",
+        "file": "src/definition/sandbox_pool.zig",
+        "location": "reclaimIdleSandboxes — writeAuditInTx call (~line 359 of diff)",
+        "description": "audit_mod.writeAuditInTx is called with \"\" (empty string) as tenant_id. DB operations are correctly scoped to the tenant schema via search_path on conn2, but the audit record loses its tenant attribution, weakening post-incident traceability. The SandboxPool should expose its tenant_id (or accept it as a parameter) so the reclaim audit record is properly tagged.",
+        "evidence": "audit_mod.writeAuditInTx(aa, conn2, \"\", prior_principal, \"sandbox.reclaimed\", ..."
+      },
+      {
+        "id": "V-03",
+        "severity": "MINOR",
+        "invariant": "INV-5",
+        "file": "tests/ (gap — no file yet)",
+        "location": "New claim and release endpoints",
+        "description": "No dedicated integration test asserts byte-identical response body and status between the three indistinguishable cases (cross-tenant sandbox_id, nonexistent sandbox_id, wrong-principal sandbox_id) for handleClaimSandbox and handleReleaseSandbox. The code logic is correct — all three hit the same 403 sentinel path. Per INV-5's 'how to verify' guidance, the absence of a test asserting response-byte-equality should be noted and a follow-up test authored before the WF-05 UAT run.",
+        "evidence": "No test file under tests/ covering sandbox-probe indistinguishability for these two new handlers."
+      }
+    ],
+    "invariants_assessed": {
+      "INV-1": "PASS-WITH-MINOR — schema-per-tenant isolation via search_path is preserved for all queries; migration has scope:tenant_only; minor audit tenant_id gap noted as V-02",
+      "INV-2": "FAIL — task_spec_id read from request body, not session (V-01 BLOCKER)",
+      "INV-3": "NOT-APPLICABLE — no new Lua/Wasm host API functions added",
+      "INV-4": "PASS — no secret material in any field, struct, or response; no hardcoded credentials",
+      "INV-5": "PASS-WITH-MINOR — cross-tenant/nonexistent/wrong-principal all return byte-identical 403 sentinel in both handlers; test gap noted as V-03",
+      "INV-6": "FAIL — blocks on V-01; cannot pass this gate until BLOCKER is resolved",
+      "INV-7": "PASS — all SQL uses $N parameterised placeholders; no allocPrint into SQL text found",
+      "INV-8": "PASS — no catch unreachable in new code; all external I/O failures return typed errors or sentinel responses"
+    },
+    "artifacts_out": [
+      "handoffs/WF02-sbx04-06-20260819/step-02c-security-reviewer.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-V01",
+        "severity": "BLOCKER",
+        "description": "task_spec_id must be bound from the authenticated session (AuthContext), not from the HTTP request body. Requires either: (a) CODE-DESIGNER to add task_spec_id to AuthContext/JWT claims, or (b) a design clarification that task_spec_id is intentionally client-supplied with explicit authorisation justification. Block merge until resolved.",
+        "action": "Route back to CODE-DESIGNER for design decision; BACKEND-DEV rework after design update."
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER (or ORCH for design clarification on task_spec_id binding) to resolve V-01 BLOCKER before TEST-DESIGNER can be dispatched."
+  },
+  "max_rework": 1,
+  "rework_count": 0
+}

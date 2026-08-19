@@ -147,13 +147,16 @@ fn insertTaskSpec(
     // Compute a fake spec_hash from uuid bytes to ensure uniqueness per test.
     const hash_id = try generateUuid(allocator);
     defer allocator.free(hash_id);
+    // Mask high bit so u64 fits in postgres BIGINT (signed 64-bit).
+    const seed_text = try std.fmt.allocPrint(allocator, "{d}", .{seed & 0x7FFFFFFFFFFFFFFF});
+    defer allocator.free(seed_text);
     const row = (try conn.queryRow(
         allocator,
-        \\INSERT INTO task_specs (orchestrator_principal, spec_hash, spec_body)
-        \\VALUES ($1, $2, $3)
+        \\INSERT INTO task_specs (orchestrator_principal, spec_hash, spec_body, rng_seed)
+        \\VALUES ($1, $2, $3, $4::bigint)
         \\RETURNING task_spec_id::text
     ,
-        &.{ orchestrator_principal, hash_id, spec_body },
+        &.{ orchestrator_principal, hash_id, spec_body, seed_text },
     )) orelse return error.TestUnexpectedResult;
     defer allocator.free(row);
     const id = row[0] orelse return error.TestUnexpectedResult;
@@ -184,7 +187,6 @@ fn freeSandboxBody(allocator: std.mem.Allocator, result: agent_sandboxes.Handler
     const statics = [_][]const u8{
         "{}",
         "{\"detail\":\"sandbox_not_accessible\",\"status\":403}",
-        "{\"detail\":\"sandbox_already_claimed\",\"status\":409}",
         "{\"detail\":\"task_spec_not_found\",\"status\":404}",
         "{\"detail\":\"task_spec_id_required\",\"status\":400}",
         "{\"detail\":\"pool_exhausted\",\"status\":503}",
