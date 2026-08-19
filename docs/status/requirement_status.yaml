@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-19T02:59:05Z'
+last_updated: '2026-08-19T04:50:05Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -2611,13 +2611,23 @@ requirements:
     release_run: WF02-oidc27-34-20260528
     release_decision: (batch)
   OIDC-F-05:
-    status: UNTRACKED
+    status: TESTED
     priority: MUST
     title: Tenant-config discovery endpoint
+    implemented_in:
+    - src/api/routes/tenant_config.zig
+    - migrations/050_tenant_hostnames.sql
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
   OIDC-F-06:
-    status: UNTRACKED
+    status: TESTED
     priority: MUST
     title: Dynamic OIDC config from hostname
+    implemented_in:
+    - web/src/auth/tenantConfig.ts
+    - web/src/auth/OidcManager.ts
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
   ONB-UI-01:
     status: RELEASED
     stage: F7
@@ -3723,13 +3733,28 @@ requirements:
     release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
     note: 'ISS-0112 fix: admin API service catalog fixture hygiene + baseline'
   TD-UI-01:
-    status: UNTRACKED
+    status: TESTED
     priority: MUST
     title: Tenant-scoped landing page
+    implemented_in:
+    - web/src/pages/dashboard/TenantDashboardPage.tsx
+    - web/src/router.tsx
+    - web/src/auth/AuthProvider.tsx
+    - web/src/auth/tokenUtils.ts
+    - web/src/types/api.ts
+    - web/src/auth/useTenantContext.ts
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
   TD-UI-02:
-    status: UNTRACKED
+    status: TESTED
     priority: MUST
     title: Tenant identity indicator
+    implemented_in:
+    - web/src/components/layout/TenantHeader.tsx
+    - web/src/components/layout/AppShell.tsx
+    - web/src/auth/useTenantContext.ts
+    test_run: tests/reports/report-20260819-WF02-oidcf05-tdui01-step04.md
+    tested_at: '2026-08-19'
   TD-UI-03:
     status: UNTRACKED
     priority: SHOULD
@@ -4391,14 +4416,15 @@ requirements:
     title: Immutable task specs bound by spec hash
     released_at: '2026-08-18T20:38:53Z'
   AGT-05:
-    status: TESTED
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Non-zero RNG seed folded into spec identity
     implemented_in:
     - src/api/routes/agent_task_specs.zig
+    released_at: '2026-08-19T03:01:49Z'
   AGT-06:
-    status: TESTED
+    status: RELEASED
     stage: '17'
     priority: MUST
     title: Dual-sweep artifact retention
@@ -4406,13 +4432,15 @@ requirements:
     - src/scheduler/artifact_retention.zig
     - src/api/routes/agent_artifacts.zig
     - migrations/1173_agt06_artifact_retention.sql
+    released_at: '2026-08-19T03:01:50Z'
   AGT-07:
-    status: TESTED
+    status: RELEASED
     stage: '17'
     priority: SHOULD
     title: Deprecated envelope field names rejected
     implemented_in:
     - src/api/routes/agent_artifacts.zig
+    released_at: '2026-08-19T03:01:52Z'
   CAC-UI-01:
     status: DRAFT
     stage: F8
